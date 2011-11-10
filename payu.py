@@ -74,8 +74,11 @@ class Experiment(object):
         self.work_path = os.path.join(self.lab_path, 'work', self.name)
         
         # Executable path
-        exec_name = kwargs.pop('exec', self.default_exec)
+        exec_name = kwargs.pop('exe', self.default_exec)
         self.exec_path = os.path.join(self.bin_path, exec_name)
+        
+        # Driver path
+        self.driver_path = kwargs.pop('forcing', None)
     
     
     #-----------------
@@ -85,19 +88,20 @@ class Experiment(object):
         run_dir = 'run%02i' % (self.counter,)
         run_path = os.path.join(self.archive_path, run_dir)
         
-        print self.archive_path
-        print self.work_path
-        print run_path
         sh.move(self.work_path, run_path)
         
         # Collate the tiled results
+        job_name = os.environ.get('PBS_JOBNAME', self.name)
+        collate_job_name = ''.join([job_name, '_coll'])
         qsub_vars = ''.join([counter_envar, '=', str(self.counter), ',',
                              'collate','=','True'])
         cmd = ['qsub', self.driver_script,
-               '-q', 'copyq',
-               '-l', 'ncpus=1',
-               '-N', ''.join([self.name, '_coll']),
-               '-v', qsub_vars]
+                 '-q', 'copyq',
+                 '-l', 'ncpus=1',
+                 '-l', 'vmem=6GB',
+                 '-l', 'walltime=2:00:00',
+                 '-N', collate_job_name,
+                 '-v', qsub_vars]
         rc = sp.Popen(cmd).wait()
     
     
