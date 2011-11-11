@@ -1,9 +1,8 @@
 # coding: utf-8
 """
-The payu implementation for GFDL models based on FMS
+The payu interface for GFDL models based on FMS
 ===============================================================================
-Comments:
-    - The 'run_dir' stuff should probably be model-independent
+Primary Contact:    Marshall Ward (marshall.ward@anu.edu.au)
 """
 
 from payu import Experiment, mkdir_p

@@ -1,9 +1,13 @@
 # coding: utf-8
 """
 The payu implementation of GOLD
+===============================================================================
+Primary Contact:    Marshall Ward (marshall.ward@anu.edu.au)
 """
 
 from fms import FMS
+import os
+import shutil as sh
 
 class gold(FMS):
     #----------------------------
@@ -13,11 +17,12 @@ class gold(FMS):
         super(gold, self).__init__()
 
         # Model-specific configuration
-        self.model_name = 'GOLD'
+        self.model_name = 'gold'
         self.default_exec = 'GOLD'
         self.config_files = ['GOLD_input',
                              'GOLD_override',
                              'diag_table',
+                             'fre_input.nml',
                              'input.nml']
         
         self.path_names(**kwargs)
@@ -26,13 +31,14 @@ class gold(FMS):
     #---------------
     def setup(self):
    
+        # FMS initialisation
+        super(gold, self).setup()
+        
         # GOLD-specific initialisation
         if self.counter == 1:
             self.init_config()
-       
-        # FMS initialisation
-        super(gold, self).setup()
-
+    
+    
     #---------------------
     def init_config(self):
         input_filepath = os.path.join(self.work_path, 'input.nml')

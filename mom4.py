@@ -1,6 +1,8 @@
 # coding: utf-8
 """
-The payu implementation of MOM4
+The payu interface for MOM4
+===============================================================================
+Primary Contact:    Marshall Ward (marshall.ward@anu.edu.au)
 """
 
 from fms import FMS
