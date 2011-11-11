@@ -77,8 +77,20 @@ class Experiment(object):
         exec_name = kwargs.pop('exe', self.default_exec)
         self.exec_path = os.path.join(self.bin_path, exec_name)
         
-        # Driver path
-        self.driver_path = kwargs.pop('forcing', None)
+        # External forcing path
+        forcing_dir = kwargs.pop('forcing', None)
+        if forcing_dir:
+            # Test for absolute path
+            if os.path.exists(forcing_dir):
+                self.forcing_path = forcing_dir
+            else:
+                # Test for path relative to /lab_path/forcing
+                rel_path = os.path.join(self.lab_path, 'forcing', forcing_dir)
+                if os.path.exists(rel_path):
+                    self.forcing_path = rel_path
+                else:
+                    # Forcing does not exist; raise some exception
+                    raise
     
     
     #-----------------
