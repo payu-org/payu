@@ -62,8 +62,12 @@ class Experiment(object):
         self.config_path = kwargs.pop('config', default_config_path)
         
         # Laboratory path (output)
-        user_name = os.environ.get('USER')
-        project_name = os.environ.get('PROJECT')
+        default_user = os.environ.get('USER')
+        user_name = kwargs.pop('user', default_user)
+        
+        default_project = os.environ.get('PROJECT')
+        project_name = kwargs.pop('project', default_project)
+        
         default_lab_path = os.path.join('/','short', project_name, user_name,
                                         self.model_name)
         self.lab_path = kwargs.pop('output', default_lab_path)
@@ -90,7 +94,8 @@ class Experiment(object):
                     self.forcing_path = rel_path
                 else:
                     # Forcing does not exist; raise some exception
-                    raise
+                    # (Not yet implemented)
+                    sys.exit('Forcing data not found; aborting.')
     
     
     #-----------------
@@ -99,13 +104,17 @@ class Experiment(object):
         
         run_dir = 'run%02i' % (self.counter,)
         run_path = os.path.join(self.archive_path, run_dir)
-        
+       
+        if os.path.exists(run_path):
+            # Find a more sensible way to deal with this
+            sys.exit('Archived path already exists; aborting.')
         sh.move(self.work_path, run_path)
         
         # Collate the tiled results
         job_name = os.environ.get('PBS_JOBNAME', self.name)
         collate_job_name = ''.join([job_name, '_coll'])
-        qsub_vars = ''.join([counter_envar, '=', str(self.counter), ',',
+        qsub_vars = ''.join([counter_envar,'=',str(self.counter),',',
+                             max_counter_envar,'=',str(self.max_counter), ',',
                              'collate','=','True'])
         cmd = ['qsub', self.driver_script,
                  '-q', 'copyq',
