@@ -100,11 +100,17 @@ class Experiment(object):
     
     #-----------------
     def archive(self):
+    """
+    Resubmitting may be a failed experiment; it's not practical to
+    forecast the PBS submission settings.
+    We may want to go back to separate "run" and "collate" scripts.
+    """
+
         mkdir_p(self.archive_path)
         
         run_dir = 'run%02i' % (self.counter,)
         run_path = os.path.join(self.archive_path, run_dir)
-       
+        
         if os.path.exists(run_path):
             # Find a more sensible way to deal with this
             sys.exit('Archived path already exists; aborting.')
@@ -118,6 +124,7 @@ class Experiment(object):
                              'collate','=','True'])
         cmd = ['qsub', self.driver_script,
                  '-q', 'copyq',
+                 '-P', 'v45',
                  '-l', 'ncpus=1',
                  '-l', 'vmem=6GB',
                  '-l', 'walltime=2:00:00',
