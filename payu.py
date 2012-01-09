@@ -100,12 +100,6 @@ class Experiment(object):
     
     #-----------------
     def archive(self):
-    """
-    Resubmitting may be a failed experiment; it's not practical to
-    forecast the PBS submission settings.
-    We may want to go back to separate "run" and "collate" scripts.
-    """
-
         mkdir_p(self.archive_path)
         
         run_dir = 'run%02i' % (self.counter,)
