@@ -31,7 +31,7 @@ class FMS(Experiment):
         pass
     
     #---------------
-    def setup(self):
+    def setup(self, use_symlinks=True):
         mkdir_p(self.work_path)
         
         for f in self.config_files:
@@ -54,7 +54,10 @@ class FMS(Experiment):
             for f in restart_files:
                 f_res = os.path.join(last_restart_path, f)
                 f_input = os.path.join(input_path, f)
-                os.symlink(f_res, f_input)
+                if use_symlinks:
+                    os.symlink(f_res, f_input)
+                else:
+                    sh.copy(f_res, f_input)
         
         # Link any forcing data to INPUT
         if self.forcing_path:
@@ -64,15 +67,24 @@ class FMS(Experiment):
                 f_input = os.path.join(input_path, f)
                 # Do not use forcing file if it is in RESTART
                 if not os.path.exists(f_input):
-                    os.symlink(f_forcing, f_input)
+                    if use_symlinks:
+                        os.symlink(f_forcing, f_input)
+                    else:
+                        sh.copy(f_forcing, f_input)
     
     #-----------------------------------
-    def run(self):
+    def run(self, *flags):
         f_out = open('fms.out','w')
-        cmd = ['mpirun', '-wd', self.work_path, self.exec_path]
-        rc = sp.Popen(cmd, stdout=f_out).wait()
+        f_err = open('fms.err','w')
+        
+        cmd = (['mpirun'] + list(flags) + ['-wd', self.work_path]
+                + [self.exec_path])
+        
+        rc = sp.Popen(cmd, stdout=f_out, stderr=f_err).wait()
         f_out.close()
+        f_err.close()
         sh.move('fms.out', self.work_path)
+        sh.move('fms.err', self.work_path)
     
     #-----------------
     def collate(self):
