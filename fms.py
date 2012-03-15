@@ -31,7 +31,7 @@ class FMS(Experiment):
         pass
     
     #---------------
-    def setup(self, use_symlinks=True):
+    def setup(self, use_symlinks=True, repeat_run=False):
         mkdir_p(self.work_path)
         
         for f in self.config_files:
@@ -46,7 +46,7 @@ class FMS(Experiment):
         input_path = os.path.join(self.work_path, 'INPUT')
         mkdir_p(input_path)
         
-        if self.counter > 1:
+        if self.counter > 1 and not repeat_run:
             last_run_dir = 'run%02i' % (self.counter-1,)
             last_restart_path = os.path.join(self.archive_path, last_run_dir,
                                              'RESTART')
@@ -87,7 +87,7 @@ class FMS(Experiment):
         sh.move('fms.err', self.work_path)
     
     #-----------------
-    def collate(self):
+    def collate(self, restart=True):
         import resource as res
         
         # Set the stacksize to be unlimited
@@ -100,10 +100,11 @@ class FMS(Experiment):
         nc_files = [os.path.join(run_path, f) for f in os.listdir(run_path) \
                     if f.endswith('.nc.0000')]
         
-        restart_files = [os.path.join(restart_path, f)
-                         for f in os.listdir(restart_path)
-                         if f.endswith('.nc.0000')]
-        nc_files.extend(restart_files)
+        if restart:
+            restart_files = [os.path.join(restart_path, f)
+                             for f in os.listdir(restart_path)
+                             if f.endswith('.nc.0000')]
+            nc_files.extend(restart_files)
         
         mppnc_path = os.path.join(self.bin_path, 'mppnccombine')
         

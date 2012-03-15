@@ -99,7 +99,7 @@ class Experiment(object):
     
     
     #-----------------
-    def archive(self):
+    def archive(self, collate=True):
         mkdir_p(self.archive_path)
         
         run_dir = 'run%02i' % (self.counter,)
@@ -110,21 +110,22 @@ class Experiment(object):
             sys.exit('Archived path already exists; aborting.')
         sh.move(self.work_path, run_path)
         
-        # Collate the tiled results
-        job_name = os.environ.get('PBS_JOBNAME', self.name)
-        collate_job_name = ''.join([job_name, '_coll'])
-        qsub_vars = ''.join([counter_envar,'=',str(self.counter),',',
-                             max_counter_envar,'=',str(self.max_counter), ',',
-                             'collate','=','True'])
-        cmd = ['qsub', self.driver_script,
-                 '-q', 'copyq',
-                 '-P', 'v45',
-                 '-l', 'ncpus=1',
-                 '-l', 'vmem=6GB',
-                 '-l', 'walltime=2:00:00',
-                 '-N', collate_job_name,
-                 '-v', qsub_vars]
-        rc = sp.Popen(cmd).wait()
+        if collate:
+            # Collate the tiled results
+            job_name = os.environ.get('PBS_JOBNAME', self.name)
+            collate_job_name = ''.join([job_name, '_coll'])
+            qsub_vars = ''.join([counter_envar,'=',str(self.counter),',',
+                                 max_counter_envar,'=',str(self.max_counter),
+                                 ',','collate','=','True'])
+            cmd = ['qsub', self.driver_script,
+                     '-q', 'copyq',
+                     '-P', 'v45',
+                     '-l', 'ncpus=1',
+                     '-l', 'vmem=6GB',
+                     '-l', 'walltime=2:00:00',
+                     '-N', collate_job_name,
+                     '-v', qsub_vars]
+            rc = sp.Popen(cmd).wait()
     
     
     #------------------
