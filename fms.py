@@ -7,6 +7,7 @@ Primary Contact:    Marshall Ward (marshall.ward@anu.edu.au)
 
 from payu import Experiment, mkdir_p
 import os
+import sys
 import shutil as sh
 import subprocess as sp
 
@@ -81,6 +82,8 @@ class FMS(Experiment):
                 + [self.exec_path])
         
         rc = sp.Popen(cmd, stdout=f_out, stderr=f_err).wait()
+        if rc != 0:
+            sys.exit('Error %i; aborting.' % rc)
         f_out.close()
         f_err.close()
         sh.move('fms.out', self.work_path)

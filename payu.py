@@ -22,7 +22,7 @@ max_counter_envar = 'max'
 class Experiment(object):
     """Abstraction of a generic experiment on vayu"""
     
-    #------------------------------------------
+    #----------------------------
     def __init__(self, **kwargs):
         self.model_name = None
         self.modules = None
@@ -44,7 +44,7 @@ class Experiment(object):
             module('load', mod)
     
     
-    #----------------------
+    #------------------------------
     def path_names(self, **kwargs):
         # A model name must be assigned
         assert self.model_name
@@ -98,7 +98,7 @@ class Experiment(object):
                     sys.exit('Forcing data not found; aborting.')
     
     
-    #-----------------
+    #-------------------------------
     def archive(self, collate=True):
         mkdir_p(self.archive_path)
         
@@ -136,8 +136,8 @@ class Experiment(object):
                 % (counter_envar, self.counter, max_counter_envar,
                    self.max_counter) ]
         sp.Popen(cmd).wait()
-
-
+    
+    
     #----------------------
     def do_collation(self):
         return ( os.environ.get('collate', False) == 'True' )
