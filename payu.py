@@ -50,8 +50,10 @@ class Experiment(object):
         assert self.model_name
         
         # Submission script name
-        default_script_name = 'model.py'
-        self.driver_script = kwargs.pop('script_name', default_script_name)
+        self.driver_script = kwargs.pop('script_name', 'model.py')
+        
+        # Collation script name
+        self.collation_script = kwargs.pop('collate_name', 'collate.py')
         
         # Experiment name (used for directories)
         default_name = os.path.basename(os.getcwd())
@@ -113,18 +115,7 @@ class Experiment(object):
         if collate:
             # Collate the tiled results
             job_name = os.environ.get('PBS_JOBNAME', self.name)
-            collate_job_name = ''.join([job_name, '_coll'])
-            qsub_vars = ''.join([counter_envar,'=',str(self.counter),',',
-                                 max_counter_envar,'=',str(self.max_counter),
-                                 ',','collate','=','True'])
-            cmd = ['qsub', self.driver_script,
-                     '-q', 'copyq',
-                     '-P', 'v45',
-                     '-l', 'ncpus=1',
-                     '-l', 'vmem=6GB',
-                     '-l', 'walltime=2:00:00',
-                     '-N', collate_job_name,
-                     '-v', qsub_vars]
+            cmd = ['qsub', self.collation_script, '-v', str(self.counter)]
             rc = sp.Popen(cmd).wait()
     
     

@@ -42,7 +42,12 @@ class FMS(Experiment):
         # Create experiment directory structure
         restart_path = os.path.join(self.work_path, 'RESTART')    
         mkdir_p(restart_path)
-        
+       
+        # David Singleton's striping recommedation
+        cmd = ['lfs', 'setstripe', '-c', '8', '-s','8m', restart_path]
+        rc = sp.Popen(cmd).wait()
+        assert rc == 0
+
         # Either create a new INPUT path or link a previous RESTART as INPUT
         input_path = os.path.join(self.work_path, 'INPUT')
         mkdir_p(input_path)
@@ -90,7 +95,7 @@ class FMS(Experiment):
         sh.move('fms.err', self.work_path)
     
     #-----------------
-    def collate(self, restart=True):
+    def collate(self, restart=False):
         import resource as res
         
         # Set the stacksize to be unlimited
@@ -114,4 +119,3 @@ class FMS(Experiment):
         for f in nc_files:
             cmd = [mppnc_path, '-r', '-64', f]
             sp.Popen(cmd).wait()
-
