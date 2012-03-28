@@ -115,7 +115,8 @@ class Experiment(object):
         if collate:
             # Collate the tiled results
             job_name = os.environ.get('PBS_JOBNAME', self.name)
-            cmd = ['qsub', self.collation_script, '-v', str(self.counter)]
+            cmd = ['qsub', self.collation_script, '-v', '%s=%i'
+                    % (counter_envar, self.counter)]
             rc = sp.Popen(cmd).wait()
     
     
