@@ -119,3 +119,6 @@ class FMS(Experiment):
         for f in nc_files:
             cmd = [mppnc_path, '-r', '-64', f]
             sp.Popen(cmd).wait()
+
+        if self.archive_group:
+            self.regroup()

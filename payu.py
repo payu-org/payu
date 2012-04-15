@@ -9,6 +9,7 @@ import os
 import sys
 import shutil as sh
 import subprocess as sp
+import grp
 import errno
 
 # Environment module support on vayu
@@ -79,6 +80,9 @@ class Experiment(object):
         self.bin_path = os.path.join(self.lab_path, 'bin')
         self.work_path = os.path.join(self.lab_path, 'work', self.name)
         
+        # Set group identifier for output
+        self.archive_group = kwargs.pop('archive_group', None)
+        
         # Executable path
         exec_name = kwargs.pop('exe', self.default_exec)
         self.exec_path = os.path.join(self.bin_path, exec_name)
@@ -101,7 +105,7 @@ class Experiment(object):
     
     
     #-------------------------------
-    def archive(self, collate=True):
+    def archive(self, collate=True, mdss=False):
         mkdir_p(self.archive_path)
         
         run_dir = 'run%02i' % (self.counter,)
@@ -112,12 +116,28 @@ class Experiment(object):
             sys.exit('Archived path already exists; aborting.')
         sh.move(self.work_path, run_path)
         
+        if self.archive_group:
+            self.regroup()
+        
         if collate:
             # Collate the tiled results
             job_name = os.environ.get('PBS_JOBNAME', self.name)
             cmd = ['qsub', self.collation_script, '-v', '%s=%i'
                     % (counter_envar, self.counter)]
             rc = sp.Popen(cmd).wait()
+    
+    
+    #-----------------
+    def regroup(self):
+        uid = os.getuid()
+        gid = grp.getgrnam(self.archive_group).gr_gid
+        
+        os.lchown(self.archive_path, uid, gid)
+        for root, dirs, files in os.walk(self.archive_path):
+            for d in dirs:
+                os.lchown(os.path.join(root, d), uid, gid)
+            for f in files:
+                os.lchown(os.path.join(root, f), uid, gid)
     
     
     #------------------
@@ -128,11 +148,7 @@ class Experiment(object):
                 % (counter_envar, self.counter, max_counter_envar,
                    self.max_counter) ]
         sp.Popen(cmd).wait()
-    
-    
-    #----------------------
-    def do_collation(self):
-        return ( os.environ.get('collate', False) == 'True' )
+
 
 #==============================================================================
 def mkdir_p(path):
