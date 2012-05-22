@@ -10,12 +10,12 @@ import subprocess as sp
 from fms import FMS
 
 class mom4(FMS):
-    #----------------------------
+    #---
     def __init__(self, **kwargs):
         
         # FMS initalisation
         super(mom4, self).__init__(**kwargs)
-
+        
         # Model-specific configuration
         self.model_name = 'mom4'
         self.default_exec = 'mom4'
@@ -25,14 +25,15 @@ class mom4(FMS):
                              'input.nml']
         
         self.path_names(**kwargs)
-
+        
         self.modules.append('nco')
         self.load_modules()
-
+    
+    #---
     def core2iaf_setup(self, core2iaf_path=None, driver_name=None):
         # This is a very long method
         # TODO: Separate into sub-methods
-         
+        
         # Need to make these input arguments
         default_core2iaf_path = '/short/v45/core2iaf'
         if core2iaf_path == None:

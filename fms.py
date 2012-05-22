@@ -12,9 +12,12 @@ import shutil as sh
 import subprocess as sp
 
 class FMS(Experiment):
-    #----------------------------
+    #---
     def __init__(self, **kwargs):
-        
+
+        # payu initalisation
+        super(FMS, self).__init__(**kwargs)
+
         # Model-specific configuration
         self.model_name = None
         self.default_exec = None
@@ -23,31 +26,28 @@ class FMS(Experiment):
         
         self.config_files = None
         
-        self.load_modules()
         self.set_counters()
     
-    #---------------
+    #---
     def build(self):
-        # Not yet implemented
-        pass
+        raise NotImplementedError
     
-    #---------------
+    #---
     def setup(self, use_symlinks=True, repeat_run=False):
-        mkdir_p(self.work_path)
         
-        for f in self.config_files:
-            f_path = os.path.join(self.config_path, f)
-            sh.copy(f_path, self.work_path)
+        # payu setup:
+        #   work path and symlink, config file copy
+        super(FMS, self).setup()
         
         # Create experiment directory structure
         restart_path = os.path.join(self.work_path, 'RESTART')    
         mkdir_p(restart_path)
-       
+        
         # David Singleton's striping recommedation
         cmd = ['lfs', 'setstripe', '-c', '8', '-s','8m', restart_path]
         rc = sp.Popen(cmd).wait()
         assert rc == 0
-
+        
         # Either create a new INPUT path or link a previous RESTART as INPUT
         input_path = os.path.join(self.work_path, 'INPUT')
         mkdir_p(input_path)
@@ -64,6 +64,8 @@ class FMS(Experiment):
                     os.symlink(f_res, f_input)
                 else:
                     sh.copy(f_res, f_input)
+        else:
+            last_restart_path = None
         
         # Link any forcing data to INPUT
         if self.forcing_path:
@@ -78,7 +80,7 @@ class FMS(Experiment):
                     else:
                         sh.copy(f_forcing, f_input)
     
-    #-----------------------------------
+    #---
     def run(self, *flags):
         f_out = open('fms.out','w')
         f_err = open('fms.err','w')
@@ -87,25 +89,26 @@ class FMS(Experiment):
                 + [self.exec_path])
         
         rc = sp.Popen(cmd, stdout=f_out, stderr=f_err).wait()
-        if rc != 0:
-            sys.exit('Error %i; aborting.' % rc)
         f_out.close()
         f_err.close()
+        
+        if rc != 0:
+            sys.exit('Error %i; aborting.' % rc)
+        
         sh.move('fms.out', self.work_path)
         sh.move('fms.err', self.work_path)
     
-    #-----------------
+    #---
     def collate(self, restart=False):
         import resource as res
         
         # Set the stacksize to be unlimited
         res.setrlimit(res.RLIMIT_STACK, (res.RLIM_INFINITY, res.RLIM_INFINITY))
         
-        run_dir = 'run%02i' % (self.counter,)
-        run_path = os.path.join(self.archive_path, run_dir)
-        restart_path = os.path.join(run_path, 'RESTART')
+        restart_path = os.path.join(self.run_path, 'RESTART')
         
-        nc_files = [os.path.join(run_path, f) for f in os.listdir(run_path) \
+        nc_files = [os.path.join(self.run_path, f)
+                    for f in os.listdir(self.run_path)
                     if f.endswith('.nc.0000')]
         
         if restart:
@@ -119,6 +122,6 @@ class FMS(Experiment):
         for f in nc_files:
             cmd = [mppnc_path, '-r', '-64', f]
             sp.Popen(cmd).wait()
-
+        
         if self.archive_group:
             self.regroup()

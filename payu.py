@@ -2,7 +2,7 @@
 """
 Payu: A generic driver for numerical models on the NCI computing cluster (vayu)
 -------------------------------------------------------------------------------
-Primary Contact:    Marshall Ward (marshall.ward@anu.edu.au)
+Contact:    Marshall Ward (marshall.ward@anu.edu.au)
 """
 
 import os
@@ -10,51 +10,52 @@ import sys
 import shutil as sh
 import subprocess as sp
 import grp
+import getpass
 import errno
 
 # Environment module support on vayu
 execfile('/opt/Modules/default/init/python')
 
 # Counter environment variable names
-counter_envar = 'count'
-max_counter_envar = 'max'
+counter_env = 'count'
+max_counter_env = 'max'
+archive_server = 'dcc.nci.org.au'
 
 #==============================================================================
 class Experiment(object):
-    """Abstraction of a generic experiment on vayu"""
+    """A generic numerical experiment on vayu"""
     
-    #----------------------------
+    #---
     def __init__(self, **kwargs):
         self.model_name = None
         self.modules = None
+        self.config_files = None
+        
+        # Script names
+        self.model_script = kwargs.pop('model_script', 'model.py')
+        self.collation_script = kwargs.pop('collate_script', 'collate.py')
     
     
-    #----------------------
+    #---
     def set_counters(self):
-        self.counter = int(os.environ.get(counter_envar, 1))
-        self.max_counter = int(os.environ.get(max_counter_envar, self.counter))
+        self.counter = int(os.environ.get(counter_env, 1))
+        self.max_counter = int(os.environ.get(max_counter_env, self.counter))
         
         assert 0 < self.max_counter
         assert 0 < self.counter <= self.max_counter
     
     
-    #----------------------
+    #---
     def load_modules(self):
         module('purge')
         for mod in self.modules:
             module('load', mod)
     
     
-    #------------------------------
+    #---
     def path_names(self, **kwargs):
         # A model name must be assigned
         assert self.model_name
-        
-        # Submission script name
-        self.driver_script = kwargs.pop('script_name', 'model.py')
-        
-        # Collation script name
-        self.collation_script = kwargs.pop('collate_name', 'collate.py')
         
         # Experiment name (used for directories)
         default_name = os.path.basename(os.getcwd())
@@ -65,20 +66,26 @@ class Experiment(object):
         self.config_path = kwargs.pop('config', default_config_path)
         
         # Laboratory path (output)
-        default_user = os.environ.get('USER')
-        user_name = kwargs.pop('user', default_user)
+        default_user = getpass.getuser()
+        self.user_name = kwargs.pop('user', default_user)
         
+        # Project group
         default_project = os.environ.get('PROJECT')
-        project_name = kwargs.pop('project', default_project)
+        self.project_name = kwargs.pop('project', default_project)
         
-        default_lab_path = os.path.join('/','short', project_name, user_name,
-                                        self.model_name)
+        # Output path
+        default_lab_path = os.path.join('/','short', self.project_name,
+                                        self.user_name, self.model_name)
         self.lab_path = kwargs.pop('output', default_lab_path)
         
         # Experiment subdirectories
         self.archive_path = os.path.join(self.lab_path, 'archive', self.name)
         self.bin_path = os.path.join(self.lab_path, 'bin')
         self.work_path = os.path.join(self.lab_path, 'work', self.name)
+        
+        # Symbolic path to work
+        self.work_sym_path = os.path.join(self.config_path, 'work')
+        self.archive_sym_path = os.path.join(self.config_path, 'archive')
         
         # Set group identifier for output
         self.archive_group = kwargs.pop('archive_group', None)
@@ -100,34 +107,77 @@ class Experiment(object):
                     self.forcing_path = rel_path
                 else:
                     # Forcing does not exist; raise some exception
-                    # (Not yet implemented)
                     sys.exit('Forcing data not found; aborting.')
+        
+        # Archival path
+        self.run_dir = 'run%02i' % (self.counter,)
+        self.run_path = os.path.join(self.archive_path, self.run_dir)
+   
+
+    #---
+    def setup(self):
+        mkdir_p(self.work_path)
+        
+        # Create symbolic link to work
+        if not os.path.exists(self.work_sym_path):
+            os.symlink(self.work_path, self.work_sym_path)
+        
+        for f in self.config_files:
+            f_path = os.path.join(self.config_path, f)
+            sh.copy(f_path, self.work_path)
     
     
-    #-------------------------------
+    #---
     def archive(self, collate=True, mdss=False):
         mkdir_p(self.archive_path)
+       
+        # Create archive symlink
+        if not os.path.exists(self.archive_sym_path):
+            os.symlink(self.archive_path, self.archive_sym_path)
         
-        run_dir = 'run%02i' % (self.counter,)
-        run_path = os.path.join(self.archive_path, run_dir)
+        # Remove work symlink
+        if os.path.islink(self.work_sym_path):
+            os.remove(self.work_sym_path)
         
-        if os.path.exists(run_path):
-            # Find a more sensible way to deal with this
+        # Check if archive path already exists
+        # TODO: Check before running, rather than archiving
+        if os.path.exists(self.run_path):
             sys.exit('Archived path already exists; aborting.')
-        sh.move(self.work_path, run_path)
+        sh.move(self.work_path, self.run_path)
         
         if self.archive_group:
             self.regroup()
         
         if collate:
-            # Collate the tiled results
             job_name = os.environ.get('PBS_JOBNAME', self.name)
             cmd = ['qsub', self.collation_script, '-v', '%s=%i'
-                    % (counter_envar, self.counter)]
+                    % (counter_env, self.counter)]
             rc = sp.Popen(cmd).wait()
     
     
-    #-----------------
+    #---
+    def remote_archive(self):
+        archive_address = '%s@%s' % (getpass.getuser(), archive_server)
+       
+        ssh_key_path = os.path.join(os.getenv('HOME'), '.ssh',
+                                    'id_rsa_file_transfer')
+        
+        # Top-level path is determined by the SSH key
+        # (Usually /projects/[group])
+        
+        # Remote mkdir is currently not possible, so any new subdirectories
+        # must be created before auto-archival
+        remote_path = os.path.join(self.model_name, self.user_name,
+                                   self.name)
+        
+        # TODO: how to remove shell=True ?
+        cmd = 'rsync -av --safe-links -e "ssh -i %s" %s %s:%s' % \
+                (ssh_key_path, self.run_path, archive_address, remote_path)
+        rc = sp.Popen(cmd, shell=True).wait()
+        assert rc == 0
+    
+    
+    #---
     def regroup(self):
         uid = os.getuid()
         gid = grp.getgrnam(self.archive_group).gr_gid
@@ -140,13 +190,14 @@ class Experiment(object):
                 os.lchown(os.path.join(root, f), uid, gid)
     
     
-    #------------------
+    #---
     def resubmit(self):
         assert self.counter < self.max_counter
         self.counter += 1
-        cmd = ['qsub', self.driver_script, '-v', '%s=%i,%s=%i'
-                % (counter_envar, self.counter, max_counter_envar,
+        cmd = ['qsub', self.model_script, '-v', '%s=%i,%s=%i'
+                % (counter_env, self.counter, max_counter_env,
                    self.max_counter) ]
+        # TODO: Remove .wait()?
         sp.Popen(cmd).wait()
 
 
@@ -157,5 +208,3 @@ def mkdir_p(path):
     except OSError, exc:
         if exc.errno != errno.EEXIST:
             raise
-
-
