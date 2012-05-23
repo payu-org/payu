@@ -19,7 +19,7 @@ execfile('/opt/Modules/default/init/python')
 # Counter environment variable names
 counter_env = 'count'
 max_counter_env = 'max'
-archive_server = 'dcc.nci.org.au'
+archive_server = 'dc.nci.org.au'
 
 #==============================================================================
 class Experiment(object):
