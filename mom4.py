@@ -7,9 +7,9 @@ Primary Contact:    Marshall Ward (marshall.ward@anu.edu.au)
 
 import os
 import subprocess as sp
-from fms import FMS
+from fms import fms
 
-class mom4(FMS):
+class mom4(fms):
     #---
     def __init__(self, **kwargs):
         
@@ -19,15 +19,19 @@ class mom4(FMS):
         # Model-specific configuration
         self.model_name = 'mom4'
         self.default_exec = 'mom4'
+        
+        self.modules = ['pbs',
+                        'openmpi',
+                        'nco']
+        
         self.config_files = ['data_table',
                              'diag_table',
                              'field_table',
                              'input.nml']
         
         self.path_names(**kwargs)
-        
-        self.modules.append('nco')
         self.load_modules()
+    
     
     #---
     def core2iaf_setup(self, core2iaf_path=None, driver_name=None):

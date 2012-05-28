@@ -23,7 +23,6 @@ archive_server = 'dc.nci.org.au'
 
 #==============================================================================
 class Experiment(object):
-    """A generic numerical experiment on vayu"""
     
     #---
     def __init__(self, **kwargs):
@@ -34,6 +33,9 @@ class Experiment(object):
         # Script names
         self.model_script = kwargs.pop('model_script', 'model.py')
         self.collation_script = kwargs.pop('collate_script', 'collate.py')
+        
+        # Update counter variables
+        self.set_counters()
     
     
     #---
@@ -109,11 +111,18 @@ class Experiment(object):
                     # Forcing does not exist; raise some exception
                     sys.exit('Forcing data not found; aborting.')
         
-        # Archival path
+        # Local archive paths
         self.run_dir = 'run%02i' % (self.counter,)
         self.run_path = os.path.join(self.archive_path, self.run_dir)
-   
-
+        
+        prior_run_dir = 'run%02i' % (self.counter - 1,)
+        prior_run_path = os.path.join(self.archive_path, prior_run_dir)
+        if os.path.exists(prior_run_path):
+            self.prior_run_path = prior_run_path
+        else:
+            self.prior_run_path = None
+    
+    
     #---
     def setup(self):
         mkdir_p(self.work_path)
@@ -128,9 +137,25 @@ class Experiment(object):
     
     
     #---
+    def run(self, *mpi_flags):
+        stdout_fname = self.model_name + '.out'
+        stderr_fname = self.model_name + '.err'
+        
+        f_out = open(stdout_fname, 'w')
+        f_err = open(stdout_fname, 'w')
+        
+        mpi_cmd = 'mpirun'  # OpenMPI execute
+        cmd = mpi_cmd + ' '.join(mpi_flags) + self.model_name
+        
+        rc = sp.Popen(cmd.split(), stdout=f_out, stderr=f_err).wait()
+        f_out.close()
+        f_err.close()
+    
+    
+    #---
     def archive(self, collate=True, mdss=False):
         mkdir_p(self.archive_path)
-       
+        
         # Create archive symlink
         if not os.path.exists(self.archive_sym_path):
             os.symlink(self.archive_path, self.archive_sym_path)

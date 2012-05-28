@@ -5,11 +5,11 @@ The payu implementation of GOLD
 Primary Contact:    Marshall Ward (marshall.ward@anu.edu.au)
 """
 
-from fms import FMS
+from fms import fms
 import os
 import shutil as sh
 
-class gold(FMS):
+class gold(fms):
     #----------------------------
     def __init__(self, **kwargs):
        

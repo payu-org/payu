@@ -11,33 +11,29 @@ import sys
 import shutil as sh
 import subprocess as sp
 
-class FMS(Experiment):
+class fms(Experiment):
     #---
     def __init__(self, **kwargs):
-
+        
         # payu initalisation
-        super(FMS, self).__init__(**kwargs)
-
+        super(fms, self).__init__(**kwargs)
+        
         # Model-specific configuration
-        self.model_name = None
-        self.default_exec = None
         self.modules = ['pbs',
                         'openmpi']
-        
-        self.config_files = None
-        
-        self.set_counters()
+    
     
     #---
     def build(self):
         raise NotImplementedError
+    
     
     #---
     def setup(self, use_symlinks=True, repeat_run=False):
         
         # payu setup:
         #   work path and symlink, config file copy
-        super(FMS, self).setup()
+        super(fms, self).setup()
         
         # Create experiment directory structure
         restart_path = os.path.join(self.work_path, 'RESTART')    
@@ -80,6 +76,7 @@ class FMS(Experiment):
                     else:
                         sh.copy(f_forcing, f_input)
     
+    
     #---
     def run(self, *flags):
         f_out = open('fms.out','w')
@@ -97,6 +94,7 @@ class FMS(Experiment):
         
         sh.move('fms.out', self.work_path)
         sh.move('fms.err', self.work_path)
+    
     
     #---
     def collate(self, restart=False):
