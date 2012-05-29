@@ -79,21 +79,8 @@ class fms(Experiment):
     
     #---
     def run(self, *flags):
-        f_out = open('fms.out','w')
-        f_err = open('fms.err','w')
-        
-        cmd = (['mpirun'] + list(flags) + ['-wd', self.work_path]
-                + [self.exec_path])
-        
-        rc = sp.Popen(cmd, stdout=f_out, stderr=f_err).wait()
-        f_out.close()
-        f_err.close()
-        
-        if rc != 0:
-            sys.exit('Error %i; aborting.' % rc)
-        
-        sh.move('fms.out', self.work_path)
-        sh.move('fms.err', self.work_path)
+        flags = flags + ('-wd %s' % self.work_path, )
+        super(fms, self).run(*flags)
     
     
     #---

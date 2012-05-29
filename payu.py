@@ -127,7 +127,6 @@ class Experiment(object):
     def setup(self):
         mkdir_p(self.work_path)
         
-        # Create symbolic link to work
         if not os.path.exists(self.work_sym_path):
             os.symlink(self.work_path, self.work_sym_path)
         
@@ -138,18 +137,29 @@ class Experiment(object):
     
     #---
     def run(self, *mpi_flags):
+        
+        # TODO: Convert filenames to absolute paths
         stdout_fname = self.model_name + '.out'
         stderr_fname = self.model_name + '.err'
         
         f_out = open(stdout_fname, 'w')
-        f_err = open(stdout_fname, 'w')
+        f_err = open(stderr_fname, 'w')
         
         mpi_cmd = 'mpirun'  # OpenMPI execute
-        cmd = mpi_cmd + ' '.join(mpi_flags) + self.model_name
         
-        rc = sp.Popen(cmd.split(), stdout=f_out, stderr=f_err).wait()
+        # Convert flags to list of arguments
+        flags = [c for flag in mpi_flags for c in flag.split(' ')]
+        cmd = [mpi_cmd] + flags + [self.exec_path]
+        print cmd
+        rc = sp.Popen(cmd, stdout=f_out, stderr=f_err).wait()
         f_out.close()
         f_err.close()
+        
+        if rc != 0:
+            sys.exit('Error %i; aborting.' % rc)
+        
+        sh.move(stdout_fname, self.work_path)
+        sh.move(stderr_fname, self.work_path)
     
     
     #---

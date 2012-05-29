@@ -72,30 +72,11 @@ class mitgcm(Experiment):
     
     
     #---
-    # TODO: Move this to payu, generalise flag arguments
     def run(self, *flags):
-        stdout_fname = 'std.out'
-        stderr_fname = 'std.err'
-        
-        f_out = open(stdout_fname, 'w')
-        f_err = open(stderr_fname, 'w')
-        
-        cmd = (['mpirun'] + list(flags)
-                + ['-mca', 'mpi_affinity_alone', '1']
-                + ['-wd', self.work_path]
-                + [self.exec_path])
-        
-        rc = sp.Popen(cmd, stdout=f_out, stderr=f_err).wait()
-        f_out.close()
-        f_err.close()
-        
-        if rc != 0:
-            sys.exit('Error %i; aborting.' % rc)
-        
-        sh.move(stdout_fname, self.work_path)
-        sh.move(stderr_fname, self.work_path)
-   
-
+        flags = flags + ('-mca mpi_affinity_alone 1',
+                         '-wd %s' % self.work_path)
+        super(mitgcm, self).run(*flags)
+    
     #---
     def collate(self):
         raise NotImplementedError
