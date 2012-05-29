@@ -232,8 +232,7 @@ class Experiment(object):
         cmd = ['qsub', self.model_script, '-v', '%s=%i,%s=%i'
                 % (counter_env, self.counter, max_counter_env,
                    self.max_counter) ]
-        # TODO: Remove .wait()?
-        sp.Popen(cmd).wait()
+        sp.Popen(cmd)
 
 
 #==============================================================================
