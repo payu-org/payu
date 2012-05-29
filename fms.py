@@ -17,10 +17,6 @@ class fms(Experiment):
         
         # payu initalisation
         super(fms, self).__init__(**kwargs)
-        
-        # Model-specific configuration
-        self.modules = ['pbs',
-                        'openmpi']
     
     
     #---
@@ -40,7 +36,7 @@ class fms(Experiment):
         mkdir_p(restart_path)
         
         # David Singleton's striping recommedation
-        cmd = ['lfs', 'setstripe', '-c', '8', '-s','8m', restart_path]
+        cmd = ['lfs', 'setstripe', '-c', '8', '-s', '8m', restart_path]
         rc = sp.Popen(cmd).wait()
         assert rc == 0
         

@@ -21,19 +21,17 @@ class mitgcm(Experiment):
         # Model-specific configuration
         self.model_name = 'mitgcm'
         self.default_exec = 'mitgcmuv'
+        self.path_names(**kwargs)
+        
         self.modules = ['pbs',
                         'openmpi',
                         'netcdf']
-       
-        # TODO: List is dynamic, need optional file list?
-        self.config_files = ['data',
-                             'data.mnc',
-                             'data.pkg',
-                             'data.diagnostics',
-                             'data_cadj',
-                             'eedata']
+        self.load_modules()
         
-        self.path_names(**kwargs)
+        # TODO: Get a definitive config file whitelist
+        self.config_files = [f for f in os.listdir(self.config_path)
+                             if f.startswith('data')]
+        self.config_files.append('eedata')
     
     
     #---

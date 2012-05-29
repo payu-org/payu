@@ -12,25 +12,28 @@ import shutil as sh
 class gold(fms):
     #----------------------------
     def __init__(self, **kwargs):
-       
+        
         # FMS initalisation
         super(gold, self).__init__()
-
-        # Model-specific configuration
+        
         self.model_name = 'gold'
         self.default_exec = 'GOLD'
+        self.path_names(**kwargs)
+
+        self.modules = ['pbs',
+                        'openmpi']
+        self.load_modules()
+        
         self.config_files = ['GOLD_input',
                              'GOLD_override',
                              'diag_table',
                              'fre_input.nml',
                              'input.nml']
-        
-        self.path_names(**kwargs)
     
     
     #---------------
     def setup(self):
-   
+        
         # FMS initialisation
         super(gold, self).setup()
         

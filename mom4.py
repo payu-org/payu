@@ -19,18 +19,17 @@ class mom4(fms):
         # Model-specific configuration
         self.model_name = 'mom4'
         self.default_exec = 'mom4'
+        self.path_names(**kwargs)
         
         self.modules = ['pbs',
                         'openmpi',
                         'nco']
+        self.load_modules()
         
         self.config_files = ['data_table',
                              'diag_table',
                              'field_table',
                              'input.nml']
-        
-        self.path_names(**kwargs)
-        self.load_modules()
     
     
     #---

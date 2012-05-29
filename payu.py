@@ -150,7 +150,7 @@ class Experiment(object):
         # Convert flags to list of arguments
         flags = [c for flag in mpi_flags for c in flag.split(' ')]
         cmd = [mpi_cmd] + flags + [self.exec_path]
-        print cmd
+        
         rc = sp.Popen(cmd, stdout=f_out, stderr=f_err).wait()
         f_out.close()
         f_err.close()
