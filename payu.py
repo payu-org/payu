@@ -96,6 +96,10 @@ class Experiment(object):
         exec_name = kwargs.pop('exe', self.default_exec)
         self.exec_path = os.path.join(self.bin_path, exec_name)
         
+        # Stream output filenames
+        self.stdout_fname = self.model_name + '.out'
+        self.stderr_fname = self.model_name + '.err'
+        
         # External forcing path
         forcing_dir = kwargs.pop('forcing', None)
         if forcing_dir:
@@ -138,12 +142,8 @@ class Experiment(object):
     #---
     def run(self, *mpi_flags):
         
-        # TODO: Convert filenames to absolute paths
-        stdout_fname = self.model_name + '.out'
-        stderr_fname = self.model_name + '.err'
-        
-        f_out = open(stdout_fname, 'w')
-        f_err = open(stderr_fname, 'w')
+        f_out = open(self.stdout_fname, 'w')
+        f_err = open(self.stderr_fname, 'w')
         
         mpi_cmd = 'mpirun'  # OpenMPI execute
         
@@ -158,8 +158,8 @@ class Experiment(object):
         if rc != 0:
             sys.exit('Error %i; aborting.' % rc)
         
-        sh.move(stdout_fname, self.work_path)
-        sh.move(stderr_fname, self.work_path)
+        sh.move(self.stdout_fname, self.work_path)
+        sh.move(self.stderr_fname, self.work_path)
     
     
     #---

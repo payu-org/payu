@@ -129,14 +129,12 @@ class mitgcm(Experiment):
         flags = flags + ('-mca mpi_affinity_alone 1',
                          '-wd %s' % self.work_path)
         super(mitgcm, self).run(*flags)
-
-        # Run cleanup
         
         # Move files outside of mnc_* directories
         mnc_paths = [os.path.join(self.work_path, d)
                      for d in os.listdir(self.work_path)
                      if d.startswith('mnc_')]
-       
+        
         for path in mnc_paths:
             for f in os.listdir(path):
                 f_path = os.path.join(path, f)
