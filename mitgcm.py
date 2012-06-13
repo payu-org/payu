@@ -11,6 +11,8 @@ import sys
 import shutil as sh
 import subprocess as sp
 
+import mnctools as mnc
+
 class mitgcm(Experiment):
     
     def __init__(self, **kwargs):
@@ -41,7 +43,8 @@ class mitgcm(Experiment):
     
     #---
     def setup(self, days, dt, use_symlinks=True, repeat_run=False):
-        
+        # TODO: The config file patches could be moved to separate methods
+
         # payu setup
         super(mitgcm, self).setup()
         
@@ -141,6 +144,29 @@ class mitgcm(Experiment):
                 sh.move(f_path, self.work_path)
             os.rmdir(path)
     
+    
     #---
-    def collate(self):
-        raise NotImplementedError
+    def collate(self, clear_tiles=True):
+        # Use leading tiles to construct a tile manifest
+        # Tiled format: <field>.t###.nc
+        output_fnames = [f.replace('.t001.', '.')
+                         for f in os.listdir(self.run_path)
+                         if f.endswith('.t001.nc')]
+        
+        tile_fnames = {}
+        for fname in output_fnames:
+            f_header = fname.rsplit('.', 1)[0]
+            
+            tile_fnames[fname] = [os.path.join(self.run_path, f)
+                                  for f in os.listdir(self.run_path)
+                                  if f.startswith(f_header + '.')
+                                  and f.split('.')[-2].startswith('t')
+                                  and f.split('.')[-2].lstrip('t').isdigit()]
+        
+        for fname in tile_fnames:
+            mnc.collate(tile_fnames[fname], os.path.join(self.run_path, fname))
+
+        if clear_tiles:
+            for fname in tile_fnames:
+                for tile_fname in tile_fnames[fname]:
+                    os.remove(tile_fname)
