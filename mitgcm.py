@@ -143,15 +143,23 @@ class mitgcm(Experiment):
                 f_path = os.path.join(path, f)
                 sh.move(f_path, self.work_path)
             os.rmdir(path)
+
+        # Remove any empty files (e.g. STDERR.####)
+        for fname in os.listdir(self.work_path):
+            fpath = os.path.join(self.work_path, fname)
+            if os.path.getsize(fpath) == 0:
+                os.remove(fpath)
     
     
     #---
     def collate(self, clear_tiles=True):
         # Use leading tiles to construct a tile manifest
+        # Don't collate the pickup files
         # Tiled format: <field>.t###.nc
         output_fnames = [f.replace('.t001.', '.')
                          for f in os.listdir(self.run_path)
-                         if f.endswith('.t001.nc')]
+                         if f.endswith('.t001.nc')
+                         and not f.startswith('pickup.')]
         
         tile_fnames = {}
         for fname in output_fnames:
@@ -165,7 +173,7 @@ class mitgcm(Experiment):
         
         for fname in tile_fnames:
             mnc.collate(tile_fnames[fname], os.path.join(self.run_path, fname))
-
+        
         if clear_tiles:
             for fname in tile_fnames:
                 for tile_fname in tile_fnames[fname]:
