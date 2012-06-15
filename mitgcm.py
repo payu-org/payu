@@ -143,7 +143,7 @@ class mitgcm(Experiment):
                 f_path = os.path.join(path, f)
                 sh.move(f_path, self.work_path)
             os.rmdir(path)
-
+        
         # Remove any empty files (e.g. STDERR.####)
         for fname in os.listdir(self.work_path):
             fpath = os.path.join(self.work_path, fname)

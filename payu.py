@@ -155,6 +155,7 @@ class Experiment(object):
         f_out.close()
         f_err.close()
         
+        # TODO: Need a model-specific cleanup method call here
         if rc != 0:
             sys.exit('Error %i; aborting.' % rc)
         
@@ -191,18 +192,19 @@ class Experiment(object):
     
     
     #---
-    def remote_archive(self):
+    def remote_archive(self, config_name):
         archive_address = '%s@%s' % (getpass.getuser(), archive_server)
-       
+        
         ssh_key_path = os.path.join(os.getenv('HOME'), '.ssh',
                                     'id_rsa_file_transfer')
         
-        # Top-level path is determined by the SSH key
+        # Top-level path is set by the SSH key
         # (Usually /projects/[group])
         
         # Remote mkdir is currently not possible, so any new subdirectories
         # must be created before auto-archival
-        remote_path = os.path.join(self.model_name, self.user_name,
+        
+        remote_path = os.path.join(self.model_name, config_name,
                                    self.name)
         
         # TODO: how to remove shell=True ?
