@@ -66,7 +66,7 @@ class mitgcm(Experiment):
                 tmp.write(' nTimeSteps=%i,\n' % n_timesteps)
             elif line.lstrip().lower().startswith('deltat='):
                 tmp.write(' deltaT=%i,\n' % dt)
-            elif line.lstrip().lowe().startswith('pchkptfreq='):
+            elif line.lstrip().lower().startswith('pchkptfreq='):
                 tmp.write(' pChkptFreq=%f,\n' % p_chkpt_freq)
             else:
                 tmp.write(line)
