@@ -11,7 +11,7 @@ import sys
 import shutil as sh
 import subprocess as sp
 
-import mnctools as mnc
+import mnctools_dev as mnc
 
 class mitgcm(Experiment):
     
@@ -44,7 +44,7 @@ class mitgcm(Experiment):
     #---
     def setup(self, days, dt, use_symlinks=True, repeat_run=False):
         # TODO: The config file patches could be moved to separate methods
-
+        
         # payu setup
         super(mitgcm, self).setup()
         
@@ -53,7 +53,7 @@ class mitgcm(Experiment):
         n_timesteps = days * secs_per_day // dt
         n_iter0 = (self.counter - 1) * n_timesteps
         p_chkpt_freq = days * secs_per_day
-        
+       
         # Patch data timestep variables
         data_path = os.path.join(self.work_path, 'data')
         tmp_path = data_path + '~'
@@ -71,7 +71,6 @@ class mitgcm(Experiment):
             else:
                 tmp.write(line)
         tmp.close()
-        
         sh.move(tmp_path, data_path)
         
         # Patch or create data.mnc
@@ -133,6 +132,12 @@ class mitgcm(Experiment):
                          '-wd %s' % self.work_path)
         super(mitgcm, self).run(*flags)
         
+        # Remove symbolic links to forcing or pickup files:
+        for f in os.listdir(self.work_path):
+            f_path = os.path.join(self.work_path, f)
+            if os.path.islink(f_path):
+                os.remove(f_path)
+        
         # Move files outside of mnc_* directories
         mnc_paths = [os.path.join(self.work_path, d)
                      for d in os.listdir(self.work_path)
@@ -143,12 +148,6 @@ class mitgcm(Experiment):
                 f_path = os.path.join(path, f)
                 sh.move(f_path, self.work_path)
             os.rmdir(path)
-        
-        # Remove any empty files (e.g. STDERR.####)
-        for fname in os.listdir(self.work_path):
-            fpath = os.path.join(self.work_path, fname)
-            if os.path.getsize(fpath) == 0:
-                os.remove(fpath)
     
     
     #---

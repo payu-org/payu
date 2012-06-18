@@ -155,12 +155,26 @@ class Experiment(object):
         f_out.close()
         f_err.close()
         
+        # Remove any empty output files (e.g. logs)
+        for fname in os.listdir(self.work_path):
+            fpath = os.path.join(self.work_path, fname)
+            if os.path.getsize(fpath) == 0:
+                os.remove(fpath)
+        
         # TODO: Need a model-specific cleanup method call here
         if rc != 0:
             sys.exit('Error %i; aborting.' % rc)
         
-        sh.move(self.stdout_fname, self.work_path)
-        sh.move(self.stderr_fname, self.work_path)
+        # Move logs to archive (or delete if empty)
+        if os.path.getsize(self.stdout_fname) == 0:
+            os.remove(self.stdout_fname)
+        else:
+            sh.move(self.stdout_fname, self.work_path)
+            
+        if os.path.getsize(self.stderr_fname) == 0:
+            os.remove(self.stderr_fname)
+        else:
+            sh.move(self.stderr_fname, self.work_path)
     
     
     #---
