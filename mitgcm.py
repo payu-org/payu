@@ -60,13 +60,13 @@ class mitgcm(Experiment):
         
         tmp = open(tmp_path, 'w')
         for line in open(data_path):
-            if line.lstrip().startswith('nIter0='):
+            if line.lstrip().lower().startswith('niter0='):
                 tmp.write(' nIter0=%i,\n' % n_iter0)
-            elif line.lstrip().startswith('nTimeSteps='):
+            elif line.lstrip().lower().startswith('ntimesteps='):
                 tmp.write(' nTimeSteps=%i,\n' % n_timesteps)
-            elif line.lstrip().startswith('deltaT='):
+            elif line.lstrip().lower().startswith('deltat='):
                 tmp.write(' deltaT=%i,\n' % dt)
-            elif line.lstrip().startswith('pChkptFreq='):
+            elif line.lstrip().lowe().startswith('pchkptfreq='):
                 tmp.write(' pChkptFreq=%f,\n' % p_chkpt_freq)
             else:
                 tmp.write(line)
