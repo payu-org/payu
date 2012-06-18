@@ -43,15 +43,44 @@ class mitgcm(Experiment):
     
     #---
     def setup(self, days, dt, use_symlinks=True, repeat_run=False):
-        # TODO: The config file patches could be moved to separate methods
         
         # payu setup
         super(mitgcm, self).setup()
         
+        # Link restart files to work directory
+        if self.prior_run_path and not repeat_run:
+            restart_files = [f for f in os.listdir(self.prior_run_path)
+                             if f.startswith('pickup.')]
+            
+            for f in restart_files:
+                f_res = os.path.join(self.prior_run_path, f)
+                f_input = os.path.join(self.work_path, f)
+                if use_symlinks:
+                    os.symlink(f_res, f_input)
+                else:
+                    sh.copy(f_res, f_input)
+            
+            # Determine total number of timesteps since initialisation
+            pickup_fname = restart_files[0]
+            n_iter0 = int(pickup_fname.split('.')[1])
+        else:
+            n_iter0 = 0
+        
+        # Link any forcing data to INPUT
+        for f in os.listdir(self.forcing_path):
+            f_forcing = os.path.join(self.forcing_path, f)
+            f_input = os.path.join(self.work_path, f)
+            # Do not use a forcing file if an identical restart file exists
+            if not os.path.exists(f_input):
+                if use_symlinks:
+                    os.symlink(f_forcing, f_input)
+                else:
+                    sh.copy(f_forcing, f_input)
+        
         # Calculate time intervals
         secs_per_day = 86400
         n_timesteps = days * secs_per_day // dt
-        n_iter0 = (self.counter - 1) * n_timesteps
+        #n_iter0 = (self.counter - 1) * n_timesteps
         p_chkpt_freq = days * secs_per_day
        
         # Patch data timestep variables
@@ -100,30 +129,6 @@ class mitgcm(Experiment):
             data_mnc.write(' &\n')
             
             data_mnc.close()
-        
-        # Link restart files to work directory
-        if self.prior_run_path and not repeat_run:
-            restart_files = [f for f in os.listdir(self.prior_run_path)
-                             if f.startswith('pickup.')]
-            
-            for f in restart_files:
-                f_res = os.path.join(self.prior_run_path, f)
-                f_input = os.path.join(self.work_path, f)
-                if use_symlinks:
-                    os.symlink(f_res, f_input)
-                else:
-                    sh.copy(f_res, f_input)
-        
-        # Link any forcing data to INPUT
-        for f in os.listdir(self.forcing_path):
-            f_forcing = os.path.join(self.forcing_path, f)
-            f_input = os.path.join(self.work_path, f)
-            # Do not use forcing file if it is in RESTART
-            if not os.path.exists(f_input):
-                if use_symlinks:
-                    os.symlink(f_forcing, f_input)
-                else:
-                    sh.copy(f_forcing, f_input)
     
     
     #---
