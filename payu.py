@@ -114,6 +114,8 @@ class Experiment(object):
                 else:
                     # Forcing does not exist; raise some exception
                     sys.exit('Forcing data not found; aborting.')
+        else:
+            self.forcing_path = None
         
         # Local archive paths
         self.run_dir = 'run%02i' % (self.counter,)
@@ -248,7 +250,7 @@ class Experiment(object):
         cmd = ['qsub', self.model_script, '-v', '%s=%i,%s=%i'
                 % (counter_env, self.counter, max_counter_env,
                    self.max_counter) ]
-        sp.Popen(cmd)
+        sp.Popen(cmd).wait()
 
 
 #==============================================================================
