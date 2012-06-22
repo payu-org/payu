@@ -50,7 +50,8 @@ class mitgcm(Experiment):
         # Link restart files to work directory
         if self.prior_run_path and not repeat_run:
             restart_files = [f for f in os.listdir(self.prior_run_path)
-                             if f.startswith('pickup.')]
+                             if f.startswith('pickup.')
+                             and not f.split('.')[1].startswith('ckpt')]
             
             for f in restart_files:
                 f_res = os.path.join(self.prior_run_path, f)
@@ -156,7 +157,7 @@ class mitgcm(Experiment):
     
     
     #---
-    def collate(self, clear_tiles=True):
+    def collate(self, clear_tiles=True, partition=None):
         # Use leading tiles to construct a tile manifest
         # Don't collate the pickup files
         # Tiled format: <field>.t###.nc
@@ -176,7 +177,8 @@ class mitgcm(Experiment):
                                   and f.split('.')[-2].lstrip('t').isdigit()]
         
         for fname in tile_fnames:
-            mnc.collate(tile_fnames[fname], os.path.join(self.run_path, fname))
+            mnc.collate(tile_fnames[fname], os.path.join(self.run_path, fname),
+                        partition)
         
         if clear_tiles:
             for fname in tile_fnames:
