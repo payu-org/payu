@@ -10,7 +10,8 @@ import os
 import shutil as sh
 
 class gold(fms):
-    #----------------------------
+    
+    #---
     def __init__(self, **kwargs):
         
         # FMS initalisation
@@ -31,7 +32,7 @@ class gold(fms):
                              'input.nml']
     
     
-    #---------------
+    #---
     def setup(self):
         
         # FMS initialisation
@@ -42,7 +43,7 @@ class gold(fms):
             self.init_config()
     
     
-    #---------------------
+    #---
     def init_config(self):
         input_filepath = os.path.join(self.work_path, 'input.nml')
         temp_filepath  = ''.join([input_filepath, '~'])

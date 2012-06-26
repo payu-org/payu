@@ -11,10 +11,11 @@ import sys
 import shutil as sh
 import subprocess as sp
 
-import mnctools as mnc
+import mnctools_dev as mnc
 
 class mitgcm(Experiment):
     
+    #---
     def __init__(self, **kwargs):
         
         # payu initalisation
@@ -43,18 +44,16 @@ class mitgcm(Experiment):
     
     #---
     def setup(self, days, dt, use_symlinks=True, repeat_run=False):
-        
         # payu setup
         super(mitgcm, self).setup()
         
         # Link restart files to work directory
         if self.prior_run_path and not repeat_run:
-            restart_files = [f for f in os.listdir(self.prior_run_path)
-                             if f.startswith('pickup.')
-                             and not f.split('.')[1].startswith('ckpt')]
+            restart_files = [f for f in os.listdir(self.prior_res_path)
+                             if f.startswith('pickup.')]
             
             for f in restart_files:
-                f_res = os.path.join(self.prior_run_path, f)
+                f_res = os.path.join(self.prior_res_path, f)
                 f_input = os.path.join(self.work_path, f)
                 if use_symlinks:
                     os.symlink(f_res, f_input)
@@ -81,9 +80,8 @@ class mitgcm(Experiment):
         # Calculate time intervals
         secs_per_day = 86400
         n_timesteps = days * secs_per_day // dt
-        #n_iter0 = (self.counter - 1) * n_timesteps
         p_chkpt_freq = days * secs_per_day
-       
+        
         # Patch data timestep variables
         data_path = os.path.join(self.work_path, 'data')
         tmp_path = data_path + '~'
@@ -155,6 +153,22 @@ class mitgcm(Experiment):
                 sh.move(f_path, self.work_path)
             os.rmdir(path)
     
+    
+    #---
+    def archive(self, **kwargs):
+        # Archive restart files before processing model output
+        mkdir_p(self.res_path)
+        
+        restart_files = [f for f in os.listdir(self.work_path)
+                         if f.startswith('pickup.')
+                         and not f.split('.')[1].startswith('ckpt')]
+
+        for f in restart_files:
+            f_src = os.path.join(self.work_path, f)
+            #f_dest = os.path.join(self.res_path, f)
+            sh.move(f_src, self.res_path)
+        
+        super(mitgcm, self).archive(**kwargs)
     
     #---
     def collate(self, clear_tiles=True, partition=None):

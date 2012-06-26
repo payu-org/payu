@@ -12,6 +12,7 @@ import shutil as sh
 import subprocess as sp
 
 class fms(Experiment):
+    
     #---
     def __init__(self, **kwargs):
         
@@ -32,11 +33,11 @@ class fms(Experiment):
         super(fms, self).setup()
         
         # Create experiment directory structure
-        restart_path = os.path.join(self.work_path, 'RESTART')    
-        mkdir_p(restart_path)
+        work_res_path = os.path.join(self.work_path, 'RESTART')
+        mkdir_p(work_res_path)
         
         # David Singleton's striping recommedation
-        cmd = ['lfs', 'setstripe', '-c', '8', '-s', '8m', restart_path]
+        cmd = ['lfs', 'setstripe', '-c', '8', '-s', '8m', work_res_path]
         rc = sp.Popen(cmd).wait()
         assert rc == 0
         
@@ -45,19 +46,14 @@ class fms(Experiment):
         mkdir_p(input_path)
         
         if self.counter > 1 and not repeat_run:
-            last_run_dir = 'run%02i' % (self.counter-1,)
-            last_restart_path = os.path.join(self.archive_path, last_run_dir,
-                                             'RESTART')
-            restart_files = os.listdir(last_restart_path)
+            restart_files = os.listdir(self.prior_res_path)
             for f in restart_files:
-                f_res = os.path.join(last_restart_path, f)
+                f_res = os.path.join(self.prior_res_path, f)
                 f_input = os.path.join(input_path, f)
                 if use_symlinks:
                     os.symlink(f_res, f_input)
                 else:
                     sh.copy(f_res, f_input)
-        else:
-            last_restart_path = None
         
         # Link any forcing data to INPUT
         if self.forcing_path:
@@ -77,6 +73,15 @@ class fms(Experiment):
     def run(self, *flags):
         flags = flags + ('-wd %s' % self.work_path, )
         super(fms, self).run(*flags)
+    
+    
+    #--
+    def archive(self, **kwargs):
+        # Archive restart files before processing model output
+        work_res_path = os.path.join(self.work_path, 'RESTART')
+        sh.move(work_res_path, self.res_path)
+        
+        super(fms, self).archive(**kwargs)
     
     
     #---

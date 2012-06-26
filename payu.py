@@ -118,15 +118,26 @@ class Experiment(object):
             self.forcing_path = None
         
         # Local archive paths
-        self.run_dir = 'run%02i' % (self.counter,)
-        self.run_path = os.path.join(self.archive_path, self.run_dir)
+        run_dir = 'output%03i' % (self.counter,)
+        self.run_path = os.path.join(self.archive_path, run_dir)
         
-        prior_run_dir = 'run%02i' % (self.counter - 1,)
+        prior_run_dir = 'output%03i' % (self.counter - 1,)
         prior_run_path = os.path.join(self.archive_path, prior_run_dir)
         if os.path.exists(prior_run_path):
             self.prior_run_path = prior_run_path
         else:
             self.prior_run_path = None
+        
+        # Local restart paths
+        res_dir = 'restart%03i' % (self.counter,)
+        self.res_path = os.path.join(self.archive_path, res_dir)
+        
+        prior_res_dir = 'restart%03i' % (self.counter - 1,)
+        prior_res_path = os.path.join(self.archive_path, prior_res_dir)
+        if os.path.exists(prior_res_path):
+            self.prior_res_path = prior_res_path
+        else:
+            self.prior_res_path = None
     
     
     #---
@@ -143,7 +154,6 @@ class Experiment(object):
     
     #---
     def run(self, *mpi_flags):
-        
         f_out = open(self.stdout_fname, 'w')
         f_err = open(self.stderr_fname, 'w')
         
@@ -168,19 +178,15 @@ class Experiment(object):
             sys.exit('Error %i; aborting.' % rc)
         
         # Move logs to archive (or delete if empty)
-        if os.path.getsize(self.stdout_fname) == 0:
-            os.remove(self.stdout_fname)
-        else:
-            sh.move(self.stdout_fname, self.work_path)
-            
-        if os.path.getsize(self.stderr_fname) == 0:
-            os.remove(self.stderr_fname)
-        else:
-            sh.move(self.stderr_fname, self.work_path)
+        for f in (self.stdout_fname, self.stderr_fname):
+            if os.path.getsize(f) == 0:
+                os.remove(f)
+            else:
+                sh.move(f, self.work_path)
     
     
     #---
-    def archive(self, collate=True, mdss=False):
+    def archive(self, collate=True):
         mkdir_p(self.archive_path)
         
         # Create archive symlink
