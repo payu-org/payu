@@ -11,7 +11,7 @@ import sys
 import shutil as sh
 import subprocess as sp
 
-import mnctools_dev as mnc
+import mnctools as mnc
 
 class mitgcm(Experiment):
     
