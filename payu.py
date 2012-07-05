@@ -230,8 +230,15 @@ class Experiment(object):
                                    self.name)
         
         # TODO: how to remove shell=True ?
+
+        # Output sync
         cmd = 'rsync -a --safe-links -e "ssh -i %s" %s %s:%s' % \
                 (ssh_key_path, self.run_path, archive_address, remote_path)
+        rc = sp.Popen(cmd, shell=True).wait()
+        
+        # Restart sync
+        cmd = 'rsync -a --safe-links -e "ssh -i %s" %s %s:%s' % \
+                (ssh_key_path, self.res_path, archive_address, remote_path)
         rc = sp.Popen(cmd, shell=True).wait()
         assert rc == 0
     
