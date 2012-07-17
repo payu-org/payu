@@ -48,7 +48,7 @@ class mitgcm(Experiment):
         super(mitgcm, self).setup()
         
         # Link restart files to work directory
-        if self.prior_run_path and not repeat_run:
+        if self.prior_res_path and not repeat_run:
             restart_files = [f for f in os.listdir(self.prior_res_path)
                              if f.startswith('pickup.')]
             
