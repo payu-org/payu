@@ -142,6 +142,10 @@ class Experiment(object):
     
     #---
     def setup(self):
+        # Confirm that no output path already exists
+        if os.path.exists(self.run_path):
+            sys.exit('Archived path already exists; aborting.')
+        
         mkdir_p(self.work_path)
         
         if not os.path.exists(self.work_sym_path):
@@ -197,8 +201,7 @@ class Experiment(object):
         if os.path.islink(self.work_sym_path):
             os.remove(self.work_sym_path)
         
-        # Check if archive path already exists
-        # TODO: Check before running, rather than archiving
+        # Double-check that the run path does not exist
         if os.path.exists(self.run_path):
             sys.exit('Archived path already exists; aborting.')
         sh.move(self.work_path, self.run_path)
