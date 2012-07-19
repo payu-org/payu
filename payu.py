@@ -20,6 +20,7 @@ execfile('/opt/Modules/default/init/python')
 counter_env = 'count'
 max_counter_env = 'max'
 archive_server = 'dc.nci.org.au'
+default_short_path = '/short'
 
 #==============================================================================
 class Experiment(object):
@@ -67,7 +68,7 @@ class Experiment(object):
         default_config_path = os.getcwd()
         self.config_path = kwargs.pop('config', default_config_path)
         
-        # Laboratory path (output)
+        # User name
         default_user = getpass.getuser()
         self.user_name = kwargs.pop('user', default_user)
         
@@ -75,8 +76,11 @@ class Experiment(object):
         default_project = os.environ.get('PROJECT')
         self.project_name = kwargs.pop('project', default_project)
         
+        # Top level output path ("/short path")
+        self.short_path = kwargs.pop('short_path', default_short_path)
+        
         # Output path
-        default_lab_path = os.path.join('/','short', self.project_name,
+        default_lab_path = os.path.join(self.short_path, self.project_name,
                                         self.user_name, self.model_name)
         self.lab_path = kwargs.pop('output', default_lab_path)
         
