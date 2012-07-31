@@ -16,11 +16,13 @@ import errno
 # Environment module support on vayu
 execfile('/opt/Modules/default/init/python')
 
-# Counter environment variable names
+# Default payu parameters
 counter_env = 'count'
 max_counter_env = 'max'
 archive_server = 'dc.nci.org.au'
 default_short_path = '/short'
+default_model_script = 'model.py'
+default_collate_script = 'collate.py'
 
 #==============================================================================
 class Experiment(object):

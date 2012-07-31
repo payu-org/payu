@@ -23,7 +23,6 @@ class gold(fms):
 
         self.modules = ['pbs',
                         'openmpi']
-        self.load_modules()
         
         self.config_files = ['GOLD_input',
                              'GOLD_override',
@@ -34,9 +33,10 @@ class gold(fms):
     
     #---
     def setup(self):
-        
         # FMS initialisation
         super(gold, self).setup()
+        
+        self.load_modules()
         
         # GOLD-specific initialisation
         if self.counter == 1:

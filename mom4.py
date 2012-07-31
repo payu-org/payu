@@ -33,6 +33,14 @@ class mom4(fms):
     
     
     #---
+    def setup(self):
+        # FMS initialisation
+        super(mom4, self).setup()
+        
+        self.load_modules()
+    
+    
+    #---
     def core2iaf_setup(self, core2iaf_path=None, driver_name=None):
         # This is a very long method
         # TODO: Separate into sub-methods

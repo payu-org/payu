@@ -29,7 +29,6 @@ class mitgcm(Experiment):
         self.modules = ['pbs',
                         'openmpi',
                         'netcdf']
-        self.load_modules()
         
         # TODO: Get a definitive config file whitelist
         self.config_files = [f for f in os.listdir(self.config_path)
@@ -46,6 +45,8 @@ class mitgcm(Experiment):
     def setup(self, days, dt, use_symlinks=True, repeat_run=False):
         # payu setup
         super(mitgcm, self).setup()
+        
+        self.load_modules()
         
         # Link restart files to work directory
         if self.prior_res_path and not repeat_run:
