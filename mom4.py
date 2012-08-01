@@ -24,7 +24,6 @@ class mom4(fms):
         self.modules = ['pbs',
                         'openmpi',
                         'nco']
-        self.load_modules()
         
         self.config_files = ['data_table',
                              'diag_table',
