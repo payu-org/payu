@@ -1,8 +1,13 @@
+#!/usr/bin/env python
 # coding: utf-8
 """
 Payu: A generic driver for numerical models on the NCI computing cluster (vayu)
 -------------------------------------------------------------------------------
 Contact:    Marshall Ward (marshall.ward@anu.edu.au)
+-------------------------------------------------------------------------------
+Distributed as part of Payu, Copyright 2011-2012 Marshall Ward
+Licensed under the Apache License, Version 2.0
+http://www.apache.org/licenses/LICENSE-2.0
 """
 
 import os
@@ -239,11 +244,12 @@ class Experiment(object):
                                    self.name)
         
         # TODO: how to remove shell=True ?
-
+        
         # Output sync
         cmd = 'rsync -a --safe-links -e "ssh -i %s" %s %s:%s' % \
                 (ssh_key_path, self.run_path, archive_address, remote_path)
         rc = sp.Popen(cmd, shell=True).wait()
+        assert rc == 0
         
         # Restart sync
         cmd = 'rsync -a --safe-links -e "ssh -i %s" %s %s:%s' % \
