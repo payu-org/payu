@@ -137,10 +137,7 @@ class Experiment(object):
         if os.path.exists(prior_run_path):
             self.prior_run_path = prior_run_path
         else:
-            if self.counter == 1:
-                self.prior_run_path = None
-            else:
-                sys.exit('Restart files not found; aborting.')
+            self.prior_run_path = None
         
         # Local restart paths
         res_dir = 'restart%03i' % (self.counter,)
@@ -151,7 +148,10 @@ class Experiment(object):
         if os.path.exists(prior_res_path):
             self.prior_res_path = prior_res_path
         else:
-            self.prior_res_path = None
+            if self.counter == 1:
+                self.prior_res_path = None
+            else:
+                sys.exit('Restart files not found; aborting.')
     
     
     #---
