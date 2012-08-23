@@ -251,13 +251,22 @@ class Experiment(object):
         # Output sync
         cmd = 'rsync -a --safe-links -e "ssh -i %s" %s %s:%s' % \
                 (ssh_key_path, self.run_path, archive_address, remote_path)
+        
         rc = sp.Popen(cmd, shell=True).wait()
+        # XXX: Random rsync failures to dc, this is a temporary solution
+        if rc != 0:
+            print 'rsync failed, reattempting'
+            rc = sp.Popen(cmd, shell=True).wait()
         assert rc == 0
         
         # Restart sync
         cmd = 'rsync -a --safe-links -e "ssh -i %s" %s %s:%s' % \
                 (ssh_key_path, self.res_path, archive_address, remote_path)
         rc = sp.Popen(cmd, shell=True).wait()
+        # XXX: Random rsync failures to dc, this is a temporary solution
+        if rc != 0:
+            print 'rsync failed, reattempting'
+            rc = sp.Popen(cmd, shell=True).wait()
         assert rc == 0
     
     
