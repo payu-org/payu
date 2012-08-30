@@ -162,19 +162,31 @@ class mitgcm(Experiment):
     
     #---
     def archive(self, **kwargs):
-        # Archive restart files before processing model output
         mkdir_p(self.res_path)
         
         restart_files = [f for f in os.listdir(self.work_path)
                          if f.startswith('pickup.')
                          and not f.split('.')[1].startswith('ckpt')]
-
+        
+        # Tar and compress the output files
+        stdout_files = [os.path.join(self.work_path, f)
+                        for f in os.listdir(self.work_path)
+                        if f.startswith('STDOUT.')]
+        cmd = ('tar -c -j -f %s'
+                    % os.path.join(self.work_path, 'STDOUT.tar.bz2')
+                ).split() + stdout_files
+        rc = sp.Popen(cmd).wait()
+        assert rc == 0
+        
+        for f in stdout_files:
+            os.remove(os.path.join(self.work_path, f))
+        
         for f in restart_files:
             f_src = os.path.join(self.work_path, f)
-            #f_dest = os.path.join(self.res_path, f)
             sh.move(f_src, self.res_path)
         
         super(mitgcm, self).archive(**kwargs)
+    
     
     #---
     def collate(self, clear_tiles=True, partition=None):
