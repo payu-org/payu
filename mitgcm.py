@@ -93,13 +93,13 @@ class mitgcm(Experiment):
         # Update timestep size
         if dt:
             temp_path = data_path + '~'
-            data_temp = open(temp_path, 'w')
+            temp_file = open(temp_path, 'w')
             for line in data_file:
                 if line.lstrip().lower().startswith('deltat='):
-                    data_temp.write(' deltaT=%i,\n' % dt)
+                    temp_file.write(' deltaT=%i,\n' % dt)
                 else:
-                    data_temp.write(line)
-            data_temp.close()
+                    temp_file.write(line)
+            temp_file.close()
             sh.move(temp_path, data_path)
         else:
             for line in data_file:
@@ -115,20 +115,21 @@ class mitgcm(Experiment):
             p_chkpt_freq = days * secs_per_day
         
             temp_path = data_path + '~'
-            data_temp = open(temp_path, 'w')
             
             data_file = open(data_path, 'r')
+            temp_file = open(temp_path, 'w')
             for line in data_file:
                 if line.lstrip().lower().startswith('niter0='):
-                    data_temp.write(' nIter0=%i,\n' % n_iter0)
+                    temp_file.write(' nIter0=%i,\n' % n_iter0)
                 elif line.lstrip().lower().startswith('ntimesteps='):
-                    data_temp.write(' nTimeSteps=%i,\n' % n_timesteps)
+                    temp_file.write(' nTimeSteps=%i,\n' % n_timesteps)
                 elif line.lstrip().lower().startswith('pchkptfreq='):
-                    data_temp.write(' pChkptFreq=%f,\n' % p_chkpt_freq)
+                    temp_file.write(' pChkptFreq=%f,\n' % p_chkpt_freq)
                 else:
-                    data_temp.write(line)
-            data_temp.close()
+                    temp_file.write(line)
+            temp_file.close()
             data_file.close()
+            sh.move(temp_path, data_path)
         
         # Patch or create data.mnc
         mnc_header = os.path.join(self.work_path, 'mnc_')
