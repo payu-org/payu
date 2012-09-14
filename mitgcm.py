@@ -47,7 +47,7 @@ class mitgcm(Experiment):
     
     
     #---
-    def setup(self, days, dt, use_symlinks=True, repeat_run=False):
+    def setup(self, days=None, dt=None, use_symlinks=True, repeat_run=False):
         # payu setup
         super(mitgcm, self).setup()
         
@@ -83,29 +83,52 @@ class mitgcm(Experiment):
                 else:
                     sh.copy(f_forcing, f_input)
         
-        # Calculate time intervals
-        secs_per_day = 86400
-        n_timesteps = days * secs_per_day // dt
-        p_chkpt_freq = days * secs_per_day
+        # Update configuration file 'data'
+        # TODO: Combine the deltat and ntimestep IO processes
+        # TODO: Update nIter0 based on restarts, even if days is not set
         
-        # Patch data timestep variables
         data_path = os.path.join(self.work_path, 'data')
-        tmp_path = data_path + '~'
+        data_file = open(data_path, 'r')
         
-        tmp = open(tmp_path, 'w')
-        for line in open(data_path):
-            if line.lstrip().lower().startswith('niter0='):
-                tmp.write(' nIter0=%i,\n' % n_iter0)
-            elif line.lstrip().lower().startswith('ntimesteps='):
-                tmp.write(' nTimeSteps=%i,\n' % n_timesteps)
-            elif line.lstrip().lower().startswith('deltat='):
-                tmp.write(' deltaT=%i,\n' % dt)
-            elif line.lstrip().lower().startswith('pchkptfreq='):
-                tmp.write(' pChkptFreq=%f,\n' % p_chkpt_freq)
-            else:
-                tmp.write(line)
-        tmp.close()
-        sh.move(tmp_path, data_path)
+        # Update timestep size
+        if dt:
+            temp_path = data_path + '~'
+            data_temp = open(temp_path, 'w')
+            for line in data_file:
+                if line.lstrip().lower().startswith('deltat='):
+                    data_temp.write(' deltaT=%i,\n' % dt)
+                else:
+                    data_temp.write(line)
+            data_temp.close()
+            sh.move(temp_path, data_path)
+        else:
+            for line in data_file:
+                if line.lstrip().lower().startswith('deltat='):
+                    dt = int(line.split('=')[1].rsplit(',')[0].strip())
+        data_file.close()
+        assert dt
+        
+        # Update time interval
+        if days:
+            secs_per_day = 86400
+            n_timesteps = days * secs_per_day // dt
+            p_chkpt_freq = days * secs_per_day
+        
+            temp_path = data_path + '~'
+            data_temp = open(temp_path, 'w')
+            
+            data_file = open(data_path, 'r')
+            for line in data_file:
+                if line.lstrip().lower().startswith('niter0='):
+                    data_temp.write(' nIter0=%i,\n' % n_iter0)
+                elif line.lstrip().lower().startswith('ntimesteps='):
+                    data_temp.write(' nTimeSteps=%i,\n' % n_timesteps)
+                elif line.lstrip().lower().startswith('pchkptfreq='):
+                    data_temp.write(' pChkptFreq=%f,\n' % p_chkpt_freq)
+                else:
+                    data_temp.write(line)
+            data_temp.close()
+            data_file.close()
         
         # Patch or create data.mnc
         mnc_header = os.path.join(self.work_path, 'mnc_')
