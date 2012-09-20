@@ -113,7 +113,7 @@ class mitgcm(Experiment):
             secs_per_day = 86400
             n_timesteps = days * secs_per_day // dt
             p_chkpt_freq = days * secs_per_day
-        
+            
             temp_path = data_path + '~'
             
             data_file = open(data_path, 'r')
@@ -193,11 +193,10 @@ class mitgcm(Experiment):
                          and not f.split('.')[1].startswith('ckpt')]
         
         # Tar and compress the output files
-        stdout_files = [os.path.join(self.work_path, f)
-                        for f in os.listdir(self.work_path)
+        stdout_files = [f for f in os.listdir(self.work_path)
                         if f.startswith('STDOUT.')]
-        cmd = ('tar -c -j -f %s'
-                    % os.path.join(self.work_path, 'STDOUT.tar.bz2')
+        cmd = ('tar -C %s -c -j -f %s' % (self.work_path,
+                os.path.join(self.work_path, 'STDOUT.tar.bz2') )
                 ).split() + stdout_files
         rc = sp.Popen(cmd).wait()
         assert rc == 0

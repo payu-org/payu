@@ -218,7 +218,11 @@ class Experiment(object):
         # Double-check that the run path does not exist
         if os.path.exists(self.run_path):
             sys.exit('Archived path already exists; aborting.')
-        sh.move(self.work_path, self.run_path)
+        # shutil may be a problem here
+        #sh.move(self.work_path, self.run_path)
+        cmd = 'mv {src} {dst}'.format(src=self.work_path, dst=self.run_path)
+        rc = sp.Popen(cmd.split()).wait()
+        assert rc == 0
         
         if self.archive_group:
             self.regroup()

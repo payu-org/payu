@@ -84,7 +84,13 @@ class fms(Experiment):
     def archive(self, **kwargs):
         # Archive restart files before processing model output
         work_res_path = os.path.join(self.work_path, 'RESTART')
-        sh.move(work_res_path, self.res_path)
+        
+        # shutil may be a problem here
+        #sh.move(work_res_path, self.res_path)
+        mkdir_p(self.archive_path)
+        cmd = 'mv {src} {dst}'.format(src=work_res_path, dst=self.res_path)
+        rc = sp.Popen(cmd.split()).wait()
+        assert rc == 0
         
         super(fms, self).archive(**kwargs)
     
