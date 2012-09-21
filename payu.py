@@ -162,6 +162,11 @@ class Experiment(object):
         
         mkdir_p(self.work_path)
         
+        # Stripe directory in Lustre
+        cmd = 'lfs setstripe -c 8 -s 8m {0}'.format(self.work_path).split()
+        rc = sp.Popen(cmd).wait()
+        assert rc == 0
+        
         if not os.path.exists(self.work_sym_path):
             os.symlink(self.work_path, self.work_sym_path)
         
@@ -218,8 +223,7 @@ class Experiment(object):
         # Double-check that the run path does not exist
         if os.path.exists(self.run_path):
             sys.exit('Archived path already exists; aborting.')
-        # shutil may be a problem here
-        #sh.move(self.work_path, self.run_path)
+        
         cmd = 'mv {src} {dst}'.format(src=self.work_path, dst=self.run_path)
         rc = sp.Popen(cmd.split()).wait()
         assert rc == 0

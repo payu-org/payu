@@ -41,11 +41,6 @@ class fms(Experiment):
         work_res_path = os.path.join(self.work_path, 'RESTART')
         mkdir_p(work_res_path)
         
-        # David Singleton's striping recommedation
-        cmd = ['lfs', 'setstripe', '-c', '8', '-s', '8m', work_res_path]
-        rc = sp.Popen(cmd).wait()
-        assert rc == 0
-        
         # Either create a new INPUT path or link a previous RESTART as INPUT
         input_path = os.path.join(self.work_path, 'INPUT')
         mkdir_p(input_path)
@@ -85,8 +80,6 @@ class fms(Experiment):
         # Archive restart files before processing model output
         work_res_path = os.path.join(self.work_path, 'RESTART')
         
-        # shutil may be a problem here
-        #sh.move(work_res_path, self.res_path)
         mkdir_p(self.archive_path)
         cmd = 'mv {src} {dst}'.format(src=work_res_path, dst=self.res_path)
         rc = sp.Popen(cmd.split()).wait()
