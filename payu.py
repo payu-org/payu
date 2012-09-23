@@ -24,7 +24,7 @@ execfile('/opt/Modules/default/init/python')
 # Default payu parameters
 counter_env = 'count'
 max_counter_env = 'max'
-archive_server = 'dc.nci.org.au'
+default_archive_url = 'dc.nci.org.au'
 default_short_path = '/short'
 default_model_script = 'model.py'
 default_collate_script = 'collate.py'
@@ -239,8 +239,12 @@ class Experiment(object):
     
     
     #---
-    def remote_archive(self, config_name):
-        archive_address = '%s@%s' % (getpass.getuser(), archive_server)
+    def remote_archive(self, config_name, archive_url):
+        
+        if not archive_url:
+            archive_url = default_archive_url
+        
+        archive_address = '%s@%s' % (getpass.getuser(), archive_url)
         
         ssh_key_path = os.path.join(os.getenv('HOME'), '.ssh',
                                     'id_rsa_file_transfer')
