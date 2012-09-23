@@ -239,7 +239,7 @@ class Experiment(object):
     
     
     #---
-    def remote_archive(self, config_name, archive_url):
+    def remote_archive(self, config_name, archive_url=None):
         
         if not archive_url:
             archive_url = default_archive_url
