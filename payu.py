@@ -232,7 +232,6 @@ class Experiment(object):
             self.regroup()
         
         if collate:
-            job_name = os.environ.get('PBS_JOBNAME', self.name)
             cmd = ['qsub', self.collation_script, '-v', '%s=%i'
                     % (counter_env, self.counter)]
             rc = sp.Popen(cmd).wait()
