@@ -38,11 +38,9 @@ class Experiment(object):
         self.modules = None
         self.config_files = None
         
-        # Script names
-        self.model_script = kwargs.pop('model_script', 'model.py')
-        self.collation_script = kwargs.pop('collate_script', 'collate.py')
-        
-        # Update counter variables
+        self.model_script = kwargs.pop('model_script', default_model_script)
+        self.collation_script = kwargs.pop('collate_script',
+                                           default_collate_script)
         self.set_counters()
     
     
@@ -64,7 +62,6 @@ class Experiment(object):
     
     #---
     def path_names(self, **kwargs):
-        # A model name must be assigned
         assert self.model_name
         
         # Experiment name (used for directories)
@@ -302,6 +299,55 @@ class Experiment(object):
                 % (counter_env, self.counter, max_counter_env,
                    self.max_counter) ]
         sp.Popen(cmd).wait()
+    
+    
+    #---
+    def sweep(self, hard_sweep=False):
+        f = open(self.model_script, 'r')
+        for line in f:
+            if line.startswith('#PBS -N '):
+                expt_name = line.strip().replace('#PBS -N ', '')
+        f.close()
+        
+        f = open(self.collation_script, 'r')
+        for line in f:
+            if line.startswith('#PBS -N '):
+                coll_name = line.strip().replace('#PBS -N ', '')
+        f.close()
+        
+        if hard_sweep:
+            if os.path.isdir(self.archive_path):
+                print 'Removing archive path %s' % self.archive_path
+                #sh.rmtree(self.archive_path)
+                cmd = 'rm -rf {0}'.format(self.archive_path).split()
+                rc = sp.Popen(cmd).wait()
+                assert rc == 0
+            
+            if os.path.islink(self.archive_sym_path):
+                print 'Removing symlink %s' % self.archive_sym_path
+                os.remove(self.archive_sym_path)
+        
+        if os.path.isdir(self.work_path):
+            print 'Removing work path %s' % self.work_path
+            #sh.rmtree(self.work_path)
+            cmd = 'rm -rf {0}'.format(self.work_path).split()
+            rc = sp.Popen(cmd).wait()
+            assert rc == 0
+        
+        if os.path.islink(self.work_sym_path):
+            print 'Removing symlink %s' % self.work_sym_path
+            os.remove(self.work_sym_path)
+        
+        logs = [f for f in os.listdir(os.curdir) if os.path.isfile(f) and
+                (f == self.stdout_fname or
+                 f == self.stderr_fname or
+                 f.startswith(expt_name + '.o') or
+                 f.startswith(coll_name + '.o'))
+                ]
+        
+        for f in logs:
+            print 'Removing log %s' % f
+            os.remove(f)
 
 
 #==============================================================================
