@@ -3,7 +3,7 @@
 """
 The payu interface for MOM4
 -------------------------------------------------------------------------------
-Primary Contact:    Marshall Ward (marshall.ward@anu.edu.au)
+Primary Contact: Marshall Ward <marshall.ward@anu.edu.au>
 -------------------------------------------------------------------------------
 Distributed as part of Payu, Copyright 2011-2012 Marshall Ward
 Licensed under the Apache License, Version 2.0

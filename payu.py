@@ -3,7 +3,7 @@
 """
 Payu: A generic driver for numerical models on the NCI computing cluster (vayu)
 -------------------------------------------------------------------------------
-Contact:    Marshall Ward (marshall.ward@anu.edu.au)
+Contact: Marshall Ward <marshall.ward@anu.edu.au>
 -------------------------------------------------------------------------------
 Distributed as part of Payu, Copyright 2011-2012 Marshall Ward
 Licensed under the Apache License, Version 2.0
@@ -14,6 +14,7 @@ import os
 import sys
 import shutil as sh
 import subprocess as sp
+import shlex
 import grp
 import getpass
 import errno
@@ -235,47 +236,68 @@ class Experiment(object):
     
     
     #---
-    def remote_archive(self, config_name, archive_url=None):
+    def remote_archive(self, config_name, archive_url=None,
+                       max_rsync_attempts=1):
         
         if not archive_url:
             archive_url = default_archive_url
         
-        archive_address = '%s@%s' % (getpass.getuser(), archive_url)
+        archive_address = '{usr}@{url}'.format(usr=getpass.getuser(),
+                                               url=archive_url)
         
         ssh_key_path = os.path.join(os.getenv('HOME'), '.ssh',
                                     'id_rsa_file_transfer')
         
-        # Top-level path is set by the SSH key
+        # Top-level path is implicitly set by the SSH key
         # (Usually /projects/[group])
         
         # Remote mkdir is currently not possible, so any new subdirectories
         # must be created before auto-archival
         
-        remote_path = os.path.join(self.model_name, config_name,
-                                   self.name)
+        remote_path = os.path.join(self.model_name, config_name, self.name)
+        remote_url = '{addr}:{path}'.format(addr=archive_address,
+                                            path=remote_path)
         
-        # TODO: how to remove shell=True ?
+        # Tar restart files before rsyncing
+        res_tar_path = self.res_path + '.tar.gz'
         
-        # Output sync
-        cmd = 'rsync -a --safe-links -e "ssh -i %s" %s %s:%s' % \
-                (ssh_key_path, self.run_path, archive_address, remote_path)
+        cmd = 'tar -C {path} -czf {fpath} {res}'.format(
+                path=self.archive_path, fpath=res_tar_path,
+                res=os.path.basename(self.res_path)
+                ).split()
+        rc = sp.Popen(cmd).wait()
         
-        rc = sp.Popen(cmd, shell=True).wait()
-        # XXX: Random rsync failures to dc, this is a temporary solution
-        if rc != 0:
-            print 'rsync failed, reattempting'
-            rc = sp.Popen(cmd, shell=True).wait()
-        assert rc == 0
+        # Rsync ouput and restart files
+        rsync_cmd = 'rsync -a --safe-links -e "ssh -i {key}" '.format(
+                        key=ssh_key_path)
         
-        # Restart sync
-        cmd = 'rsync -a --safe-links -e "ssh -i %s" %s %s:%s' % \
-                (ssh_key_path, self.res_path, archive_address, remote_path)
-        rc = sp.Popen(cmd, shell=True).wait()
-        # XXX: Random rsync failures to dc, this is a temporary solution
-        if rc != 0:
-            print 'rsync failed, reattempting'
-            rc = sp.Popen(cmd, shell=True).wait()
-        assert rc == 0
+        run_cmd = rsync_cmd + '{src} {dst}'.format(src=self.run_path,
+                                                   dst=remote_url)
+        
+        restart_cmd = rsync_cmd + '{src} {dst}'.format(src=res_tar_path,
+                                                       dst=remote_url)
+        
+        rsync_calls = [run_cmd, restart_cmd]
+        
+        if self.forcing_path:
+            # Using explicit path separators to rename the forcing directory
+            forcing_cmd = rsync_cmd + '{src} {dst}'.format(
+                            src=self.forcing_path + os.sep,
+                            dst=os.path.join(remote_url, 'forcing') + os.sep)
+            rsync_calls.append(forcing_cmd)
+        
+        for cmd in rsync_calls:
+            cmd = shlex.split(cmd)
+            
+            for rsync_attempt in range(max_rsync_attempts):
+                rc = sp.Popen(cmd).wait()
+                if rc == 0:
+                    break
+                else:
+                    print 'rsync failed, reattempting'
+            assert rc == 0
+        
+        os.remove(res_tar_path)
     
     
     #---
@@ -295,9 +317,10 @@ class Experiment(object):
     def resubmit(self):
         assert self.counter < self.max_counter
         self.counter += 1
-        cmd = ['qsub', self.model_script, '-v', '%s=%i,%s=%i'
-                % (counter_env, self.counter, max_counter_env,
-                   self.max_counter) ]
+        cmd = 'qsub {script} -v {cvar}={cval},{mvar}={mval}'.format(
+                script=self.model_script,
+                cvar=counter_env, cval=self.counter,
+                mvar=max_counter_env, mval=self.max_counter).split()
         sp.Popen(cmd).wait()
     
     
@@ -346,7 +369,7 @@ class Experiment(object):
                 ]
         
         for f in logs:
-            print 'Removing log %s' % f
+            print 'Removing log {fname}'.format(fname=f)
             os.remove(f)
 
 
