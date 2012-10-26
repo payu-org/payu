@@ -146,10 +146,10 @@ class Experiment(object):
         if os.path.exists(prior_res_path):
             self.prior_res_path = prior_res_path
         else:
-            if self.counter == 1:
-                self.prior_res_path = None
-            else:
-                sys.exit('Restart files not found; aborting.')
+            self.prior_res_path = None
+            if self.counter > 1:
+                # TODO: This warning should be replace with an abort in setup
+                print 'Warning: no restart files found.'
     
     
     #---
@@ -258,15 +258,6 @@ class Experiment(object):
         remote_url = '{addr}:{path}'.format(addr=archive_address,
                                             path=remote_path)
         
-        # Tar restart files before rsyncing
-        res_tar_path = self.res_path + '.tar.gz'
-        
-        cmd = 'tar -C {path} -czf {fpath} {res}'.format(
-                path=self.archive_path, fpath=res_tar_path,
-                res=os.path.basename(self.res_path)
-                ).split()
-        rc = sp.Popen(cmd).wait()
-        
         # Rsync ouput and restart files
         rsync_cmd = 'rsync -a --safe-links -e "ssh -i {key}" '.format(
                         key=ssh_key_path)
@@ -274,12 +265,24 @@ class Experiment(object):
         run_cmd = rsync_cmd + '{src} {dst}'.format(src=self.run_path,
                                                    dst=remote_url)
         
-        restart_cmd = rsync_cmd + '{src} {dst}'.format(src=res_tar_path,
-                                                       dst=remote_url)
+        rsync_calls = [run_cmd]
         
-        rsync_calls = [run_cmd, restart_cmd]
+        if (self.counter % 5) == 0 and os.path.isdir(self.res_path):
+            # Tar restart files before rsyncing
+            res_tar_path = self.res_path + '.tar.gz'
+            
+            cmd = 'tar -C {path} -czf {fpath} {res}'.format(
+                        path=self.archive_path,
+                        fpath=res_tar_path,
+                        res=os.path.basename(self.res_path)
+                        ).split()
+            rc = sp.Popen(cmd).wait()
+            
+            restart_cmd = rsync_cmd + '{src} {dst}'.format(src=res_tar_path,
+                                                           dst=remote_url)
+            rsync_calls.append(restart_cmd)
         
-        if self.forcing_path:
+        if os.path.isdir(self.forcing_path):
             # Using explicit path separators to rename the forcing directory
             forcing_cmd = rsync_cmd + '{src} {dst}'.format(
                             src=self.forcing_path + os.sep,
@@ -297,7 +300,9 @@ class Experiment(object):
                     print 'rsync failed, reattempting'
             assert rc == 0
         
-        os.remove(res_tar_path)
+        # TODO: Temporary; this should be integrated with the rsync call
+        if os.path.exists(self.res_path):
+            os.remove(res_tar_path)
     
     
     #---

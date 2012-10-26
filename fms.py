@@ -26,6 +26,15 @@ class fms(Experiment):
     
     
     #---
+    def path_names(self, **kwargs):
+        super(fms, self).path_names(**kwargs)
+        
+        # Define local FMS directories
+        self.work_res_path = os.path.join(self.work_path, 'RESTART')
+        self.input_path = os.path.join(self.work_path, 'INPUT')
+    
+    
+    #---
     def build(self):
         raise NotImplementedError
     
@@ -38,18 +47,16 @@ class fms(Experiment):
         super(fms, self).setup()
         
         # Create experiment directory structure
-        work_res_path = os.path.join(self.work_path, 'RESTART')
-        mkdir_p(work_res_path)
+        mkdir_p(self.work_res_path)
         
         # Either create a new INPUT path or link a previous RESTART as INPUT
-        input_path = os.path.join(self.work_path, 'INPUT')
-        mkdir_p(input_path)
+        mkdir_p(self.input_path)
         
         if self.counter > 1 and not repeat_run:
             restart_files = os.listdir(self.prior_res_path)
             for f in restart_files:
                 f_res = os.path.join(self.prior_res_path, f)
-                f_input = os.path.join(input_path, f)
+                f_input = os.path.join(self.input_path, f)
                 if use_symlinks:
                     os.symlink(f_res, f_input)
                 else:
@@ -60,7 +67,7 @@ class fms(Experiment):
             forcing_files = os.listdir(self.forcing_path)
             for f in forcing_files:
                 f_forcing = os.path.join(self.forcing_path, f)
-                f_input = os.path.join(input_path, f)
+                f_input = os.path.join(self.input_path, f)
                 # Do not use forcing file if it is in RESTART
                 if not os.path.exists(f_input):
                     if use_symlinks:
@@ -77,12 +84,17 @@ class fms(Experiment):
     
     #--
     def archive(self, **kwargs):
-        # Archive restart files before processing model output
-        work_res_path = os.path.join(self.work_path, 'RESTART')
         
+        # Remove the 'INPUT' path
+        cmd = 'rm -rf {path}'.format(path=self.input_path).split()
+        rc = sp.Popen(cmd).wait()
+        assert rc == 0
+        
+        # Archive restart files before processing model output
         mkdir_p(self.archive_path)
-        cmd = 'mv {src} {dst}'.format(src=work_res_path, dst=self.res_path)
-        rc = sp.Popen(cmd.split()).wait()
+        cmd = 'mv {src} {dst}'.format(src=self.work_res_path,
+                                      dst=self.res_path).split()
+        rc = sp.Popen(cmd).wait()
         assert rc == 0
         
         super(fms, self).archive(**kwargs)
