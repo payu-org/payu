@@ -281,6 +281,8 @@ class Experiment(object):
             restart_cmd = rsync_cmd + '{src} {dst}'.format(src=res_tar_path,
                                                            dst=remote_url)
             rsync_calls.append(restart_cmd)
+        else:
+            res_tar_path = None
         
         if os.path.isdir(self.forcing_path):
             # Using explicit path separators to rename the forcing directory
@@ -301,7 +303,7 @@ class Experiment(object):
             assert rc == 0
         
         # TODO: Temporary; this should be integrated with the rsync call
-        if os.path.exists(self.res_path):
+        if os.path.exists(res_tar_path):
             os.remove(res_tar_path)
     
     
