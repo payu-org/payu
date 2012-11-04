@@ -303,8 +303,9 @@ class Experiment(object):
             assert rc == 0
         
         # TODO: Temporary; this should be integrated with the rsync call
-        if os.path.exists(res_tar_path):
-            os.remove(res_tar_path)
+        if res_tar_path:
+            if os.path.exists(res_tar_path):
+                os.remove(res_tar_path)
     
     
     #---

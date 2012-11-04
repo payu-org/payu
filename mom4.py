@@ -69,13 +69,10 @@ class mom4(fms):
         
         #----------
         # t_start
-        last_run_dir = 'run%02i' % (self.counter-1,)
-        last_res_path = os.path.join(self.archive_path, last_run_dir, 'RESTART')
         tstamp_fname = driver_name + '.res'
-        last_tstamp_path = os.path.join(last_res_path, tstamp_fname)
-        
-        try:
-            tstamp_file = open(last_tstamp_path, 'r')
+        if self.prior_res_path:
+            prior_tstamp_path = os.path.join(self.prior_res_path, tstamp_fname)
+            tstamp_file = open(prior_tstamp_path, 'r')
             
             t_calendar = tstamp_file.readline().split()
             assert int(t_calendar[0]) == NOLEAP
@@ -85,8 +82,8 @@ class mom4(fms):
             
             tstamp = tstamp_file.readline().split()
             tstamp_file.close()
-        
-        except IOError:
+
+        else:
             input_nml = open('input.nml','r')
             for line in input_nml:
                 if line.strip().startswith(date_vname[driver_name]):
@@ -129,6 +126,8 @@ class mom4(fms):
                     + (cal_dt['minutes'] + cal_dt['seconds'] / 60.) / 60.) / 24.
         
         t_end = t_start + dt_days
+        
+        print 't_start: {0}, t_end: {1}'.format(t_start, t_end)
         
         # TODO: Periodic forcing cycle
         # Non-integer ratios will be complicated. This is a temporary solution
