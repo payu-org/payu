@@ -264,7 +264,6 @@ class Experiment(object):
         
         run_cmd = rsync_cmd + '{src} {dst}'.format(src=self.run_path,
                                                    dst=remote_url)
-        
         rsync_calls = [run_cmd]
         
         if (self.counter % 5) == 0 and os.path.isdir(self.res_path):
@@ -303,9 +302,8 @@ class Experiment(object):
             assert rc == 0
         
         # TODO: Temporary; this should be integrated with the rsync call
-        if res_tar_path:
-            if os.path.exists(res_tar_path):
-                os.remove(res_tar_path)
+        if res_tar_path and os.path.exists(res_tar_path):
+            os.remove(res_tar_path)
     
     
     #---
