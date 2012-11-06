@@ -283,7 +283,7 @@ class Experiment(object):
         else:
             res_tar_path = None
         
-        if os.path.isdir(self.forcing_path):
+        if self.forcing_path and os.path.isdir(self.forcing_path):
             # Using explicit path separators to rename the forcing directory
             forcing_cmd = rsync_cmd + '{src} {dst}'.format(
                             src=self.forcing_path + os.sep,
