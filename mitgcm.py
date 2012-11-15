@@ -16,8 +16,6 @@ import sys
 import shutil as sh
 import subprocess as sp
 
-import mnctools as mnc
-
 class mitgcm(Experiment):
     
     #---
@@ -213,6 +211,8 @@ class mitgcm(Experiment):
     
     #---
     def collate(self, clear_tiles=True, partition=None):
+        import mnctools as mnc
+
         # Use leading tiles to construct a tile manifest
         # Don't collate the pickup files
         # Tiled format: <field>.t###.nc
