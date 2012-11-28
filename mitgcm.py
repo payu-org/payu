@@ -186,8 +186,9 @@ class mitgcm(Experiment):
     def archive(self, **kwargs):
         mkdir_p(self.res_path)
         
+        # Move pickups but don't include intermediate pickupts ('ckpt's)
         restart_files = [f for f in os.listdir(self.work_path)
-                         if f.startswith('pickup.')
+                         if f.startswith('pickup')
                          and not f.split('.')[1].startswith('ckpt')]
         
         # Tar and compress the output files
