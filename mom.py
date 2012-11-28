@@ -12,6 +12,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 import os
 import subprocess as sp
+import netCDF4 as nc
 from fms import fms
 
 class Mom(fms):
@@ -151,7 +152,16 @@ class Mom(fms):
             in_fpath = os.path.join(core2iaf_path, f)
             out_fpath = os.path.join(self.work_path, 'INPUT', out_fname)
             
-            cmd = 'ncks -d TIME,%.1f,%.1f -o %s %s' \
-                    % (t_start, t_end, out_fpath, in_fpath)
+            # Locate the time axis in each file
+            # TODO: might be a better way to do this
+            f_nc = nc.Dataset(in_fpath, 'r')
+            for k in f_nc.variables:
+                if k.lower() == 'time':
+                    t_axis = k
+            f_nc.close()
+            assert t_axis
+            
+            cmd = 'ncks -d %s,%.1f,%.1f -o %s %s' \
+                    % (t_axis, t_start, t_end, out_fpath, in_fpath)
             rc = sp.Popen(cmd.split()).wait()
             assert rc == 0

@@ -18,6 +18,7 @@ import shlex
 import grp
 import getpass
 import errno
+import yaml
 
 # Environment module support on vayu
 execfile('/opt/Modules/default/init/python')
@@ -29,6 +30,7 @@ default_archive_url = 'dc.nci.org.au'
 default_short_path = '/short'
 default_model_script = 'model.py'
 default_collate_script = 'collate.py'
+default_config_fname = 'config.yaml'
 
 #==============================================================================
 class Experiment(object):
@@ -65,29 +67,43 @@ class Experiment(object):
     def path_names(self, **kwargs):
         assert self.model_name
         
+        config_fname = kwargs.pop('config', default_config_fname)
+        
+        try:
+            with open(config_fname, 'r') as config_file:
+                config = yaml.load(config_file)
+        except IOError, ec:
+            if ec.errno != errno.ENOENT:
+                raise
+            else:
+                config = {}
+        
+        # Override any keyword arguments
+        config.update(kwargs)
+        
         # Experiment name (used for directories)
         default_name = os.path.basename(os.getcwd())
-        self.name = kwargs.pop('name', default_name)
+        self.name = config.pop('name', default_name)
         
         # Configuration path (input, config)
         default_config_path = os.getcwd()
-        self.config_path = kwargs.pop('config', default_config_path)
+        self.config_path = config.pop('config', default_config_path)
         
         # User name
         default_user = getpass.getuser()
-        self.user_name = kwargs.pop('user', default_user)
+        self.user_name = config.pop('user', default_user)
         
         # Project group
         default_project = os.environ.get('PROJECT')
-        self.project_name = kwargs.pop('project', default_project)
+        self.project_name = config.pop('project', default_project)
         
         # Top level output path ("/short path")
-        self.short_path = kwargs.pop('short_path', default_short_path)
+        self.short_path = config.pop('short_path', default_short_path)
         
         # Output path
         default_lab_path = os.path.join(self.short_path, self.project_name,
                                         self.user_name, self.model_name)
-        self.lab_path = kwargs.pop('output', default_lab_path)
+        self.lab_path = config.pop('output', default_lab_path)
         
         # Experiment subdirectories
         self.archive_path = os.path.join(self.lab_path, 'archive', self.name)
@@ -99,10 +115,10 @@ class Experiment(object):
         self.archive_sym_path = os.path.join(self.config_path, 'archive')
         
         # Set group identifier for output
-        self.archive_group = kwargs.pop('archive_group', None)
+        self.archive_group = config.pop('archive_group', None)
         
         # Executable path
-        exec_name = kwargs.pop('exe', self.default_exec)
+        exec_name = config.pop('exe', self.default_exec)
         self.exec_path = os.path.join(self.bin_path, exec_name)
         
         # Stream output filenames
@@ -110,7 +126,7 @@ class Experiment(object):
         self.stderr_fname = self.model_name + '.err'
         
         # External forcing path
-        forcing_dir = kwargs.pop('forcing', None)
+        forcing_dir = config.pop('forcing', None)
         if forcing_dir:
             # Test for absolute path
             if os.path.exists(forcing_dir):
@@ -148,7 +164,7 @@ class Experiment(object):
         else:
             self.prior_res_path = None
             if self.counter > 1:
-                # TODO: This warning should be replace with an abort in setup
+                # TODO: This warning should be replaced with an abort in setup
                 print 'Warning: no restart files found.'
     
     
@@ -196,7 +212,7 @@ class Experiment(object):
         
         # TODO: Need a model-specific cleanup method call here
         if rc != 0:
-            sys.exit('Error %i; aborting.' % rc)
+            sys.exit('Error {0}; aborting.'.format(rc))
         
         # Move logs to archive (or delete if empty)
         for f in (self.stdout_fname, self.stderr_fname):
@@ -374,15 +390,20 @@ class Experiment(object):
                  f.startswith(coll_name + '.o'))
                 ]
         
+        pbs_log_path = os.path.join(os.curdir, 'pbs_logs')
+        mkdir_p(pbs_log_path)
+        
         for f in logs:
-            print 'Removing log {fname}'.format(fname=f)
-            os.remove(f)
+            print 'Moving log {fname}'.format(fname=f)
+            os.rename(f, os.path.join(pbs_log_path, f))
+            #print 'Removing log {fname}'.format(fname=f)
+            #os.remove(f)
 
 
 #==============================================================================
 def mkdir_p(path):
     try:
         os.makedirs(path)
-    except OSError, exc:
-        if exc.errno != errno.EEXIST:
+    except OSError, ec:
+        if ec.errno != errno.EEXIST:
             raise
