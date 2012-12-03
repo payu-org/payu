@@ -382,7 +382,8 @@ class Experiment(object):
         if os.path.islink(self.work_sym_path):
             print 'Removing symlink %s' % self.work_sym_path
             os.remove(self.work_sym_path)
-        
+       
+        # TODO: model outstreams and pbs logs need to be handled separately
         logs = [f for f in os.listdir(os.curdir) if os.path.isfile(f) and
                 (f == self.stdout_fname or
                  f == self.stderr_fname or

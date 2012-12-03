@@ -220,7 +220,7 @@ class mitgcm(Experiment):
         output_fnames = [f.replace('.t001.', '.')
                          for f in os.listdir(self.run_path)
                          if f.endswith('.t001.nc')
-                         and not f.startswith('pickup.')]
+                         and not f.startswith('pickup')]
         
         tile_fnames = {}
         for fname in output_fnames:
