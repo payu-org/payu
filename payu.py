@@ -253,7 +253,7 @@ class Experiment(object):
     
     #---
     def remote_archive(self, config_name, archive_url=None,
-                       max_rsync_attempts=1):
+                       max_rsync_attempts=1, rsync_protocol=None):
         
         if not archive_url:
             archive_url = default_archive_url
@@ -277,6 +277,9 @@ class Experiment(object):
         # Rsync ouput and restart files
         rsync_cmd = 'rsync -a --safe-links -e "ssh -i {key}" '.format(
                         key=ssh_key_path)
+        
+        if rsync_protocol:
+            rsync_cmd += '--protocol={p} '.format(p=rsync_protocol)
         
         run_cmd = rsync_cmd + '{src} {dst}'.format(src=self.run_path,
                                                    dst=remote_url)
