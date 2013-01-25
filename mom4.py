@@ -17,19 +17,19 @@ from mom import Mom
 class mom4(Mom):
     #---
     def __init__(self, **kwargs):
-        
+
         # FMS initalisation
         super(Mom, self).__init__(**kwargs)
-        
+
         # Model-specific configuration
         self.model_name = 'mom4'
         self.default_exec = 'mom4'
         self.path_names(**kwargs)
-        
+
         self.modules = ['pbs',
                         'openmpi',
                         'nco']
-        
+
         self.config_files = ['data_table',
                              'diag_table',
                              'field_table',
