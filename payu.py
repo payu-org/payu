@@ -181,8 +181,7 @@ class Experiment(object):
         rc = sp.Popen(cmd).wait()
         assert rc == 0
         
-        if not os.path.exists(self.work_sym_path):
-            os.symlink(self.work_path, self.work_sym_path)
+        make_symlink(self.work_path, self.work_sym_path)
         
         for f in self.config_files:
             f_path = os.path.join(self.config_path, f)
@@ -226,9 +225,7 @@ class Experiment(object):
     def archive(self, collate=True):
         mkdir_p(self.archive_path)
         
-        # Create archive symlink
-        if not os.path.exists(self.archive_sym_path):
-            os.symlink(self.archive_path, self.archive_sym_path)
+        make_symlink(self.archive_path, self.archive_sym_path)
         
         # Remove work symlink
         if os.path.islink(self.work_sym_path):
@@ -411,3 +408,21 @@ def mkdir_p(path):
     except OSError, ec:
         if ec.errno != errno.EEXIST:
             raise
+
+
+#---
+def make_symlink(path, link):
+    try:
+        os.symlink(path, link)
+    except OSError, ec:
+        if ec.errno != errno.EEXIST:
+            raise
+        elif not os.path.islink(link):
+            # Warn the user, but do not interrput the job
+            print("Warning: Cannot create symbolic link to {p}; a file named "
+                  "{f} already exists.".format(p=path, f=link))
+        else:
+            # Overwrite any existing symbolic link
+            if os.path.realpath(link) != path:
+                os.remove(link)
+                os.symlink(path, link)
