@@ -169,7 +169,7 @@ class Experiment(object):
 
 
     #---
-    def setup(self):
+    def setup(self, do_stripe=False):
         # Confirm that no output path already exists
         if os.path.exists(self.run_path):
             sys.exit('Archived path already exists; aborting.')
@@ -177,9 +177,10 @@ class Experiment(object):
         mkdir_p(self.work_path)
 
         # Stripe directory in Lustre
-        cmd = 'lfs setstripe -c 8 -s 8m {0}'.format(self.work_path).split()
-        rc = sp.Popen(cmd).wait()
-        assert rc == 0
+        if do_stripe:
+            cmd = 'lfs setstripe -c 8 -s 8m {0}'.format(self.work_path).split()
+            rc = sp.Popen(cmd).wait()
+            assert rc == 0
 
         make_symlink(self.work_path, self.work_sym_path)
 
