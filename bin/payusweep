@@ -10,6 +10,7 @@ import yaml
 
 # TODO: Move to payu (somehow)
 model_index = {'mom': payu.Mom,
+               'mom4': payu.mom4,
                'mitgcm': payu.mitgcm,
                'gold': payu.gold}
 default_config_fname = 'config.yaml'

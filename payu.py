@@ -389,7 +389,10 @@ class Experiment(object):
                 (f == self.stdout_fname or
                  f == self.stderr_fname or
                  f.startswith(expt_name + '.o') or
-                 f.startswith(coll_name + '.o'))
+                 f.startswith(expt_name + '.e') or
+                 f.startswith(coll_name + '.o') or
+                 f.startswith(coll_name + '.e')
+                 )
                 ]
 
         pbs_log_path = os.path.join(os.curdir, 'pbs_logs')
