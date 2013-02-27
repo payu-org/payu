@@ -1,0 +1,83 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+import argparse
+import os
+import payu
+import sys
+import shutil as sh
+import yaml
+
+# TODO: Move to payu (somehow)
+model_index = {'mom': payu.Mom,
+               'mitgcm': payu.mitgcm,
+               'gold': payu.gold}
+default_config_fname = 'config.yaml'
+
+
+def payusweep(model_name=None, config_path=None, hard_sweep=False):
+
+    # Validate the configuration file path
+    if config_path and not os.path.isfile(config_path):
+        sys.exit('Error: Configuration file {f} does not exist.'.format(
+                    f=config_path))
+ 
+    # Assign the default config path if it exists
+    if not config_path and os.path.isfile(default_config_fname):
+        config_path = os.path.join(os.curdir, default_config_fname)
+
+    # If no model name is specified, then check the config path
+    if not model_name and config_path and os.path.isfile(config_path):
+        with open(config_path, 'r') as config_file:
+            config = yaml.load(config_file)
+        model_name = config['model']
+
+    # If there is still no defined model_name, try the parent directory
+    if not model_name:
+        model_name = os.path.basename(os.path.abspath(os.pardir))
+        if not model_name in model_index.keys():
+            sys.exit('payusweep: error: Unknown model.')
+        else:
+            print('payusweep: warning: Assuming model is {model} based on '
+                  'parent directory.'.format(model=model_name))
+
+    model = model_index[model_name]
+    expt = model()
+    expt.sweep(hard_sweep)
+
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(
+                description='Delete old or unused data from earlier runs.')
+
+    parser.add_argument('-m', '--model',
+                        action='store',
+                        dest='model_name',
+                        default=None,
+                        help='Select model type')
+
+    parser.add_argument('-l', '--list',
+                        action='store_true',
+                        dest='print_list',
+                        default=False,
+                        help='Display list of supported models')
+
+    parser.add_argument('-c', '--config',
+                        action='store',
+                        dest='config_path',
+                        default=None,
+                        help='Configuration path')
+
+    parser.add_argument('--hard',
+                        action='store_true',
+                        dest='hard_sweep',
+                        default=False,
+                        help='Delete archived runs')
+
+    args = parser.parse_args()
+
+    if args.print_list:
+        print('Supported models: {0}'.format(', '.join(model_index.keys())))
+    else:
+        payusweep(args.model_name, args.config_path, args.hard_sweep)
