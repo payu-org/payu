@@ -12,7 +12,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 import os
 import subprocess as sp
-import netCDF4 as nc
+import scipy.io.netcdf as nc
 from fms import fms
 
 class Mom(fms):
@@ -154,7 +154,7 @@ class Mom(fms):
 
             # Locate the time axis in each file
             # TODO: might be a better way to do this
-            f_nc = nc.Dataset(in_fpath, 'r')
+            f_nc = nc.netcdf_file(in_fpath, 'r')
             for k in f_nc.variables:
                 if k.lower() == 'time':
                     t_axis = k
