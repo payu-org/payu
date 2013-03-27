@@ -138,4 +138,5 @@ class fms(Experiment):
                         mppnc = mppnc_path,
                         tid = mnc_tiles[f],
                         fpath = tile_path)
-            sp.Popen(shlex.split(cmd)).wait()
+            rc = sp.Popen(shlex.split(cmd)).wait()
+            assert rc == 0
