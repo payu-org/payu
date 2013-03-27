@@ -13,6 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 from payu import Experiment, mkdir_p
 import os
 import sys
+import shlex
 import shutil as sh
 import subprocess as sp
 
@@ -86,44 +87,55 @@ class fms(Experiment):
     def archive(self, **kwargs):
 
         # Remove the 'INPUT' path
-        cmd = 'rm -rf {path}'.format(path=self.input_path).split()
-        rc = sp.Popen(cmd).wait()
+        cmd = 'rm -rf {path}'.format(path=self.input_path)
+        rc = sp.Popen(shlex.split(cmd)).wait()
         assert rc == 0
 
         # Archive restart files before processing model output
         mkdir_p(self.archive_path)
         cmd = 'mv {src} {dst}'.format(src=self.work_res_path,
-                                      dst=self.res_path).split()
-        rc = sp.Popen(cmd).wait()
+                                      dst=self.res_path)
+        rc = sp.Popen(shlex.split(cmd)).wait()
         assert rc == 0
 
         super(fms, self).archive(**kwargs)
 
 
     #---
-    def collate(self, restart=False):
-        import resource as res
+    def collate(self):
 
         # Set the stacksize to be unlimited
-        res.setrlimit(res.RLIMIT_STACK, (res.RLIM_INFINITY, res.RLIM_INFINITY))
+        import resource
+        resource.setrlimit(res.RLIMIT_STACK,
+                           (res.RLIM_INFINITY, res.RLIM_INFINITY))
 
-        restart_path = os.path.join(self.run_path, 'RESTART')
+        # Locate the FMS collation tool
+        mppnc_path = None
+        for f in os.listdir(self.bin_path):
+            if f.startswith('mppnccombine'):
+                mppnc_path = os.path.join(self.bin_path, f)
+                break
+        assert mppnc_path
 
-        nc_files = [os.path.join(self.run_path, f)
-                    for f in os.listdir(self.run_path)
-                    if f.endswith('.nc.0000')]
+        # Generate collated file list and identify the first tile
+        tile_fnames = [f for f in os.listdir(self.run_path)
+                         if f[-4:].isdigit() and f[-8:-4] == '.nc.']
 
-        if restart:
-            restart_files = [os.path.join(restart_path, f)
-                             for f in os.listdir(restart_path)
-                             if f.endswith('.nc.0000')]
-            nc_files.extend(restart_files)
+        tile_first_id = {}
+        for t in tile_fnames:
+            t_name, t_ext = os.path.splitext(t)
 
-        mppnc_path = os.path.join(self.bin_path, 'mppnccombine')
+            t_id = int(t_ext.lstrip('.'))
+            try:
+                t_prior_id = int(tile_first_id[t_name].lstrip('.'))
+                if t_id < t_prior_id:
+                    tile_first_id[t_name] = t_ext
+            except KeyError:
+                tile_first_id[t_name] = t_ext
 
-        for f in nc_files:
-            cmd = [mppnc_path, '-r', '-64', f]
-            sp.Popen(cmd).wait()
+        mppnc_tiles = ['.'.join(f) for f in tile_first_id.items()]
 
-        if self.archive_group:
-            self.regroup()
+        for f in mppnc_tiles:
+            cmd = '{mppnc} -r -64 {fpath}'.format(mppnc=mppnc_path,
+                                                  fpath=f)
+            sp.Popen(shlex.split(cmd)).wait()

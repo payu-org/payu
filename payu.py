@@ -143,6 +143,7 @@ class Experiment(object):
             self.forcing_path = None
 
         # Local archive paths
+        # TODO: Rename this to self.output_path
         run_dir = 'output%03i' % (self.counter,)
         self.run_path = os.path.join(self.archive_path, run_dir)
 
