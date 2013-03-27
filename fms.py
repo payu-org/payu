@@ -120,21 +120,22 @@ class fms(Experiment):
         tile_fnames = [f for f in os.listdir(self.run_path)
                          if f[-4:].isdigit() and f[-8:-4] == '.nc.']
 
-        tile_first_id = {}
+        mnc_tiles = {}
         for t in tile_fnames:
             t_name, t_ext = os.path.splitext(t)
+            t_ext = t_ext.lstrip('.')
 
-            t_id = int(t_ext.lstrip('.'))
             try:
-                t_prior_id = int(tile_first_id[t_name].lstrip('.'))
-                if t_id < t_prior_id:
-                    tile_first_id[t_name] = t_ext
+                if int(t_ext) < int(mnc_tiles[t_name]):
+                    mnc_tiles[t_name] = t_ext
             except KeyError:
-                tile_first_id[t_name] = t_ext
+                mnc_tiles[t_name] = t_ext
 
-        mppnc_tiles = ['.'.join(f) for f in tile_first_id.items()]
-
-        for f in mppnc_tiles:
-            cmd = '{mppnc} -r -64 {fpath}'.format(mppnc=mppnc_path,
-                                                  fpath=f)
+        # Collate each tileset into a single file
+        for f in mnc_tiles:
+            tile_path = os.path.join(self.run_path, f)
+            cmd = '{mppnc} -n {tid} -r -64 {fpath}'.format(
+                        mppnc = mppnc_path,
+                        tid = mnc_tiles[f],
+                        fpath = tile_path)
             sp.Popen(shlex.split(cmd)).wait()
