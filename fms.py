@@ -105,9 +105,8 @@ class fms(Experiment):
     def collate(self):
 
         # Set the stacksize to be unlimited
-        import resource
-        resource.setrlimit(res.RLIMIT_STACK,
-                           (res.RLIM_INFINITY, res.RLIM_INFINITY))
+        import resource as res
+        res.setrlimit(res.RLIMIT_STACK, (res.RLIM_INFINITY, res.RLIM_INFINITY))
 
         # Locate the FMS collation tool
         mppnc_path = None
