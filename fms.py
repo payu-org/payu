@@ -134,6 +134,13 @@ class fms(Experiment):
         # Collate each tileset into a single file
         for f in mnc_tiles:
             tile_path = os.path.join(self.run_path, f)
+
+            # Remove the collated file if it already exists, since it is
+            # probably from a failed collation attempt
+            # TODO: Validate this somehow
+            if os.path.isfile(tile_path):
+                os.remove(tile_path)
+
             cmd = '{mppnc} -n {tid} -r -64 {fpath}'.format(
                         mppnc = mppnc_path,
                         tid = mnc_tiles[f],
