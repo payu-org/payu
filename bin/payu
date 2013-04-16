@@ -45,6 +45,9 @@ def payu_parse():
                            action='store_true',
                            dest='hard_sweep')
 
+    list_cmd = subcmd.add_parser('list')
+    list_cmd.set_defaults(cmd=payu_list)
+
     # `args` is passed on to other functions after removing principal payu tags
     # so we convert it to a dict using `vars`
     args = vars(parser.parse_args())
@@ -90,11 +93,17 @@ def payu_parse():
     payu_cmd(expt, **args)
 
 
-#----------------
+#--------------------------------------
 def payu_sweep(expt, hard_sweep=False):
     expt.sweep(hard_sweep)
 
 
+#--------------------------------------
+def payu_list(expt, hard_sweep=False):
+    print('Supported models: {0}'.format(' '.join(model_index.keys())))
+
+
+#-------------------------
 if __name__ == '__main__':
 
     # Default to display help if no subcommands or arguments are provided
