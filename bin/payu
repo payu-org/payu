@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# TODO:
+#   - Don't do model detection for `payu list`
+
 import argparse
 import os
 import payu
@@ -55,6 +58,11 @@ def payu_parse():
     config_path = args.pop('config_path')
     model_name = args.pop('model_name')
 
+    # Skip validation when listing supported models
+    if args['cmd'] == payu_list:
+        payu_list()
+        sys.exit()
+
     #--------------------
     # Payu tag validation
 
@@ -71,7 +79,10 @@ def payu_parse():
     if not model_name and config_path and os.path.isfile(config_path):
         with open(config_path, 'r') as config_file:
             config = yaml.load(config_file)
-        model_name = config['model']
+        try:
+            model_name = config['model']
+        except KeyError:
+            pass
 
     # If there is still no defined model_name, try the parent directory
     if not model_name:
@@ -99,7 +110,7 @@ def payu_sweep(expt, hard_sweep=False):
 
 
 #--------------------------------------
-def payu_list(expt, hard_sweep=False):
+def payu_list():
     print('Supported models: {0}'.format(' '.join(model_index.keys())))
 
 
