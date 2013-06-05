@@ -9,6 +9,8 @@ import os
 import payu
 import sys
 import shutil as sh
+import shlex
+import subprocess as sp
 import yaml
 
 # TODO: Move to payu (somehow)
@@ -42,7 +44,7 @@ def payu_parse():
     subcmd = parser.add_subparsers()
 
     sweep_cmd = subcmd.add_parser('sweep')
-    sweep_cmd.set_defaults(cmd=payu_sweep)
+    sweep_cmd.set_defaults(cmd=call_sweep)
 
     sweep_cmd.add_argument('--hard',
                            action='store_true',
@@ -51,17 +53,24 @@ def payu_parse():
     list_cmd = subcmd.add_parser('list')
     list_cmd.set_defaults(cmd=payu_list)
 
+    run_cmd = subcmd.add_parser('run')
+    run_cmd.set_defaults(cmd=submit_run)
+
+    run_cmd.add_argument('--count', '-c',
+                         action='store',
+                         dest='counter')
+
     # `args` is passed on to other functions after removing principal payu tags
     # so we convert it to a dict using `vars`
     args = vars(parser.parse_args())
-
-    config_path = args.pop('config_path')
-    model_name = args.pop('model_name')
 
     # Skip validation when listing supported models
     if args['cmd'] == payu_list:
         payu_list()
         sys.exit()
+
+    config_path = args.pop('config_path')
+    model_name = args.pop('model_name')
 
     #--------------------
     # Payu tag validation
@@ -96,17 +105,27 @@ def payu_parse():
     #---------------------
     # Subcommand execution
 
-    # Instantiate the model experiment
-    model = model_index[model_name]
-    expt = model()
-
     payu_cmd = args.pop('cmd')
-    payu_cmd(expt, **args)
+    payu_cmd(model_name, config_path, **args)
+
+
+#------------------
+def submit_run(model_name, config_path):
+
+    cmd = 'payu-run -m {0} -c {1}'.format(model_name, config_path)
+    print cmd
+    #rc = sp.Popen(shlex.split(cmd)).wait()
 
 
 #--------------------------------------
-def payu_sweep(expt, hard_sweep=False):
-    expt.sweep(hard_sweep)
+def call_sweep(model_name, config_path, hard_sweep=False):
+    
+    cmd = 'payu-sweep -m {0} -c {1}'.format(model_name, config_path)
+    if hard_sweep:
+        ' '.join([cmd, '--sweep'])
+
+    cmd = shlex.split(cmd)
+    sp.call(cmd)
 
 
 #--------------------------------------

@@ -1,5 +1,5 @@
 # coding: utf-8
-__all__ = ['mom4', 'gold', 'mitgcm']
+__all__ = ['mom', 'mom4', 'gold', 'mitgcm']
 
 from mom import Mom
 from mom4 import mom4
