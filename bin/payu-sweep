@@ -14,7 +14,7 @@ def payu_sweep(model_name, config_path, hard_sweep):
 
     model = model_index[model_name]
     expt = model()
-    expt.sweep()
+    expt.sweep(hard_sweep)
 
 
 if __name__ == '__main__':

@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# TODO:
-#   - Don't do model detection for `payu list`
-
 import argparse
 import os
 import payu
@@ -21,7 +18,7 @@ model_index = {'mom': payu.Mom,
 default_config_fname = 'config.yaml'
 
 
-#----
+#----------------
 def payu_parse():
 
     #------------------
@@ -51,10 +48,10 @@ def payu_parse():
                            dest='hard_sweep')
 
     list_cmd = subcmd.add_parser('list')
-    list_cmd.set_defaults(cmd=payu_list)
+    list_cmd.set_defaults(cmd=call_list)
 
     run_cmd = subcmd.add_parser('run')
-    run_cmd.set_defaults(cmd=submit_run)
+    run_cmd.set_defaults(cmd=call_run)
 
     run_cmd.add_argument('--count', '-c',
                          action='store',
@@ -65,8 +62,8 @@ def payu_parse():
     args = vars(parser.parse_args())
 
     # Skip validation when listing supported models
-    if args['cmd'] == payu_list:
-        payu_list()
+    if args['cmd'] == call_list:
+        call_list()
         sys.exit()
 
     config_path = args.pop('config_path')
@@ -109,27 +106,35 @@ def payu_parse():
     payu_cmd(model_name, config_path, **args)
 
 
-#------------------
-def submit_run(model_name, config_path):
+#---
+def call_run(model_name, config_path, counter):
 
-    cmd = 'payu-run -m {0} -c {1}'.format(model_name, config_path)
-    print cmd
-    #rc = sp.Popen(shlex.split(cmd)).wait()
+    # TODO: read as input
+    pbs_flags = '-q normal -P v45 -l walltime=0:15:00 -l ncpus=960 ' \
+                '-l vmem=1440GB -N gfdl1080 -wd -joe'.format(os.getcwd())
 
-
-#--------------------------------------
-def call_sweep(model_name, config_path, hard_sweep=False):
-    
-    cmd = 'payu-sweep -m {0} -c {1}'.format(model_name, config_path)
-    if hard_sweep:
-        ' '.join([cmd, '--sweep'])
+    run_cmd = os.path.join(os.path.dirname(__file__), 'payu-run')
+    cmd = 'qsub {0} {1} -v payu_model={2}'.format(run_cmd, pbs_flags, model_name)
 
     cmd = shlex.split(cmd)
-    sp.call(cmd)
+    rc = sp.call(cmd)
+    assert rc == 0
 
 
-#--------------------------------------
-def payu_list():
+#---
+def call_sweep(model_name, config_path, hard_sweep=False):
+ 
+    cmd = 'payu-sweep -m {0} -c {1}'.format(model_name, config_path)
+    if hard_sweep:
+        cmd = ' '.join([cmd, '--hard'])
+
+    cmd = shlex.split(cmd)
+    rc = sp.call(cmd)
+    assert rc == 0
+
+
+#---
+def call_list():
     print('Supported models: {0}'.format(' '.join(model_index.keys())))
 
 
