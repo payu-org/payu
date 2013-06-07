@@ -27,7 +27,6 @@ execfile('/opt/Modules/default/init/python')
 counter_env = 'count'
 max_counter_env = 'max'
 default_archive_url = 'dc.nci.org.au'
-default_short_path = '/short'
 default_model_script = 'model.py'
 default_collate_script = 'collate.py'
 default_config_fname = 'config.yaml'
@@ -93,15 +92,12 @@ class Experiment(object):
         default_user = getpass.getuser()
         self.user_name = config.pop('user', default_user)
 
-        # Project group
-        default_project = os.environ.get('PROJECT')
-        self.project_name = config.pop('project', default_project)
-
         # Top level output path ("/short path")
-        self.short_path = config.pop('short_path', default_short_path)
+        default_short_path = os.path.join('/short', os.environ.get('PROJECT'))
+        self.short_path = config.pop('shortpath', default_short_path)
 
         # Output path
-        default_lab_path = os.path.join(self.short_path, self.project_name,
+        default_lab_path = os.path.join(self.short_path,
                                         self.user_name, self.model_name)
         self.lab_path = config.pop('output', default_lab_path)
 
