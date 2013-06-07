@@ -32,7 +32,7 @@ class fms(Experiment):
 
         # Define local FMS directories
         self.work_res_path = os.path.join(self.work_path, 'RESTART')
-        self.input_path = os.path.join(self.work_path, 'INPUT')
+        self.work_input_path = os.path.join(self.work_path, 'INPUT')
 
 
     #---
@@ -51,30 +51,30 @@ class fms(Experiment):
         mkdir_p(self.work_res_path)
 
         # Either create a new INPUT path or link a previous RESTART as INPUT
-        mkdir_p(self.input_path)
+        mkdir_p(self.work_input_path)
 
         if self.counter > 1 and not repeat_run:
             restart_files = os.listdir(self.prior_res_path)
             for f in restart_files:
                 f_res = os.path.join(self.prior_res_path, f)
-                f_input = os.path.join(self.input_path, f)
+                f_input = os.path.join(self.work_input_path, f)
                 if use_symlinks:
                     os.symlink(f_res, f_input)
                 else:
                     sh.copy(f_res, f_input)
 
-        # Link any forcing data to INPUT
-        if self.forcing_path:
-            forcing_files = os.listdir(self.forcing_path)
-            for f in forcing_files:
-                f_forcing = os.path.join(self.forcing_path, f)
+        # Link any input data to INPUT
+        if self.input_path:
+            input_files = os.listdir(self.input_path)
+            for f in input_files:
                 f_input = os.path.join(self.input_path, f)
-                # Do not use forcing file if it is in RESTART
-                if not os.path.exists(f_input):
+                f_work_input = os.path.join(self.work_input_path, f)
+                # Do not use input file if it is in RESTART
+                if not os.path.exists(f_work_input):
                     if use_symlinks:
-                        os.symlink(f_forcing, f_input)
+                        os.symlink(f_input, f_work_input)
                     else:
-                        sh.copy(f_forcing, f_input)
+                        sh.copy(f_input, f_work_input)
 
 
     #---
@@ -87,7 +87,7 @@ class fms(Experiment):
     def archive(self, **kwargs):
 
         # Remove the 'INPUT' path
-        cmd = 'rm -rf {path}'.format(path=self.input_path)
+        cmd = 'rm -rf {path}'.format(path=self.work_input_path)
         rc = sp.Popen(shlex.split(cmd)).wait()
         assert rc == 0
 

@@ -109,9 +109,38 @@ def payu_parse():
 #---
 def call_run(model_name, config_path, counter):
 
-    # TODO: read as input
-    pbs_flags = '-q normal -P v45 -l walltime=0:15:00 -l ncpus=960 ' \
-                '-l vmem=1440GB -N gfdl1080 -wd -joe'.format(os.getcwd())
+    pbs_flags = []
+    with open(config_path, 'r') as config_file:
+        config = yaml.load(config_file)
+
+        pbs_queue = config['pbs'].get('queue')
+        if pbs_queue:
+            pbs_flags.append('-q {0}'.format(pbs_queue))
+
+        pbs_project = config['pbs'].get('project')
+        if pbs_project:
+            pbs_flags.append('-P {0}'.format(pbs_project))
+
+        pbs_walltime = config['pbs'].get('walltime')
+        if pbs_walltime:
+            pbs_flags.append('-l walltime={0}'.format(pbs_walltime))
+
+        pbs_ncpus = config['pbs'].get('ncpus')
+        if pbs_ncpus:
+            pbs_flags.append('-l ncpus={0}'.format(pbs_ncpus))
+
+        pbs_vmem = config['pbs'].get('vmem')
+        if pbs_vmem:
+            pbs_flags.append('-l vmem={0}'.format(pbs_vmem))
+
+        pbs_jobname = config['pbs'].get('jobname')
+        if pbs_jobname:
+            pbs_flags.append('-N {0}'.format(pbs_jobname))
+
+    pbs_flags.append('-wd')
+    pbs_flags.append('-joe')
+
+    pbs_flags = ' '.join(pbs_flags)
 
     run_cmd = os.path.join(os.path.dirname(__file__), 'payu-run')
     cmd = 'qsub {0} {1} -v payu_model={2}'.format(run_cmd, pbs_flags, model_name)
@@ -123,7 +152,7 @@ def call_run(model_name, config_path, counter):
 
 #---
 def call_sweep(model_name, config_path, hard_sweep=False):
- 
+
     cmd = 'payu-sweep -m {0} -c {1}'.format(model_name, config_path)
     if hard_sweep:
         cmd = ' '.join([cmd, '--hard'])

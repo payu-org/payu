@@ -58,11 +58,11 @@ class mitgcm(Experiment):
 
             for f in restart_files:
                 f_res = os.path.join(self.prior_res_path, f)
-                f_input = os.path.join(self.work_path, f)
+                f_work = os.path.join(self.work_path, f)
                 if use_symlinks:
-                    os.symlink(f_res, f_input)
+                    os.symlink(f_res, f_work)
                 else:
-                    sh.copy(f_res, f_input)
+                    sh.copy(f_res, f_work)
 
             # Determine total number of timesteps since initialisation
             pickup_fname = restart_files[0]
@@ -70,16 +70,16 @@ class mitgcm(Experiment):
         else:
             n_iter0 = 0
 
-        # Link any forcing data to INPUT
-        for f in os.listdir(self.forcing_path):
-            f_forcing = os.path.join(self.forcing_path, f)
-            f_input = os.path.join(self.work_path, f)
-            # Do not use a forcing file if an identical restart file exists
-            if not os.path.exists(f_input):
+        # Link any input data to work directory
+        for f in os.listdir(self.input_path):
+            f_input = os.path.join(self.input_path, f)
+            f_work = os.path.join(self.work_path, f)
+            # Do not use a input file if an identical restart file exists
+            if not os.path.exists(f_work):
                 if use_symlinks:
-                    os.symlink(f_forcing, f_input)
+                    os.symlink(f_input, f_work)
                 else:
-                    sh.copy(f_forcing, f_input)
+                    sh.copy(f_input, f_work)
 
         # Update configuration file 'data'
         # TODO: Combine the deltat and ntimestep IO processes
@@ -164,7 +164,7 @@ class mitgcm(Experiment):
                          '-wd %s' % self.work_path)
         super(mitgcm, self).run(*flags)
 
-        # Remove symbolic links to forcing or pickup files:
+        # Remove symbolic links to input or pickup files:
         for f in os.listdir(self.work_path):
             f_path = os.path.join(self.work_path, f)
             if os.path.islink(f_path):

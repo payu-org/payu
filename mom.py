@@ -59,7 +59,7 @@ class Mom(fms):
         if driver_name == None:
             driver_name = default_driver_name
 
-        # TODO: Extract this from the forcing files
+        # TODO: Extract this from the input files
         max_days = 60 * 365
 
         # Calendar constants

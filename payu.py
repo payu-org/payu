@@ -125,22 +125,21 @@ class Experiment(object):
         self.stdout_fname = self.model_name + '.out'
         self.stderr_fname = self.model_name + '.err'
 
-        # External forcing path
-        forcing_dir = config.pop('forcing', None)
-        if forcing_dir:
+        # External input path
+        input_dir = config.pop('input', None)
+        if input_dir:
             # Test for absolute path
-            if os.path.exists(forcing_dir):
-                self.forcing_path = forcing_dir
+            if os.path.exists(input_dir):
+                self.input_path = input_dir
             else:
-                # Test for path relative to /lab_path/forcing
-                rel_path = os.path.join(self.lab_path, 'forcing', forcing_dir)
+                # Test for path relative to /${lab_path}/input
+                rel_path = os.path.join(self.lab_path, 'input', input_dir)
                 if os.path.exists(rel_path):
-                    self.forcing_path = rel_path
+                    self.input_path = rel_path
                 else:
-                    # Forcing does not exist; raise some exception
-                    sys.exit('Forcing data not found; aborting.')
+                    sys.exit('Input data not found; aborting.')
         else:
-            self.forcing_path = None
+            self.input_path = None
 
         # Local archive paths
         # TODO: Rename this to self.output_path
@@ -301,12 +300,12 @@ class Experiment(object):
         else:
             res_tar_path = None
 
-        if self.forcing_path and os.path.isdir(self.forcing_path):
-            # Using explicit path separators to rename the forcing directory
-            forcing_cmd = rsync_cmd + '{src} {dst}'.format(
-                            src=self.forcing_path + os.sep,
-                            dst=os.path.join(remote_url, 'forcing') + os.sep)
-            rsync_calls.append(forcing_cmd)
+        if self.input_path and os.path.isdir(self.input_path):
+            # Using explicit path separators to rename the input directory
+            input_cmd = rsync_cmd + '{src} {dst}'.format(
+                            src=self.input_path + os.sep,
+                            dst=os.path.join(remote_url, 'input') + os.sep)
+            rsync_calls.append(input_cmd)
 
         for cmd in rsync_calls:
             cmd = shlex.split(cmd)
