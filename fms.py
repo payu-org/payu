@@ -53,7 +53,7 @@ class fms(Experiment):
         # Either create a new INPUT path or link a previous RESTART as INPUT
         mkdir_p(self.work_input_path)
 
-        if self.counter > 1 and not repeat_run:
+        if self.counter > 0 and not repeat_run:
             restart_files = os.listdir(self.prior_res_path)
             for f in restart_files:
                 f_res = os.path.join(self.prior_res_path, f)
@@ -117,7 +117,7 @@ class fms(Experiment):
         assert mppnc_path
 
         # Generate collated file list and identify the first tile
-        tile_fnames = [f for f in os.listdir(self.run_path)
+        tile_fnames = [f for f in os.listdir(self.output_path)
                          if f[-4:].isdigit() and f[-8:-4] == '.nc.']
 
         mnc_tiles = {}
@@ -133,7 +133,7 @@ class fms(Experiment):
 
         # Collate each tileset into a single file
         for f in mnc_tiles:
-            tile_path = os.path.join(self.run_path, f)
+            tile_path = os.path.join(self.output_path, f)
 
             # Remove the collated file if it already exists, since it is
             # probably from a failed collation attempt

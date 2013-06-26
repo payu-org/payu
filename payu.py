@@ -22,6 +22,8 @@ import yaml
 
 # Environment module support on vayu
 execfile('/opt/Modules/default/init/python')
+module_path = '/projects/v45/modules'
+default_modules = ['python/2.7.3', 'python/2.7.3-matplotlib', 'payu']
 
 # Default payu parameters
 counter_env = 'count'
@@ -48,16 +50,22 @@ class Experiment(object):
 
     #---
     def set_counters(self):
-        self.counter = int(os.environ.get(counter_env, 1))
+        self.counter = int(os.environ.get(counter_env, 0))
         self.max_counter = int(os.environ.get(max_counter_env, self.counter))
-
-        assert 0 < self.max_counter
-        assert 0 < self.counter <= self.max_counter
+        assert 0 <= self.max_counter
+        assert 0 <= self.counter <= self.max_counter
 
 
     #---
     def load_modules(self):
         module('purge')
+
+        # Ensure python and payu remain loaded
+        module('use', module_path)
+        for mod in default_modules:
+            module('load', mod)
+
+        # Now load model-dependent modules
         for mod in self.modules:
             module('load', mod)
 
@@ -82,7 +90,7 @@ class Experiment(object):
 
         # Experiment name (used for directories)
         default_name = os.path.basename(os.getcwd())
-        self.name = config.pop('name', default_name)
+        self.name = config.pop('jobname', default_name)
 
         # Configuration path (input, config)
         default_config_path = os.getcwd()
@@ -139,15 +147,16 @@ class Experiment(object):
 
         # Local archive paths
         # TODO: Rename this to self.output_path
-        run_dir = 'output%03i' % (self.counter,)
-        self.run_path = os.path.join(self.archive_path, run_dir)
+        output_dir = 'output%03i' % (self.counter,)
+        self.output_path = os.path.join(self.archive_path, output_dir)
 
-        prior_run_dir = 'output%03i' % (self.counter - 1,)
-        prior_run_path = os.path.join(self.archive_path, prior_run_dir)
-        if os.path.exists(prior_run_path):
-            self.prior_run_path = prior_run_path
+        # TODO: check case counter == 0
+        prior_output_dir = 'output%03i' % (self.counter - 1,)
+        prior_output_path = os.path.join(self.archive_path, prior_output_dir)
+        if os.path.exists(prior_output_path):
+            self.prior_output_path = prior_output_path
         else:
-            self.prior_run_path = None
+            self.prior_output_path = None
 
         # Local restart paths
         res_dir = 'restart%03i' % (self.counter,)
@@ -159,7 +168,7 @@ class Experiment(object):
             self.prior_res_path = prior_res_path
         else:
             self.prior_res_path = None
-            if self.counter > 1:
+            if self.counter > 0:
                 # TODO: This warning should be replaced with an abort in setup
                 print 'Warning: no restart files found.'
 
@@ -167,7 +176,7 @@ class Experiment(object):
     #---
     def setup(self, do_stripe=False):
         # Confirm that no output path already exists
-        if os.path.exists(self.run_path):
+        if os.path.exists(self.output_path):
             sys.exit('Archived path already exists; aborting.')
 
         mkdir_p(self.work_path)
@@ -229,10 +238,10 @@ class Experiment(object):
             os.remove(self.work_sym_path)
 
         # Double-check that the run path does not exist
-        if os.path.exists(self.run_path):
+        if os.path.exists(self.output_path):
             sys.exit('Archived path already exists; aborting.')
 
-        cmd = 'mv {src} {dst}'.format(src=self.work_path, dst=self.run_path)
+        cmd = 'mv {src} {dst}'.format(src=self.work_path, dst=self.output_path)
         rc = sp.Popen(cmd.split()).wait()
         assert rc == 0
 
@@ -275,7 +284,7 @@ class Experiment(object):
         if rsync_protocol:
             rsync_cmd += '--protocol={p} '.format(p=rsync_protocol)
 
-        run_cmd = rsync_cmd + '{src} {dst}'.format(src=self.run_path,
+        run_cmd = rsync_cmd + '{src} {dst}'.format(src=self.output_path,
                                                    dst=remote_url)
         rsync_calls = [run_cmd]
 
@@ -334,22 +343,21 @@ class Experiment(object):
 
     #---
     def resubmit(self):
-        assert self.counter < self.max_counter
-        self.counter += 1
-        cmd = 'qsub {script} -v {cvar}={cval},{mvar}={mval}'.format(
-                script=self.model_script,
-                cvar=counter_env, cval=self.counter,
-                mvar=max_counter_env, mval=self.max_counter).split()
+        next_run = self.counter + 1
+        n_runs = self.max_counter - next_run + 1
+        cmd = 'payu run -i {0} -n {1}'.format(next_run, n_runs)
+
+        cmd = shlex.split(cmd)
         sp.Popen(cmd).wait()
 
 
     #---
     def sweep(self, hard_sweep=False):
-        f = open(self.model_script, 'r')
-        for line in f:
-            if line.startswith('#PBS -N '):
-                expt_name = line.strip().replace('#PBS -N ', '')
-        f.close()
+        #f = open(self.model_script, 'r')
+        #for line in f:
+        #    if line.startswith('#PBS -N '):
+        #        expt_name = line.strip().replace('#PBS -N ', '')
+        #f.close()
 
         f = open(self.collation_script, 'r')
         for line in f:
@@ -384,8 +392,8 @@ class Experiment(object):
         logs = [f for f in os.listdir(os.curdir) if os.path.isfile(f) and
                 (f == self.stdout_fname or
                  f == self.stderr_fname or
-                 f.startswith(expt_name + '.o') or
-                 f.startswith(expt_name + '.e') or
+                 f.startswith(self.name + '.o') or
+                 f.startswith(self.name + '.e') or
                  f.startswith(coll_name + '.o') or
                  f.startswith(coll_name + '.e')
                  )
@@ -397,8 +405,6 @@ class Experiment(object):
         for f in logs:
             print 'Moving log {fname}'.format(fname=f)
             os.rename(f, os.path.join(pbs_log_path, f))
-            #print 'Removing log {fname}'.format(fname=f)
-            #os.remove(f)
 
 
 #==============================================================================

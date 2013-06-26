@@ -218,7 +218,7 @@ class mitgcm(Experiment):
         # Don't collate the pickup files
         # Tiled format: <field>.t###.nc
         output_fnames = [f.replace('.t001.', '.')
-                         for f in os.listdir(self.run_path)
+                         for f in os.listdir(self.output_path)
                          if f.endswith('.t001.nc')
                          and not f.startswith('pickup')]
 
@@ -226,14 +226,14 @@ class mitgcm(Experiment):
         for fname in output_fnames:
             f_header = fname.rsplit('.', 1)[0]
 
-            tile_fnames[fname] = [os.path.join(self.run_path, f)
-                                  for f in os.listdir(self.run_path)
+            tile_fnames[fname] = [os.path.join(self.output_path, f)
+                                  for f in os.listdir(self.output_path)
                                   if f.startswith(f_header + '.')
                                   and f.split('.')[-2].startswith('t')
                                   and f.split('.')[-2].lstrip('t').isdigit()]
 
         for fname in tile_fnames:
-            mnc.collate(tile_fnames[fname], os.path.join(self.run_path, fname),
+            mnc.collate(tile_fnames[fname], os.path.join(self.output_path, fname),
                         partition)
 
         if clear_tiles:

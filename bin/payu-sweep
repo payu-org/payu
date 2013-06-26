@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
-import payu_dev as payu
+import payu as payu
 
 # TODO: How to move this to payu.py?
 model_index = {'mom': payu.Mom,
