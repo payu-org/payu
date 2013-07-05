@@ -53,7 +53,7 @@ class fms(Experiment):
         # Either create a new INPUT path or link a previous RESTART as INPUT
         mkdir_p(self.work_input_path)
 
-        if self.counter > 0 and not repeat_run:
+        if self.prior_res_path and not repeat_run:
             restart_files = os.listdir(self.prior_res_path)
             for f in restart_files:
                 f_res = os.path.join(self.prior_res_path, f)
@@ -145,5 +145,6 @@ class fms(Experiment):
                         mppnc = mppnc_path,
                         tid = mnc_tiles[f],
                         fpath = tile_path)
-            rc = sp.Popen(shlex.split(cmd)).wait()
+            cmd = shlex.split(cmd)
+            rc = sp.Popen(cmd).wait()
             assert rc == 0

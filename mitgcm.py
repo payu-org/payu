@@ -86,9 +86,10 @@ class mitgcm(Experiment):
         # TODO: Update nIter0 based on restarts, even if days is not set
 
         data_path = os.path.join(self.work_path, 'data')
-        data_file = open(data_path, 'r')
 
         # Update timestep size
+
+        data_file = open(data_path, 'r')
         if dt:
             temp_path = data_path + '~'
             temp_file = open(temp_path, 'w')
@@ -107,27 +108,31 @@ class mitgcm(Experiment):
         assert dt
 
         # Update time interval
+
         if days:
             secs_per_day = 86400
             n_timesteps = days * secs_per_day // dt
             p_chkpt_freq = days * secs_per_day
+        else:
+            n_timesteps = None
+            p_chkpt_freq = None
 
-            temp_path = data_path + '~'
+        temp_path = data_path + '~'
 
-            data_file = open(data_path, 'r')
-            temp_file = open(temp_path, 'w')
-            for line in data_file:
-                if line.lstrip().lower().startswith('niter0='):
-                    temp_file.write(' nIter0=%i,\n' % n_iter0)
-                elif line.lstrip().lower().startswith('ntimesteps='):
-                    temp_file.write(' nTimeSteps=%i,\n' % n_timesteps)
-                elif line.lstrip().lower().startswith('pchkptfreq='):
-                    temp_file.write(' pChkptFreq=%f,\n' % p_chkpt_freq)
-                else:
-                    temp_file.write(line)
-            temp_file.close()
-            data_file.close()
-            sh.move(temp_path, data_path)
+        data_file = open(data_path, 'r')
+        temp_file = open(temp_path, 'w')
+        for line in data_file:
+            if line.lstrip().lower().startswith('niter0='):
+                temp_file.write(' nIter0=%i,\n' % n_iter0)
+            elif n_timesteps and line.lstrip().lower().startswith('ntimesteps='):
+                temp_file.write(' nTimeSteps=%i,\n' % n_timesteps)
+            elif p_chkpt_freq and line.lstrip().lower().startswith('pchkptfreq='):
+                temp_file.write(' pChkptFreq=%f,\n' % p_chkpt_freq)
+            else:
+                temp_file.write(line)
+        temp_file.close()
+        data_file.close()
+        sh.move(temp_path, data_path)
 
         # Patch or create data.mnc
         mnc_header = os.path.join(self.work_path, 'mnc_')

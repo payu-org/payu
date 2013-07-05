@@ -88,9 +88,12 @@ class Experiment(object):
         # Override any keyword arguments
         config.update(kwargs)
 
+        # PBS job name
+        self.jobname = config.pop('jobname', 'payu-run')
+
         # Experiment name (used for directories)
         default_name = os.path.basename(os.getcwd())
-        self.name = config.pop('jobname', default_name)
+        self.name = config.pop('name', default_name)
 
         # Configuration path (input, config)
         default_config_path = os.getcwd()
@@ -249,8 +252,9 @@ class Experiment(object):
             self.regroup()
 
         if collate:
-            cmd = ['qsub', self.collation_script, '-v', '%s=%i'
-                    % (counter_env, self.counter)]
+            cmd = 'payu collate -i {0}'.format(self.counter)
+
+            cmd = shlex.split(cmd)
             rc = sp.Popen(cmd).wait()
 
 
@@ -353,17 +357,6 @@ class Experiment(object):
 
     #---
     def sweep(self, hard_sweep=False):
-        #f = open(self.model_script, 'r')
-        #for line in f:
-        #    if line.startswith('#PBS -N '):
-        #        expt_name = line.strip().replace('#PBS -N ', '')
-        #f.close()
-
-        f = open(self.collation_script, 'r')
-        for line in f:
-            if line.startswith('#PBS -N '):
-                coll_name = line.strip().replace('#PBS -N ', '')
-        f.close()
 
         if hard_sweep:
             if os.path.isdir(self.archive_path):
@@ -392,10 +385,10 @@ class Experiment(object):
         logs = [f for f in os.listdir(os.curdir) if os.path.isfile(f) and
                 (f == self.stdout_fname or
                  f == self.stderr_fname or
-                 f.startswith(self.name + '.o') or
-                 f.startswith(self.name + '.e') or
-                 f.startswith(coll_name + '.o') or
-                 f.startswith(coll_name + '.e')
+                 f.startswith(self.jobname + '.o') or
+                 f.startswith(self.jobname + '.e') or
+                 f.startswith(self.jobname + '_c.o') or
+                 f.startswith(self.jobname + '_c.e')
                  )
                 ]
 

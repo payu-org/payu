@@ -12,21 +12,14 @@ model_index = {'mom': payu.Mom,
                'gold': payu.gold}
 
 
-def payu_run(model_name):
+def payu_collate(model_name):
 
     model = model_index[model_name]
     expt = model()
-    expt.modules.append('ipm')
-
-    expt.setup()
-    expt.run('-mca mpi_preconnect_mpi 1')
-    expt.archive()
-
-    if expt.counter < expt.max_counter:
-        expt.resubmit()
+    expt.collate()
 
 
 if __name__ == '__main__':
 
     model_name = os.environ.get('model')
-    payu_run(model_name)
+    payu_collate(model_name)
