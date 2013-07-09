@@ -69,6 +69,9 @@ class Experiment(object):
         for mod in self.modules:
             module('load', mod)
 
+        module('load', 'ipm')
+        os.environ['IPM_LOGDIR'] = self.work_path
+
 
     #---
     def path_names(self, **kwargs):
@@ -149,7 +152,6 @@ class Experiment(object):
             self.input_path = None
 
         # Local archive paths
-        # TODO: Rename this to self.output_path
         output_dir = 'output%03i' % (self.counter,)
         self.output_path = os.path.join(self.archive_path, output_dir)
 
@@ -202,12 +204,24 @@ class Experiment(object):
         f_out = open(self.stdout_fname, 'w')
         f_err = open(self.stderr_fname, 'w')
 
-        mpi_cmd = 'mpirun'  # OpenMPI execute
+        # Use explicit path to avoid wrappers, if they exist
+        mpi_basedir = os.environ.get('OMPI_ROOT')
+        if mpi_basedir:
+            mpirun_cmd = os.path.join(mpi_basedir, 'bin', 'mpirun')
+        else:
+            mpirun_cmd = 'mpirun'
 
         # Convert flags to list of arguments
-        flags = [c for flag in mpi_flags for c in flag.split(' ')]
-        cmd = [mpi_cmd] + flags + [self.exec_path]
+        #flags = [c for flag in mpi_flags for c in flag.split(' ')]
+        #cmd = [mpi_cmd] + flags + [self.exec_path]
 
+        # New string formatting
+        cmd = '{mpi} {flags} {bin}'.format(
+                    mpi = mpirun_cmd,
+                    flags = ' '.join(mpi_flags),
+                    bin = self.exec_path)
+
+        cmd = shlex.split(cmd)
         rc = sp.Popen(cmd, stdout=f_out, stderr=f_err).wait()
         f_out.close()
         f_err.close()
