@@ -82,7 +82,7 @@ class Experiment(object):
         try:
             with open(config_fname, 'r') as config_file:
                 config = yaml.load(config_file)
-        except IOError, ec:
+        except IOError as ec:
             if ec.errno != errno.ENOENT:
                 raise
             else:
@@ -418,7 +418,7 @@ class Experiment(object):
 def mkdir_p(path):
     try:
         os.makedirs(path)
-    except OSError, ec:
+    except OSError as ec:
         if ec.errno != errno.EEXIST:
             raise
 
@@ -427,7 +427,7 @@ def mkdir_p(path):
 def make_symlink(path, link):
     try:
         os.symlink(path, link)
-    except OSError, ec:
+    except OSError as ec:
         if ec.errno != errno.EEXIST:
             raise
         elif not os.path.islink(link):
