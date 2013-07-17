@@ -44,7 +44,7 @@ class gold(fms):
         self.load_modules()
 
         # GOLD-specific initialisation
-        if self.counter == 1:
+        if self.counter == 0:
             self.init_config()
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 """
-Payu: A generic driver for numerical models on the NCI computing cluster (vayu)
+Payu: A generic driver for numerical models on the NCI computing clusters
 -------------------------------------------------------------------------------
 Contact: Marshall Ward <marshall.ward@anu.edu.au>
 -------------------------------------------------------------------------------
@@ -29,8 +29,6 @@ default_modules = ['python/2.7.3', 'python/2.7.3-matplotlib', 'payu']
 counter_env = 'count'
 max_counter_env = 'max'
 default_archive_url = 'dc.nci.org.au'
-default_model_script = 'model.py'
-default_collate_script = 'collate.py'
 default_config_fname = 'config.yaml'
 
 #==============================================================================
@@ -42,9 +40,6 @@ class Experiment(object):
         self.modules = None
         self.config_files = None
 
-        self.model_script = kwargs.pop('model_script', default_model_script)
-        self.collation_script = kwargs.pop('collate_script',
-                                           default_collate_script)
         self.set_counters()
 
 
@@ -69,8 +64,8 @@ class Experiment(object):
         for mod in self.modules:
             module('load', mod)
 
-        module('load', 'ipm')
-        os.environ['IPM_LOGDIR'] = self.work_path
+        if 'ipm' in self.modules:
+            os.environ['IPM_LOGDIR'] = self.work_path
 
 
     #---
@@ -204,25 +199,20 @@ class Experiment(object):
         f_out = open(self.stdout_fname, 'w')
         f_err = open(self.stderr_fname, 'w')
 
-        # Use explicit path to avoid wrappers, if they exist
+        # Use explicit path to avoid wrappers (if it can be found)
         mpi_basedir = os.environ.get('OMPI_ROOT')
         if mpi_basedir:
             mpirun_cmd = os.path.join(mpi_basedir, 'bin', 'mpirun')
         else:
             mpirun_cmd = 'mpirun'
 
-        # Convert flags to list of arguments
-        #flags = [c for flag in mpi_flags for c in flag.split(' ')]
-        #cmd = [mpi_cmd] + flags + [self.exec_path]
-
-        # New string formatting
         cmd = '{mpi} {flags} {bin}'.format(
                     mpi = mpirun_cmd,
                     flags = ' '.join(mpi_flags),
                     bin = self.exec_path)
-
         cmd = shlex.split(cmd)
-        rc = sp.Popen(cmd, stdout=f_out, stderr=f_err).wait()
+
+        rc = sp.call(cmd, stdout=f_out, stderr=f_err)
         f_out.close()
         f_err.close()
 
