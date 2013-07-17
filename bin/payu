@@ -5,7 +5,6 @@ import argparse
 import os
 import payu
 import sys
-import shutil as sh
 import shlex
 from socket import gethostname
 import subprocess as sp
@@ -73,8 +72,6 @@ def payu_parse():
                          action='store',
                          dest='n_runs')
 
-    # `args` is passed on to other functions after removing principal payu tags
-    # so we convert it to a dict using `vars`
     args = parser.parse_args()
 
     # Skip validation when listing supported models
@@ -90,7 +87,7 @@ def payu_parse():
 
     # Validate the configuration file path
     if config_path and not os.path.isfile(config_path):
-        sys.exit('Error: Configuration file {f} does not exist.'.format(
+        sys.exit('payu: error: Configuration file {f} does not exist.'.format(
                     f=config_path))
 
     # Assign the default config path if it exists
@@ -101,10 +98,7 @@ def payu_parse():
     if not model_name and config_path and os.path.isfile(config_path):
         with open(config_path, 'r') as config_file:
             config = yaml.load(config_file)
-        try:
-            model_name = config['model']
-        except KeyError:
-            pass
+        model_name = config.get('model')
 
     # If there is still no defined model_name, try the parent directory
     if not model_name:
@@ -118,7 +112,7 @@ def payu_parse():
     #---
     # Counters
     if args.cmd in (call_run, call_collate):
-        # TODO: Check archive, use most recent run
+        # TODO: Set defaults to "None", move these calcs to payu.py
         counter = int(args.init_run or 0)
         assert counter >= 0
 
@@ -132,99 +126,127 @@ def payu_parse():
         call_sweep(model_name, config_path, args.hard_sweep)
 
     else:
+        # NOTE: Unnecessary; argparse already checks subcommands
         sys.exit("payu: Unknown subcommand {0}".format(args.cmd))
 
 
-#---
-def call_run(model_name, config_path, counter, max_counter):
+#--
+def submit_job(pbs_script, pbs_config, pbs_vars=None):
 
+    pbs_qsub = 'qsub'
     pbs_flags = []
-    with open(config_path, 'r') as config_file:
-        config = yaml.load(config_file)
 
-        pbs_queue = config['queue']
-        if pbs_queue:
-            pbs_flags.append('-q {0}'.format(pbs_queue))
+    pbs_queue = pbs_config.get('queue', 'normal')
+    if pbs_queue:
+        pbs_flags.append('-q {0}'.format(pbs_queue))
 
-        pbs_project = config['project']
-        if pbs_project:
-            pbs_flags.append('-P {0}'.format(pbs_project))
+    # Raijin doesn't read $PROJECT, which is required at login
+    pbs_project = pbs_config.get('project', os.environ['PROJECT'])
+    pbs_flags.append('-P {0}'.format(pbs_project))
 
-        pbs_walltime = config['walltime']
-        if pbs_walltime:
-            pbs_flags.append('-l walltime={0}'.format(pbs_walltime))
+    pbs_walltime = pbs_config.get('walltime')
+    if pbs_walltime:
+        pbs_flags.append('-l walltime={0}'.format(pbs_walltime))
 
-        pbs_ncpus = config['ncpus']
-        if pbs_ncpus:
-            pbs_flags.append('-l ncpus={0}'.format(pbs_ncpus))
+    pbs_ncpus = pbs_config.get('ncpus')
+    if pbs_ncpus:
+        pbs_flags.append('-l ncpus={0}'.format(pbs_ncpus))
 
-        mem_resource = 'vmem' if gethostname().startswith('vayu') else 'mem'
-        pbs_mem = config['mem']
-        if pbs_mem:
-            pbs_flags.append('-l {0}={1}'.format(mem_resource, pbs_mem))
+    pbs_mem = pbs_config.get('mem')
+    if pbs_mem:
+        mem_rname = 'vmem' if gethostname().startswith('vayu') else 'mem'
+        pbs_flags.append('-l {0}={1}'.format(mem_rname, pbs_mem))
 
-        pbs_jobname = config['jobname']
-        if pbs_jobname:
-            pbs_flags.append('-N {0}'.format(pbs_jobname))
+    # TODO: Raijin forces a 15 character limit
+    pbs_jobname = pbs_config.get('jobname')
+    if pbs_jobname:
+        pbs_flags.append('-N {0}'.format(pbs_jobname))
 
-    # TODO: Only vayu uses -wd
-    pbs_flags.append('-l wd')
+    pbs_wd = '-wd' if gethostname().startswith('vayu') else '-l wd'
+    pbs_flags.append(pbs_wd)
+
+    # TODO: Make this optional
     pbs_flags.append('-j oe')
-    pbs_flags.append('-v model={0},count={1},max={2}'.format(
-                        model_name, counter, max_counter))
 
+    if pbs_vars:
+        pbs_vstring = ','.join("{0}={1}".format(k, v)
+                                for k, v in pbs_vars.iteritems())
+        pbs_flags.append('-v ' + pbs_vstring)
+
+    # Collect flags
     pbs_flags = ' '.join(pbs_flags)
 
-    run_cmd = os.path.join(os.path.dirname(__file__), 'payu-run')
-    cmd = 'qsub {0} {1}'.format(pbs_flags, run_cmd)
+    # Construct full command
+    cmd = '{0} {1} {2}'.format(pbs_qsub, pbs_flags, pbs_script)
 
+    # Parse and execute
     cmd = shlex.split(cmd)
     rc = sp.call(cmd)
     assert rc == 0
 
 
 #--
-def call_collate(model_name, config_path, counter, max_counter):
-    # TODO: multiple submission support
+def call_run(model_name, config_path, counter, max_counter):
 
-    pbs_flags = []
+    # TODO: Is config_path always defined?
     with open(config_path, 'r') as config_file:
         config = yaml.load(config_file)
 
-        pbs_flags.append('-q copyq')
+    # Set the queue
+    config['queue'] = 'normal'
 
-        pbs_project = config.get('project', os.environ['PROJECT'])
-        pbs_flags.append('-P {0}'.format(pbs_project))
+    # Set environment variables
+    pbs_vars = {'model': model_name}
+    if counter:
+        pbs_vars['count'] = counter
+    if max_counter:
+        pbs_vars['max'] = max_counter
 
-        pbs_walltime = config.get('collate_walltime')
-        if pbs_walltime:
-            pbs_flags.append('-l walltime={0}'.format(pbs_walltime))
+    run_script = os.path.join(os.path.dirname(__file__), 'payu-run')
+    submit_job(run_script, config, pbs_vars)
 
-        pbs_ncpus = 1
-        pbs_flags.append('-l ncpus={0}'.format(pbs_ncpus))
 
-        mem_resource = 'vmem' if gethostname().startswith('vayu') else 'mem'
-        pbs_mem = config.get('collate_mem')
-        if pbs_mem:
-            pbs_flags.append('-l {0}={1}'.format(mem_resource, pbs_mem))
+#--
+def call_collate(model_name, config_path, counter, max_counter):
 
-        pbs_jobname = config.get('jobname')
-        pbs_collname = pbs_jobname + '_c'
-        if pbs_jobname:
-            pbs_flags.append('-N {0}'.format(pbs_collname))
+    # TODO: Is config_path always defined?
+    with open(config_path, 'r') as config_file:
+        config = yaml.load(config_file)
 
-    pbs_flags.append('-l wd')
-    pbs_flags.append('-j oe')
-    pbs_flags.append('-v model={0},count={1}'.format(model_name, counter))
+    # Set the queue
+    config['queue'] = 'copyq'
 
-    pbs_flags = ' '.join(pbs_flags)
+    # Replace (or remove) walltime
+    collate_walltime = config.get('collate_walltime')
+    if collate_walltime:
+        config['walltime'] = collate_walltime
+    else:
+        # Remove the model walltime if set
+        try:
+            config.pop('walltime')
+        except KeyError:
+            pass
 
-    collate_cmd = os.path.join(os.path.dirname(__file__), 'payu-collate')
-    cmd = 'qsub {0} {1}'.format(pbs_flags, collate_cmd)
+    # Replace (or remove) memory request
+    collate_mem = config.get('collate_mem')
+    if collate_mem:
+        config['mem'] = collate_mem
+    else:
+        # Remove the model memory request if set
+        try:
+            config.pop('mem')
+        except KeyError:
+            pass
 
-    cmd = shlex.split(cmd)
-    rc = sp.call(cmd)
-    assert rc == 0
+    # Set environment variables
+    pbs_vars = {'model': model_name}
+    if counter:
+        pbs_vars['count'] = counter
+    if max_counter:
+        pbs_vars['max'] = max_counter
+
+    run_script = os.path.join(os.path.dirname(__file__), 'payu-collate')
+    submit_job(run_script, config, pbs_vars)
 
 
 #---
@@ -248,7 +270,6 @@ def call_list():
 if __name__ == '__main__':
 
     # Default to display help if no subcommands or arguments are provided
-    # NOTE: This can be removed after argparse supports default subparsers
     if len(sys.argv) == 1:
         sys.argv.append('-h')
 
