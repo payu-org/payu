@@ -157,9 +157,11 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
         mem_rname = 'vmem' if gethostname().startswith('vayu') else 'mem'
         pbs_flags.append('-l {0}={1}'.format(mem_rname, pbs_mem))
 
-    # TODO: Raijin forces a 15 character limit
+    # TODO: Raijin forces a 15 character limit (vayu too?)
     pbs_jobname = pbs_config.get('jobname')
     if pbs_jobname:
+        if gethostname().startswith('raijin'):
+            pbs_jobname = pbs_jobname[:15]
         pbs_flags.append('-N {0}'.format(pbs_jobname))
 
     pbs_wd = '-wd' if gethostname().startswith('vayu') else '-l wd'
