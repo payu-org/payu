@@ -12,7 +12,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 import os
 import subprocess as sp
-import scipy.io.netcdf as nc
 from fms import fms
 
 class Mom(fms):
@@ -49,6 +48,8 @@ class Mom(fms):
     def core2iaf_setup(self, core2iaf_path=None, driver_name=None):
         # This is a very long method
         # TODO: Separate into sub-methods
+
+        import scipy.io.netcdf as nc
 
         # Need to make these input arguments
         default_core2iaf_path = '/short/v45/core2iaf'
