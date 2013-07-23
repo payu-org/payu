@@ -26,8 +26,6 @@ module_path = '/projects/v45/modules'
 default_modules = ['python/2.7.3', 'python/2.7.3-matplotlib', 'payu']
 
 # Default payu parameters
-counter_env = 'count'
-max_counter_env = 'max'
 default_archive_url = 'dc.nci.org.au'
 default_config_fname = 'config.yaml'
 
@@ -45,10 +43,14 @@ class Experiment(object):
 
     #---
     def set_counters(self):
-        self.counter = int(os.environ.get(counter_env, 0))
-        self.max_counter = int(os.environ.get(max_counter_env, self.counter))
-        assert 0 <= self.max_counter
-        assert 0 <= self.counter <= self.max_counter
+        # NOTE: Uninitialised counters are resolved in ``path_names``
+        current_counter = os.environ.get('PAYU_CURRENT_RUN')
+        if current_counter:
+            self.counter = int(current_counter)
+        else:
+            self.counter = None
+ 
+        self.n_runs = int(os.environ.get('PAYU_N_RUNS', 1))
 
 
     #---
@@ -73,7 +75,6 @@ class Experiment(object):
         assert self.model_name
 
         config_fname = kwargs.pop('config', default_config_fname)
-
         try:
             with open(config_fname, 'r') as config_file:
                 config = yaml.load(config_file)
@@ -146,12 +147,21 @@ class Experiment(object):
         else:
             self.input_path = None
 
+        # Initialize counter if unset
+        if not self.counter and os.path.isdir(self.archive_path):
+            # TODO: Check for empty directory
+            self.counter = 1 + max([int(d.lstrip('output'))
+                                    for d in os.listdir(self.archive_path)
+                                    if d.startswith('output')])
+        else:
+            self.counter = 0
+ 
         # Local archive paths
-        output_dir = 'output%03i' % (self.counter,)
+        output_dir = 'output{:03}'.format(self.counter)
         self.output_path = os.path.join(self.archive_path, output_dir)
 
         # TODO: check case counter == 0
-        prior_output_dir = 'output%03i' % (self.counter - 1,)
+        prior_output_dir = 'output{:03}'.format(self.counter - 1)
         prior_output_path = os.path.join(self.archive_path, prior_output_dir)
         if os.path.exists(prior_output_path):
             self.prior_output_path = prior_output_path
@@ -159,10 +169,10 @@ class Experiment(object):
             self.prior_output_path = None
 
         # Local restart paths
-        res_dir = 'restart%03i' % (self.counter,)
+        res_dir = 'restart{:03}'.format(self.counter)
         self.res_path = os.path.join(self.archive_path, res_dir)
 
-        prior_res_dir = 'restart%03i' % (self.counter - 1,)
+        prior_res_dir = 'restart{:03}'.format(self.counter - 1)
         prior_res_path = os.path.join(self.archive_path, prior_res_dir)
         if os.path.exists(prior_res_path):
             self.prior_res_path = prior_res_path
@@ -176,6 +186,7 @@ class Experiment(object):
     #---
     def setup(self, do_stripe=False):
         # Confirm that no output path already exists
+        print self.output_path
         if os.path.exists(self.output_path):
             sys.exit('Archived path already exists; aborting.')
 
@@ -351,8 +362,8 @@ class Experiment(object):
 
     #---
     def resubmit(self):
-        next_run = self.counter + 1
-        n_runs = self.max_counter - next_run + 1
+        next_run = self.counter + 1 # Redundant?
+        n_runs = self.n_runs - 1
         cmd = 'payu run -i {0} -n {1}'.format(next_run, n_runs)
 
         cmd = shlex.split(cmd)

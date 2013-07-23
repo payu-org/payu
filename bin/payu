@@ -40,6 +40,7 @@ def payu_parse():
 
     subcmd = parser.add_subparsers()
 
+    #---
     sweep_cmd = subcmd.add_parser('sweep')
     sweep_cmd.set_defaults(cmd=call_sweep)
 
@@ -47,9 +48,11 @@ def payu_parse():
                            action='store_true',
                            dest='hard_sweep')
 
+    #---
     list_cmd = subcmd.add_parser('list')
     list_cmd.set_defaults(cmd=call_list)
 
+    #---
     run_cmd = subcmd.add_parser('run')
     run_cmd.set_defaults(cmd=call_run)
 
@@ -61,6 +64,7 @@ def payu_parse():
                          action='store',
                          dest='n_runs')
 
+    #---
     collate_cmd = subcmd.add_parser('collate')
     collate_cmd.set_defaults(cmd=call_collate)
 
@@ -112,15 +116,20 @@ def payu_parse():
     #---
     # Counters
     if args.cmd in (call_run, call_collate):
-        # TODO: Set defaults to "None", move these calcs to payu.py
-        counter = int(args.init_run or 0)
-        assert counter >= 0
+        # TODO: Check non-integer case
+        if args.init_run:
+            init_run = int(args.init_run)
+            assert init_run >= 0
+        else:
+            init_run = None
 
-        n_runs = int(args.n_runs or 1)
-        assert n_runs > 0
-        max_counter = counter + n_runs - 1
+        if args.n_runs:
+            n_runs = int(args.n_runs)
+            assert n_runs > 0
+        else:
+            n_runs = None
 
-        args.cmd(model_name, config_path, counter, max_counter)
+        args.cmd(model_name, config_path, init_run, n_runs)
 
     elif args.cmd == call_sweep:
         call_sweep(model_name, config_path, args.hard_sweep)
@@ -157,7 +166,6 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
         mem_rname = 'vmem' if gethostname().startswith('vayu') else 'mem'
         pbs_flags.append('-l {0}={1}'.format(mem_rname, pbs_mem))
 
-    # TODO: Raijin forces a 15 character limit (vayu too?)
     pbs_jobname = pbs_config.get('jobname')
     if pbs_jobname:
         if gethostname().startswith('raijin'):
@@ -172,7 +180,7 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
 
     if pbs_vars:
         pbs_vstring = ','.join("{0}={1}".format(k, v)
-                                for k, v in pbs_vars.iteritems())
+                               for k, v in pbs_vars.iteritems())
         pbs_flags.append('-v ' + pbs_vstring)
 
     # Collect flags
@@ -188,9 +196,9 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
 
 
 #--
-def call_run(model_name, config_path, counter, max_counter):
+def call_run(model_name, config_path, current_run=None, n_runs=None):
 
-    # TODO: Is config_path always defined?
+    # TODO: Resolve undefinied config_path
     with open(config_path, 'r') as config_file:
         config = yaml.load(config_file)
 
@@ -199,19 +207,19 @@ def call_run(model_name, config_path, counter, max_counter):
 
     # Set environment variables
     pbs_vars = {'model': model_name}
-    if counter:
-        pbs_vars['count'] = counter
-    if max_counter:
-        pbs_vars['max'] = max_counter
+    if current_run:
+        pbs_vars['PAYU_CURRENT_RUN'] = current_run
+    if n_runs:
+        pbs_vars['PAYU_N_RUNS'] = n_runs
 
     run_script = os.path.join(os.path.dirname(__file__), 'payu-run')
     submit_job(run_script, config, pbs_vars)
 
 
 #--
-def call_collate(model_name, config_path, counter, max_counter):
+def call_collate(model_name, config_path, current_run=None, n_runs=None):
 
-    # TODO: Is config_path always defined?
+    # TODO: Resolve undefinied config_path
     with open(config_path, 'r') as config_file:
         config = yaml.load(config_file)
 
@@ -242,10 +250,10 @@ def call_collate(model_name, config_path, counter, max_counter):
 
     # Set environment variables
     pbs_vars = {'model': model_name}
-    if counter:
-        pbs_vars['count'] = counter
-    if max_counter:
-        pbs_vars['max'] = max_counter
+    if current_run:
+        pbs_vars['PAYU_FIRST_RUN'] = current_run
+    if n_runs:
+        pbs_vars['PAYU_N_RUNS'] = n_runs
 
     run_script = os.path.join(os.path.dirname(__file__), 'payu-collate')
     submit_job(run_script, config, pbs_vars)

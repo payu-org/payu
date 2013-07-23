@@ -22,7 +22,7 @@ def payu_run(model_name):
     expt.run('-mca mpi_preconnect_mpi 1')
     expt.archive()
 
-    if expt.counter < expt.max_counter:
+    if expt.n_runs > 0:
         expt.resubmit()
 
 
