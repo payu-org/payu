@@ -17,8 +17,6 @@ model_index = {'mom': payu.Mom,
                'gold': payu.gold}
 default_config_fname = 'config.yaml'
 
-verbose = True
-
 #----------------
 def payu_parse():
 
@@ -266,9 +264,6 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
     # Construct full command
     cmd = '{0} {1} {2}'.format(pbs_qsub, pbs_flags, pbs_script)
 
-    # Parse and execute
-    if verbose:
-        print cmd
     cmd = shlex.split(cmd)
     rc = sp.call(cmd)
     assert rc == 0

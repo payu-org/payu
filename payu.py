@@ -23,7 +23,7 @@ import yaml
 # Environment module support on vayu
 execfile('/opt/Modules/default/init/python')
 module_path = '/projects/v45/modules'
-default_modules = ['python/2.7.3', 'python/2.7.3-matplotlib', 'payu/dev']
+default_modules = ['python/2.7.3', 'python/2.7.3-matplotlib', 'payu']
 
 # Default payu parameters
 default_archive_url = 'dc.nci.org.au'
@@ -272,7 +272,6 @@ class Experiment(object):
         if collate:
             cmd = 'payu collate -i {0}'.format(self.counter)
 
-            print cmd
             cmd = shlex.split(cmd)
             rc = sp.Popen(cmd).wait()
 
