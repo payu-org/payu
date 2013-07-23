@@ -135,7 +135,7 @@ def payu_parse():
             pbs_config = yaml.load(config_file)
 
         # Set environment variables
-        pbs_vars = {'model': model_name}
+        pbs_vars = {'PAYU_MODEL': model_name}
         if init_run is not None:
             pbs_vars['PAYU_CURRENT_RUN'] = init_run
         if n_runs is not None:
