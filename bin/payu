@@ -17,6 +17,7 @@ model_index = {'mom': payu.Mom,
                'gold': payu.gold}
 default_config_fname = 'config.yaml'
 
+verbose = True
 
 #----------------
 def payu_parse():
@@ -129,7 +130,18 @@ def payu_parse():
         else:
             n_runs = None
 
-        args.cmd(model_name, config_path, init_run, n_runs)
+        # Parse config arguments
+        with open(config_path, 'r') as config_file:
+            pbs_config = yaml.load(config_file)
+
+        # Set environment variables
+        pbs_vars = {'model': model_name}
+        if init_run is not None:
+            pbs_vars['PAYU_CURRENT_RUN'] = init_run
+        if n_runs is not None:
+            pbs_vars['PAYU_N_RUNS'] = n_runs
+
+        args.cmd(pbs_config, pbs_vars, init_run, n_runs)
 
     elif args.cmd == call_sweep:
         call_sweep(model_name, config_path, args.hard_sweep)
@@ -137,6 +149,71 @@ def payu_parse():
     else:
         # NOTE: Unnecessary; argparse already checks subcommands
         sys.exit("payu: Unknown subcommand {0}".format(args.cmd))
+
+
+#--
+def call_run(pbs_config, pbs_vars, current_run=None, n_runs=None):
+
+    # Set the queue
+    pbs_config['queue'] = 'normal'
+
+    run_script = os.path.join(os.path.dirname(__file__), 'payu-run')
+    submit_job(run_script, pbs_config, pbs_vars)
+
+
+#--
+def call_collate(pbs_config, pbs_vars, current_run=None, n_runs=None):
+
+    # Set the queue
+    pbs_config['queue'] = 'copyq'
+
+    # Replace CPU request
+    pbs_config['ncpus'] = 1
+
+    # Modify jobname
+    pbs_config['jobname'] += '_c'
+
+    # Replace (or remove) walltime
+    collate_walltime = pbs_config.get('collate_walltime')
+    if collate_walltime:
+        pbs_config['walltime'] = collate_walltime
+    else:
+        # Remove the model walltime if set
+        try:
+            pbs_config.pop('walltime')
+        except KeyError:
+            pass
+
+    # Replace (or remove) memory request
+    collate_mem = pbs_config.get('collate_mem')
+    if collate_mem:
+        pbs_config['mem'] = collate_mem
+    else:
+        # Remove the model memory request if set
+        try:
+            pbs_config.pop('mem')
+        except KeyError:
+            pass
+
+    run_script = os.path.join(os.path.dirname(__file__), 'payu-collate')
+    submit_job(run_script, pbs_config, pbs_vars)
+
+
+#---
+def call_sweep(model_name, config_path, hard_sweep=False):
+
+    cmd = 'payu-sweep -m {0} -c {1}'.format(model_name, config_path)
+    if hard_sweep:
+        cmd = ' '.join([cmd, '--hard'])
+
+    cmd = shlex.split(cmd)
+    rc = sp.call(cmd)
+    assert rc == 0
+
+
+#---
+def call_list():
+    print('Supported models: {0}'.format(' '.join(model_index.keys())))
 
 
 #--
@@ -190,90 +267,11 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
     cmd = '{0} {1} {2}'.format(pbs_qsub, pbs_flags, pbs_script)
 
     # Parse and execute
+    if verbose:
+        print cmd
     cmd = shlex.split(cmd)
     rc = sp.call(cmd)
     assert rc == 0
-
-
-#--
-def call_run(model_name, config_path, current_run=None, n_runs=None):
-
-    # TODO: Resolve undefinied config_path
-    with open(config_path, 'r') as config_file:
-        config = yaml.load(config_file)
-
-    # Set the queue
-    config['queue'] = 'normal'
-
-    # Set environment variables
-    pbs_vars = {'model': model_name}
-    if current_run:
-        pbs_vars['PAYU_CURRENT_RUN'] = current_run
-    if n_runs:
-        pbs_vars['PAYU_N_RUNS'] = n_runs
-
-    run_script = os.path.join(os.path.dirname(__file__), 'payu-run')
-    submit_job(run_script, config, pbs_vars)
-
-
-#--
-def call_collate(model_name, config_path, current_run=None, n_runs=None):
-
-    # TODO: Resolve undefinied config_path
-    with open(config_path, 'r') as config_file:
-        config = yaml.load(config_file)
-
-    # Set the queue
-    config['queue'] = 'copyq'
-
-    # Replace (or remove) walltime
-    collate_walltime = config.get('collate_walltime')
-    if collate_walltime:
-        config['walltime'] = collate_walltime
-    else:
-        # Remove the model walltime if set
-        try:
-            config.pop('walltime')
-        except KeyError:
-            pass
-
-    # Replace (or remove) memory request
-    collate_mem = config.get('collate_mem')
-    if collate_mem:
-        config['mem'] = collate_mem
-    else:
-        # Remove the model memory request if set
-        try:
-            config.pop('mem')
-        except KeyError:
-            pass
-
-    # Set environment variables
-    pbs_vars = {'model': model_name}
-    if current_run:
-        pbs_vars['PAYU_FIRST_RUN'] = current_run
-    if n_runs:
-        pbs_vars['PAYU_N_RUNS'] = n_runs
-
-    run_script = os.path.join(os.path.dirname(__file__), 'payu-collate')
-    submit_job(run_script, config, pbs_vars)
-
-
-#---
-def call_sweep(model_name, config_path, hard_sweep=False):
-
-    cmd = 'payu-sweep -m {0} -c {1}'.format(model_name, config_path)
-    if hard_sweep:
-        cmd = ' '.join([cmd, '--hard'])
-
-    cmd = shlex.split(cmd)
-    rc = sp.call(cmd)
-    assert rc == 0
-
-
-#---
-def call_list():
-    print('Supported models: {0}'.format(' '.join(model_index.keys())))
 
 
 #-------------------------

@@ -23,7 +23,7 @@ import yaml
 # Environment module support on vayu
 execfile('/opt/Modules/default/init/python')
 module_path = '/projects/v45/modules'
-default_modules = ['python/2.7.3', 'python/2.7.3-matplotlib', 'payu']
+default_modules = ['python/2.7.3', 'python/2.7.3-matplotlib', 'payu/dev']
 
 # Default payu parameters
 default_archive_url = 'dc.nci.org.au'
@@ -49,7 +49,7 @@ class Experiment(object):
             self.counter = int(current_counter)
         else:
             self.counter = None
- 
+
         self.n_runs = int(os.environ.get('PAYU_N_RUNS', 1))
 
 
@@ -148,14 +148,15 @@ class Experiment(object):
             self.input_path = None
 
         # Initialize counter if unset
-        if not self.counter and os.path.isdir(self.archive_path):
-            # TODO: Check for empty directory
-            self.counter = 1 + max([int(d.lstrip('output'))
-                                    for d in os.listdir(self.archive_path)
-                                    if d.startswith('output')])
-        else:
-            self.counter = 0
- 
+        if self.counter is None:
+            if os.path.isdir(self.archive_path):
+                # TODO: Check for empty list
+                self.counter = 1 + max([int(d.lstrip('output'))
+                                        for d in os.listdir(self.archive_path)
+                                        if d.startswith('output')])
+            else:
+                self.counter = 0
+
         # Local archive paths
         output_dir = 'output{:03}'.format(self.counter)
         self.output_path = os.path.join(self.archive_path, output_dir)
@@ -186,7 +187,6 @@ class Experiment(object):
     #---
     def setup(self, do_stripe=False):
         # Confirm that no output path already exists
-        print self.output_path
         if os.path.exists(self.output_path):
             sys.exit('Archived path already exists; aborting.')
 
@@ -237,6 +237,9 @@ class Experiment(object):
         if rc != 0:
             sys.exit('Error {0}; aborting.'.format(rc))
 
+        # Decrement run counter on successful run
+        self.n_runs -= 1
+
         # Move logs to archive (or delete if empty)
         for f in (self.stdout_fname, self.stderr_fname):
             if os.path.getsize(f) == 0:
@@ -269,6 +272,7 @@ class Experiment(object):
         if collate:
             cmd = 'payu collate -i {0}'.format(self.counter)
 
+            print cmd
             cmd = shlex.split(cmd)
             rc = sp.Popen(cmd).wait()
 
@@ -362,9 +366,8 @@ class Experiment(object):
 
     #---
     def resubmit(self):
-        next_run = self.counter + 1 # Redundant?
-        n_runs = self.n_runs - 1
-        cmd = 'payu run -i {0} -n {1}'.format(next_run, n_runs)
+        next_run = self.counter + 1
+        cmd = 'payu run -i {0} -n {1}'.format(next_run, self.n_runs)
 
         cmd = shlex.split(cmd)
         sp.Popen(cmd).wait()
