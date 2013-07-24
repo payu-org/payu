@@ -23,7 +23,7 @@ import yaml
 # Environment module support on vayu
 execfile('/opt/Modules/default/init/python')
 module_path = '/projects/v45/modules'
-default_modules = ['python/2.7.3', 'python/2.7.3-matplotlib', 'payu']
+core_modules = ['python', 'payu']
 
 # Default payu parameters
 default_archive_url = 'dc.nci.org.au'
@@ -55,17 +55,19 @@ class Experiment(object):
 
     #---
     def load_modules(self):
-        module('purge')
+        # Unload non-essential modules
+        loaded_mods = os.environ['LOADEDMODULES'].split(':')
 
-        # Ensure python and payu remain loaded
-        module('use', module_path)
-        for mod in default_modules:
-            module('load', mod)
+        for mod in loaded_mods:
+            mod_base = mod.split('/')[0]
+            if not mod_base in core_modules:
+                module('unload', mod)
 
         # Now load model-dependent modules
         for mod in self.modules:
             module('load', mod)
 
+        # TODO: Improved ipm support
         if 'ipm' in self.modules:
             os.environ['IPM_LOGDIR'] = self.work_path
 
