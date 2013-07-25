@@ -156,10 +156,15 @@ class Experiment(object):
         # Initialize counter if unset
         if self.counter is None:
             if os.path.isdir(self.archive_path):
-                # TODO: Check for empty list
-                self.counter = 1 + max([int(d.lstrip('output'))
-                                        for d in os.listdir(self.archive_path)
-                                        if d.startswith('output')])
+                restart_dirs = [d for d in os.listdir(self.archive_path)
+                                if d.startswith('restart')]
+            else:
+                restart_dirs = None
+
+            if restart_dirs:
+                self.counter = 1 + max([int(d.lstrip('restart'))
+                                        for d in restart_dirs
+                                        if d.startswith('restart')])
             else:
                 self.counter = 0
 
