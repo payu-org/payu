@@ -39,7 +39,7 @@ class Experiment(object):
         self.config_files = None
 
         # Set permission mask
-        perms = 0o0027  # u=rwx,g=rX,o=
+        perms = 0o0027
         os.umask(perms)
 
         self.set_counters()
