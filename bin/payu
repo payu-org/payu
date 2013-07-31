@@ -163,6 +163,9 @@ def call_run(pbs_config, pbs_vars, current_run=None, n_runs=None):
 
     if n_cpu > cpu_per_node and n_cpu % cpu_per_node:
         n_cpu = ((n_cpu + cpu_per_node - 1) / cpu_per_node ) * cpu_per_node
+        print('payu: warning: CPU request does not match node distribution.')
+        print('payu: warning: CPU request increased from {0} to {1}'.format(
+                pbs_config['ncpus'], n_cpu))
         pbs_config['ncpus'] = n_cpu
 
     run_script = os.path.join(os.path.dirname(__file__), 'payu-run')
