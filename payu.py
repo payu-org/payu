@@ -78,6 +78,8 @@ class Experiment(object):
 
     #---
     def path_names(self, **kwargs):
+        # TODO: Maybe replace the `pop` calls with `get`
+
         assert self.model_name
 
         config_fname = kwargs.pop('config', default_config_fname)
@@ -92,6 +94,10 @@ class Experiment(object):
 
         # Override any keyword arguments
         config.update(kwargs)
+
+        # CPU count
+        # NOTE: This doesn't really go here, but not sure where to put it
+        self.n_cpus = config.get('ncpus')
 
         # PBS job name
         self.jobname = config.pop('jobname', 'payu-run')
@@ -228,12 +234,15 @@ class Experiment(object):
         else:
             mpirun_cmd = 'mpirun'
 
+        if self.n_cpus:
+            mpirun_cmd += ' -np {0}'.format(self.n_cpus)
+
         cmd = '{mpi} {flags} {bin}'.format(
                     mpi = mpirun_cmd,
                     flags = ' '.join(mpi_flags),
                     bin = self.exec_path)
-        cmd = shlex.split(cmd)
 
+        cmd = shlex.split(cmd)
         rc = sp.call(cmd, stdout=f_out, stderr=f_err)
         f_out.close()
         f_err.close()

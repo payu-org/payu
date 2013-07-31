@@ -155,6 +155,16 @@ def call_run(pbs_config, pbs_vars, current_run=None, n_runs=None):
     # Set the queue
     pbs_config['queue'] = 'normal'
 
+    # Increase the cpu request to match a complete node
+    n_cpu = pbs_config['ncpus']
+
+    # TODO: Read the node size somehow
+    cpu_per_node = 16 if gethostname().startswith('raijin') else 8
+
+    if n_cpu > cpu_per_node and n_cpu % cpu_per_node:
+        n_cpu = ((n_cpu + cpu_per_node - 1) / cpu_per_node ) * cpu_per_node
+        pbs_config['ncpus'] = n_cpu
+
     run_script = os.path.join(os.path.dirname(__file__), 'payu-run')
     submit_job(run_script, pbs_config, pbs_vars)
 
