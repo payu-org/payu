@@ -55,7 +55,9 @@ class Experiment(object):
             else:
                 self.config = {}
 
-        self.set_stacksize()
+        stacksize = self.config.get('stacksize')
+        if stacksize:
+            self.set_stacksize(stacksize)
 
 
     #---
@@ -71,17 +73,15 @@ class Experiment(object):
 
 
     #---
-    def set_stacksize(self):
+    def set_stacksize(self, stacksize):
         import resource as res
 
-        self.stacksize = self.config.get('stacksize')
-
-        if self.stacksize == 'unlimited':
-            self.stacksize = res.RLIM_INFINITY
+        if stacksize == 'unlimited':
+            stacksize = res.RLIM_INFINITY
         else:
-            assert type(self.stacksize) is int
+            assert type(stacksize) is int
 
-        res.setrlimit(res.RLIMIT_STACK, (self.stacksize, res.RLIM_INFINITY))
+        res.setrlimit(res.RLIMIT_STACK, (stacksize, res.RLIM_INFINITY))
 
 
     #---
