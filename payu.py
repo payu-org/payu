@@ -44,6 +44,19 @@ class Experiment(object):
 
         self.set_counters()
 
+        # TODO: Create a "config" dict and pass it to stuff like ``path_names``
+        config_fname = kwargs.pop('config', default_config_fname)
+        try:
+            with open(config_fname, 'r') as config_file:
+                self.config = yaml.load(config_file)
+        except IOError as ec:
+            if ec.errno != errno.ENOENT:
+                raise
+            else:
+                self.config = {}
+
+        self.set_stacksize()
+
 
     #---
     def set_counters(self):
@@ -55,6 +68,20 @@ class Experiment(object):
             self.counter = None
 
         self.n_runs = int(os.environ.get('PAYU_N_RUNS', 1))
+
+
+    #---
+    def set_stacksize(self):
+        import resource as res
+
+        self.stacksize = self.config.get('stacksize')
+
+        if self.stacksize == 'unlimited':
+            self.stacksize = res.RLIM_INFINITY
+        else:
+            assert type(self.stacksize) is int
+
+        res.setrlimit(res.RLIMIT_STACK, (self.stacksize, res.RLIM_INFINITY))
 
 
     #---
@@ -82,6 +109,7 @@ class Experiment(object):
 
         assert self.model_name
 
+        # TODO: Read and parse config in the __init__()
         config_fname = kwargs.pop('config', default_config_fname)
         try:
             with open(config_fname, 'r') as config_file:
