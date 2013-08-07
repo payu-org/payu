@@ -75,6 +75,12 @@ def payu_parse():
                          action='store',
                          dest='n_runs')
 
+    #---
+    # Display help if no arguments are provided
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit()
+
     args = parser.parse_args()
 
     # Skip validation when listing supported models
@@ -284,9 +290,5 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
 
 #-------------------------
 if __name__ == '__main__':
-
-    # Default to display help if no subcommands or arguments are provided
-    if len(sys.argv) == 1:
-        sys.argv.append('-h')
 
     payu_parse()
