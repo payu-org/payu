@@ -10,14 +10,15 @@ Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
 
+import errno
+import grp
+import getpass
 import os
+from pio import mkdir_p, make_symlink
 import sys
 import shutil as sh
 import subprocess as sp
 import shlex
-import grp
-import getpass
-import errno
 import yaml
 
 # Environment module support on vayu
@@ -463,30 +464,3 @@ class Experiment(object):
         for f in logs:
             print 'Moving log {fname}'.format(fname=f)
             os.rename(f, os.path.join(pbs_log_path, f))
-
-
-#==============================================================================
-def mkdir_p(path):
-    try:
-        os.makedirs(path)
-    except OSError as ec:
-        if ec.errno != errno.EEXIST:
-            raise
-
-
-#---
-def make_symlink(path, link):
-    try:
-        os.symlink(path, link)
-    except OSError as ec:
-        if ec.errno != errno.EEXIST:
-            raise
-        elif not os.path.islink(link):
-            # Warn the user, but do not interrput the job
-            print("Warning: Cannot create symbolic link to {p}; a file named "
-                  "{f} already exists.".format(p=path, f=link))
-        else:
-            # Overwrite any existing symbolic link
-            if os.path.realpath(link) != path:
-                os.remove(link)
-                os.symlink(path, link)

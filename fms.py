@@ -10,8 +10,9 @@ Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
 
-from payu import Experiment, mkdir_p
 import os
+from payu import Experiment
+from pio import mkdir_p
 import sys
 import shlex
 import shutil as sh
