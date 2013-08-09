@@ -10,16 +10,21 @@ Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
 
+# Standard Library
 import errno
 import grp
 import getpass
 import os
-from pio import mkdir_p, make_symlink
 import sys
 import shutil as sh
 import subprocess as sp
 import shlex
+
+# Extensions
 import yaml
+
+# Local
+from fs import mkdir_p, make_symlink
 
 # Environment module support on vayu
 execfile('/opt/Modules/default/init/python')

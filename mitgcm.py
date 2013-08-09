@@ -10,12 +10,15 @@ Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
 
+# Standard Library
 import os
-from payu import Experiment, mkdir_p
-from pio import mkdir_p
 import sys
 import shutil as sh
 import subprocess as sp
+
+# Local
+from fs import mkdir_p
+from payu import Experiment
 
 class mitgcm(Experiment):
 

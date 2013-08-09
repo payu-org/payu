@@ -1,23 +1,23 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# Standard library
 import argparse
 import os
-import payu
 import sys
 import shlex
 from socket import gethostname
 import subprocess as sp
+
+# External dependencies
 import yaml
 
-# TODO: Move to payu (somehow)
-model_index = {'mom': payu.Mom,
-               'mom4': payu.mom4,
-               'mitgcm': payu.mitgcm,
-               'gold': payu.gold}
+# Local
+import payu.model
 default_config_fname = 'config.yaml'
 
-#----------------
+
+#---
 def payu_parse():
 
     #------------------
@@ -112,7 +112,7 @@ def payu_parse():
     # If there is still no defined model_name, try the parent directory
     if not model_name:
         model_name = os.path.basename(os.path.abspath(os.pardir))
-        if not model_name in model_index.keys():
+        if not model_name in payu.model.index.keys():
             sys.exit('payu: error: Unknown model.')
         else:
             print('payu: warning: Assuming model is {model} based on '
@@ -150,12 +150,8 @@ def payu_parse():
     elif args.cmd == call_sweep:
         call_sweep(model_name, config_path, args.hard_sweep)
 
-    else:
-        # NOTE: Unnecessary; argparse already checks subcommands
-        sys.exit("payu: Unknown subcommand {0}".format(args.cmd))
 
-
-#--
+#---
 def call_run(pbs_config, pbs_vars, current_run=None, n_runs=None):
 
     # Set the queue
@@ -178,7 +174,7 @@ def call_run(pbs_config, pbs_vars, current_run=None, n_runs=None):
     submit_job(run_script, pbs_config, pbs_vars)
 
 
-#--
+#---
 def call_collate(pbs_config, pbs_vars, current_run=None, n_runs=None):
 
     # Set the queue
@@ -230,10 +226,10 @@ def call_sweep(model_name, config_path, hard_sweep=False):
 
 #---
 def call_list():
-    print('Supported models: {0}'.format(' '.join(model_index.keys())))
+    print('Supported models: {0}'.format(' '.join(payu.model.index.keys())))
 
 
-#--
+#---
 def submit_job(pbs_script, pbs_config, pbs_vars=None):
 
     pbs_qsub = 'qsub'

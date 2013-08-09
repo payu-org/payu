@@ -1,18 +1,16 @@
 #!/usr/bin/env python
+# coding: utf-8
 
+# Standard library
 import argparse
-import payu as payu
 
-# TODO: How to move this to payu.py?
-model_index = {'mom': payu.Mom,
-               'mom4': payu.mom4,
-               'mitgcm': payu.mitgcm,
-               'gold': payu.gold}
+# Local
+import payu.model
 
-
+#---
 def payu_sweep(model_name, config_path, hard_sweep):
 
-    model = model_index[model_name]
+    model = payu.model.index[model_name]
     expt = model()
     expt.sweep(hard_sweep)
 

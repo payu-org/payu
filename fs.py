@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 """
-Basic file system subroutines for Payu
+Basic file system tools for Payu
 -------------------------------------------------------------------------------
 Contact: Marshall Ward <marshall.ward@anu.edu.au>
 -------------------------------------------------------------------------------
