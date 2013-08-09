@@ -208,8 +208,8 @@ def call_collate(pbs_config, pbs_vars, current_run=None, n_runs=None):
         except KeyError:
             pass
 
-    run_script = os.path.join(os.path.dirname(__file__), 'payu-collate')
-    submit_job(run_script, pbs_config, pbs_vars)
+    collate_script = os.path.join(os.path.dirname(__file__), 'payu-collate')
+    submit_job(collate_script, pbs_config, pbs_vars)
 
 
 #---
