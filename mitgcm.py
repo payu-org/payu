@@ -58,7 +58,7 @@ class mitgcm(Experiment):
         # Link restart files to work directory
         if self.prior_res_path and not repeat_run:
             restart_files = [f for f in os.listdir(self.prior_res_path)
-                             if f.startswith('pickup')]
+                             if f.startswith('pickup.')]
 
             for f in restart_files:
                 f_res = os.path.join(self.prior_res_path, f)
@@ -69,8 +69,8 @@ class mitgcm(Experiment):
                     sh.copy(f_res, f_work)
 
             # Determine total number of timesteps since initialisation
-            pickup_fname = restart_files[0]
-            n_iter0 = int(pickup_fname.split('.')[1])
+            # NOTE: Use the most recent, in case of multiple restarts
+            n_iter0 = max([int(f.split('.')[1]) for f in restart_files])
         else:
             n_iter0 = 0
 
@@ -87,7 +87,6 @@ class mitgcm(Experiment):
 
         # Update configuration file 'data'
         # TODO: Combine the deltat and ntimestep IO processes
-        # TODO: Update nIter0 based on restarts, even if days is not set
 
         data_path = os.path.join(self.work_path, 'data')
 
@@ -126,11 +125,12 @@ class mitgcm(Experiment):
         data_file = open(data_path, 'r')
         temp_file = open(temp_path, 'w')
         for line in data_file:
-            if line.lstrip().lower().startswith('niter0='):
+            line_lowercase = line.lstrip().lower()
+            if line_lowercase.startswith('niter0='):
                 temp_file.write(' nIter0=%i,\n' % n_iter0)
-            elif n_timesteps and line.lstrip().lower().startswith('ntimesteps='):
+            elif n_timesteps and line_lowercase.startswith('ntimesteps='):
                 temp_file.write(' nTimeSteps=%i,\n' % n_timesteps)
-            elif p_chkpt_freq and line.lstrip().lower().startswith('pchkptfreq='):
+            elif p_chkpt_freq and line_lowercase.startswith('pchkptfreq='):
                 temp_file.write(' pChkptFreq=%f,\n' % p_chkpt_freq)
             else:
                 temp_file.write(line)
@@ -242,7 +242,8 @@ class mitgcm(Experiment):
                                   and f.split('.')[-2].lstrip('t').isdigit()]
 
         for fname in tile_fnames:
-            mnc.collate(tile_fnames[fname], os.path.join(self.output_path, fname),
+            mnc.collate(tile_fnames[fname],
+                        os.path.join(self.output_path, fname),
                         partition)
 
         if clear_tiles:
