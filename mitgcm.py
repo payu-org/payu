@@ -166,6 +166,26 @@ class mitgcm(Experiment):
 
             data_mnc.close()
 
+        # Patch data.flt (if present)
+        data_flt_path = os.path.join(self.work_path, 'data.flt')
+        if os.path.isfile(data_flt_path):
+
+            tmp_path = data_flt_path + '~'
+            tmp = open(tmp_path, 'w')
+
+            for line in open(data_flt_path):
+                if line.lstrip().lower().startswith('flt_iter0'):
+                    tmp.write(' FLT_Iter0 = {0},\n'.format(n_iter0))
+                else:
+                    tmp.write(line)
+            tmp.close()
+            sh.move(tmp_path, data_flt_path)
+
+        # TODO: Patch data.ptracers
+        data_ptracers_path = os.path.join(self.work_path, 'data.ptracers')
+        if os.path.isfile(data_ptracers_path):
+            sys.exit('ptracers are not supported yet!!')
+
 
     #---
     def run(self, *flags):
