@@ -20,13 +20,13 @@ import subprocess as sp
 from fs import mkdir_p
 from payu import Experiment
 
-class mitgcm(Experiment):
+class Mitgcm(Experiment):
 
     #---
     def __init__(self, **kwargs):
 
         # payu initalisation
-        super(mitgcm, self).__init__(**kwargs)
+        super(Mitgcm, self).__init__(**kwargs)
 
         # Model-specific configuration
         self.model_name = 'mitgcm'
@@ -51,7 +51,7 @@ class mitgcm(Experiment):
     #---
     def setup(self, days=None, dt=None, use_symlinks=True, repeat_run=False):
         # payu setup
-        super(mitgcm, self).setup()
+        super(Mitgcm, self).setup()
 
         self.load_modules()
 
@@ -202,7 +202,7 @@ class mitgcm(Experiment):
     def run(self, *flags):
         flags = flags + ('-mca mpi_affinity_alone 1',
                          '-wd %s' % self.work_path)
-        super(mitgcm, self).run(*flags)
+        super(Mitgcm, self).run(*flags)
 
         # Remove symbolic links to input or pickup files:
         for f in os.listdir(self.work_path):
@@ -247,7 +247,7 @@ class mitgcm(Experiment):
             f_src = os.path.join(self.work_path, f)
             sh.move(f_src, self.res_path)
 
-        super(mitgcm, self).archive(**kwargs)
+        super(Mitgcm, self).archive(**kwargs)
 
 
     #---

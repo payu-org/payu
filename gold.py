@@ -14,13 +14,13 @@ from fms import fms
 import os
 import shutil as sh
 
-class gold(fms):
+class Gold(fms):
 
     #---
     def __init__(self, **kwargs):
 
         # FMS initalisation
-        super(gold, self).__init__()
+        super(Gold, self).__init__()
 
         self.model_name = 'gold'
         self.default_exec = 'GOLD'
@@ -39,7 +39,7 @@ class gold(fms):
     #---
     def setup(self):
         # FMS initialisation
-        super(gold, self).setup()
+        super(Gold, self).setup()
 
         self.load_modules()
 
