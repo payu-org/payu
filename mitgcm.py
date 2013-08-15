@@ -70,7 +70,11 @@ class Mitgcm(Experiment):
 
             # Determine total number of timesteps since initialisation
             # NOTE: Use the most recent, in case of multiple restarts
-            n_iter0 = max([int(f.split('.')[1]) for f in restart_files])
+            try:
+                n_iter0 = max([int(f.split('.')[1]) for f in restart_files])
+            except ValueError:
+                # TODO: Set up an error code
+                sys.exit("payu: error: no restart files found.")
         else:
             n_iter0 = 0
 
