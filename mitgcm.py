@@ -12,6 +12,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 # Standard Library
 import os
+import re
 import sys
 import shutil as sh
 import subprocess as sp
@@ -49,7 +50,7 @@ class Mitgcm(Experiment):
 
 
     #---
-    def setup(self, days=None, dt=None, use_symlinks=True, repeat_run=False):
+    def setup(self, use_symlinks=True, repeat_run=False):
         # payu setup
         super(Mitgcm, self).setup()
 
@@ -90,52 +91,45 @@ class Mitgcm(Experiment):
                     sh.copy(f_input, f_work)
 
         # Update configuration file 'data'
-        # TODO: Combine the deltat and ntimestep IO processes
 
         data_path = os.path.join(self.work_path, 'data')
-
-        # Update timestep size
-
         data_file = open(data_path, 'r')
-        if dt:
-            temp_path = data_path + '~'
-            temp_file = open(temp_path, 'w')
-            for line in data_file:
-                if line.lstrip().lower().startswith('deltat='):
-                    temp_file.write(' deltaT=%i,\n' % dt)
-                else:
-                    temp_file.write(line)
-            temp_file.close()
-            sh.move(temp_path, data_path)
-        else:
-            for line in data_file:
-                if line.lstrip().lower().startswith('deltat='):
-                    dt = int(line.split('=')[1].rsplit(',')[0].strip())
-        data_file.close()
-        assert dt
 
-        # Update time interval
+        # First scan the file for the necessary parameters
+        dt = None
+        n_timesteps = None
 
-        if days:
-            secs_per_day = 86400
-            n_timesteps = days * secs_per_day // dt
-            p_chkpt_freq = days * secs_per_day
-        else:
-            n_timesteps = None
-            p_chkpt_freq = None
-
-        temp_path = data_path + '~'
-
-        data_file = open(data_path, 'r')
-        temp_file = open(temp_path, 'w')
+        p_dt = re.compile('^ *deltat *=', re.IGNORECASE)
+        p_nt = re.compile('^ *ntimesteps *=', re.IGNORECASE)
         for line in data_file:
-            line_lowercase = line.lstrip().lower()
-            if line_lowercase.startswith('niter0='):
-                temp_file.write(' nIter0=%i,\n' % n_iter0)
-            elif n_timesteps and line_lowercase.startswith('ntimesteps='):
-                temp_file.write(' nTimeSteps=%i,\n' % n_timesteps)
-            elif p_chkpt_freq and line_lowercase.startswith('pchkptfreq='):
-                temp_file.write(' pChkptFreq=%f,\n' % p_chkpt_freq)
+            if p_dt.match(line):
+                dt = float(re.sub('[^\d]', '', line.split('=')[1]))
+            elif p_nt.match(line):
+                n_timesteps = int(re.sub('[^\d]', '', line.split('=')[1]))
+
+        # Update checkpoint intervals
+        # NOTE: May re-enable chkpt_freq in the future
+        pchkpt_freq = dt * n_timesteps
+        chkpt_freq = 0.
+
+        # Next, patch data with updated values
+        temp_path = data_path + '~'
+        temp_file = open(temp_path, 'w')
+
+        # "Rewind" data file
+        data_file.seek(0)
+
+        p_niter0 = re.compile('^ *niter0 *=', re.IGNORECASE)
+        p_pchkpt_freq = re.compile('^ *pchkptfreq *=', re.IGNORECASE)
+        p_chkpt_freq = re.compile('^ *chkptfreq *=', re.IGNORECASE)
+
+        for line in data_file:
+            if p_niter0.match(line):
+                temp_file.write(' nIter0={0},\n'.format(n_iter0))
+            elif p_pchkpt_freq.match(line):
+                temp_file.write(' pChkptFreq={0},\n'.format(pchkpt_freq))
+            elif p_chkpt_freq.match(line):
+                temp_file.write(' chkptFreq={0},\n'.format(chkpt_freq))
             else:
                 temp_file.write(line)
         temp_file.close()
@@ -143,6 +137,7 @@ class Mitgcm(Experiment):
         sh.move(temp_path, data_path)
 
         # Patch or create data.mnc
+        # TODO: Parser is shit, need to rewrite using `re`
         mnc_header = os.path.join(self.work_path, 'mnc_')
 
         data_mnc_path = os.path.join(self.work_path, 'data.mnc')
@@ -171,6 +166,7 @@ class Mitgcm(Experiment):
             data_mnc.close()
 
         # TODO: Merge data.flt and data.ptracers nIter0 patch
+        # TODO: Improve parsing with `re`
 
         # Patch data.flt (if present)
         data_flt_path = os.path.join(self.work_path, 'data.flt')
