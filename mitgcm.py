@@ -173,7 +173,7 @@ class Mitgcm(Experiment):
         # Patch data.ptracers (if present)
         data_ptracers_path = os.path.join(self.work_path, 'data.ptracers')
         ptrc_iter0_pattern = '^ *ptracers_iter0 *='
-        ptrc_iter0_replace = ' PTRACERS_Iter0 = {0}\n'.format(n_iter0)
+        ptrc_iter0_replace = ' PTRACERS_Iter0 = {0},\n'.format(n_iter0)
 
         patch_nml(data_ptracers_path, ptrc_iter0_pattern, ptrc_iter0_replace)
 
