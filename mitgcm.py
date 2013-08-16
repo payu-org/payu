@@ -180,8 +180,7 @@ class Mitgcm(Experiment):
 
     #---
     def run(self, *flags):
-        flags = flags + ('-mca mpi_affinity_alone 1',
-                         '-wd %s' % self.work_path)
+        flags = flags + ('-mca mpi_affinity_alone 1')
         super(Mitgcm, self).run(*flags)
 
         # Remove symbolic links to input or pickup files:
