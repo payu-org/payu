@@ -11,6 +11,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 """
 
 # Standard Library
+import errno
 import os
 import re
 import sys
@@ -18,7 +19,7 @@ import shutil as sh
 import subprocess as sp
 
 # Local
-from fs import mkdir_p
+from fs import mkdir_p, patch_nml
 from payu import Experiment
 
 class Mitgcm(Experiment):
@@ -42,11 +43,6 @@ class Mitgcm(Experiment):
         self.config_files = [f for f in os.listdir(self.config_path)
                              if f.startswith('data')]
         self.config_files.append('eedata')
-
-
-    #---
-    def build(self):
-        raise NotImplementedError
 
 
     #---
@@ -108,6 +104,7 @@ class Mitgcm(Experiment):
                 n_timesteps = int(re.sub('[^\d]', '', line.split('=')[1]))
 
         # Update checkpoint intervals
+        # NOTE: Consider permitting pchkpt_freq < dt * n_timesteps
         # NOTE: May re-enable chkpt_freq in the future
         pchkpt_freq = dt * n_timesteps
         chkpt_freq = 0.
@@ -132,12 +129,12 @@ class Mitgcm(Experiment):
                 temp_file.write(' chkptFreq={0},\n'.format(chkpt_freq))
             else:
                 temp_file.write(line)
+
         temp_file.close()
         data_file.close()
         sh.move(temp_path, data_path)
 
         # Patch or create data.mnc
-        # TODO: Parser is shit, need to rewrite using `re`
         mnc_header = os.path.join(self.work_path, 'mnc_')
 
         data_mnc_path = os.path.join(self.work_path, 'data.mnc')
@@ -145,57 +142,40 @@ class Mitgcm(Experiment):
             tmp_path = data_mnc_path + '~'
             tmp = open(tmp_path, 'w')
 
-            for line in open(data_mnc_path):
-                if line.lstrip().startswith('mnc_outdir_str'):
-                    tmp.write(' mnc_outdir_str=\'%s\',\n' % mnc_header)
+            p_mnc_outdir = re.compile('^ *mnc_outdir_str *=', re.IGNORECASE)
+
+            data_mnc_file = open(data_mnc_path, 'r')
+            for line in data_mnc_file:
+                if p_mnc_outdir.match(line):
+                    tmp.write(" mnc_outdir_str='{0}',\n".format(mnc_header))
                 else:
                     tmp.write(line)
+            data_mnc_file.close()
             tmp.close()
             sh.move(tmp_path, data_mnc_path)
         else:
-            data_mnc = open(data_mnc_path, 'w')
-
-            data_mnc.write(' &MNC_01\n')
-            data_mnc.write(' mnc_use_outdir=.TRUE.,\n')
-            data_mnc.write(' mnc_use_name_ni0=.TRUE.,\n')
-            data_mnc.write(' mnc_outdir_str=\'%s\',\n' % mnc_header)
-            data_mnc.write(' mnc_outdir_date=.TRUE.,\n')
-            data_mnc.write(' monitor_mnc=.TRUE.,\n')
-            data_mnc.write(' &\n')
-
-            data_mnc.close()
-
-        # TODO: Merge data.flt and data.ptracers nIter0 patch
-        # TODO: Improve parsing with `re`
+            with open(data_mnc_path, 'w') as data_mnc:
+                data_mnc.write(' &MNC_01\n')
+                data_mnc.write(' mnc_use_outdir=.TRUE.,\n')
+                data_mnc.write(' mnc_use_name_ni0=.TRUE.,\n')
+                data_mnc.write(" mnc_outdir_str='{0}',\n".format(mnc_header))
+                data_mnc.write(' mnc_outdir_date=.TRUE.,\n')
+                data_mnc.write(' monitor_mnc=.TRUE.,\n')
+                data_mnc.write(' &\n')
 
         # Patch data.flt (if present)
         data_flt_path = os.path.join(self.work_path, 'data.flt')
-        if os.path.isfile(data_flt_path):
+        flt_iter0_pattern = '^ *flt_iter0 *='
+        flt_iter0_replace = ' FLT_Iter0 = {0},\n'.format(n_iter0)
 
-            tmp_path = data_flt_path + '~'
-            tmp = open(tmp_path, 'w')
-
-            for line in open(data_flt_path):
-                if line.lstrip().lower().startswith('flt_iter0'):
-                    tmp.write(' FLT_Iter0 = {0},\n'.format(n_iter0))
-                else:
-                    tmp.write(line)
-            tmp.close()
-            sh.move(tmp_path, data_flt_path)
+        patch_nml(data_flt_path, flt_iter0_pattern, flt_iter0_replace)
 
         # Patch data.ptracers (if present)
         data_ptracers_path = os.path.join(self.work_path, 'data.ptracers')
-        if os.path.isfile(data_ptracers_path):
-            tmp_path = data_ptracers_path + '~'
-            tmp = open(tmp_path, 'w')
+        ptrc_iter0_pattern = '^ *ptracers_iter0 *='
+        ptrc_iter0_replace = ' PTRACERS_Iter0 = {0}\n'.format(n_iter0)
 
-            for line in open(data_ptracers_path):
-                if line.lstrip().lower().startswith('ptracers_iter0'):
-                    tmp.write(' PTRACERS_Iter0 = {0}\n'.format(n_iter0))
-                else:
-                    tmp.write(line)
-            tmp.close()
-            sh.move(tmp_path, data_ptracers_path)
+        patch_nml(data_ptracers_path, ptrc_iter0_pattern, ptrc_iter0_replace)
 
 
     #---

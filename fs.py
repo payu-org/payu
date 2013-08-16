@@ -12,6 +12,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 import errno
 import os
+import re
+import shutil
 
 #---
 def mkdir_p(path):
@@ -20,6 +22,7 @@ def mkdir_p(path):
     except OSError as ec:
         if ec.errno != errno.EEXIST:
             raise
+
 
 #---
 def make_symlink(path, link):
@@ -37,3 +40,28 @@ def make_symlink(path, link):
             if os.path.realpath(link) != path:
                 os.remove(link)
                 os.symlink(path, link)
+
+
+#---
+def patch_nml(nml_path, pattern, replace):
+    """Replace lines matching ``pattern`` with ``replace`` of the Fortran
+    namelist file located at ``nml_path``. If the file does not exist, then do
+    nothing."""
+
+    temp_path = nml_path + '~'
+
+    try:
+        with open(nml_path) as nml, open(temp_path, 'w') as temp:
+
+            re_pattern = re.compile(pattern, re.IGNORECASE)
+            for line in nml:
+                if re_pattern.match(line):
+                    temp.write(replace)
+                else:
+                    temp.write(line)
+
+        shutil.move(temp_path, nml_path)
+
+    except IOError as ec:
+        if ec.errno != errno.ENOENT:
+            raise
