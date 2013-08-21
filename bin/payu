@@ -155,20 +155,35 @@ def payu_parse():
 def call_run(pbs_config, pbs_vars, current_run=None, n_runs=None):
 
     # Set the queue
-    pbs_config['queue'] = 'normal'
+    if not 'queue' in pbs_config:
+        pbs_config['queue'] = 'normal'
 
     # Increase the cpu request to match a complete node
-    n_cpu = pbs_config['ncpus']
+    n_cpus = pbs_config.get('ncpus')
+    n_nodes = pbs_config.get('nodes')
 
-    # TODO: Read the node size somehow
+    # TODO: Get this from `qstat -Qf normal-node`?
     cpu_per_node = 16 if gethostname().startswith('raijin') else 8
 
-    if n_cpu > cpu_per_node and n_cpu % cpu_per_node:
-        n_cpu = ((n_cpu + cpu_per_node - 1) / cpu_per_node ) * cpu_per_node
+    # Increase the CPU request to match nodes
+    if n_cpus and n_nodes:
+        # Assume efficient node distribution
+        min_nodes = 1 + (n_cpus - 1) // cpu_per_node
+        if n_nodes > min_nodes:
+            max_cpus = cpu_per_node * n_nodes
+            inert_cpus = max_cpus - n_cpus
+            print('payu: warning: Node request includes {0} unused '
+                  'CPUs.'.format(inert_cpus))
+            n_cpus = cpu_per_node * n_nodes
+
+    if n_cpus > cpu_per_node and n_cpus % cpu_per_node:
         print('payu: warning: CPU request does not match node distribution.')
+        n_cpus = ((n_cpus + cpu_per_node - 1) / cpu_per_node ) * cpu_per_node
+
+    if n_cpus != pbs_config['ncpus']:
         print('payu: warning: CPU request increased from {0} to {1}'.format(
-                pbs_config['ncpus'], n_cpu))
-        pbs_config['ncpus'] = n_cpu
+                pbs_config['ncpus'], n_cpus))
+        pbs_config['ncpus'] = n_cpus
 
     run_script = os.path.join(os.path.dirname(__file__), 'payu-run')
     submit_job(run_script, pbs_config, pbs_vars)
@@ -176,11 +191,12 @@ def call_run(pbs_config, pbs_vars, current_run=None, n_runs=None):
 
 #---
 def call_collate(pbs_config, pbs_vars, current_run=None, n_runs=None):
+    # TODO: Add run counter support
 
-    # Set the queue
+    # Collations should always be on the copy queue
     pbs_config['queue'] = 'copyq'
 
-    # Replace CPU request
+    # Collation jobs are (currently) serial
     pbs_config['ncpus'] = 1
 
     # Modify jobname

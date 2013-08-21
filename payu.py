@@ -44,14 +44,24 @@ class Experiment(object):
         self.modules = None
         self.config_files = None
 
-        # Set permission mask
+        # Disable group write access and all public access
         perms = 0o0027
         os.umask(perms)
 
-        self.set_counters()
+        self.read_config()
+        self.read_counters()
 
-        # TODO: Create a "config" dict and pass it to stuff like ``path_names``
-        config_fname = kwargs.pop('config', default_config_fname)
+        stacksize = self.config.get('stacksize')
+        if stacksize:
+            self.set_stacksize(stacksize)
+
+
+    #--
+    def read_config(self):
+
+        # TODO: Parse the config path somehow
+        config_fname = default_config_fname
+
         try:
             with open(config_fname, 'r') as config_file:
                 self.config = yaml.load(config_file)
@@ -61,13 +71,9 @@ class Experiment(object):
             else:
                 self.config = {}
 
-        stacksize = self.config.get('stacksize')
-        if stacksize:
-            self.set_stacksize(stacksize)
-
 
     #---
-    def set_counters(self):
+    def read_counters(self):
         # NOTE: Uninitialised counters are resolved in ``path_names``
         current_counter = os.environ.get('PAYU_CURRENT_RUN')
         if current_counter:
@@ -110,6 +116,35 @@ class Experiment(object):
 
 
     #---
+    def set_pbs_config(self):
+
+        default_n_cpus = os.environ.get('PBS_NCPUS', 1)
+        self.n_cpus = config.get('ncpus', default_n_cpus)
+
+        default_job_name = os.path.basename(os.getcwd())
+        self.job_name = config.get('jobname', default_job_name)
+
+
+    #---
+    def set_paths(self):
+
+        default_control_path = os.getcwd()
+        self.control_path = config.get('control', default_control_path)
+
+        # NOTE: Rename this, it's too NCI-specific
+        default_short_path = os.path.join('/short', os.environ.get('PROJECT'))
+        self.short_path = self.config.get('shortpath', default_short_path)
+
+        default_user = pwd.getpwuid(os.getuid()).pw_name
+        self.user_name = config.get('user', default_user)
+
+        assert self.model_name
+        default_lab_path = os.path.join(self.short_path, self.user_name,
+                                            self.model_name, self.expt_name)
+        self.lab_path = config.get('laboratory', default_lab_path)
+
+
+    #---
     def path_names(self, **kwargs):
         # TODO: Maybe replace the `pop` calls with `get`
 
@@ -132,6 +167,7 @@ class Experiment(object):
         # CPU count
         # NOTE: This doesn't really go here, but not sure where to put it
         self.n_cpus = config.get('ncpus')
+        self.n_nodes = config.get('nodes')
 
         # PBS job name
         self.jobname = config.pop('jobname', 'payu-run')
@@ -270,6 +306,11 @@ class Experiment(object):
 
         if self.n_cpus:
             mpirun_cmd += ' -np {0}'.format(self.n_cpus)
+
+        if self.n_nodes:
+            # TODO: Check this arithmetic
+            n_per_node = self.n_cpus // self.n_nodes
+            mpirun_cmd += ' -npernode {0}'.format(n_per_node)
 
         cmd = '{mpi} {flags} {bin}'.format(
                     mpi = mpirun_cmd,
