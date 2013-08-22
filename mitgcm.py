@@ -22,6 +22,8 @@ import subprocess as sp
 from fs import mkdir_p, patch_nml
 from payu import Experiment
 
+pickup_prefixes = ('pickup.', 'pickup_flt.')
+
 class Mitgcm(Experiment):
 
     #---
@@ -55,7 +57,7 @@ class Mitgcm(Experiment):
         # Link restart files to work directory
         if self.prior_res_path and not repeat_run:
             restart_files = [f for f in os.listdir(self.prior_res_path)
-                             if f.startswith('pickup.')]
+                             if f.startswith(pickup_prefixes)]
 
             for f in restart_files:
                 f_res = os.path.join(self.prior_res_path, f)
