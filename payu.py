@@ -167,7 +167,7 @@ class Experiment(object):
         # CPU count
         # NOTE: This doesn't really go here, but not sure where to put it
         self.n_cpus = config.get('ncpus')
-        self.n_nodes = config.get('nodes')
+        self.n_cpus_per_node = config.get('npernode')
 
         # PBS job name
         self.jobname = config.pop('jobname', 'payu-run')
@@ -297,20 +297,19 @@ class Experiment(object):
         f_out = open(self.stdout_fname, 'w')
         f_err = open(self.stderr_fname, 'w')
 
-        # Use explicit path to avoid wrappers (if it can be found)
+        # Use explicit path to avoid wrappers (if found)
         mpi_basedir = os.environ.get('OMPI_ROOT')
         if mpi_basedir:
             mpirun_cmd = os.path.join(mpi_basedir, 'bin', 'mpirun')
         else:
             mpirun_cmd = 'mpirun'
 
+        # TODO: Rewrite to use ' '.join() or append to mpi_flags
         if self.n_cpus:
             mpirun_cmd += ' -np {0}'.format(self.n_cpus)
 
-        if self.n_nodes:
-            # TODO: Check this arithmetic
-            n_per_node = self.n_cpus // self.n_nodes
-            mpirun_cmd += ' -npernode {0}'.format(n_per_node)
+        if self.n_cpus_per_node:
+            mpirun_cmd += ' -npernode {0}'.format(self.n_cpus_per_node)
 
         cmd = '{mpi} {flags} {bin}'.format(
                     mpi = mpirun_cmd,

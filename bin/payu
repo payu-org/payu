@@ -158,33 +158,39 @@ def call_run(pbs_config, pbs_vars, current_run=None, n_runs=None):
     if not 'queue' in pbs_config:
         pbs_config['queue'] = 'normal'
 
-    # Increase the cpu request to match a complete node
-    n_cpus = pbs_config.get('ncpus')
-    n_nodes = pbs_config.get('nodes')
-
     # TODO: Get this from `qstat -Qf normal-node`?
-    cpu_per_node = 16 if gethostname().startswith('raijin') else 8
+    max_cpus_per_node = 16 if gethostname().startswith('raijin') else 8
 
-    # Increase the CPU request to match nodes
-    if n_cpus and n_nodes:
-        # Assume efficient node distribution
-        min_nodes = 1 + (n_cpus - 1) // cpu_per_node
-        if n_nodes > min_nodes:
-            max_cpus = cpu_per_node * n_nodes
-            inert_cpus = max_cpus - n_cpus
-            print('payu: warning: Node request includes {0} unused '
-                  'CPUs.'.format(inert_cpus))
-            n_cpus = cpu_per_node * n_nodes
+    # Increase the cpu request to match a complete node
+    n_cpus = pbs_config.get('ncpus', 1)
+    n_cpus_per_node = pbs_config.get('npernode', max_cpus_per_node)
 
-    if n_cpus > cpu_per_node and n_cpus % cpu_per_node:
-        print('payu: warning: CPU request does not match node distribution.')
-        n_cpus = ((n_cpus + cpu_per_node - 1) / cpu_per_node ) * cpu_per_node
+    assert n_cpus_per_node <= max_cpus_per_node
 
-    if n_cpus != pbs_config['ncpus']:
-        print('payu: warning: CPU request increased from {0} to {1}'.format(
-                pbs_config['ncpus'], n_cpus))
-        pbs_config['ncpus'] = n_cpus
+    node_misalignment = n_cpus % max_cpus_per_node != 0
+    node_increase = n_cpus_per_node < max_cpus_per_node
 
+    # Increase the CPUs to accomodate the cpu-per-node request
+    if n_cpus > max_cpus_per_node and (node_increase or node_misalignment):
+
+        # Number of requested nodes
+        n_nodes = 1 + (n_cpus - 1) // n_cpus_per_node
+        n_cpu_request = max_cpus_per_node * n_nodes
+        n_inert_cpus = n_cpu_request - n_cpus
+
+        print('payu: warning: Job request includes {0} unused CPUs.'.format(
+                n_inert_cpus))
+
+        # Increase CPU request to match the effective node request
+        n_cpus = max_cpus_per_node * n_nodes
+
+        # Update the ncpus field in the config
+        if n_cpus and n_cpus != pbs_config['ncpus']:
+            print('payu: warning: CPU request increased from {0} to {1}'.format(
+                    pbs_config['ncpus'], n_cpus))
+            pbs_config['ncpus'] = n_cpus
+
+    # NOTE: Using ``__file__`` is slightly volatile
     run_script = os.path.join(os.path.dirname(__file__), 'payu-run')
     submit_job(run_script, pbs_config, pbs_vars)
 
@@ -224,6 +230,7 @@ def call_collate(pbs_config, pbs_vars, current_run=None, n_runs=None):
         except KeyError:
             pass
 
+    # NOTE: Using ``__file__`` is slightly volatile
     collate_script = os.path.join(os.path.dirname(__file__), 'payu-collate')
     submit_job(collate_script, pbs_config, pbs_vars)
 
