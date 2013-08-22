@@ -22,8 +22,6 @@ import subprocess as sp
 from fs import mkdir_p, patch_nml
 from payu import Experiment
 
-pickup_prefixes = ('pickup.', 'pickup_flt.')
-
 class Mitgcm(Experiment):
 
     #---
@@ -57,7 +55,7 @@ class Mitgcm(Experiment):
         # Link restart files to work directory
         if self.prior_res_path and not repeat_run:
             restart_files = [f for f in os.listdir(self.prior_res_path)
-                             if f.startswith(pickup_prefixes)]
+                             if f.startswith('pickup')]
 
             for f in restart_files:
                 f_res = os.path.join(self.prior_res_path, f)
@@ -68,11 +66,12 @@ class Mitgcm(Experiment):
                     sh.copy(f_res, f_work)
 
             # Determine total number of timesteps since initialisation
-            # NOTE: Use the most recent, in case of multiple restarts
+            core_restarts = [f for f in os.listdir(self.prior_res_path)
+                                if f.startswith('pickup.')]
             try:
-                n_iter0 = max([int(f.split('.')[1]) for f in restart_files])
+                # NOTE: Use the most recent, in case of multiple restarts
+                n_iter0 = max([int(f.split('.')[1]) for f in core_restarts])
             except ValueError:
-                # TODO: Set up an error code
                 sys.exit("payu: error: no restart files found.")
         else:
             n_iter0 = 0
