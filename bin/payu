@@ -4,6 +4,7 @@
 # Standard library
 import argparse
 import os
+import re
 import sys
 import shlex
 from socket import gethostname
@@ -155,11 +156,20 @@ def payu_parse():
 def call_run(pbs_config, pbs_vars, current_run=None, n_runs=None):
 
     # Set the queue
+    # NOTE: Maybe force all jobs on the normal queue
     if not 'queue' in pbs_config:
         pbs_config['queue'] = 'normal'
 
-    # TODO: Get this from `qstat -Qf normal-node`?
-    max_cpus_per_node = 16 if gethostname().startswith('raijin') else 8
+    # TODO: Find a better way to get this
+    qstat_cmd = 'qstat -Qf normal-node'
+    qstat_out = sp.check_output(shlex.split(qstat_cmd))
+    qstat_npernode = re.search('\n *resources_max.ncpus *= *[\d]+', qstat_out)
+
+    if qstat_npernode:
+        max_cpus_per_node = int(qstat_npernode.group().split('=')[1])
+    else:
+        # NOTE: If this didn't work, then assume we are on vayu
+        max_cpus_per_node = 8
 
     # Increase the cpu request to match a complete node
     n_cpus = pbs_config.get('ncpus', 1)
