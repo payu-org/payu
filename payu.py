@@ -100,7 +100,7 @@ class Experiment(object):
         # TODO: ``reversion`` makes a lot of this redundant
 
         # Unload non-essential modules
-        loaded_mods = os.environ['LOADEDMODULES'].split(':')
+        loaded_mods = os.environ.get('LOADEDMODULES', '').split(':')
 
         for mod in loaded_mods:
             mod_base = mod.split('/')[0]
