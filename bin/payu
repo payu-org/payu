@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# Force Python version
+from payu import reversion
+reversion.repython('2.7.5', __file__)
+
 # Standard library
 import argparse
 import os
@@ -15,8 +19,9 @@ import yaml
 
 # Local
 import payu.model
-default_config_fname = 'config.yaml'
 
+# TODO: Move to some sort of config file
+default_config_fname = 'config.yaml'
 
 #---
 def payu_parse():
@@ -139,8 +144,18 @@ def payu_parse():
         with open(config_path, 'r') as config_file:
             pbs_config = yaml.load(config_file)
 
+        # Determine payu module name and parent path
+        payu_modulename = re.search('[^:]*payu[^:]*',
+                                    os.environ['LOADEDMODULES']).group()
+
+        payu_modulepath = re.search('[^:]*(?=/{0})'.format(payu_modulename),
+                                    os.environ['_LMFILES_']).group()
+
         # Set environment variables
-        pbs_vars = {'PAYU_MODEL': model_name}
+        pbs_vars = {'PYTHONPATH': os.environ['PYTHONPATH'],
+                    'PAYU_MODULENAME': payu_modulename,
+                    'PAYU_MODULEPATH': payu_modulepath,
+                    'PAYU_MODEL': model_name}
         if init_run is not None:
             pbs_vars['PAYU_CURRENT_RUN'] = init_run
         if n_runs is not None:

@@ -15,6 +15,7 @@ import errno
 import grp
 import getpass
 import os
+import resource as res
 import sys
 import shutil as sh
 import subprocess as sp
@@ -58,8 +59,7 @@ class Experiment(object):
 
     #--
     def read_config(self):
-
-        # TODO: Parse the config path somehow
+        # TODO: Get this as a submission input
         config_fname = default_config_fname
 
         try:
@@ -86,7 +86,6 @@ class Experiment(object):
 
     #---
     def set_stacksize(self, stacksize):
-        import resource as res
 
         if stacksize == 'unlimited':
             stacksize = res.RLIM_INFINITY
@@ -98,6 +97,8 @@ class Experiment(object):
 
     #---
     def load_modules(self):
+        # TODO: ``reversion`` makes a lot of this redundant
+
         # Unload non-essential modules
         loaded_mods = os.environ['LOADEDMODULES'].split(':')
 
@@ -117,6 +118,7 @@ class Experiment(object):
 
     #---
     def set_pbs_config(self):
+        # TODO: Currently unused (rewrite of `path_names`)
 
         default_n_cpus = os.environ.get('PBS_NCPUS', 1)
         self.n_cpus = config.get('ncpus', default_n_cpus)
@@ -127,6 +129,7 @@ class Experiment(object):
 
     #---
     def set_paths(self):
+        # TODO: Currently unused (rewrite of `path_names`)
 
         default_control_path = os.getcwd()
         self.control_path = config.get('control', default_control_path)
@@ -146,7 +149,8 @@ class Experiment(object):
 
     #---
     def path_names(self, **kwargs):
-        # TODO: Maybe replace the `pop` calls with `get`
+        # TODO: Currently trying to replace this function
+        #       (It's too big and tries to do too much)
 
         assert self.model_name
 

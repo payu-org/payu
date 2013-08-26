@@ -164,19 +164,24 @@ class Mitgcm(Experiment):
                 data_mnc.write(' monitor_mnc=.TRUE.,\n')
                 data_mnc.write(' &\n')
 
-        # Patch data.flt (if present)
-        data_flt_path = os.path.join(self.work_path, 'data.flt')
-        flt_iter0_pattern = '^ *flt_iter0 *='
-        flt_iter0_replace = ' FLT_Iter0 = {0},\n'.format(n_iter0)
+        # XXX: These iter0's are only necessary on first submission
+        # If you update them to nIter0 it will re-initialize everything and
+        # break the process.
+        # I need to fix this stuff up; for now just comment it out
 
-        patch_nml(data_flt_path, flt_iter0_pattern, flt_iter0_replace)
+        # Patch data.flt (if present)
+        #data_flt_path = os.path.join(self.work_path, 'data.flt')
+        #flt_iter0_pattern = '^ *flt_iter0 *='
+        #flt_iter0_replace = ' FLT_Iter0 = {0},\n'.format(n_iter0)
+
+        #patch_nml(data_flt_path, flt_iter0_pattern, flt_iter0_replace)
 
         # Patch data.ptracers (if present)
-        data_ptracers_path = os.path.join(self.work_path, 'data.ptracers')
-        ptrc_iter0_pattern = '^ *ptracers_iter0 *='
-        ptrc_iter0_replace = ' PTRACERS_Iter0 = {0},\n'.format(n_iter0)
+        #data_ptracers_path = os.path.join(self.work_path, 'data.ptracers')
+        #ptrc_iter0_pattern = '^ *ptracers_iter0 *='
+        #ptrc_iter0_replace = ' PTRACERS_Iter0 = {0},\n'.format(n_iter0)
 
-        patch_nml(data_ptracers_path, ptrc_iter0_pattern, ptrc_iter0_replace)
+        #patch_nml(data_ptracers_path, ptrc_iter0_pattern, ptrc_iter0_replace)
 
 
     #---
