@@ -27,20 +27,19 @@ class Mitgcm(Experiment):
     #---
     def __init__(self, **kwargs):
 
-        # payu initalisation
-        super(Mitgcm, self).__init__(**kwargs)
-
         # Model-specific configuration
         self.model_name = 'mitgcm'
         self.default_exec = 'mitgcmuv'
-        self.path_names(**kwargs)
 
         self.modules = ['pbs',
                         'openmpi',
                         'netcdf']
 
-        # TODO: Get a definitive config file whitelist
-        self.config_files = [f for f in os.listdir(self.config_path)
+        # payu initalisation
+        super(Mitgcm, self).__init__(**kwargs)
+
+        # TODO: Ugly to wedge this in after the ``super`` call
+        self.config_files = [f for f in os.listdir(self.control_path)
                              if f.startswith('data')]
         self.config_files.append('eedata')
 

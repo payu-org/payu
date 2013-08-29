@@ -19,12 +19,8 @@ class Gold(fms):
     #---
     def __init__(self, **kwargs):
 
-        # FMS initalisation
-        super(Gold, self).__init__()
-
         self.model_name = 'gold'
         self.default_exec = 'GOLD'
-        self.path_names(**kwargs)
 
         self.modules = ['pbs',
                         'openmpi']
@@ -34,6 +30,9 @@ class Gold(fms):
                              'diag_table',
                              'fre_input.nml',
                              'input.nml']
+
+        # FMS initalisation
+        super(Gold, self).__init__()
 
 
     #---

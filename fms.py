@@ -31,8 +31,8 @@ class fms(Experiment):
 
 
     #---
-    def path_names(self, **kwargs):
-        super(fms, self).path_names(**kwargs)
+    def set_paths(self):
+        super(fms, self).set_paths()
 
         # Define local FMS directories
         self.work_res_path = os.path.join(self.work_path, 'RESTART')

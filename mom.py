@@ -18,13 +18,9 @@ class Mom(fms):
     #---
     def __init__(self, **kwargs):
 
-        # FMS initalisation
-        super(Mom, self).__init__(**kwargs)
-
         # Model-specific configuration
         self.model_name = 'mom'
         self.default_exec = 'fms_MOM_SIS.x'
-        self.path_names(**kwargs)
 
         self.modules = ['pbs',
                         'openmpi',
@@ -34,6 +30,9 @@ class Mom(fms):
                              'diag_table',
                              'field_table',
                              'input.nml']
+
+        # FMS initalisation
+        super(Mom, self).__init__(**kwargs)
 
 
     #---

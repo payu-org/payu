@@ -15,11 +15,12 @@ import errno
 import grp
 import getpass
 import os
-import resource as res
+import pwd
+import resource
 import sys
+import shlex
 import shutil as sh
 import subprocess as sp
-import shlex
 
 # Extensions
 import yaml
@@ -41,40 +42,46 @@ class Experiment(object):
 
     #---
     def __init__(self, **kwargs):
-        self.model_name = None
-        self.modules = None
-        self.config_files = None
 
         # Disable group write access and all public access
         perms = 0o0027
         os.umask(perms)
 
+        # TODO: Move to run/collate/sweep?
         self.read_config()
-        self.read_counters()
+        self.set_pbs_config()
+        self.set_paths()
+        self.set_counters()
+
+        # TODO: Best place for these?
+        self.set_input_paths()
+        self.set_output_paths()
 
         stacksize = self.config.get('stacksize')
         if stacksize:
             self.set_stacksize(stacksize)
 
 
-    #--
+    #---
     def read_config(self):
-        # TODO: Get this as a submission input
+        # TODO: Parse the PAYU_CONFIGPATH envar
         config_fname = default_config_fname
 
         try:
             with open(config_fname, 'r') as config_file:
                 self.config = yaml.load(config_file)
         except IOError as ec:
-            if ec.errno != errno.ENOENT:
-                raise
-            else:
+            if ec.errno == errno.ENOENT:
                 self.config = {}
+            else:
+                raise
 
 
     #---
-    def read_counters(self):
-        # NOTE: Uninitialised counters are resolved in ``path_names``
+    def set_counters(self):
+        # Assume that ``set_paths`` has already been called
+        assert self.archive_path
+
         current_counter = os.environ.get('PAYU_CURRENT_RUN')
         if current_counter:
             self.counter = int(current_counter)
@@ -83,16 +90,37 @@ class Experiment(object):
 
         self.n_runs = int(os.environ.get('PAYU_N_RUNS', 1))
 
+        # Initialize counter if unset
+        if self.counter is None:
+            # TODO: this logic can probably be streamlined
+            try:
+                restart_dirs = [d for d in os.listdir(self.archive_path)
+                                if d.startswith('restart')]
+            except OSError as ec:
+                if ec.errno == errno.ENOENT:
+                    restart_dirs = None
+                else:
+                    raise
+
+            if restart_dirs:
+                self.counter = 1 + max([int(d.lstrip('restart'))
+                                        for d in restart_dirs
+                                        if d.startswith('restart')])
+            else:
+                self.counter = 0
+
 
     #---
     def set_stacksize(self, stacksize):
 
         if stacksize == 'unlimited':
-            stacksize = res.RLIM_INFINITY
+            stacksize = resource.RLIM_INFINITY
         else:
+            # TODO: User-friendly explanation
             assert type(stacksize) is int
 
-        res.setrlimit(res.RLIMIT_STACK, (stacksize, res.RLIM_INFINITY))
+        resource.setrlimit(resource.RLIMIT_STACK,
+                           (stacksize, resource.RLIM_INFINITY))
 
 
     #---
@@ -121,104 +149,73 @@ class Experiment(object):
         # TODO: Currently unused (rewrite of `path_names`)
 
         default_n_cpus = os.environ.get('PBS_NCPUS', 1)
-        self.n_cpus = config.get('ncpus', default_n_cpus)
+        self.n_cpus = self.config.get('ncpus', default_n_cpus)
+
+        self.n_cpus_per_node = self.config.get('npernode')
 
         default_job_name = os.path.basename(os.getcwd())
-        self.job_name = config.get('jobname', default_job_name)
+        self.job_name = self.config.get('jobname', default_job_name)
+
+        # Set group identifier for output
+        # TODO: Do we even use this anymore? It's too slow
+        #       Use the qsub flag?
+        self.archive_group = self.config.pop('archive_group', None)
 
 
     #---
     def set_paths(self):
-        # TODO: Currently unused (rewrite of `path_names`)
 
+        # Local "control" path
         default_control_path = os.getcwd()
-        self.control_path = config.get('control', default_control_path)
+        self.control_path = self.config.get('control', default_control_path)
 
-        # NOTE: Rename this, it's too NCI-specific
+        # Top-level "laboratory" path
+        assert self.model_name
+
         default_short_path = os.path.join('/short', os.environ.get('PROJECT'))
         self.short_path = self.config.get('shortpath', default_short_path)
 
         default_user = pwd.getpwuid(os.getuid()).pw_name
-        self.user_name = config.get('user', default_user)
+        self.user_name = self.config.get('user', default_user)
 
-        assert self.model_name
         default_lab_path = os.path.join(self.short_path, self.user_name,
-                                            self.model_name, self.expt_name)
-        self.lab_path = config.get('laboratory', default_lab_path)
+                                        self.model_name)
+        self.lab_path = self.config.get('laboratory', default_lab_path)
 
-
-    #---
-    def path_names(self, **kwargs):
-        # TODO: Currently trying to replace this function
-        #       (It's too big and tries to do too much)
-
-        assert self.model_name
-
-        # TODO: Read and parse config in the __init__()
-        config_fname = kwargs.pop('config', default_config_fname)
-        try:
-            with open(config_fname, 'r') as config_file:
-                config = yaml.load(config_file)
-        except IOError as ec:
-            if ec.errno != errno.ENOENT:
-                raise
-            else:
-                config = {}
-
-        # Override any keyword arguments
-        config.update(kwargs)
-
-        # CPU count
-        # NOTE: This doesn't really go here, but not sure where to put it
-        self.n_cpus = config.get('ncpus')
-        self.n_cpus_per_node = config.get('npernode')
-
-        # PBS job name
-        self.jobname = config.pop('jobname', 'payu-run')
-
-        # Experiment name (used for directories)
-        default_name = os.path.basename(os.getcwd())
-        self.name = config.pop('name', default_name)
-
-        # Configuration path (input, config)
-        default_config_path = os.getcwd()
-        self.config_path = config.pop('config', default_config_path)
-
-        # User name
-        default_user = getpass.getuser()
-        self.user_name = config.pop('user', default_user)
-
-        # Top level output path ("/short path")
-        default_short_path = os.path.join('/short', os.environ.get('PROJECT'))
-        self.short_path = config.pop('shortpath', default_short_path)
-
-        # Output path
-        default_lab_path = os.path.join(self.short_path,
-                                        self.user_name, self.model_name)
-        self.lab_path = config.pop('output', default_lab_path)
+        # Experiment name
+        default_experiment = os.path.basename(self.control_path)
+        self.experiment = self.config.get('experiment', default_experiment)
 
         # Experiment subdirectories
-        self.archive_path = os.path.join(self.lab_path, 'archive', self.name)
-        self.bin_path = os.path.join(self.lab_path, 'bin')
-        self.work_path = os.path.join(self.lab_path, 'work', self.name)
+        self.archive_path = os.path.join(self.lab_path, 'archive',
+                                         self.experiment)
+        self.work_path = os.path.join(self.lab_path, 'work', self.experiment)
 
-        # Symbolic path to work
-        self.work_sym_path = os.path.join(self.config_path, 'work')
-        self.archive_sym_path = os.path.join(self.config_path, 'archive')
-
-        # Set group identifier for output
-        self.archive_group = config.pop('archive_group', None)
+        # Symbolic paths to output
+        # TODO: move to ``run`` or something
+        self.work_sym_path = os.path.join(self.control_path, 'work')
+        self.archive_sym_path = os.path.join(self.control_path, 'archive')
 
         # Executable path
-        exec_name = config.pop('exe', self.default_exec)
+        assert self.default_exec
+
+        self.bin_path = os.path.join(self.lab_path, 'bin')
+
+        exec_name = self.config.pop('exe', self.default_exec)
         self.exec_path = os.path.join(self.bin_path, exec_name)
 
         # Stream output filenames
+        # TODO: Why is this here?
         self.stdout_fname = self.model_name + '.out'
         self.stderr_fname = self.model_name + '.err'
 
-        # External input path
-        input_dir = config.pop('input', None)
+
+    #---
+    def set_input_paths(self):
+        # TODO: Allow multiple input paths, and move this into a "link_input"
+        #       function (or something similar)
+
+        input_dir = self.config.get('input')
         if input_dir:
             # Test for absolute path
             if os.path.exists(input_dir):
@@ -233,21 +230,9 @@ class Experiment(object):
         else:
             self.input_path = None
 
-        # Initialize counter if unset
-        if self.counter is None:
-            if os.path.isdir(self.archive_path):
-                restart_dirs = [d for d in os.listdir(self.archive_path)
-                                if d.startswith('restart')]
-            else:
-                restart_dirs = None
 
-            if restart_dirs:
-                self.counter = 1 + max([int(d.lstrip('restart'))
-                                        for d in restart_dirs
-                                        if d.startswith('restart')])
-            else:
-                self.counter = 0
-
+    #---
+    def set_output_paths(self):
         # Local archive paths
         output_dir = 'output{:03}'.format(self.counter)
         self.output_path = os.path.join(self.archive_path, output_dir)
@@ -277,6 +262,7 @@ class Experiment(object):
 
     #---
     def setup(self, do_stripe=False):
+
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
             sys.exit('Archived path already exists; aborting.')
@@ -292,7 +278,7 @@ class Experiment(object):
         make_symlink(self.work_path, self.work_sym_path)
 
         for f in self.config_files:
-            f_path = os.path.join(self.config_path, f)
+            f_path = os.path.join(self.control_path, f)
             sh.copy(f_path, self.work_path)
 
 
@@ -472,6 +458,7 @@ class Experiment(object):
 
     #---
     def sweep(self, hard_sweep=False):
+        # TODO: Fix the IO race conditions!
 
         if hard_sweep:
             if os.path.isdir(self.archive_path):
@@ -500,10 +487,10 @@ class Experiment(object):
         logs = [f for f in os.listdir(os.curdir) if os.path.isfile(f) and
                 (f == self.stdout_fname or
                  f == self.stderr_fname or
-                 f.startswith(self.jobname + '.o') or
-                 f.startswith(self.jobname + '.e') or
-                 f.startswith(self.jobname + '_c.o') or
-                 f.startswith(self.jobname + '_c.e')
+                 f.startswith(self.job_name + '.o') or
+                 f.startswith(self.job_name + '.e') or
+                 f.startswith(self.job_name + '_c.o') or
+                 f.startswith(self.job_name + '_c.e')
                  )
                 ]
 
