@@ -4,6 +4,13 @@ import sys
 execfile('/opt/Modules/default/init/python')
 def repython(python_version, script_path):
 
+    # Ensure that payu is loaded
+    try:
+        module('use', os.environ['PAYU_MODULEPATH'])
+        module('load', os.environ['PAYU_MODULENAME'])
+    except KeyError:
+        pass
+
     # NOTE: Older versions (<2.7) require the version as a tuple
     python_version_tuple = tuple(int(i) for i in python_version.split('.'))
 

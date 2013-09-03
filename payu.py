@@ -146,7 +146,6 @@ class Experiment(object):
 
     #---
     def set_pbs_config(self):
-        # TODO: Currently unused (rewrite of `path_names`)
 
         default_n_cpus = os.environ.get('PBS_NCPUS', 1)
         self.n_cpus = self.config.get('ncpus', default_n_cpus)
