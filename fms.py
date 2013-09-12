@@ -51,6 +51,9 @@ class fms(Experiment):
         #   work path and symlink, config file copy
         super(fms, self).setup()
 
+        # TODO: Move this into `Experiment`
+        repeat_run = self.config.get('repeat', False)
+
         # Create experiment directory structure
         mkdir_p(self.work_res_path)
 
