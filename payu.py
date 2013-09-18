@@ -47,6 +47,8 @@ class Experiment(object):
         perms = 0o0027
         os.umask(perms)
 
+        # TODO: __init__ should not be a config dumping ground!
+
         # TODO: Move to run/collate/sweep?
         self.read_config()
         self.set_pbs_config()
@@ -60,6 +62,8 @@ class Experiment(object):
         stacksize = self.config.get('stacksize')
         if stacksize:
             self.set_stacksize(stacksize)
+
+        self.postscript = self.config.get('postprocess')
 
 
     #---
@@ -364,6 +368,19 @@ class Experiment(object):
 
             cmd = shlex.split(cmd)
             rc = sp.Popen(cmd).wait()
+            assert rc == 0
+
+
+    #---
+    def postprocess(self):
+        """Submit a postprocessing script after collation"""
+        assert self.postscript
+
+        cmd = 'qsub {}'.format(self.postscript)
+
+        cmd = shlex.split(cmd)
+        rc = sp.call(cmd)
+        assert rc == 0, 'Postprocessing script submission failed.'
 
 
     #---
