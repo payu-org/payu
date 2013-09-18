@@ -63,7 +63,7 @@ class Experiment(object):
         if stacksize:
             self.set_stacksize(stacksize)
 
-        self.postscript = self.config.get('postprocess')
+        self.postscript = self.config.get('postscript')
 
 
     #---
