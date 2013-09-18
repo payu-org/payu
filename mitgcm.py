@@ -20,7 +20,7 @@ import subprocess as sp
 
 # Local
 from fs import mkdir_p, patch_nml
-from payu import Experiment
+from experiment import Experiment
 
 class Mitgcm(Experiment):
 

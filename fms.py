@@ -19,20 +19,20 @@ import subprocess as sp
 
 # Local
 from fs import mkdir_p
-from payu import Experiment
+from experiment import Experiment
 
-class fms(Experiment):
+class Fms(Experiment):
 
     #---
     def __init__(self, **kwargs):
 
         # payu initalisation
-        super(fms, self).__init__(**kwargs)
+        super(Fms, self).__init__(**kwargs)
 
 
     #---
     def set_run_pathnames(self):
-        super(fms, self).set_run_pathnames()
+        super(Fms, self).set_run_pathnames()
 
         # Define local FMS directories
         self.work_res_path = os.path.join(self.work_path, 'RESTART')
@@ -49,7 +49,7 @@ class fms(Experiment):
 
         # payu setup:
         #   work path and symlink, config file copy
-        super(fms, self).setup()
+        super(Fms, self).setup()
 
         # TODO: Move this into `Experiment`
         repeat_run = self.config.get('repeat', False)
@@ -87,7 +87,7 @@ class fms(Experiment):
     #---
     def run(self, *flags):
         flags = flags + ('-wd %s' % self.work_path, )
-        super(fms, self).run(*flags)
+        super(Fms, self).run(*flags)
 
 
     #--
@@ -105,7 +105,7 @@ class fms(Experiment):
         rc = sp.Popen(shlex.split(cmd)).wait()
         assert rc == 0
 
-        super(fms, self).archive(**kwargs)
+        super(Fms, self).archive(**kwargs)
 
 
     #---

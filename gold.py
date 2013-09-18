@@ -10,11 +10,11 @@ Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
 
-from fms import fms
+from fms import Fms
 import os
 import shutil as sh
 
-class Gold(fms):
+class Gold(Fms):
 
     #---
     def __init__(self, **kwargs):

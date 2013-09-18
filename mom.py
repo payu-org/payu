@@ -12,9 +12,9 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 import os
 import subprocess as sp
-from fms import fms
+from fms import Fms
 
-class Mom(fms):
+class Mom(Fms):
     #---
     def __init__(self, **kwargs):
 
