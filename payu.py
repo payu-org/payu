@@ -50,10 +50,10 @@ class Experiment(object):
         # TODO: Move to run/collate/sweep?
         self.read_config()
         self.set_pbs_config()
-        self.set_paths()
+        self.set_model_pathnames()
+        self.set_run_pathnames()
         self.set_counters()
 
-        # TODO: Best place for these?
         self.set_input_paths()
         self.set_output_paths()
 
@@ -162,14 +162,14 @@ class Experiment(object):
 
 
     #---
-    def set_paths(self):
+    def set_model_pathnames(self):
 
         # Local "control" path
+
         default_control_path = os.getcwd()
         self.control_path = self.config.get('control', default_control_path)
 
         # Top-level "laboratory" path
-        assert self.model_name
 
         default_short_path = os.path.join('/short', os.environ.get('PROJECT'))
         self.short_path = self.config.get('shortpath', default_short_path)
@@ -177,34 +177,41 @@ class Experiment(object):
         default_user = pwd.getpwuid(os.getuid()).pw_name
         self.user_name = self.config.get('user', default_user)
 
+        assert self.model_name
         default_lab_path = os.path.join(self.short_path, self.user_name,
                                         self.model_name)
         self.lab_path = self.config.get('laboratory', default_lab_path)
 
+        # Executable path ("bin")
+        self.bin_path = os.path.join(self.lab_path, 'bin')
+
+
+    #---
+    def set_run_pathnames(self):
+
         # Experiment name
+        assert self.control_path
         default_experiment = os.path.basename(self.control_path)
         self.experiment = self.config.get('experiment', default_experiment)
 
         # Experiment subdirectories
+        assert self.lab_path
         self.archive_path = os.path.join(self.lab_path, 'archive',
                                          self.experiment)
         self.work_path = os.path.join(self.lab_path, 'work', self.experiment)
 
         # Symbolic paths to output
-        # TODO: move to ``run`` or something
         self.work_sym_path = os.path.join(self.control_path, 'work')
         self.archive_sym_path = os.path.join(self.control_path, 'archive')
 
         # Executable path
+        assert self.bin_path
         assert self.default_exec
-
-        self.bin_path = os.path.join(self.lab_path, 'bin')
-
+        assert self.model_name
         exec_name = self.config.pop('exe', self.default_exec)
         self.exec_path = os.path.join(self.bin_path, exec_name)
 
         # Stream output filenames
-        # TODO: Why is this here?
         self.stdout_fname = self.model_name + '.out'
         self.stderr_fname = self.model_name + '.err'
 
