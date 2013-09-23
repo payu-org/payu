@@ -58,6 +58,10 @@ def payu_parse():
     list_cmd.set_defaults(cmd=call_list)
 
     #---
+    list_cmd = subcmd.add_parser('init')
+    list_cmd.set_defaults(cmd=call_init)
+
+    #---
     run_cmd = subcmd.add_parser('run')
     run_cmd.set_defaults(cmd=call_run)
 
@@ -166,6 +170,9 @@ def payu_parse():
     elif args.cmd == call_sweep:
         call_sweep(model_name, config_path, args.hard_sweep)
 
+    elif args.cmd == call_init:
+        call_init(model_name, config_path)
+
 
 #---
 def call_run(pbs_config, pbs_vars, current_run=None, n_runs=None):
@@ -225,7 +232,7 @@ def call_collate(pbs_config, pbs_vars, current_run=None, n_runs=None):
     # TODO: Add run counter support
 
     # Collations should always be on the copy queue
-    pbs_config['queue'] = 'copyq'
+    pbs_config['queue'] = 'normal'
 
     # Collation jobs are (currently) serial
     pbs_config['ncpus'] = 1
@@ -260,6 +267,7 @@ def call_collate(pbs_config, pbs_vars, current_run=None, n_runs=None):
     submit_job(collate_script, pbs_config, pbs_vars)
 
 
+#TODO: Merge sweep and init
 #---
 def call_sweep(model_name, config_path, hard_sweep=False):
 
@@ -267,6 +275,13 @@ def call_sweep(model_name, config_path, hard_sweep=False):
     if hard_sweep:
         cmd = ' '.join([cmd, '--hard'])
 
+    cmd = shlex.split(cmd)
+    rc = sp.call(cmd)
+    assert rc == 0
+
+#---
+def call_init(model_name, config_path):
+    cmd = 'payu-init -m {} -c {}'.format(model_name, config_path)
     cmd = shlex.split(cmd)
     rc = sp.call(cmd)
     assert rc == 0

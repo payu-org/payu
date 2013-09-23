@@ -10,9 +10,13 @@ Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
 
-import os
-import subprocess as sp
 from fms import Fms
+from fs import mkdir_p
+import os
+import shlex
+import shutil
+import subprocess as sp
+import sys
 
 class Mom(Fms):
     #---
@@ -33,6 +37,72 @@ class Mom(Fms):
 
         # FMS initalisation
         super(Mom, self).__init__(**kwargs)
+
+
+    #---
+    def init(self):
+
+        assert self.lab_path
+        mkdir_p(self.lab_path)
+
+        # Check out source code
+        self.get_codebase()
+        self.build_model()
+
+
+    #---
+    def get_codebase(self):
+
+        assert self.lab_path
+        # TODO: Move to some "set_pathname" function
+        self.codebase_path = os.path.join(self.lab_path, 'codebase')
+        # TODO: User-defined repository URL and branch
+        repo_url = 'git://github.com/coecms/mom.git'
+
+        if os.path.isdir(self.codebase_path):
+
+            # TODO: Improve repo existence check
+            codebase_git_path = os.path.join(self.codebase_path, '.git')
+            if not os.path.isdir(codebase_git_path):
+                print('payu: warning: Codebase exists, but does not have its '
+                                     '.git directory')
+                sys.exit(1)
+
+        else:
+            cmd = 'git clone {} {}'.format(repo_url, self.codebase_path)
+
+            cmd = shlex.split(cmd)
+            rc = sp.call(cmd)
+            assert rc == 0
+
+
+    #---
+    def build_model(self):
+        assert self.codebase_path
+
+        # TODO: User-defined type and platform
+        platform = 'raijin'
+        exec_type = 'MOM_SIS'
+
+        curdir = os.getcwd()
+        os.chdir(os.path.join(self.codebase_path, 'exp'))
+
+        cmd = ('./MOM_compile.csh --platform {} --type {}'
+               ''.format(platform, exec_type))
+
+        cmd = shlex.split(cmd)
+        rc = sp.call(cmd)
+        assert rc == 0
+
+        # Copy executable
+        assert self.bin_path
+        mkdir_p(self.bin_path)
+
+        exec_path = os.path.join(self.codebase_path, 'exec', platform,
+                                 exec_type, 'fms_{}.x'.format(exec_type))
+        shutil.copy(exec_path, self.bin_path)
+
+        os.chdir(curdir)
 
 
     #---
