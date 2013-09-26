@@ -324,6 +324,10 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
             pbs_jobname = pbs_jobname[:15]
         pbs_flags.append('-N {0}'.format(pbs_jobname))
 
+    pbs_priority = pbs_config.get('priority')
+    if pbs_priority:
+        pbs_flags.append('-p {}'.format(pbs_priority))
+
     pbs_wd = '-wd' if gethostname().startswith('vayu') else '-l wd'
     pbs_flags.append(pbs_wd)
 
@@ -334,6 +338,11 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
         pbs_vstring = ','.join("{0}={1}".format(k, v)
                                for k, v in pbs_vars.iteritems())
         pbs_flags.append('-v ' + pbs_vstring)
+
+    # Append any additional qsub flags here
+    pbs_flags_extend = pbs_config.get('qsub_flags')
+    if pbs_flags_extend:
+        pbs_flags.append(pbs_flags_extend)
 
     # Collect flags
     pbs_flags = ' '.join(pbs_flags)
