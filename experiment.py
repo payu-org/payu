@@ -10,6 +10,9 @@ Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
 
+# Python3 preparation
+from __future__ import print_function
+
 # Standard Library
 import errno
 import grp
@@ -36,6 +39,7 @@ core_modules = ['python', 'payu']
 # Default payu parameters
 default_archive_url = 'dc.nci.org.au'
 default_config_fname = 'config.yaml'
+default_restart_freq = 5
 
 #==============================================================================
 class Experiment(object):
@@ -267,7 +271,7 @@ class Experiment(object):
             self.prior_res_path = None
             if self.counter > 0:
                 # TODO: This warning should be replaced with an abort in setup
-                print 'Warning: no restart files found.'
+                print('Warning: no restart files found.')
 
 
     #---
@@ -281,8 +285,9 @@ class Experiment(object):
 
         # Stripe directory in Lustre
         if do_stripe:
-            cmd = 'lfs setstripe -c 8 -s 8m {0}'.format(self.work_path).split()
-            rc = sp.Popen(cmd).wait()
+            cmd = 'lfs setstripe -c 8 -s 8m {}'.format(self.work_path)
+            cmd = shlex.split(cmd)
+            rc = sp.call(cmd)
             assert rc == 0
 
         make_symlink(self.work_path, self.work_sym_path)
@@ -293,30 +298,30 @@ class Experiment(object):
 
 
     #---
-    def run(self, *mpi_flags):
+    def run(self, *user_flags):
         f_out = open(self.stdout_fname, 'w')
         f_err = open(self.stderr_fname, 'w')
 
-        # Use explicit path to avoid wrappers (if found)
-        mpi_basedir = os.environ.get('OMPI_ROOT')
-        if mpi_basedir:
-            mpirun_cmd = os.path.join(mpi_basedir, 'bin', 'mpirun')
-        else:
-            mpirun_cmd = 'mpirun'
+        mpirun_cmd = 'mpirun'
 
-        # TODO: Rewrite to use ' '.join() or append to mpi_flags
+        mpi_flags = self.config.get('mpirun', [])
+        if type(mpi_flags) != list:
+            mpi_flags = [mpi_flags]
+        # TODO: Assert that np and npernode are not in the mpirun flags
+
         if self.n_cpus:
-            mpirun_cmd += ' -np {0}'.format(self.n_cpus)
+            mpi_flags.append('-np {}'.format(self.n_cpus))
 
         if self.n_cpus_per_node:
-            mpirun_cmd += ' -npernode {0}'.format(self.n_cpus_per_node)
+            mpi_flags.append('-npernode {}'.format(self.n_cpus_per_node))
 
-        cmd = '{mpi} {flags} {bin}'.format(
-                    mpi = mpirun_cmd,
-                    flags = ' '.join(mpi_flags),
-                    bin = self.exec_path)
+        # XXX: I think this may be broken
+        if user_flags:
+            mpi_flags.extend(list(user_flags))
 
+        cmd = ' '.join([mpirun_cmd, ' '.join(mpi_flags), self.exec_path])
         cmd = shlex.split(cmd)
+
         rc = sp.call(cmd, stdout=f_out, stderr=f_err)
         f_out.close()
         f_err.close()
@@ -329,7 +334,7 @@ class Experiment(object):
 
         # TODO: Need a model-specific cleanup method call here
         if rc != 0:
-            sys.exit('Error {0}; aborting.'.format(rc))
+            sys.exit('Error {}; aborting.'.format(rc))
 
         # Decrement run counter on successful run
         self.n_runs -= 1
@@ -356,15 +361,35 @@ class Experiment(object):
         if os.path.exists(self.output_path):
             sys.exit('Archived path already exists; aborting.')
 
-        cmd = 'mv {src} {dst}'.format(src=self.work_path, dst=self.output_path)
-        rc = sp.Popen(cmd.split()).wait()
+        cmd = 'mv {} {}'.format(self.work_path, self.output_path)
+        rc = sp.call(cmd.split())
         assert rc == 0
 
         if self.archive_group:
             self.regroup()
 
+        # TODO: restart archival is handled by each model. Abstract this!
+
+        # TODO: delete old restarts
+        restart_freq = self.config.get("restart_freq", default_restart_freq)
+
+        if (self.counter >= restart_freq and self.counter % restart_freq == 0):
+            i_s = self.counter - restart_freq
+            i_e = self.counter - 1
+            prior_res_dirs = ('restart{:03}'.format(i)
+                              for i in range(i_s, i_e))
+
+            for res_dirname in prior_res_dirs:
+                res_path = os.path.join(self.archive_path, res_dirname)
+                cmd = 'rm -rf {}'.format(res_path)
+                cmd = shlex.split(cmd)
+                try: sp.check_call(cmd)
+                except CalledProcessError:
+                    print('payu: warning: Could not delete directories {}'
+                          ''.format(' '.join(prior_res_dirs)))
+
         if collate:
-            cmd = 'payu collate -i {0}'.format(self.counter)
+            cmd = 'payu collate -i {}'.format(self.counter)
 
             cmd = shlex.split(cmd)
             rc = sp.Popen(cmd).wait()
@@ -449,7 +474,7 @@ class Experiment(object):
                 if rc == 0:
                     break
                 else:
-                    print 'rsync failed, reattempting'
+                    print('rsync failed, reattempting')
             assert rc == 0
 
         # TODO: Temporary; this should be integrated with the rsync call
@@ -473,10 +498,9 @@ class Experiment(object):
     #---
     def resubmit(self):
         next_run = self.counter + 1
-        cmd = 'payu run -i {0} -n {1}'.format(next_run, self.n_runs)
-
+        cmd = 'payu run -i {} -n {}'.format(next_run, self.n_runs)
         cmd = shlex.split(cmd)
-        sp.Popen(cmd).wait()
+        sp.call(cmd)
 
 
     #---
@@ -485,25 +509,27 @@ class Experiment(object):
 
         if hard_sweep:
             if os.path.isdir(self.archive_path):
-                print 'Removing archive path %s' % self.archive_path
+                print('Removing archive path {}'.format(self.archive_path))
                 #sh.rmtree(self.archive_path)
-                cmd = 'rm -rf {0}'.format(self.archive_path).split()
-                rc = sp.Popen(cmd).wait()
+                cmd = 'rm -rf {}'.format(self.archive_path)
+                cmd = shlex.split(cmd)
+                rc = sp.call(cmd)
                 assert rc == 0
 
             if os.path.islink(self.archive_sym_path):
-                print 'Removing symlink %s' % self.archive_sym_path
+                print('Removing symlink {}'.format(self.archive_sym_path))
                 os.remove(self.archive_sym_path)
 
         if os.path.isdir(self.work_path):
-            print 'Removing work path %s' % self.work_path
+            print('Removing work path {}'.format(self.work_path))
             #sh.rmtree(self.work_path)
-            cmd = 'rm -rf {0}'.format(self.work_path).split()
-            rc = sp.Popen(cmd).wait()
+            cmd = 'rm -rf {}'.format(self.work_path)
+            cmd = shlex.split(cmd)
+            rc = sp.call(cmd)
             assert rc == 0
 
         if os.path.islink(self.work_sym_path):
-            print 'Removing symlink %s' % self.work_sym_path
+            print('Removing symlink {}'.format(self.work_sym_path))
             os.remove(self.work_sym_path)
 
         # TODO: model outstreams and pbs logs need to be handled separately
@@ -521,5 +547,5 @@ class Experiment(object):
         mkdir_p(pbs_log_path)
 
         for f in logs:
-            print 'Moving log {fname}'.format(fname=f)
+            print('Moving log {}'.format(f))
             os.rename(f, os.path.join(pbs_log_path, f))

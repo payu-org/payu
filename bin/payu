@@ -280,6 +280,7 @@ def call_sweep(model_name, config_path, hard_sweep=False):
 
 #---
 def call_init(model_name, config_path):
+
     cmd = 'payu-init -m {} -c {}'.format(model_name, config_path)
     cmd = shlex.split(cmd)
     rc = sp.call(cmd)
@@ -288,6 +289,7 @@ def call_init(model_name, config_path):
 
 #---
 def call_list():
+
     print('Supported models: {0}'.format(' '.join(payu.model.index.keys())))
 
 
