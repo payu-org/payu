@@ -26,6 +26,7 @@ def repython(python_version, script_path):
         module('load', os.path.join('python', python_version))
 
         # Update payu version if provided
+        # TODO: Confirm that I can delete this
         try:
             module('use', os.environ['PAYU_MODULEPATH'])
             module('load', os.environ['PAYU_MODULENAME'])

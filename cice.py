@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 """
-The payu interface for GFDL models based on FMS
+The payu interface for the CICE model
 -------------------------------------------------------------------------------
 Contact: Marshall Ward <marshall.ward@anu.edu.au>
 -------------------------------------------------------------------------------
@@ -9,6 +9,8 @@ Distributed as part of Payu, Copyright 2011-2012 Marshall Ward
 Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
+
+# XXX: This doesn't work, don't use it at the moment!
 
 # Standard Library
 import os
@@ -21,7 +23,7 @@ import subprocess as sp
 from fs import mkdir_p
 from experiment import Experiment
 
-class Fms(Experiment):
+class Cice(Experiment):
 
     #---
     def __init__(self, **kwargs):
@@ -71,13 +73,12 @@ class Fms(Experiment):
                     sh.copy(f_res, f_input)
 
         # Link any input data to INPUT
-        for input_path in self.input_paths:
-            input_files = os.listdir(input_path)
+        if self.input_path:
+            input_files = os.listdir(self.input_path)
             for f in input_files:
-                f_input = os.path.join(input_path, f)
+                f_input = os.path.join(self.input_path, f)
                 f_work_input = os.path.join(self.work_input_path, f)
                 # Do not use input file if it is in RESTART
-                # TODO: Is this really what I want? Or should I warn the user?
                 if not os.path.exists(f_work_input):
                     if use_symlinks:
                         os.symlink(f_input, f_work_input)

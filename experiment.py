@@ -226,23 +226,26 @@ class Experiment(object):
 
     #---
     def set_input_paths(self):
-        # TODO: Allow multiple input paths, and move this into a "link_input"
-        #       function (or something similar)
+        # TODO: Replace old self.input_path references in payu
 
-        input_dir = self.config.get('input')
-        if input_dir:
-            # Test for absolute path
+        input_dirs = self.config.get('input')
+        if type(input_dirs) == str or input_dirs is None:
+            input_dirs = [input_dirs]
+
+        self.input_paths = []
+        for input_dir in input_dirs:
+
+            # First test for absolute path
             if os.path.exists(input_dir):
-                self.input_path = input_dir
+                self.input_paths.append(input_dir)
             else:
                 # Test for path relative to /${lab_path}/input
                 rel_path = os.path.join(self.lab_path, 'input', input_dir)
                 if os.path.exists(rel_path):
-                    self.input_path = rel_path
+                    self.input_paths.append(rel_path)
                 else:
-                    sys.exit('Input data not found; aborting.')
-        else:
-            self.input_path = None
+                    sys.exit('payu: error: Input directory {} not found; '
+                             'aborting.'.format(rel_path))
 
 
     #---
@@ -459,11 +462,12 @@ class Experiment(object):
         else:
             res_tar_path = None
 
-        if self.input_path and os.path.isdir(self.input_path):
+        for input_path in self.input_paths:
             # Using explicit path separators to rename the input directory
             input_cmd = rsync_cmd + '{src} {dst}'.format(
-                            src=self.input_path + os.sep,
-                            dst=os.path.join(remote_url, 'input') + os.sep)
+                            src = input_path + os.path.sep,
+                            dst = os.path.join(remote_url, 'input')
+                                    + os.path.sep)
             rsync_calls.append(input_cmd)
 
         for cmd in rsync_calls:

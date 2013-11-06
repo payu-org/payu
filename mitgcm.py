@@ -76,15 +76,16 @@ class Mitgcm(Experiment):
             n_iter0 = 0
 
         # Link any input data to work directory
-        for f in os.listdir(self.input_path):
-            f_input = os.path.join(self.input_path, f)
-            f_work = os.path.join(self.work_path, f)
-            # Do not use a input file if an identical restart file exists
-            if not os.path.exists(f_work):
-                if use_symlinks:
-                    os.symlink(f_input, f_work)
-                else:
-                    sh.copy(f_input, f_work)
+        for input_path in self.input_paths:
+            for f in os.listdir(input_path):
+                f_input = os.path.join(input_path, f)
+                f_work = os.path.join(self.work_path, f)
+                # Do not use a input file if an identical restart file exists
+                if not os.path.exists(f_work):
+                    if use_symlinks:
+                        os.symlink(f_input, f_work)
+                    else:
+                        sh.copy(f_input, f_work)
 
         # Update configuration file 'data'
 
