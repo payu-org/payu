@@ -19,7 +19,7 @@ import shutil as sh
 import subprocess as sp
 
 # Local
-from fs import mkdir_p, patch_nml
+from fsops import mkdir_p, patch_nml
 from experiment import Experiment
 
 class Mitgcm(Experiment):
