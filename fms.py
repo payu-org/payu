@@ -18,7 +18,7 @@ import shutil as sh
 import subprocess as sp
 
 # Local
-from fs import mkdir_p
+from fsops import mkdir_p
 from experiment import Experiment
 
 class Fms(Experiment):

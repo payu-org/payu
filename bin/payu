@@ -106,8 +106,8 @@ def payu_parse():
 
     # Validate the configuration file path
     if config_path and not os.path.isfile(config_path):
-        sys.exit('payu: error: Configuration file {f} does not exist.'.format(
-                    f=config_path))
+        sys.exit('payu: error: Configuration file {} does not exist.'
+                 ''.format(config_path))
 
     # Assign the default config path if it exists
     if not config_path and os.path.isfile(default_config_fname):

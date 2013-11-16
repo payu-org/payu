@@ -29,7 +29,7 @@ import subprocess as sp
 import yaml
 
 # Local
-from fs import mkdir_p, make_symlink
+from fsops import mkdir_p, make_symlink
 
 # Environment module support on vayu
 execfile('/opt/Modules/default/init/python')
@@ -52,11 +52,11 @@ class Experiment(object):
         os.umask(perms)
 
         # TODO: __init__ should not be a config dumping ground!
+        self.read_config()
 
         # TODO: Move to run/collate/sweep?
-        self.read_config()
         self.set_pbs_config()
-        self.set_model_pathnames()
+        self.set_lab_pathnames()
         self.set_run_pathnames()
         self.set_counters()
 
@@ -67,6 +67,7 @@ class Experiment(object):
         if stacksize:
             self.set_stacksize(stacksize)
 
+        # TODO: Move this somewhere else
         self.postscript = self.config.get('postscript')
 
 
@@ -170,15 +171,12 @@ class Experiment(object):
 
 
     #---
-    def set_model_pathnames(self):
+    def set_lab_pathnames(self):
 
         # Local "control" path
-
-        default_control_path = os.getcwd()
-        self.control_path = self.config.get('control', default_control_path)
+        self.control_path = self.config.get('control', os.getcwd())
 
         # Top-level "laboratory" path
-
         default_short_path = os.path.join('/short', os.environ.get('PROJECT'))
         self.short_path = self.config.get('shortpath', default_short_path)
 
@@ -190,7 +188,7 @@ class Experiment(object):
                                         self.model_name)
         self.lab_path = self.config.get('laboratory', default_lab_path)
 
-        # Executable path ("bin")
+        # Executable directory path ("bin")
         self.bin_path = os.path.join(self.lab_path, 'bin')
 
 
@@ -275,6 +273,11 @@ class Experiment(object):
             if self.counter > 0:
                 # TODO: This warning should be replaced with an abort in setup
                 print('Warning: no restart files found.')
+
+
+    #---
+    def init(self):
+        raise NotImplementedError
 
 
     #---
