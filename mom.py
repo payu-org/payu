@@ -11,7 +11,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 """
 
 from fms import Fms
-from fs import mkdir_p
+from fsops import mkdir_p
 import os
 import shlex
 import shutil

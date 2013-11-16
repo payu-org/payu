@@ -1,3 +1,5 @@
+# coding: utf-8
+
 import os
 import sys
 
@@ -24,14 +26,6 @@ def repython(python_version, script_path):
 
         # Replace with specified version
         module('load', os.path.join('python', python_version))
-
-        # Update payu version if provided
-        # TODO: Confirm that I can delete this
-        try:
-            module('use', os.environ['PAYU_MODULEPATH'])
-            module('load', os.environ['PAYU_MODULENAME'])
-        except KeyError:
-            pass
 
         # Replace the current python process with the updated version
         os.execl(script_path, *sys.argv)
