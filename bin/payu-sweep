@@ -5,13 +5,17 @@
 import argparse
 
 # Local
+from payu.experiment import Experiment
+
+# XXX: To be deleted
 import payu.model
 
 #---
 def payu_sweep(model_name, config_path, hard_sweep):
 
-    model = payu.model.index[model_name]
-    expt = model()
+    #model = payu.model.index[model_name]
+    #expt = model()
+    expt = Experiment()
     expt.sweep(hard_sweep)
 
 
