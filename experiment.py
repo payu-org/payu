@@ -30,6 +30,7 @@ import yaml
 
 # Local
 from fsops import mkdir_p, make_symlink
+from model import index as model_index
 
 # Environment module support on vayu
 execfile('/opt/Modules/default/init/python')
@@ -53,6 +54,9 @@ class Experiment(object):
 
         # TODO: __init__ should not be a config dumping ground!
         self.read_config()
+
+        # Initialize the submodels
+        self.init_models()
 
         # TODO: Move to run/collate/sweep?
         self.set_pbs_config()
@@ -84,6 +88,31 @@ class Experiment(object):
                 self.config = {}
             else:
                 raise
+
+
+    #---
+    def init_models(self):
+
+        # TODO: Dict or list? Do I need the mapping?
+        self.models = []
+
+        submodels = self.config.get('submodels')
+        if not submodels:
+
+            solo_model = self.config.get('model')
+            if not solo_model:
+                sys.exit('payu: error: Missing model configuration.')
+
+            model_fields = {'model', 'exe', 'input', 'ncpus'}
+            submodels['solo'] = {f: self.config[f] for f in model_fields}
+
+        # TODO: Warn the user if 'submodels' and 'model' are set
+        #       Or append it to submodels?
+
+        for m_name, m_config in submodels.iteritems():
+
+            ModelType = model_index[m_config['model']]
+            self.models.append(ModelType(m_config))
 
 
     #---
