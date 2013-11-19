@@ -30,7 +30,7 @@ import yaml
 
 # Local
 from fsops import mkdir_p, make_symlink
-from model import index as model_index
+from modelindex import index as model_index
 
 # Environment module support on vayu
 execfile('/opt/Modules/default/init/python')
@@ -96,7 +96,7 @@ class Experiment(object):
         # TODO: Dict or list? Do I need the mapping?
         self.models = []
 
-        submodels = self.config.get('submodels')
+        submodels = self.config.get('submodels', {})
         if not submodels:
 
             solo_model = self.config.get('model')

@@ -19,15 +19,16 @@ import subprocess as sp
 
 # Local
 from fsops import mkdir_p
-from experiment import Experiment
+from modeldriver import Model
 
-class Fms(Experiment):
+#class Fms(Experiment):
+class Fms(Model):
 
     #---
-    def __init__(self, **kwargs):
+    def __init__(self):
 
         # payu initalisation
-        super(Fms, self).__init__(**kwargs)
+        super(Fms, self).__init__()
 
 
     #---

@@ -18,7 +18,7 @@ import subprocess as sp
 import yaml
 
 # Local
-import payu.model
+from payu.modelindex import index as model_index
 
 # TODO: Move to some sort of config file
 default_config_fname = 'config.yaml'
@@ -122,7 +122,7 @@ def payu_parse():
     # If there is still no defined model_name, try the parent directory
     if not model_name:
         model_name = os.path.basename(os.path.abspath(os.pardir))
-        if not model_name in payu.model.index.keys():
+        if not model_name in model_index.keys():
             sys.exit('payu: error: Unknown model.')
         else:
             print('payu: warning: Assuming model is {model} based on '
@@ -296,7 +296,7 @@ def call_init(model_name, config_path):
 #---
 def call_list():
 
-    print('Supported models: {0}'.format(' '.join(payu.model.index.keys())))
+    print('Supported models: {0}'.format(' '.join(model_index.keys())))
 
 
 #---
