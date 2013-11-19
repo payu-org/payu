@@ -20,7 +20,7 @@ import sys
 
 class Mom(Fms):
     #---
-    def __init__(self, **kwargs):
+    def __init__(self):
 
         # Model-specific configuration
         self.model_name = 'mom'

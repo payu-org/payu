@@ -8,7 +8,7 @@ import argparse
 from payu.experiment import Experiment
 
 # XXX: To be deleted
-import payu.model
+#import payu.model
 
 #---
 def payu_sweep(model_name, config_path, hard_sweep):
