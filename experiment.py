@@ -245,7 +245,7 @@ class Experiment(object):
                 self.input_paths.append(input_dir)
             else:
                 # Test for path relative to /${lab_path}/input
-                assert self.input_root_path
+                assert self.input_basepath
                 rel_path = os.path.join(self.input_basepath, input_dir)
                 if os.path.exists(rel_path):
                     self.input_paths.append(rel_path)
