@@ -193,6 +193,9 @@ class Experiment(object):
         # Executable path ("bin")
         self.bin_path = os.path.join(self.lab_path, 'bin')
 
+        # Experiment input path
+        self.input_basepath = os.path.join(self.lab_path, 'input')
+
 
     #---
     def set_run_pathnames(self):
@@ -229,7 +232,9 @@ class Experiment(object):
         # TODO: Replace old self.input_path references in payu
 
         input_dirs = self.config.get('input')
-        if type(input_dirs) == str or input_dirs is None:
+        if input_dirs is None:
+            input_dirs = []
+        elif type(input_dirs) == str:
             input_dirs = [input_dirs]
 
         self.input_paths = []
@@ -240,7 +245,8 @@ class Experiment(object):
                 self.input_paths.append(input_dir)
             else:
                 # Test for path relative to /${lab_path}/input
-                rel_path = os.path.join(self.lab_path, 'input', input_dir)
+                assert self.input_root_path
+                rel_path = os.path.join(self.input_basepath, input_dir)
                 if os.path.exists(rel_path):
                     self.input_paths.append(rel_path)
                 else:
@@ -275,6 +281,30 @@ class Experiment(object):
             if self.counter > 0:
                 # TODO: This warning should be replaced with an abort in setup
                 print('Warning: no restart files found.')
+
+
+    #---
+    def init(self):
+
+        assert self.lab_path
+        mkdir_p(self.lab_path)
+
+        assert self.input_basepath
+        mkdir_p(self.input_basepath)
+
+        # Check out source code
+        self.get_codebase()
+        self.build_model()
+
+
+    #---
+    def get_codebase():
+        raise NotImplementedError
+
+
+    #---
+    def build_model():
+        raise NotImplementedError
 
 
     #---

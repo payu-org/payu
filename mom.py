@@ -40,17 +40,6 @@ class Mom(Fms):
 
 
     #---
-    def init(self):
-
-        assert self.lab_path
-        mkdir_p(self.lab_path)
-
-        # Check out source code
-        self.get_codebase()
-        self.build_model()
-
-
-    #---
     def get_codebase(self):
 
         assert self.lab_path
@@ -102,6 +91,14 @@ class Mom(Fms):
                                  exec_type, 'fms_{}.x'.format(exec_type))
         shutil.copy(exec_path, self.bin_path)
 
+        # Copy mppnccombine
+        mppnc_exec = 'mppnccombine.{}'.format(platform)
+
+        mppnc_src = os.path.join(self.codebase_path, 'bin', mppnc_exec)
+        mppnc_dest = os.path.join(self.bin_path, 'mppnccombine')
+        shutil.copy(mppnc_src, mppnc_dest)
+
+        # Return to working directory
         os.chdir(curdir)
 
 
