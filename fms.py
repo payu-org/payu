@@ -20,8 +20,8 @@ import subprocess as sp
 # Local
 from fsops import mkdir_p
 from modeldriver import Model
+from experiment import Experiment
 
-#class Fms(Experiment):
 class Fms(Model):
 
     #---
