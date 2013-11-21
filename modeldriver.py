@@ -4,5 +4,5 @@
 # TODO: Move relevant parts of Experiment into Model
 class Model(object):
 
-    def __init__(self):
+    def __init__(self, config):
         pass
