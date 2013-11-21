@@ -20,7 +20,7 @@ import sys
 
 class Mom(Fms):
     #---
-    def __init__(self):
+    def __init__(self, config):
 
         # Model-specific configuration
         self.model_name = 'mom'
@@ -36,7 +36,7 @@ class Mom(Fms):
                              'input.nml']
 
         # FMS initalisation
-        super(Mom, self).__init__(**kwargs)
+        super(Mom, self).__init__(config)
 
 
     #---
