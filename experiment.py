@@ -196,7 +196,7 @@ class Experiment(object):
         # Set group identifier for output
         # TODO: Do we even use this anymore? It's too slow
         #       Use the qsub flag?
-        self.archive_group = self.config.pop('archive_group', None)
+        self.archive_group = self.config.get('archive_group')
 
 
     #---
@@ -205,17 +205,37 @@ class Experiment(object):
         # Local "control" path
         self.control_path = self.config.get('control', os.getcwd())
 
-        # Top-level "laboratory" path
+        # Top-level "short term storage" path
         default_short_path = os.path.join('/short', os.environ.get('PROJECT'))
         self.short_path = self.config.get('shortpath', default_short_path)
 
         default_user = pwd.getpwuid(os.getuid()).pw_name
         self.user_name = self.config.get('user', default_user)
 
-        assert self.model_name
-        default_lab_path = os.path.join(self.short_path, self.user_name,
-                                        self.model_name)
-        self.lab_path = self.config.get('laboratory', default_lab_path)
+        # Identify the laboratory
+        lab_name = self.config.get('laboratory')
+
+        # If there is only one model, then use the model laboratory
+        if not lab_name:
+            if len(self.models) == 1:
+                lab_name = self.models[0].model_name
+            else:
+                sys.exit('payu: error: Laboratory could not be determined.')
+
+        # Lab name should be defined at this point
+        assert lab_name
+
+        # Construct the laboratory absolute path if necessary
+        if os.path.isabs(lab_name):
+                self.lab_path = lab_name
+        else:
+            # Check under the default root path
+            self.lab_path = os.path.join(self.short_path, self.user_name,
+                                         lab_name)
+        # Validate the path
+        if not os.path.isdir(self.lab_path):
+            sys.exit('payu: error: Laboratory path {} not found.'
+                     ''.format(self.lab_path))
 
         # Executable directory path ("bin")
         self.bin_path = os.path.join(self.lab_path, 'bin')
@@ -246,7 +266,7 @@ class Experiment(object):
         assert self.bin_path
         assert self.default_exec
         assert self.model_name
-        exec_name = self.config.pop('exe', self.default_exec)
+        exec_name = self.config.get('exe', self.default_exec)
         self.exec_path = os.path.join(self.bin_path, exec_name)
 
         # Stream output filenames
