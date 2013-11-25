@@ -49,8 +49,6 @@ class Mitgcm(Experiment):
         # payu setup
         super(Mitgcm, self).setup()
 
-        self.load_modules()
-
         # Link restart files to work directory
         if self.prior_res_path and not repeat_run:
             restart_files = [f for f in os.listdir(self.prior_res_path)

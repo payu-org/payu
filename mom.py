@@ -20,10 +20,10 @@ import sys
 
 class Mom(Fms):
     #---
-    def __init__(self, expt):
+    def __init__(self, expt, config):
 
         # FMS initalisation
-        super(Mom, self).__init__(expt)
+        super(Mom, self).__init__(expt, config)
 
         # Model-specific configuration
         self.model_name = 'mom'
@@ -100,14 +100,6 @@ class Mom(Fms):
 
         # Return to working directory
         os.chdir(curdir)
-
-
-    #---
-    def setup(self):
-        # FMS initialisation
-        super(Mom, self).setup()
-
-        self.load_modules()
 
 
     #---

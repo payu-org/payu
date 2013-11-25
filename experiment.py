@@ -52,6 +52,9 @@ class Experiment(object):
         perms = 0o0027
         os.umask(perms)
 
+        # TODO: replace with dict, check versions via key-value pairs
+        self.modules = set()
+
         # TODO: __init__ should not be a config dumping ground!
         self.read_config()
 
@@ -70,8 +73,12 @@ class Experiment(object):
         self.set_expt_pathnames()
         self.set_counters()
 
-        self.set_input_paths()
+        #self.set_input_paths()
         self.set_output_paths()
+
+        # XXX: testing
+        for model in self.models:
+            model.set_input_paths()
 
         # Miscellaneous configurations
         # TODO: Move this stuff somewhere else
@@ -112,7 +119,7 @@ class Experiment(object):
         for m_name, m_config in submodels.iteritems():
 
             ModelType = model_index[m_config['model']]
-            self.models.append(ModelType(self))
+            self.models.append(ModelType(self, m_config))
 
 
     #---
@@ -164,6 +171,9 @@ class Experiment(object):
     #---
     def load_modules(self):
         # TODO: ``reversion`` makes a lot of this redundant
+
+        for model in self.models:
+            self.modules.update(model.modules)
 
         # Unload non-essential modules
         loaded_mods = os.environ.get('LOADEDMODULES', '').split(':')
@@ -276,34 +286,6 @@ class Experiment(object):
 
 
     #---
-    def set_input_paths(self):
-
-        # TODO: Each model needs its own input directories
-
-        input_dirs = self.config.get('input')
-        if input_dirs is None:
-            input_dirs = []
-        elif type(input_dirs) == str:
-            input_dirs = [input_dirs]
-
-        self.input_paths = []
-        for input_dir in input_dirs:
-
-            # First test for absolute path
-            if os.path.exists(input_dir):
-                self.input_paths.append(input_dir)
-            else:
-                # Test for path relative to /${lab_path}/input
-                assert self.input_basepath
-                rel_path = os.path.join(self.input_basepath, input_dir)
-                if os.path.exists(rel_path):
-                    self.input_paths.append(rel_path)
-                else:
-                    sys.exit('payu: error: Input directory {} not found; '
-                             'aborting.'.format(rel_path))
-
-
-    #---
     def set_output_paths(self):
         # Local archive paths
         output_dir = 'output{:03}'.format(self.counter)
@@ -382,6 +364,9 @@ class Experiment(object):
 
     #---
     def run(self, *user_flags):
+
+        self.load_modules()
+
         f_out = open(self.stdout_fname, 'w')
         f_err = open(self.stderr_fname, 'w')
 

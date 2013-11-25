@@ -40,8 +40,6 @@ class Gold(Fms):
         # FMS initialisation
         super(Gold, self).setup()
 
-        self.load_modules()
-
         # GOLD-specific initialisation
         if self.counter == 0:
             self.init_config()
