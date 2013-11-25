@@ -73,8 +73,10 @@ class Experiment(object):
         self.set_input_paths()
         self.set_output_paths()
 
-        # TODO: Move this somewhere else
+        # Miscellaneous configurations
+        # TODO: Move this stuff somewhere else
         self.postscript = self.config.get('postscript')
+        self.repeat_run = self.config.get('repeat', False)
 
 
     #---
@@ -95,7 +97,6 @@ class Experiment(object):
     #---
     def init_models(self):
 
-        # TODO: Dict or list? Do I need the mapping?
         self.models = []
 
         submodels = self.config.get('submodels', {})
@@ -268,14 +269,16 @@ class Experiment(object):
         for model in self.models:
             model.set_model_pathnames()
 
-        ## Stream output filenames
+        # Stream output filenames
+        # TODO: per-model output streams?
         self.stdout_fname = self.lab_name + '.out'
         self.stderr_fname = self.lab_name + '.err'
 
 
     #---
     def set_input_paths(self):
-        # TODO: Replace old self.input_path references in payu
+
+        # TODO: Each model needs its own input directories
 
         input_dirs = self.config.get('input')
         if input_dirs is None:
@@ -331,6 +334,7 @@ class Experiment(object):
 
     #---
     def init(self):
+        # TODO: `init` is too generic
 
         assert self.lab_path
         mkdir_p(self.lab_path)
@@ -374,9 +378,6 @@ class Experiment(object):
 
         for model in self.models:
             model.setup()
-        #    for f in model.config_files:
-        #        f_path = os.path.join(model.control_path, f)
-        #        sh.copy(f_path, model.work_path)
 
 
     #---
