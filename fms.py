@@ -25,10 +25,10 @@ from modeldriver import Model
 class Fms(Model):
 
     #---
-    def __init__(self, expt):
+    def __init__(self, expt, config):
 
         # payu initalisation
-        super(Fms, self).__init__(expt)
+        super(Fms, self).__init__(expt, config)
 
 
     #---
