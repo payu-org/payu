@@ -108,13 +108,10 @@ class Experiment(object):
             model_fields = {'model', 'exe', 'input', 'ncpus'}
             submodels['solo'] = {f: self.config[f] for f in model_fields}
 
-        # TODO: Warn the user if 'submodels' and 'model' are set
-        #       Or append it to submodels?
-
         for m_name, m_config in submodels.iteritems():
 
             ModelType = model_index[m_config['model']]
-            self.models.append(ModelType(m_config))
+            self.models.append(ModelType(self))
 
 
     #---
@@ -268,13 +265,8 @@ class Experiment(object):
         self.work_sym_path = os.path.join(self.control_path, 'work')
         self.archive_sym_path = os.path.join(self.control_path, 'archive')
 
-        # TODO: Move to "Model" setup
-
-        ## Executable path
-        #assert self.bin_path
-        #assert self.default_exec
-        #exec_name = self.config.get('exe', self.default_exec)
-        #self.exec_path = os.path.join(self.bin_path, exec_name)
+        for model in self.models:
+            model.set_model_pathnames()
 
         ## Stream output filenames
         self.stdout_fname = self.lab_name + '.out'
@@ -381,9 +373,10 @@ class Experiment(object):
         make_symlink(self.work_path, self.work_sym_path)
 
         for model in self.models:
-            for f in model.config_files:
-                f_path = os.path.join(model.control_path, f)
-                sh.copy(f_path, model.work_path)
+            model.setup()
+        #    for f in model.config_files:
+        #        f_path = os.path.join(model.control_path, f)
+        #        sh.copy(f_path, model.work_path)
 
 
     #---

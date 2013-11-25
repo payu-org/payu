@@ -20,7 +20,10 @@ import sys
 
 class Mom(Fms):
     #---
-    def __init__(self, config):
+    def __init__(self, expt):
+
+        # FMS initalisation
+        super(Mom, self).__init__(expt)
 
         # Model-specific configuration
         self.model_name = 'mom'
@@ -34,9 +37,6 @@ class Mom(Fms):
                              'diag_table',
                              'field_table',
                              'input.nml']
-
-        # FMS initalisation
-        super(Mom, self).__init__(config)
 
 
     #---
