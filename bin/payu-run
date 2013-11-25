@@ -9,15 +9,16 @@ reversion.repython('2.7.5', __file__)
 import os
 
 # Local
-import payu.model
+from payu.experiment import Experiment
 
 
 #---
-def payu_run(model_name):
+#def payu_run(model_name):
+def payu_run():
 
-    model = payu.model.index[model_name]
-    expt = model()
-    expt.modules.append('ipm')
+    #model = payu.model.index[model_name]
+    #expt = model()
+    expt = Experiment()
 
     expt.setup()
     expt.run()
@@ -30,5 +31,6 @@ def payu_run(model_name):
 #---
 if __name__ == '__main__':
 
-    model_name = os.environ.get('PAYU_MODEL')
-    payu_run(model_name)
+    #model_name = os.environ.get('PAYU_MODEL')
+    #payu_run(model_name)
+    payu_run()
