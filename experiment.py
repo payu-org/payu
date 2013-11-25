@@ -55,21 +55,23 @@ class Experiment(object):
         # TODO: __init__ should not be a config dumping ground!
         self.read_config()
 
+        # Set stacksize
+        # NOTE: Possible PBS issue in setting non-unlimited stacksizes
+        stacksize = self.config.get('stacksize')
+        if stacksize:
+            self.set_stacksize(stacksize)
+
         # Initialize the submodels
         self.init_models()
 
         # TODO: Move to run/collate/sweep?
         self.set_pbs_config()
         self.set_lab_pathnames()
-        self.set_run_pathnames()
+        self.set_expt_pathnames()
         self.set_counters()
 
         self.set_input_paths()
         self.set_output_paths()
-
-        stacksize = self.config.get('stacksize')
-        if stacksize:
-            self.set_stacksize(stacksize)
 
         # TODO: Move this somewhere else
         self.postscript = self.config.get('postscript')
@@ -212,7 +214,9 @@ class Experiment(object):
         default_user = pwd.getpwuid(os.getuid()).pw_name
         self.user_name = self.config.get('user', default_user)
 
-        # Identify the laboratory
+        # Laboratory path
+
+        # Determine laboratory name
         lab_name = self.config.get('laboratory')
 
         # If there is only one model, then use the model laboratory
@@ -222,8 +226,7 @@ class Experiment(object):
             else:
                 sys.exit('payu: error: Laboratory could not be determined.')
 
-        # Lab name should be defined at this point
-        assert lab_name
+        self.lab_name = lab_name
 
         # Construct the laboratory absolute path if necessary
         if os.path.isabs(lab_name):
@@ -237,15 +240,18 @@ class Experiment(object):
             sys.exit('payu: error: Laboratory path {} not found.'
                      ''.format(self.lab_path))
 
-        # Executable directory path ("bin")
+        # Executable "binary" path
         self.bin_path = os.path.join(self.lab_path, 'bin')
 
-        # Experiment input path
+        # Laboratory input path
         self.input_basepath = os.path.join(self.lab_path, 'input')
+
+        # Source code base path
+        self.codebase_path = os.path.join(self.lab_path, 'codebase')
 
 
     #---
-    def set_run_pathnames(self):
+    def set_expt_pathnames(self):
 
         # Experiment name
         assert self.control_path
@@ -262,16 +268,17 @@ class Experiment(object):
         self.work_sym_path = os.path.join(self.control_path, 'work')
         self.archive_sym_path = os.path.join(self.control_path, 'archive')
 
-        # Executable path
-        assert self.bin_path
-        assert self.default_exec
-        assert self.model_name
-        exec_name = self.config.get('exe', self.default_exec)
-        self.exec_path = os.path.join(self.bin_path, exec_name)
+        # TODO: Move to "Model" setup
 
-        # Stream output filenames
-        self.stdout_fname = self.model_name + '.out'
-        self.stderr_fname = self.model_name + '.err'
+        ## Executable path
+        #assert self.bin_path
+        #assert self.default_exec
+        #exec_name = self.config.get('exe', self.default_exec)
+        #self.exec_path = os.path.join(self.bin_path, exec_name)
+
+        ## Stream output filenames
+        self.stdout_fname = self.lab_name + '.out'
+        self.stderr_fname = self.lab_name + '.err'
 
 
     #---
@@ -359,11 +366,12 @@ class Experiment(object):
 
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
-            sys.exit('Archived path already exists; aborting.')
+            sys.exit('payu: error: Archived path already exists.')
 
         mkdir_p(self.work_path)
 
         # Stripe directory in Lustre
+        # TODO: Make this more configurable
         if do_stripe:
             cmd = 'lfs setstripe -c 8 -s 8m {}'.format(self.work_path)
             cmd = shlex.split(cmd)
@@ -372,9 +380,10 @@ class Experiment(object):
 
         make_symlink(self.work_path, self.work_sym_path)
 
-        for f in self.config_files:
-            f_path = os.path.join(self.control_path, f)
-            sh.copy(f_path, self.work_path)
+        for model in self.models:
+            for f in model.config_files:
+                f_path = os.path.join(model.control_path, f)
+                sh.copy(f_path, model.work_path)
 
 
     #---

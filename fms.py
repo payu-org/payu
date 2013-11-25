@@ -32,7 +32,9 @@ class Fms(Model):
 
 
     #---
-    def set_run_pathnames(self):
+    def set_expt_pathnames(self):
+        # TODO: Move this into Model()?
+
         super(Fms, self).set_run_pathnames()
 
         # Define local FMS directories
