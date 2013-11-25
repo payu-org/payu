@@ -385,13 +385,15 @@ class Experiment(object):
         for model in self.models:
             model_prog = []
 
+            model_prog.append('-wdir {}'.format(self.work_path))
+
             model_ncpus = model.config.get('ncpus')
             if model_ncpus:
                 model_prog.append('-np {}'.format(model_ncpus))
 
             model_npernode = model.config.get('npernode')
             if model_npernode:
-                model_prog.append('-np {}'.format(model_npernode))
+                model_prog.append('-npernode {}'.format(model_npernode))
 
             model_prog.append(model.exec_path)
 

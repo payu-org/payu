@@ -75,12 +75,6 @@ class Fms(Model):
                         sh.copy(f_input, f_work_input)
 
 
-    #---
-    def run(self, *flags):
-        flags = flags + ('-wd %s' % self.work_path, )
-        super(Fms, self).run(*flags)
-
-
     #--
     def archive(self, **kwargs):
 
