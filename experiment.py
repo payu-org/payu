@@ -113,8 +113,9 @@ class Experiment(object):
             if not solo_model:
                 sys.exit('payu: error: Missing model configuration.')
 
-            model_fields = {'model', 'exe', 'input', 'ncpus'}
-            submodels['solo'] = {f: self.config[f] for f in model_fields}
+            model_fields = {'model', 'exe', 'input', 'ncpus', 'npernode'}
+            submodels['solo'] = {f: self.config[f] for f in model_fields
+                                    if f in self.config}
 
         for m_name, m_config in submodels.iteritems():
 
@@ -311,12 +312,12 @@ class Experiment(object):
             self.prior_res_path = None
             if self.counter > 0:
                 # TODO: This warning should be replaced with an abort in setup
-                print('Warning: no restart files found.')
+                print('payu: warning: No restart files found.')
 
 
     #---
     def init(self):
-        # TODO: `init` is too generic
+        # TODO: The name `init` is too generic
 
         assert self.lab_path
         mkdir_p(self.lab_path)
@@ -375,19 +376,32 @@ class Experiment(object):
         mpi_flags = self.config.get('mpirun', [])
         if type(mpi_flags) != list:
             mpi_flags = [mpi_flags]
-        # TODO: Assert that np and npernode are not in the mpirun flags
-
-        if self.n_cpus:
-            mpi_flags.append('-np {}'.format(self.n_cpus))
-
-        if self.n_cpus_per_node:
-            mpi_flags.append('-npernode {}'.format(self.n_cpus_per_node))
 
         # XXX: I think this may be broken
         if user_flags:
             mpi_flags.extend(list(user_flags))
 
-        cmd = ' '.join([mpirun_cmd, ' '.join(mpi_flags), self.exec_path])
+        mpi_progs = []
+        for model in self.models:
+            model_prog = []
+
+            model_ncpus = model.config.get('ncpus')
+            if model_ncpus:
+                model_prog.append('-np {}'.format(model_ncpus))
+
+            model_npernode = model.config.get('npernode')
+            if model_npernode:
+                model_prog.append('-np {}'.format(model_npernode))
+
+            model_prog.append(model.exec_path)
+
+            mpi_progs.append(' '.join(model_prog))
+
+        cmd = '{mpirun} {flags} {progs}'.format(
+                    mpirun = mpirun_cmd,
+                    flags = ' '.join(mpi_flags),
+                    progs = ' : '.join(mpi_progs))
+
         cmd = shlex.split(cmd)
 
         rc = sp.call(cmd, stdout=f_out, stderr=f_err)
@@ -402,7 +416,7 @@ class Experiment(object):
 
         # TODO: Need a model-specific cleanup method call here
         if rc != 0:
-            sys.exit('Error {}; aborting.'.format(rc))
+            sys.exit('payu: error {}; aborting.'.format(rc))
 
         # Decrement run counter on successful run
         self.n_runs -= 1
@@ -430,7 +444,7 @@ class Experiment(object):
             sys.exit('Archived path already exists; aborting.')
 
         cmd = 'mv {} {}'.format(self.work_path, self.output_path)
-        rc = sp.call(cmd.split())
+        rc = sp.call(shlex.split(cmd))
         assert rc == 0
 
         if self.archive_group:
