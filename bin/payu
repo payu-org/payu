@@ -308,8 +308,7 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
     pbs_flags = []
 
     pbs_queue = pbs_config.get('queue', 'normal')
-    if pbs_queue:
-        pbs_flags.append('-q {}'.format(pbs_queue))
+    pbs_flags.append('-q {}'.format(pbs_queue))
 
     # Raijin doesn't read $PROJECT, which is required at login
     pbs_project = pbs_config.get('project', os.environ['PROJECT'])
@@ -345,7 +344,7 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
     pbs_flags.append('-j oe')
 
     if pbs_vars:
-        pbs_vstring = ','.join("{0}={1}".format(k, v)
+        pbs_vstring = ','.join('{}={}'.format(k, v)
                                for k, v in pbs_vars.iteritems())
         pbs_flags.append('-v ' + pbs_vstring)
 
