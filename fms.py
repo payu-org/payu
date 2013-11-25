@@ -32,41 +32,29 @@ class Fms(Model):
 
 
     #---
-    def set_expt_pathnames(self):
-        # TODO: Move this into Model()?
+    def set_model_pathnames(self):
 
-        super(Fms, self).set_run_pathnames()
+        super(Fms, self).set_model_pathnames()
 
         # Define local FMS directories
-        self.work_res_path = os.path.join(self.work_path, 'RESTART')
-        self.work_input_path = os.path.join(self.work_path, 'INPUT')
-
-
-    #---
-    def build(self):
-        raise NotImplementedError
+        self.work_res_path = os.path.join(self.expt.work_path, 'RESTART')
+        self.work_input_path = os.path.join(self.expt.work_path, 'INPUT')
 
 
     #---
     def setup(self, use_symlinks=True, repeat_run=False):
 
-        # payu setup:
-        #   work path and symlink, config file copy
         super(Fms, self).setup()
 
-        # TODO: Move this into `Experiment`
-        repeat_run = self.config.get('repeat', False)
-
         # Create experiment directory structure
+        mkdir_p(self.work_input_path)
         mkdir_p(self.work_res_path)
 
         # Either create a new INPUT path or link a previous RESTART as INPUT
-        mkdir_p(self.work_input_path)
-
-        if self.prior_res_path and not repeat_run:
-            restart_files = os.listdir(self.prior_res_path)
+        if self.expt.prior_res_path and not self.expt.repeat_run:
+            restart_files = os.listdir(self.expt.prior_res_path)
             for f in restart_files:
-                f_res = os.path.join(self.prior_res_path, f)
+                f_res = os.path.join(self.expt.prior_res_path, f)
                 f_input = os.path.join(self.work_input_path, f)
                 if use_symlinks:
                     os.symlink(f_res, f_input)
