@@ -5,13 +5,15 @@
 import argparse
 
 # Local
-import payu.model
+#import payu.model
+from payu.experiment import Experiment
 
 #---
 def payu_init(model_name, config_path):
 
-    model = payu.model.index[model_name]
-    expt = model()
+    #model = payu.model.index[model_name]
+    #expt = model()
+    expt = Experiment()
     expt.init()
 
 
