@@ -20,13 +20,13 @@ import sys
 
 class Mom(Fms):
     #---
-    def __init__(self, expt, config):
+    def __init__(self, expt, name, config):
 
         # FMS initalisation
-        super(Mom, self).__init__(expt, config)
+        super(Mom, self).__init__(expt, name, config)
 
         # Model-specific configuration
-        self.model_name = 'mom'
+        self.model_type = 'mom'
         self.default_exec = 'fms_MOM_SIS.x'
 
         self.modules = ['pbs',

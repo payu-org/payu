@@ -111,16 +111,16 @@ class Experiment(object):
 
             solo_model = self.config.get('model')
             if not solo_model:
-                sys.exit('payu: error: Missing model configuration.')
+                sys.exit('payu: error: Unknown model configuration.')
 
             model_fields = {'model', 'exe', 'input', 'ncpus', 'npernode'}
-            submodels['solo'] = {f: self.config[f] for f in model_fields
-                                    if f in self.config}
+            submodels[solo_model] = {f: self.config[f] for f in model_fields
+                                     if f in self.config}
 
         for m_name, m_config in submodels.iteritems():
 
             ModelType = model_index[m_config['model']]
-            self.models.append(ModelType(self, m_config))
+            self.models.append(ModelType(self, m_name, m_config))
 
 
     #---
@@ -221,7 +221,6 @@ class Experiment(object):
         self.short_path = self.config.get('shortpath', default_short_path)
 
         default_user = pwd.getpwuid(os.getuid()).pw_name
-        self.user_name = self.config.get('user', default_user)
 
         # Laboratory path
 
@@ -231,7 +230,7 @@ class Experiment(object):
         # If there is only one model, then use the model laboratory
         if not lab_name:
             if len(self.models) == 1:
-                lab_name = self.models[0].model_name
+                lab_name = self.models[0].model_type
             else:
                 sys.exit('payu: error: Laboratory could not be determined.')
 
@@ -242,8 +241,9 @@ class Experiment(object):
                 self.lab_path = lab_name
         else:
             # Check under the default root path
-            self.lab_path = os.path.join(self.short_path, self.user_name,
-                                         lab_name)
+            user_name = self.config.get('user', default_user)
+            self.lab_path = os.path.join(self.short_path, user_name, lab_name)
+
         # Validate the path
         if not os.path.isdir(self.lab_path):
             sys.exit('payu: error: Laboratory path {} not found.'
@@ -273,7 +273,7 @@ class Experiment(object):
                                          self.experiment)
         self.work_path = os.path.join(self.lab_path, 'work', self.experiment)
 
-        # Symbolic paths to output
+        # Symbolic link paths to output
         self.work_sym_path = os.path.join(self.control_path, 'work')
         self.archive_sym_path = os.path.join(self.control_path, 'archive')
 
@@ -385,7 +385,7 @@ class Experiment(object):
         for model in self.models:
             model_prog = []
 
-            model_prog.append('-wdir {}'.format(self.work_path))
+            model_prog.append('-wdir {}'.format(model.work_path))
 
             model_ncpus = model.config.get('ncpus')
             if model_ncpus:
@@ -404,6 +404,7 @@ class Experiment(object):
                     flags = ' '.join(mpi_flags),
                     progs = ' : '.join(mpi_progs))
 
+        print(cmd)
         cmd = shlex.split(cmd)
 
         rc = sp.call(cmd, stdout=f_out, stderr=f_err)
@@ -452,7 +453,7 @@ class Experiment(object):
 
         # Double-check that the run path does not exist
         if os.path.exists(self.output_path):
-            sys.exit('Archived path already exists; aborting.')
+            sys.exit('payu: error: Archived path already exists.')
 
         cmd = 'mv {} {}'.format(self.work_path, self.output_path)
         rc = sp.call(shlex.split(cmd))
