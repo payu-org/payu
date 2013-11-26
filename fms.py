@@ -24,10 +24,10 @@ from modeldriver import Model
 class Fms(Model):
 
     #---
-    def __init__(self, expt, config):
+    def __init__(self, expt, name, config):
 
         # payu initalisation
-        super(Fms, self).__init__(expt, config)
+        super(Fms, self).__init__(expt, name, config)
 
 
     #---
@@ -36,8 +36,8 @@ class Fms(Model):
         super(Fms, self).set_model_pathnames()
 
         # Define local FMS directories
-        self.work_res_path = os.path.join(self.expt.work_path, 'RESTART')
-        self.work_input_path = os.path.join(self.expt.work_path, 'INPUT')
+        self.work_res_path = os.path.join(self.work_path, 'RESTART')
+        self.work_input_path = os.path.join(self.work_path, 'INPUT')
 
 
     #---
