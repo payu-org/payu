@@ -159,7 +159,7 @@ def payu_parse():
         pbs_vars = {'PYTHONPATH': os.environ['PYTHONPATH'],
                     'PAYU_MODULENAME': payu_modulename,
                     'PAYU_MODULEPATH': payu_modulepath,
-                    'PAYU_MODEL': model_name}
+                    }
         if init_run is not None:
             pbs_vars['PAYU_CURRENT_RUN'] = init_run
         if n_runs is not None:
@@ -168,7 +168,7 @@ def payu_parse():
         args.cmd(pbs_config, pbs_vars, init_run, n_runs)
 
     elif args.cmd == call_sweep:
-        call_sweep(model_name, config_path, args.hard_sweep)
+        call_sweep(config_path, args.hard_sweep)
 
     elif args.cmd == call_init:
         call_init(model_name, config_path)
@@ -274,9 +274,9 @@ def call_collate(pbs_config, pbs_vars, current_run=None, n_runs=None):
 
 #TODO: Merge sweep and init
 #---
-def call_sweep(model_name, config_path, hard_sweep=False):
+def call_sweep(config_path, hard_sweep=False):
 
-    cmd = 'payu-sweep -m {0} -c {1}'.format(model_name, config_path)
+    cmd = 'payu-sweep -c {}'.format(config_path)
     if hard_sweep:
         cmd = ' '.join([cmd, '--hard'])
 

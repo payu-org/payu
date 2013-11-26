@@ -6,7 +6,6 @@ import shutil
 from fsops import mkdir_p
 
 # TODO: Redesign the various models to subclass Model
-# TODO: Move relevant parts of Experiment into Model
 class Model(object):
 
     def __init__(self, expt, model_name, model_config):
@@ -40,7 +39,6 @@ class Model(object):
         if len(self.expt.models) > 1:
 
             self.control_path = os.path.join(self.control_path, self.name)
-            self.input_basepath = os.path.join(self.input_basepath, self.name)
             self.work_path = os.path.join(self.work_path, self.name)
 
         # NOTE: Individual models may override the work subdirectories
