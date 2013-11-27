@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # coding: utf-8
 """
 The payu interface for GFDL models based on FMS
@@ -37,7 +36,7 @@ class Fms(Model):
         super(Fms, self).set_model_pathnames()
 
         # Define local FMS directories
-        self.work_res_path = os.path.join(self.work_path, 'RESTART')
+        self.work_restart_path = os.path.join(self.work_path, 'RESTART')
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
 
 
@@ -48,13 +47,13 @@ class Fms(Model):
 
         # Create experiment directory structure
         mkdir_p(self.work_input_path)
-        mkdir_p(self.work_res_path)
+        mkdir_p(self.work_restart_path)
 
         # Either create a new INPUT path or link a previous RESTART as INPUT
-        if self.expt.prior_res_path and not self.expt.repeat_run:
-            restart_files = os.listdir(self.expt.prior_res_path)
+        if self.expt.prior_restart_path and not self.expt.repeat_run:
+            restart_files = os.listdir(self.expt.prior_restart_path)
             for f in restart_files:
-                f_res = os.path.join(self.expt.prior_res_path, f)
+                f_res = os.path.join(self.expt.prior_restart_path, f)
                 f_input = os.path.join(self.work_input_path, f)
                 if use_symlinks:
                     os.symlink(f_res, f_input)
@@ -79,19 +78,18 @@ class Fms(Model):
     #--
     def archive(self, **kwargs):
 
+        super(Fms, self).archive(**kwargs)
+
         # Remove the 'INPUT' path
         cmd = 'rm -rf {path}'.format(path=self.work_input_path)
-        rc = sp.Popen(shlex.split(cmd)).wait()
-        assert rc == 0
+        rc = sp.check_call(shlex.split(cmd))
 
         # Archive restart files before processing model output
-        mkdir_p(self.archive_path)
-        cmd = 'mv {src} {dst}'.format(src=self.work_res_path,
-                                      dst=self.res_path)
-        rc = sp.Popen(shlex.split(cmd)).wait()
-        assert rc == 0
+        cmd = 'mv {src} {dst}'.format(src=self.work_restart_path,
+                                      dst=self.restart_path)
+        sp.check_call(shlex.split(cmd))
 
-        super(Fms, self).archive(**kwargs)
+        #super(Fms, self).archive(**kwargs)
 
 
     #---

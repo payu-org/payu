@@ -142,8 +142,9 @@ class Mom(Fms):
         #----------
         # t_start
         tstamp_fname = driver_name + '.res'
-        if self.prior_res_path:
-            prior_tstamp_path = os.path.join(self.prior_res_path, tstamp_fname)
+        if self.prior_restart_path:
+            prior_tstamp_path = os.path.join(self.prior_restart_path,
+                                             tstamp_fname)
             tstamp_file = open(prior_tstamp_path, 'r')
 
             t_calendar = tstamp_file.readline().split()

@@ -81,9 +81,26 @@ class Model(object):
 
 
     #---
-    def set_output_paths(self):
-        # NYI
-        pass
+    def set_model_output_paths(self):
+
+        self.output_path = self.expt.output_path
+        self.restart_path = self.expt.restart_path
+
+        self.prior_output_path = self.expt.prior_output_path
+        self.prior_restart_path = self.expt.prior_restart_path
+
+        if len(self.expt.models) > 1:
+
+            self.output_path = os.path.join(self.output_path, self.name)
+            self.restart_path = os.path.join(self.restart_path, self.name)
+
+            if self.prior_output_path:
+                self.prior_output_path = os.path.join(self.prior_output_path,
+                                                      self.name)
+
+            if self.prior_restart_path:
+                self.prior_restart_path = os.path.join(self.prior_restart_path,
+                                                   self.name)
 
 
     #---
@@ -95,3 +112,9 @@ class Model(object):
         for f in self.config_files:
             f_path = os.path.join(self.control_path, f)
             shutil.copy(f_path, self.work_path)
+
+
+    #---
+    def archive(self):
+        # TODO: Do I need this?
+        pass
