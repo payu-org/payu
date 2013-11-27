@@ -204,11 +204,6 @@ class Experiment(object):
         default_job_name = os.path.basename(os.getcwd())
         self.job_name = self.config.get('jobname', default_job_name)
 
-        # Set group identifier for output
-        # TODO: Do we even use this anymore? It's too slow
-        #       Use the qsub flag?
-        self.archive_group = self.config.get('archive_group')
-
 
     #---
     def set_lab_pathnames(self):
@@ -301,18 +296,21 @@ class Experiment(object):
             self.prior_output_path = None
 
         # Local restart paths
-        res_dir = 'restart{:03}'.format(self.counter)
-        self.res_path = os.path.join(self.archive_path, res_dir)
+        restart_dir = 'restart{:03}'.format(self.counter)
+        self.restart_path = os.path.join(self.archive_path, restart_dir)
 
-        prior_res_dir = 'restart{:03}'.format(self.counter - 1)
-        prior_res_path = os.path.join(self.archive_path, prior_res_dir)
-        if os.path.exists(prior_res_path):
-            self.prior_res_path = prior_res_path
+        prior_restart_dir = 'restart{:03}'.format(self.counter - 1)
+        prior_restart_path = os.path.join(self.archive_path, prior_restart_dir)
+        if os.path.exists(prior_restart_path):
+            self.prior_restart_path = prior_restart_path
         else:
-            self.prior_res_path = None
+            self.prior_restart_path = None
             if self.counter > 0:
                 # TODO: This warning should be replaced with an abort in setup
                 print('payu: warning: No restart files found.')
+
+        for model in self.models:
+            model.set_model_output_paths()
 
 
     #---
@@ -404,7 +402,6 @@ class Experiment(object):
                     flags = ' '.join(mpi_flags),
                     progs = ' : '.join(mpi_progs))
 
-        print(cmd)
         cmd = shlex.split(cmd)
 
         rc = sp.call(cmd, stdout=f_out, stderr=f_err)
@@ -434,44 +431,50 @@ class Experiment(object):
 
     #---
     def archive(self, collate=True):
-        mkdir_p(self.archive_path)
 
+        mkdir_p(self.archive_path)
         make_symlink(self.archive_path, self.archive_sym_path)
 
         # Remove work symlink
         if os.path.islink(self.work_sym_path):
             os.remove(self.work_sym_path)
 
+        # TODO: restart archival is handled by each model. Abstract this!
+        if len(self.models) > 1:
+            mkdir_p(self.restart_path)
+
+        for model in self.models:
+            model.archive()
+
         # Double-check that the run path does not exist
         if os.path.exists(self.output_path):
             sys.exit('payu: error: Archived path already exists.')
 
         cmd = 'mv {} {}'.format(self.work_path, self.output_path)
-        rc = sp.call(shlex.split(cmd))
-        assert rc == 0
+        try:
+            sp.check_call(shlex.split(cmd))
+        except CalledProcessError as exc:
+            sys.exit('payu: error: {} (error {})'
+                     ''.format(cmd, exc.returncode))
 
-        if self.archive_group:
-            self.regroup()
-
-        # TODO: restart archival is handled by each model. Abstract this!
-
-        # TODO: delete old restarts
+        # Remove old restart files
+        # TODO: Move to subroutine
         restart_freq = self.config.get("restart_freq", default_restart_freq)
 
         if (self.counter >= restart_freq and self.counter % restart_freq == 0):
             i_s = self.counter - restart_freq
             i_e = self.counter - 1
-            prior_res_dirs = ('restart{:03}'.format(i)
+            prior_restart_dirs = ('restart{:03}'.format(i)
                               for i in range(i_s, i_e))
 
-            for res_dirname in prior_res_dirs:
-                res_path = os.path.join(self.archive_path, res_dirname)
-                cmd = 'rm -rf {}'.format(res_path)
+            for restart_dirname in prior_restart_dirs:
+                restart_path = os.path.join(self.archive_path, restart_dirname)
+                cmd = 'rm -rf {}'.format(restart_path)
                 cmd = shlex.split(cmd)
                 try: sp.check_call(cmd)
                 except CalledProcessError:
                     print('payu: warning: Could not delete directories {}'
-                          ''.format(' '.join(prior_res_dirs)))
+                          ''.format(' '.join(prior_restart_dirs)))
 
         if collate:
             cmd = 'payu collate -i {}'.format(self.counter)
@@ -527,19 +530,19 @@ class Experiment(object):
                                                    dst=remote_url)
         rsync_calls = [run_cmd]
 
-        if (self.counter % 5) == 0 and os.path.isdir(self.res_path):
+        if (self.counter % 5) == 0 and os.path.isdir(self.restart_path):
             # Tar restart files before rsyncing
-            res_tar_path = self.res_path + '.tar.gz'
+            restart_tar_path = self.restart_path + '.tar.gz'
 
             cmd = 'tar -C {path} -czf {fpath} {res}'.format(
                         path=self.archive_path,
-                        fpath=res_tar_path,
-                        res=os.path.basename(self.res_path)
+                        fpath=restart_tar_path,
+                        res=os.path.basename(self.restart_path)
                         ).split()
             rc = sp.Popen(cmd).wait()
 
-            restart_cmd = rsync_cmd + '{src} {dst}'.format(src=res_tar_path,
-                                                           dst=remote_url)
+            restart_cmd = ('{} {} {}'
+                           ''.format(rsync_cmd, restart_tar_path, remote_url))
             rsync_calls.append(restart_cmd)
         else:
             res_tar_path = None
@@ -566,19 +569,6 @@ class Experiment(object):
         # TODO: Temporary; this should be integrated with the rsync call
         if res_tar_path and os.path.exists(res_tar_path):
             os.remove(res_tar_path)
-
-
-    #---
-    def regroup(self):
-        uid = os.getuid()
-        gid = grp.getgrnam(self.archive_group).gr_gid
-
-        os.lchown(self.archive_path, uid, gid)
-        for root, dirs, files in os.walk(self.archive_path):
-            for d in dirs:
-                os.lchown(os.path.join(root, d), uid, gid)
-            for f in files:
-                os.lchown(os.path.join(root, f), uid, gid)
 
 
     #---

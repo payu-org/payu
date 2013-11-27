@@ -182,16 +182,17 @@ def call_run(pbs_config, pbs_vars, current_run=None, n_runs=None):
     if not 'queue' in pbs_config:
         pbs_config['queue'] = 'normal'
 
-    # TODO: Find a better way to get this
-    qstat_cmd = 'qstat -Qf normal-node'
-    qstat_out = sp.check_output(shlex.split(qstat_cmd))
-    qstat_npernode = re.search('\n *resources_max.ncpus *= *[\d]+', qstat_out)
-
-    if qstat_npernode:
-        max_cpus_per_node = int(qstat_npernode.group().split('=')[1])
-    else:
-        # NOTE: If this didn't work, then assume we are on vayu
-        max_cpus_per_node = 8
+    # TODO: Find a better way to get this, PBS Pro qstat is just too slow
+    #qstat_cmd = 'qstat -Qf normal-node'
+    #qstat_out = sp.check_output(shlex.split(qstat_cmd))
+    #qstat_npernode = re.search('\n *resources_max.ncpus *= *[\d]+', qstat_out)
+    #
+    #if qstat_npernode:
+    #    max_cpus_per_node = int(qstat_npernode.group().split('=')[1])
+    #else:
+    #    # NOTE: If this didn't work, then assume we are on vayu
+    #    max_cpus_per_node = 8
+    max_cpus_per_node = 16
 
     # Increase the cpu request to match a complete node
     n_cpus = pbs_config.get('ncpus', 1)
