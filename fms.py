@@ -49,15 +49,15 @@ class Fms(Model):
         mkdir_p(self.work_restart_path)
 
         # Either create a new INPUT path or link a previous RESTART as INPUT
-        if self.expt.prior_restart_path and not self.expt.repeat_run:
-            restart_files = os.listdir(self.expt.prior_restart_path)
+        if self.prior_restart_path and not self.expt.repeat_run:
+            restart_files = os.listdir(self.prior_restart_path)
             for f in restart_files:
-                f_res = os.path.join(self.expt.prior_restart_path, f)
+                f_restart = os.path.join(self.prior_restart_path, f)
                 f_input = os.path.join(self.work_input_path, f)
                 if use_symlinks:
-                    os.symlink(f_res, f_input)
+                    os.symlink(f_restart, f_input)
                 else:
-                    sh.copy(f_res, f_input)
+                    sh.copy(f_restart, f_input)
 
         # Link any input data to INPUT
         for input_path in self.input_paths:

@@ -46,7 +46,7 @@ class Model(object):
         self.work_restart_path = self.work_path
 
         assert self.default_exec
-        exec_name = self.expt.config.get('exe', self.default_exec)
+        exec_name = self.config.get('exe', self.default_exec)
         self.exec_path = os.path.join(self.expt.bin_path, exec_name)
 
 
