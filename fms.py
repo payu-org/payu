@@ -78,8 +78,6 @@ class Fms(Model):
     #--
     def archive(self, **kwargs):
 
-        super(Fms, self).archive(**kwargs)
-
         # Remove the 'INPUT' path
         cmd = 'rm -rf {path}'.format(path=self.work_input_path)
         rc = sp.check_call(shlex.split(cmd))
@@ -101,9 +99,9 @@ class Fms(Model):
 
         # Locate the FMS collation tool
         mppnc_path = None
-        for f in os.listdir(self.bin_path):
+        for f in os.listdir(self.expt.bin_path):
             if f.startswith('mppnccombine'):
-                mppnc_path = os.path.join(self.bin_path, f)
+                mppnc_path = os.path.join(self.expt.bin_path, f)
                 break
         assert mppnc_path
 

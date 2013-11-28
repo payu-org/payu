@@ -116,5 +116,9 @@ class Model(object):
 
     #---
     def archive(self):
-        # TODO: Do I need this?
-        pass
+        raise NotImplementedError
+
+
+    #---
+    def collate(self):
+        raise NotImplementedError
