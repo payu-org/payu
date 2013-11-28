@@ -485,6 +485,13 @@ class Experiment(object):
 
 
     #---
+    def collate(self):
+
+        for model in self.models:
+            model.collate()
+
+
+    #---
     def postprocess(self):
         """Submit a postprocessing script after collation"""
         assert self.postscript
