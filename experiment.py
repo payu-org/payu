@@ -76,7 +76,6 @@ class Experiment(object):
         #self.set_input_paths()
         self.set_output_paths()
 
-        # XXX: testing
         for model in self.models:
             model.set_input_paths()
 

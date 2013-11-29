@@ -238,7 +238,7 @@ def call_run(pbs_config, pbs_vars, current_run=None, n_runs=None):
 def call_collate(pbs_config, pbs_vars, current_run=None, n_runs=None):
     # TODO: Add run counter support
 
-    pbs_config['queue'] = 'copyq'
+    #pbs_config['queue'] = 'copyq'
 
     # Collation jobs are (currently) serial
     pbs_config['ncpus'] = 1
@@ -358,7 +358,7 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
     pbs_flags = ' '.join(pbs_flags)
 
     # Construct full command
-    cmd = '{0} {1} {2}'.format(pbs_qsub, pbs_flags, pbs_script)
+    cmd = '{} {} {}'.format(pbs_qsub, pbs_flags, pbs_script)
 
     cmd = shlex.split(cmd)
     rc = sp.call(cmd)

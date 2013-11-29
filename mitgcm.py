@@ -20,32 +20,37 @@ import subprocess as sp
 
 # Local
 from fsops import mkdir_p, patch_nml
-from experiment import Experiment
+from modeldriver import Model
 
-class Mitgcm(Experiment):
+class Mitgcm(Model):
 
     #---
-    def __init__(self, **kwargs):
+    def __init__(self, expt, name, config):
+
+        # payu initalisation
+        super(Mitgcm, self).__init__(expt, name, config)
 
         # Model-specific configuration
-        self.model_name = 'mitgcm'
+        self.model_type = 'mitgcm'
         self.default_exec = 'mitgcmuv'
 
         self.modules = ['pbs',
                         'openmpi',
                         'netcdf']
 
-        # payu initalisation
-        super(Mitgcm, self).__init__(**kwargs)
+        # NOTE: We use a subroutine to generate the MITgcm configuration list
+        self.config_files = None
 
-        # TODO: Ugly to wedge this in after the ``super`` call
-        self.config_files = [f for f in os.listdir(self.control_path)
-                             if f.startswith('data')]
-        self.config_files.append('eedata')
 
 
     #---
     def setup(self, use_symlinks=True, repeat_run=False):
+
+        # TODO: Find a better place to generate this list
+        self.config_files = [f for f in os.listdir(self.control_path)
+                             if f.startswith('data')]
+        self.config_files.append('eedata')
+
         # payu setup
         super(Mitgcm, self).setup()
 
