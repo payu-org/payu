@@ -55,20 +55,20 @@ class Mitgcm(Model):
         super(Mitgcm, self).setup()
 
         # Link restart files to work directory
-        if self.prior_res_path and not repeat_run:
-            restart_files = [f for f in os.listdir(self.prior_res_path)
+        if self.prior_restart_path and not repeat_run:
+            restart_files = [f for f in os.listdir(self.prior_restart_path)
                              if f.startswith('pickup')]
 
             for f in restart_files:
-                f_res = os.path.join(self.prior_res_path, f)
+                f_restart = os.path.join(self.prior_restart_path, f)
                 f_work = os.path.join(self.work_path, f)
                 if use_symlinks:
-                    os.symlink(f_res, f_work)
+                    os.symlink(f_restart, f_work)
                 else:
-                    sh.copy(f_res, f_work)
+                    sh.copy(f_restart, f_work)
 
             # Determine total number of timesteps since initialisation
-            core_restarts = [f for f in os.listdir(self.prior_res_path)
+            core_restarts = [f for f in os.listdir(self.prior_restart_path)
                                 if f.startswith('pickup.')]
             try:
                 # NOTE: Use the most recent, in case of multiple restarts
@@ -126,11 +126,11 @@ class Mitgcm(Model):
 
         for line in data_file:
             if p_niter0.match(line):
-                temp_file.write(' nIter0={0},\n'.format(n_iter0))
+                temp_file.write(' nIter0={},\n'.format(n_iter0))
             elif p_pchkpt_freq.match(line):
-                temp_file.write(' pChkptFreq={0},\n'.format(pchkpt_freq))
+                temp_file.write(' pChkptFreq={},\n'.format(pchkpt_freq))
             elif p_chkpt_freq.match(line):
-                temp_file.write(' chkptFreq={0},\n'.format(chkpt_freq))
+                temp_file.write(' chkptFreq={},\n'.format(chkpt_freq))
             else:
                 temp_file.write(line)
 
@@ -151,7 +151,7 @@ class Mitgcm(Model):
             data_mnc_file = open(data_mnc_path, 'r')
             for line in data_mnc_file:
                 if p_mnc_outdir.match(line):
-                    tmp.write(" mnc_outdir_str='{0}',\n".format(mnc_header))
+                    tmp.write(" mnc_outdir_str='{}',\n".format(mnc_header))
                 else:
                     tmp.write(line)
             data_mnc_file.close()
@@ -162,7 +162,7 @@ class Mitgcm(Model):
                 data_mnc.write(' &MNC_01\n')
                 data_mnc.write(' mnc_use_outdir=.TRUE.,\n')
                 data_mnc.write(' mnc_use_name_ni0=.TRUE.,\n')
-                data_mnc.write(" mnc_outdir_str='{0}',\n".format(mnc_header))
+                data_mnc.write(" mnc_outdir_str='{}',\n".format(mnc_header))
                 data_mnc.write(' mnc_outdir_date=.TRUE.,\n')
                 data_mnc.write(' monitor_mnc=.TRUE.,\n')
                 data_mnc.write(' &\n')
@@ -213,7 +213,7 @@ class Mitgcm(Model):
 
     #---
     def archive(self, **kwargs):
-        mkdir_p(self.res_path)
+        mkdir_p(self.restart_path)
 
         # Move pickups but don't include intermediate pickupts ('ckpt's)
         restart_files = [f for f in os.listdir(self.work_path)
@@ -234,9 +234,7 @@ class Mitgcm(Model):
 
         for f in restart_files:
             f_src = os.path.join(self.work_path, f)
-            sh.move(f_src, self.res_path)
-
-        super(Mitgcm, self).archive(**kwargs)
+            sh.move(f_src, self.restart_path)
 
 
     #---
