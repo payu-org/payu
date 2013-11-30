@@ -188,6 +188,7 @@ class Mitgcm(Model):
 
 
     #---
+    # XXX: Dud function; delete it
     def run(self, *flags):
         flags = flags + ('-mca mpi_affinity_alone 1',
                          '-wd %s' % self.work_path)
@@ -213,6 +214,24 @@ class Mitgcm(Model):
 
     #---
     def archive(self, **kwargs):
+
+        # Remove symbolic links to input or pickup files:
+        for f in os.listdir(self.work_path):
+            f_path = os.path.join(self.work_path, f)
+            if os.path.islink(f_path):
+                os.remove(f_path)
+
+        # Move files outside of mnc_* directories
+        mnc_paths = [os.path.join(self.work_path, d)
+                     for d in os.listdir(self.work_path)
+                     if d.startswith('mnc_')]
+
+        for path in mnc_paths:
+            for f in os.listdir(path):
+                f_path = os.path.join(path, f)
+                sh.move(f_path, self.work_path)
+            os.rmdir(path)
+
         mkdir_p(self.restart_path)
 
         # Move pickups but don't include intermediate pickupts ('ckpt's)
