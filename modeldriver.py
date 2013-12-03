@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import sys
 
 from fsops import mkdir_p
 

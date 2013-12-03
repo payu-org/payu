@@ -227,6 +227,7 @@ class Experiment(object):
                 lab_name = self.models[0].model_type
             else:
                 sys.exit('payu: error: Laboratory could not be determined.')
+        assert lab_name
 
         self.lab_name = lab_name
 
