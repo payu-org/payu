@@ -10,16 +10,22 @@ Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
 
-from fms import Fms
+# Standard library
 import os
 import shutil as sh
+
+# Local
+from fms import Fms
 
 class Gold(Fms):
 
     #---
-    def __init__(self, **kwargs):
+    def __init__(self, expt, name, config):
 
-        self.model_name = 'gold'
+        # FMS initalisation
+        super(Gold, self).__init__(expt, name, config)
+
+        self.model_type = 'gold'
         self.default_exec = 'GOLD'
 
         self.modules = ['pbs',
@@ -31,9 +37,6 @@ class Gold(Fms):
                              'fre_input.nml',
                              'input.nml']
 
-        # FMS initalisation
-        super(Gold, self).__init__()
-
 
     #---
     def setup(self):
@@ -41,7 +44,7 @@ class Gold(Fms):
         super(Gold, self).setup()
 
         # GOLD-specific initialisation
-        if self.counter == 0:
+        if self.expt.counter == 0:
             self.init_config()
 
 
