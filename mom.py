@@ -109,6 +109,10 @@ class Mom(Fms):
 
         self.load_modules()
 
+        use_core2iaf = self.config.get('core2iaf')
+        if use_core2iaf:
+            self.core2iaf_setup()
+
 
     #---
     def core2iaf_setup(self, core2iaf_path=None, driver_name=None):
@@ -118,7 +122,7 @@ class Mom(Fms):
         import scipy.io.netcdf as nc
 
         # Need to make these input arguments
-        default_core2iaf_path = '/short/v45/core2iaf'
+        default_core2iaf_path = '/g/data1/v45/mom/core2iaf'
         if core2iaf_path == None:
            core2iaf_path = default_core2iaf_path
 
@@ -230,5 +234,5 @@ class Mom(Fms):
 
             cmd = 'ncks -d %s,%.1f,%.1f -o %s %s' \
                     % (t_axis, t_start, t_end, out_fpath, in_fpath)
-            rc = sp.Popen(cmd.split()).wait()
+            rc = sp.Popen(shlex.split(cmd)).wait()
             assert rc == 0
