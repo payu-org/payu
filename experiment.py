@@ -96,7 +96,13 @@ class Experiment(object):
         else:
             self.counter = None
 
-        self.n_runs = int(os.environ.get('PAYU_N_RUNS', 1))
+        # TODO: Create a stop_file subcommand
+        stop_file_path = os.path.join(self.control_path, 'stop_file')
+        if os.path.isfile(stop_file_path):
+            os.remove(stop_file_path)
+            self.n_runs = 1
+        else:
+            self.n_runs = int(os.environ.get('PAYU_N_RUNS', 1))
 
         # Initialize counter if unset
         if self.counter is None:
