@@ -99,6 +99,7 @@ class Experiment(object):
         # TODO: Create a stop_file subcommand
         stop_file_path = os.path.join(self.control_path, 'stop_file')
         if os.path.isfile(stop_file_path):
+            assert os.stat(stop_file_path).st_size == 0
             os.remove(stop_file_path)
             self.n_runs = 1
         else:
