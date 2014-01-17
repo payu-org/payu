@@ -96,14 +96,7 @@ class Experiment(object):
         else:
             self.counter = None
 
-        # TODO: Create a stop_file subcommand
-        stop_file_path = os.path.join(self.control_path, 'stop_file')
-        if os.path.isfile(stop_file_path):
-            assert os.stat(stop_file_path).st_size == 0
-            os.remove(stop_file_path)
-            self.n_runs = 1
-        else:
-            self.n_runs = int(os.environ.get('PAYU_N_RUNS', 1))
+        self.n_runs = int(os.environ.get('PAYU_N_RUNS', 1))
 
         # Initialize counter if unset
         if self.counter is None:
@@ -377,7 +370,16 @@ class Experiment(object):
             sys.exit('Error {}; aborting.'.format(rc))
 
         # Decrement run counter on successful run
-        self.n_runs -= 1
+
+        # TODO: Create a stop_file subcommand
+        stop_file_path = os.path.join(self.control_path, 'stop_file')
+        if os.path.isfile(stop_file_path):
+            assert os.stat(stop_file_path).st_size == 0
+            os.remove(stop_file_path)
+            print('payu: Stop file detected; terminating resubmission.')
+            self.n_runs = 0
+        else:
+            self.n_runs -= 1
 
         # Move logs to archive (or delete if empty)
         for f in (self.stdout_fname, self.stderr_fname):
