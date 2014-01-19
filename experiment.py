@@ -372,7 +372,8 @@ class Experiment(object):
         # Decrement run counter on successful run
 
         # TODO: Create a stop_file subcommand
-        stop_file_path = os.path.join(self.control_path, 'stop_file')
+        stop_file_path = os.path.join(self.control_path, 'stop_run')
+        print('stop file path: {}'.format(stop_file_path))
         if os.path.isfile(stop_file_path):
             assert os.stat(stop_file_path).st_size == 0
             os.remove(stop_file_path)
