@@ -107,7 +107,7 @@ class Mom(Fms):
         # FMS initialisation
         super(Mom, self).setup()
 
-        self.load_modules()
+        #self.load_modules()
 
         use_core2iaf = self.config.get('core2iaf')
         if use_core2iaf:

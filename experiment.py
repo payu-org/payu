@@ -341,6 +341,14 @@ class Experiment(object):
     #---
     def setup(self, do_stripe=False):
 
+        # Run and pre-setup userscripts
+        # TODO: Load at init
+        userscripts = self.config.get('userscripts')
+
+        setup_prescript = userscripts.get('presetup')
+        if setup_prescript:
+            self.run_userscript(setup_prescript)
+
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
             sys.exit('payu: error: Archived path already exists.')
@@ -359,6 +367,10 @@ class Experiment(object):
 
         for model in self.models:
             model.setup()
+
+        setup_postscript = userscripts.get('postsetup')
+        if setup_postscript:
+            self.run_userscript(setup_postscript)
 
 
     #---
@@ -462,7 +474,7 @@ class Experiment(object):
         cmd = 'mv {} {}'.format(self.work_path, self.output_path)
         try:
             sp.check_call(shlex.split(cmd))
-        except CalledProcessError as exc:
+        except sp.CalledProcessError as exc:
             sys.exit('payu: error: {} (error {})'
                      ''.format(cmd, exc.returncode))
 
@@ -480,8 +492,9 @@ class Experiment(object):
                 restart_path = os.path.join(self.archive_path, restart_dirname)
                 cmd = 'rm -rf {}'.format(restart_path)
                 cmd = shlex.split(cmd)
-                try: sp.check_call(cmd)
-                except CalledProcessError:
+                try:
+                    sp.check_call(cmd)
+                except sp.CalledProcessError:
                     print('payu: warning: Could not delete directories {}'
                           ''.format(' '.join(prior_restart_dirs)))
 
@@ -593,6 +606,48 @@ class Experiment(object):
         cmd = 'payu run -i {} -n {}'.format(next_run, self.n_runs)
         cmd = shlex.split(cmd)
         sp.call(cmd)
+
+
+    #---
+    def run_userscript(self, script_cmd):
+
+        # First try to interpret the argument as a full command:
+        try:
+            sp.check_call(shlex.split(script_cmd))
+        except (OSError, sp.CalledProcessError) as exc:
+            # Now try to run the script explicitly
+            if type(exc) == OSError and exc.errno == errno.ENOENT:
+                    cmd = os.path.join(self.control_path, script_cmd)
+                    self.run_userscript(cmd)
+
+            # If we get a "non-executable" error, then guess the type
+            elif type(exc) == OSError and exc.errno == errno.EACCES:
+
+                # TODO: Move outside
+                ext_cmd = {'.py': 'python',
+                           '.sh': 'bash',
+                           '.csh': 'tcsh'}
+
+                f_base, f_ext = os.path.splitext(script_cmd)
+                shell_name = ext_cmd.get(f_ext)
+                if shell_name:
+                    print('payu: warning: Assuming that this is a {} script '
+                          'based on the filename extension.'
+                          ''.format(shell_name))
+                    cmd = ' '.join([shell_name, script_cmd])
+                    self.run_userscript(cmd)
+                else:
+                    # If we can't guess the shell, then abort
+                    raise
+
+            # If the script runs but the output is bad, then warn the user
+            elif type(exc) == sp.CalledProcessError:
+                print('payu: warning: user script \'{}\' failed (error {}).'
+                      ''.format(script_cmd, exc.returncode))
+
+            # If all else fails, raise an error
+            else:
+                raise
 
 
     #---
