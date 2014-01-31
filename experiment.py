@@ -81,8 +81,14 @@ class Experiment(object):
 
         # Miscellaneous configurations
         # TODO: Move this stuff somewhere else
+        self.userscripts = self.config.get('userscripts', {})
+
         self.postscript = self.config.get('postscript')
         self.repeat_run = self.config.get('repeat', False)
+
+        init_script = self.userscripts.get('init')
+        if init_script:
+            self.run_userscript(init_script)
 
 
     #---
@@ -341,14 +347,6 @@ class Experiment(object):
     #---
     def setup(self, do_stripe=False):
 
-        # Run and pre-setup userscripts
-        # TODO: Load at init
-        userscripts = self.config.get('userscripts')
-
-        setup_prescript = userscripts.get('presetup')
-        if setup_prescript:
-            self.run_userscript(setup_prescript)
-
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
             sys.exit('payu: error: Archived path already exists.')
@@ -368,9 +366,9 @@ class Experiment(object):
         for model in self.models:
             model.setup()
 
-        setup_postscript = userscripts.get('postsetup')
-        if setup_postscript:
-            self.run_userscript(setup_postscript)
+        setup_script = self.userscripts.get('setup')
+        if setup_script:
+            self.run_userscript(setup_script)
 
 
     #---
@@ -431,8 +429,6 @@ class Experiment(object):
             sys.exit('payu: error {}; aborting.'.format(rc))
 
         # Decrement run counter on successful run
-
-        # TODO: Create a stop_file subcommand
         stop_file_path = os.path.join(self.control_path, 'stop_run')
         if os.path.isfile(stop_file_path):
             assert os.stat(stop_file_path).st_size == 0
@@ -448,6 +444,10 @@ class Experiment(object):
                 os.remove(f)
             else:
                 sh.move(f, self.work_path)
+
+        run_script = self.userscripts.get('run')
+        if run_script:
+            self.run_userscript(run_script)
 
 
     #---
@@ -504,6 +504,10 @@ class Experiment(object):
             cmd = shlex.split(cmd)
             rc = sp.Popen(cmd).wait()
             assert rc == 0
+
+        archive_script = self.userscripts.get('archive')
+        if archive_script:
+            self.run_userscript(archive_script)
 
 
     #---
@@ -618,6 +622,8 @@ class Experiment(object):
             # Now try to run the script explicitly
             if type(exc) == OSError and exc.errno == errno.ENOENT:
                     cmd = os.path.join(self.control_path, script_cmd)
+                    # Simplistic recursion check
+                    assert os.path.isfile(cmd)
                     self.run_userscript(cmd)
 
             # If we get a "non-executable" error, then guess the type
@@ -625,15 +631,16 @@ class Experiment(object):
 
                 # TODO: Move outside
                 ext_cmd = {'.py': 'python',
-                           '.sh': 'bash',
-                           '.csh': 'tcsh'}
+                           '.sh': '/bin/bash',
+                           '.csh': '/bin/tcsh'}
 
                 f_base, f_ext = os.path.splitext(script_cmd)
                 shell_name = ext_cmd.get(f_ext)
                 if shell_name:
-                    print('payu: warning: Assuming that this is a {} script '
+                    print('payu: warning: Assuming that {} is a {} script '
                           'based on the filename extension.'
-                          ''.format(shell_name))
+                          ''.format(os.path.basename(script_cmd),
+                                    os.path.basename(shell_name)))
                     cmd = ' '.join([shell_name, script_cmd])
                     self.run_userscript(cmd)
                 else:
