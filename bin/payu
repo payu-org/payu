@@ -238,7 +238,8 @@ def call_run(pbs_config, pbs_vars, current_run=None, n_runs=None):
 def call_collate(pbs_config, pbs_vars, current_run=None, n_runs=None):
     # TODO: Add run counter support
 
-    pbs_config['queue'] = 'copyq'
+    collate_queue = pbs_config.get('collate_queue', 'copyq')
+    pbs_config['queue'] = collate_queue
 
     # Collation jobs are (currently) serial
     pbs_config['ncpus'] = 1
@@ -330,8 +331,8 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
 
     pbs_jobname = pbs_config.get('jobname')
     if pbs_jobname:
-        if hostname == 'raijin':
-            pbs_jobname = pbs_jobname[:15]
+        # TODO: Only truncate when using PBSPro
+        pbs_jobname = pbs_jobname[:15]
         pbs_flags.append('-N {}'.format(pbs_jobname))
 
     pbs_priority = pbs_config.get('priority')
