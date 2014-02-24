@@ -245,7 +245,7 @@ def call_collate(pbs_config, pbs_vars, current_run=None, n_runs=None):
     pbs_config['ncpus'] = 1
 
     # Modify jobname
-    pbs_config['jobname'] += '_c'
+    pbs_config['jobname'] = pbs_config['jobname'][:13] + '_c'
 
     # Replace (or remove) walltime
     collate_walltime = pbs_config.get('collate_walltime')

@@ -18,6 +18,10 @@ import shutil
 import subprocess as sp
 import sys
 
+# Module support (for NCO)
+execfile('/opt/Modules/default/init/python')
+
+
 class Mom(Fms):
     #---
     def __init__(self, expt, name, config):
@@ -25,13 +29,15 @@ class Mom(Fms):
         # FMS initalisation
         super(Mom, self).__init__(expt, name, config)
 
+        # Append the MOM-specific configuration details
+        self.config['core2iaf'] = expt.config.get('core2iaf')
+
         # Model-specific configuration
         self.model_type = 'mom'
         self.default_exec = 'fms_MOM_SIS.x'
 
         self.modules = ['pbs',
-                        'openmpi',
-                        'nco']
+                        'openmpi']
 
         self.config_files = ['data_table',
                              'diag_table',
@@ -107,8 +113,6 @@ class Mom(Fms):
         # FMS initialisation
         super(Mom, self).setup()
 
-        #self.load_modules()
-
         use_core2iaf = self.config.get('core2iaf')
         if use_core2iaf:
             self.core2iaf_setup()
@@ -120,6 +124,7 @@ class Mom(Fms):
         # TODO: Separate into sub-methods
 
         import scipy.io.netcdf as nc
+        module('load', 'nco')
 
         # Need to make these input arguments
         default_core2iaf_path = '/g/data1/v45/mom/core2iaf'

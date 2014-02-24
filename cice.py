@@ -21,29 +21,23 @@ import subprocess as sp
 
 # Local
 from fsops import mkdir_p
-from experiment import Experiment
+from modeldriver import Model
 
-class Cice(Experiment):
+class Cice(Model):
 
     #---
-    def __init__(self, **kwargs):
+    def __init__(self, expt, name, config):
 
         # payu initalisation
-        super(Fms, self).__init__(**kwargs)
+        super(Cice, self).__init__(expt, name, config)
 
+        self.model_type = 'cice'
+        self.default_exec = 'cice'
 
-    #---
-    def set_run_pathnames(self):
-        super(Fms, self).set_run_pathnames()
+        self.modules = ['pbs',
+                        'openmpi']
 
-        # Define local FMS directories
-        self.work_res_path = os.path.join(self.work_path, 'RESTART')
-        self.work_input_path = os.path.join(self.work_path, 'INPUT')
-
-
-    #---
-    def build(self):
-        raise NotImplementedError
+        self.config_files = ['ice_in']
 
 
     #---
@@ -51,18 +45,15 @@ class Cice(Experiment):
 
         # payu setup:
         #   work path and symlink, config file copy
-        super(Fms, self).setup()
-
-        # TODO: Move this into `Experiment`
-        repeat_run = self.config.get('repeat', False)
+        super(Cice, self).setup()
 
         # Create experiment directory structure
-        mkdir_p(self.work_res_path)
+        mkdir_p(self.work_restart_path)
 
         # Either create a new INPUT path or link a previous RESTART as INPUT
         mkdir_p(self.work_input_path)
 
-        if self.prior_res_path and not repeat_run:
+        if self.prior_restart_path and not repeat_run:
             restart_files = os.listdir(self.prior_res_path)
             for f in restart_files:
                 f_res = os.path.join(self.prior_res_path, f)
@@ -73,23 +64,16 @@ class Cice(Experiment):
                     sh.copy(f_res, f_input)
 
         # Link any input data to INPUT
-        if self.input_path:
-            input_files = os.listdir(self.input_path)
-            for f in input_files:
-                f_input = os.path.join(self.input_path, f)
-                f_work_input = os.path.join(self.work_input_path, f)
+        for input_path in self.input_paths:
+            for f in os.listdir(input_path):
+                f_input = os.path.join(input_path, f)
+                f_work = os.path.join(self.work_path, f)
                 # Do not use input file if it is in RESTART
-                if not os.path.exists(f_work_input):
+                if not os.path.exists(f_work):
                     if use_symlinks:
-                        os.symlink(f_input, f_work_input)
+                        os.symlink(f_input, f_work)
                     else:
-                        sh.copy(f_input, f_work_input)
-
-
-    #---
-    def run(self, *flags):
-        flags = flags + ('-wd %s' % self.work_path, )
-        super(Fms, self).run(*flags)
+                        sh.copy(f_input, f_work)
 
 
     #--
@@ -107,7 +91,7 @@ class Cice(Experiment):
         rc = sp.Popen(shlex.split(cmd)).wait()
         assert rc == 0
 
-        super(Fms, self).archive(**kwargs)
+        super(Cice, self).archive(**kwargs)
 
 
     #---
