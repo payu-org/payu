@@ -20,6 +20,7 @@ import shutil as sh
 import subprocess as sp
 
 # Local
+import nml
 from fsops import mkdir_p
 from modeldriver import Model
 
@@ -27,8 +28,6 @@ class Cice(Model):
 
     #---
     def __init__(self, expt, name, config):
-
-        # payu initalisation
         super(Cice, self).__init__(expt, name, config)
 
         self.model_type = 'cice'
@@ -41,18 +40,27 @@ class Cice(Model):
 
 
     #---
-    def setup(self, use_symlinks=True, repeat_run=False):
+    def set_model_pathnames(self):
+        super(Cice, self).set_model_pathnames()
 
-        # payu setup:
-        #   work path and symlink, config file copy
+        ice_nmls = nml.parse('ice_in')
+        self.work_restart_path = ice_nmls['setup_nml']['restart_dir']
+
+        # TODO: Parse ice_in to determine pathnames
+        #self.work_restart_path = os.path.join(self.work_path, 'restart')
+        self.work_output_path = os.path.join(self.work_path, 'history')
+
+
+    #---
+    def setup(self, use_symlinks=True, repeat_run=False):
         super(Cice, self).setup()
 
         # Create experiment directory structure
+        mkdir_p(self.work_input_path)
         mkdir_p(self.work_restart_path)
+        mkdir_p(self.work_output_path)
 
         # Either create a new INPUT path or link a previous RESTART as INPUT
-        mkdir_p(self.work_input_path)
-
         if self.prior_restart_path and not repeat_run:
             restart_files = os.listdir(self.prior_res_path)
             for f in restart_files:

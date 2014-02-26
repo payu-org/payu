@@ -45,6 +45,7 @@ class Model(object):
         # NOTE: Individual models may override the work subdirectories
         self.work_input_path = self.work_path
         self.work_restart_path = self.work_path
+        self.work_output_path = self.work_path
 
         assert self.default_exec
         exec_name = self.config.get('exe', self.default_exec)
