@@ -2,7 +2,7 @@
 Parse fortran namelist files into dicts of standard Python data types.
 Contact: Marshall Ward <nml@marshallward.org>
 """
-
+import re
 import shlex
 
 f90quotes = ["'", '"']
@@ -16,58 +16,82 @@ def parse(nml_fname):
     f90.wordchars += '.-()'   # Numerical characters
     tokens = iter(f90)
 
-    nmls = {}
+    # Store groups in case-insensitive dictionary
+    nmls = NmlDict()
 
     for t in tokens:
 
-        # Find the next group header token
+        # Ignore tokens outside of namelist groups
         while t != '&':
             t = tokens.next()
 
         # Read group name following '&'
         t = tokens.next()
 
-        nml_grp = t
-        nml_grp_vars = {}
+        g_name = t
+        g_vars = NmlDict()
 
-        current_var_name = None
-        current_var_vals = []
-
-        # Current token is group name prior to loop
+        v_name = None
+        v_vals = []
         while t != '/':
 
             prior_t = t
             t = tokens.next()
 
-            if current_var_name and not t == '=':
+            if v_name and not t == '=':
+
+                # Test if varname contains a vector index
+                # TODO: Do I need regex?
+                match = re.search(r'\(\d+\)$', v_name)
+                if match:
+                    v_index = int(v_name[match.start()+1:-1])
+                    v_name = v_name[:match.start()]
+                else:
+                    v_index = None
+
+                # Parse the variable string
                 if (prior_t, t) == (',', ','):
-                    current_var_vals.append(None)
+                    f90val = None
                 elif prior_t != ',':
+                    f90val = f90type(prior_t)
+                else:
+                    # Skip ahead to next token, do not append lone commas
+                    continue
+
+                if v_index and v_name in g_vars:
+                    v_vals = g_vars[v_name]
+                    if type(v_vals) != list:
+                        v_vals = [v_vals]
                     try:
-                        f90val = f90type(prior_t)
-                    except ValueError:
-                        print(current_var_name, prior_t)
-                    current_var_vals.append(f90val)
+                        # NOTE: Fortran indexing starts at 1
+                        v_vals[v_index-1] = f90val
+                    except IndexError:
+                        # Expand the list to accomodate out-of-range indices
+                        size = len(v_vals)
+                        v_vals.extend(None for i in range(size, v_index))
+                        v_vals[v_index-1] = f90val
+                else:
+                    v_vals.append(f90val)
 
             # Finalize the current variable
-            if current_var_name and (t == '=' or t == '/'):
+            if v_name and (t == '=' or t == '/'):
 
-                if len(current_var_vals) == 1:
-                    current_var_vals = current_var_vals[0]
-                nml_grp_vars[current_var_name] = current_var_vals
+                # XXX: Is v_index defined here?
+                if len(v_vals) == 1 and not v_index:
+                    v_vals = v_vals[0]
+                g_vars[v_name] = v_vals
 
-                # XXX: Needed?
-                current_var_name = None
-                current_var_vals = []
+                # Deactivate the current variable
+                v_name = None
+                v_vals = []
 
             # Activate the next variable
             if t == '=':
-                current_var_name = prior_t
+                v_name = prior_t
                 t = tokens.next()
 
-            # Append to namelist
             if t == '/':
-                nmls[nml_grp] = nml_grp_vars
+                nmls[g_name] = g_vars
 
     f.close()
 
@@ -88,7 +112,7 @@ def f90type(s):
             continue
 
     # If all test failed, then raise ValueError
-    raise ValueError
+    raise ValueError('Could not convert {} to a Python data type.'.format(s))
 
 
 #---
@@ -97,7 +121,7 @@ def f90complex(s):
 
     if s[0] == '(' and s[-1] == ')' and len(s,split(',') == 2):
         s_re, s_im = s[1:-1].split(',', 1)
- 
+
         # NOTE: Failed float(str) will raise ValueError
         return complex(float(s_re), float(s_im))
     else:
@@ -126,3 +150,12 @@ def f90str(s):
         return s[1:-1]
 
     raise ValueError
+
+
+#---
+class NmlDict(dict):
+    def __setitem__(self, key, value):
+        super(NmlDict, self).__setitem__(key.lower(), value)
+
+    def __getitem__(self, key):
+        return super(NmlDict, self).__getitem__(key.lower())
