@@ -44,11 +44,17 @@ class Cice(Model):
         super(Cice, self).set_model_pathnames()
 
         ice_nmls = nml.parse('ice_in')
-        self.work_restart_path = ice_nmls['setup_nml']['restart_dir']
 
-        # TODO: Parse ice_in to determine pathnames
-        #self.work_restart_path = os.path.join(self.work_path, 'restart')
-        self.work_output_path = os.path.join(self.work_path, 'history')
+        # Assume local paths are relative to the work path
+        res_path = os.path.normpath(ice_nmls['setup_nml']['restart_dir'])
+        if not os.path.isabs(res_path):
+            res_path = os.path.join(self.work_path, res_path)
+        self.work_restart_path = res_path
+
+        work_out_path = os.path.normpath(ice_nmls['setup_nml']['history_dir'])
+        if not os.path.isabs(work_out_path):
+            work_out_path = os.path.join(self.work_path, work_out_path)
+        self.work_output_path = work_out_path
 
 
     #---
@@ -71,9 +77,26 @@ class Cice(Model):
                 else:
                     sh.copy(f_res, f_input)
 
+        # TODO: Deep restart paths (path/to/restart) (strip work_path)
+        res_path = os.path.basename(self.work_restart_path)
+
         # Link any input data to INPUT
         for input_path in self.input_paths:
             for f in os.listdir(input_path):
+
+                # TODO: Refactor to merge these for loops?
+
+                # Transfer any local (initialization) restarts
+                if f == res_path:
+                    input_res_path = os.path.join(input_path, res_path)
+                    for f_res in os.listdir(input_res_path):
+                        f_res_input = os.path.join(input_res_path, f_res)
+                        f_res_work = os.path.join(self.work_restart_path, f_res)
+                        if use_symlinks:
+                            os.symlink(f_res_input, f_res_work)
+                        else:
+                            sh.copy(f_res_input, f_res_work)
+
                 f_input = os.path.join(input_path, f)
                 f_work = os.path.join(self.work_path, f)
                 # Do not use input file if it is in RESTART
@@ -87,19 +110,17 @@ class Cice(Model):
     #--
     def archive(self, **kwargs):
 
-        # Remove the 'INPUT' path
-        cmd = 'rm -rf {path}'.format(path=self.work_input_path)
-        rc = sp.Popen(shlex.split(cmd)).wait()
-        assert rc == 0
+        # NOTE: CICE uses work directory as input
+        for f in os.listdir(self.work_input_path):
+            f_path = os.path.join(self.work_input_path, f)
+            if os.islink(f_path):
+                os.remove(f_path)
 
         # Archive restart files before processing model output
-        mkdir_p(self.archive_path)
-        cmd = 'mv {src} {dst}'.format(src=self.work_res_path,
-                                      dst=self.res_path)
+        cmd = 'mv {src} {dst}'.format(src=self.work_restart_path,
+                                      dst=self.restart_path)
         rc = sp.Popen(shlex.split(cmd)).wait()
         assert rc == 0
-
-        super(Cice, self).archive(**kwargs)
 
 
     #---
