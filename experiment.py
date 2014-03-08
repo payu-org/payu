@@ -451,7 +451,7 @@ class Experiment(object):
 
 
     #---
-    def archive(self, collate=True):
+    def archive(self):
 
         mkdir_p(self.archive_path)
         make_symlink(self.archive_path, self.archive_sym_path)
@@ -498,6 +498,7 @@ class Experiment(object):
                     print('payu: warning: Could not delete directories {}'
                           ''.format(' '.join(prior_restart_dirs)))
 
+        collate = self.config.get('collate', False)
         if collate:
             cmd = 'payu collate -i {}'.format(self.counter)
 

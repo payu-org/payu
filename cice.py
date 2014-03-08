@@ -113,7 +113,7 @@ class Cice(Model):
         # NOTE: CICE uses work directory as input
         for f in os.listdir(self.work_input_path):
             f_path = os.path.join(self.work_input_path, f)
-            if os.islink(f_path):
+            if os.path.islink(f_path):
                 os.remove(f_path)
 
         # Archive restart files before processing model output
