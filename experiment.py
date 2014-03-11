@@ -498,7 +498,7 @@ class Experiment(object):
                     print('payu: warning: Could not delete directories {}'
                           ''.format(' '.join(prior_restart_dirs)))
 
-        collate = self.config.get('collate', False)
+        collate = self.config.get('collate', True)
         if collate:
             cmd = 'payu collate -i {}'.format(self.counter)
 
