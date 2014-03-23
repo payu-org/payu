@@ -44,11 +44,13 @@ class Mom(Fms):
                              'field_table',
                              'input.nml']
 
+        self.optional_config_files = ['blob_diag_table']
+
 
     #---
     def get_codebase(self):
-
         assert self.lab_path
+
         # TODO: Move to some "set_pathname" function
         self.codebase_path = os.path.join(self.lab_path, 'codebase')
         # TODO: User-defined repository URL and branch

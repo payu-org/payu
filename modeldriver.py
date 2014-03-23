@@ -1,9 +1,12 @@
 # coding: utf-8
 
+# Standard Library
+import errno
 import os
 import shutil
 import sys
 
+# Local
 from fsops import mkdir_p
 
 # TODO: Redesign the various models to subclass Model
@@ -23,6 +26,8 @@ class Model(object):
         self.model_type = None
         self.default_exec = None
         self.input_basepath = None
+        self.config_files = None
+        self.optional_config_files = None
 
         # Path names
         self.work_input_path = None
@@ -114,6 +119,16 @@ class Model(object):
         for f in self.config_files:
             f_path = os.path.join(self.control_path, f)
             shutil.copy(f_path, self.work_path)
+
+        for f in self.optional_config_files:
+            f_path = os.path.join(self.control_path, f)
+            try:
+                shutil.copy(f_path, self.work_path)
+            except IOError as ec:
+                if ec.errno == errno.ENOENT:
+                    pass
+                else:
+                    raise
 
 
     #---

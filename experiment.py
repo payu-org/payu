@@ -688,13 +688,15 @@ class Experiment(object):
             os.remove(self.work_sym_path)
 
         # TODO: model outstreams and pbs logs need to be handled separately
+        short_job_name = self.job_name[:15]
+
         logs = [f for f in os.listdir(os.curdir) if os.path.isfile(f) and
                 (f == self.stdout_fname or
                  f == self.stderr_fname or
-                 f.startswith(self.job_name + '.o') or
-                 f.startswith(self.job_name + '.e') or
-                 f.startswith(self.job_name + '_c.o') or
-                 f.startswith(self.job_name + '_c.e')
+                 f.startswith(short_job_name + '.o') or
+                 f.startswith(short_job_name + '.e') or
+                 f.startswith(short_job_name + '_c.o') or
+                 f.startswith(short_job_name + '_c.e')
                  )
                 ]
 
