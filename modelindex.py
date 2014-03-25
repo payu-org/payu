@@ -5,6 +5,7 @@ from gold import Gold
 from mitgcm import Mitgcm
 from mom import Mom
 from oasis import Oasis
+from um import UnifiedModel
 
 from modeldriver import Model
 
@@ -16,5 +17,5 @@ index = {
     'mitgcm':   Mitgcm,
     'mom':      Mom,
     'oasis':    Oasis,
-    'um':       Model,  # dummy
+    'um':       UnifiedModel,
 }
