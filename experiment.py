@@ -384,6 +384,11 @@ class Experiment(object):
 
         mpi_progs = []
         for model in self.models:
+
+            # Skip models without executables:
+            if not model.exec_path:
+                continue
+
             model_prog = []
 
             model_prog.append('-wdir {}'.format(model.work_path))

@@ -54,9 +54,10 @@ class Model(object):
         self.work_output_path = self.work_path
 
         exec_name = self.config.get('exe', self.default_exec)
-        assert exec_name
-
-        self.exec_path = os.path.join(self.expt.bin_path, exec_name)
+        if exec_name:
+            self.exec_path = os.path.join(self.expt.bin_path, exec_name)
+        else:
+            self.exec_path = None
 
 
     #---
