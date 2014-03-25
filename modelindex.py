@@ -15,5 +15,6 @@ index = {
     'matm':     Model,  # dummy
     'mitgcm':   Mitgcm,
     'mom':      Mom,
-    'oasis':    Oasis,  # dummy
+    'oasis':    Oasis,
+    'um':       Model,  # dummy
 }
