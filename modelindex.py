@@ -1,13 +1,18 @@
 # coding: utf-8
 
-from mom import Mom
-from mitgcm import Mitgcm
-from gold import Gold
 from cice import Cice
+from gold import Gold
+from mitgcm import Mitgcm
+from mom import Mom
+
+from modeldriver import Model
 
 index = {
-    'mom':      Mom,
-    'mitgcm':   Mitgcm,
-    'gold':     Gold,
+    'access':   Model,  # dummy
     'cice':     Cice,
+    'gold':     Gold,
+    'matm':     Model,  # dummy
+    'mitgcm':   Mitgcm,
+    'mom':      Mom,
+    'oasis':    Model,  # dummy
 }

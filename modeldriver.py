@@ -26,8 +26,8 @@ class Model(object):
         self.model_type = None
         self.default_exec = None
         self.input_basepath = None
-        self.config_files = None
-        self.optional_config_files = None
+        self.config_files = []
+        self.optional_config_files = []
 
         # Path names
         self.work_input_path = None
@@ -52,8 +52,9 @@ class Model(object):
         self.work_restart_path = self.work_path
         self.work_output_path = self.work_path
 
-        assert self.default_exec
         exec_name = self.config.get('exe', self.default_exec)
+        assert exec_name
+
         self.exec_path = os.path.join(self.expt.bin_path, exec_name)
 
 

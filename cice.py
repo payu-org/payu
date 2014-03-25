@@ -43,7 +43,8 @@ class Cice(Model):
     def set_model_pathnames(self):
         super(Cice, self).set_model_pathnames()
 
-        ice_nmls = nml.parse('ice_in')
+        ice_nml_path = os.path.join(self.control_path, 'ice_in')
+        ice_nmls = nml.parse(ice_nml_path)
 
         # Assume local paths are relative to the work path
         res_path = os.path.normpath(ice_nmls['setup_nml']['restart_dir'])

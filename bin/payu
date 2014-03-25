@@ -123,7 +123,7 @@ def payu_parse():
     if not model_name:
         model_name = os.path.basename(os.path.abspath(os.pardir))
         if not model_name in model_index.keys():
-            sys.exit('payu: error: Unknown model.')
+            sys.exit('payu: error: Unknown model {}.'.format(model_name))
         else:
             print('payu: warning: Assuming model is {model} based on '
                   'parent directory name.'.format(model=model_name))

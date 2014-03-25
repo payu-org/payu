@@ -109,6 +109,9 @@ class Experiment(object):
     #---
     def init_models(self):
 
+        self.model_name = self.config.get('model')
+        assert self.model_name
+
         self.models = []
 
         submodels = self.config.get('submodels', {})
@@ -225,16 +228,7 @@ class Experiment(object):
         # Laboratory path
 
         # Determine laboratory name
-        lab_name = self.config.get('laboratory')
-
-        # If there is only one model, then use the model laboratory
-        if not lab_name:
-            if len(self.models) == 1:
-                lab_name = self.models[0].model_type
-            else:
-                sys.exit('payu: error: Laboratory could not be determined.')
-        assert lab_name
-
+        lab_name = self.config.get('laboratory', self.model_name)
         self.lab_name = lab_name
 
         # Construct the laboratory absolute path if necessary
