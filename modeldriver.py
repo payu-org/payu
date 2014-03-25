@@ -26,6 +26,7 @@ class Model(object):
         self.model_type = None
         self.default_exec = None
         self.input_basepath = None
+        self.modules = []
         self.config_files = []
         self.optional_config_files = []
 

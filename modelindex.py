@@ -4,6 +4,7 @@ from cice import Cice
 from gold import Gold
 from mitgcm import Mitgcm
 from mom import Mom
+from oasis import Oasis
 
 from modeldriver import Model
 
@@ -14,5 +15,5 @@ index = {
     'matm':     Model,  # dummy
     'mitgcm':   Mitgcm,
     'mom':      Mom,
-    'oasis':    Model,  # dummy
+    'oasis':    Oasis,  # dummy
 }

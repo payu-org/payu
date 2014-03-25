@@ -44,15 +44,17 @@ class Cice(Model):
         super(Cice, self).set_model_pathnames()
 
         ice_nml_path = os.path.join(self.control_path, 'ice_in')
-        ice_nmls = nml.parse(ice_nml_path)
+        self.ice_nmls = nml.parse(ice_nml_path)
 
         # Assume local paths are relative to the work path
-        res_path = os.path.normpath(ice_nmls['setup_nml']['restart_dir'])
+        setup_nml = self.ice_nmls['setup_nml']
+
+        res_path = os.path.normpath(setup_nml['restart_dir'])
         if not os.path.isabs(res_path):
             res_path = os.path.join(self.work_path, res_path)
         self.work_restart_path = res_path
 
-        work_out_path = os.path.normpath(ice_nmls['setup_nml']['history_dir'])
+        work_out_path = os.path.normpath(setup_nml['history_dir'])
         if not os.path.isabs(work_out_path):
             work_out_path = os.path.join(self.work_path, work_out_path)
         self.work_output_path = work_out_path

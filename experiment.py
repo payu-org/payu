@@ -73,7 +73,6 @@ class Experiment(object):
         self.set_expt_pathnames()
         self.set_counters()
 
-        #self.set_input_paths()
         self.set_output_paths()
 
         for model in self.models:
