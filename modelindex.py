@@ -1,16 +1,17 @@
 # coding: utf-8
 
-from cice import Cice
-from gold import Gold
-from mitgcm import Mitgcm
-from mom import Mom
-from oasis import Oasis
-from um import UnifiedModel
+from drivers.access import Access
+from drivers.cice import Cice
+from drivers.gold import Gold
+from drivers.mitgcm import Mitgcm
+from drivers.mom import Mom
+from drivers.oasis import Oasis
+from drivers.um import UnifiedModel
 
 from modeldriver import Model
 
 index = {
-    'access':   Model,  # dummy
+    'access':   Access,
     'cice':     Cice,
     'gold':     Gold,
     'matm':     Model,  # dummy

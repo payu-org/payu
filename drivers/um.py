@@ -18,9 +18,7 @@ import shutil
 import subprocess as sp
 
 # Local
-import nml
-from fsops import mkdir_p
-from modeldriver import Model
+from ..modeldriver import Model
 
 class UnifiedModel(Model):
 

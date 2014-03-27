@@ -73,10 +73,10 @@ class Experiment(object):
         self.set_expt_pathnames()
         self.set_counters()
 
-        self.set_output_paths()
-
         for model in self.models:
             model.set_input_paths()
+
+        self.set_output_paths()
 
         # Miscellaneous configurations
         # TODO: Move this stuff somewhere else
@@ -111,7 +111,18 @@ class Experiment(object):
         self.model_name = self.config.get('model')
         assert self.model_name
 
+        model_fields = ['model', 'exe', 'input', 'ncpus', 'npernode']
+
+        if self.model_name:
+            ModelType = model_index[self.model_name]
+            model_config = {f: self.config[f] for f in model_fields
+                               if f in self.config}
+            self.model = ModelType(self, self.model_name, model_config)
+        else:
+            self.model = None
+
         self.models = []
+        #self.submodels = []
 
         submodels = self.config.get('submodels', {})
         if not submodels:
@@ -120,7 +131,6 @@ class Experiment(object):
             if not solo_model:
                 sys.exit('payu: error: Unknown model configuration.')
 
-            model_fields = {'model', 'exe', 'input', 'ncpus', 'npernode'}
             submodels[solo_model] = {f: self.config[f] for f in model_fields
                                      if f in self.config}
 

@@ -10,13 +10,16 @@ Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
 
-from fms import Fms
-from fsops import mkdir_p
+# Standard Library
 import os
 import shlex
 import shutil
 import subprocess as sp
 import sys
+
+# Local
+from fms import Fms
+from ..fsops import mkdir_p
 
 # Module support (for NCO)
 execfile('/opt/Modules/default/init/python')

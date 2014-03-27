@@ -20,9 +20,8 @@ import shutil as sh
 import subprocess as sp
 
 # Local
-import nml
-from fsops import mkdir_p
-from modeldriver import Model
+import f90nml
+from ..modeldriver import Model
 
 class Cice(Model):
 
@@ -44,7 +43,7 @@ class Cice(Model):
         super(Cice, self).set_model_pathnames()
 
         ice_nml_path = os.path.join(self.control_path, 'ice_in')
-        self.ice_nmls = nml.parse(ice_nml_path)
+        self.ice_nmls = f90nml.read(ice_nml_path)
 
         # Assume local paths are relative to the work path
         setup_nml = self.ice_nmls['setup_nml']
@@ -52,6 +51,7 @@ class Cice(Model):
         res_path = os.path.normpath(setup_nml['restart_dir'])
         if not os.path.isabs(res_path):
             res_path = os.path.join(self.work_path, res_path)
+        self.work_init_path = res_path
         self.work_restart_path = res_path
 
         work_out_path = os.path.normpath(setup_nml['history_dir'])
@@ -59,55 +59,56 @@ class Cice(Model):
             work_out_path = os.path.join(self.work_path, work_out_path)
         self.work_output_path = work_out_path
 
+        
+    def set_model_output_paths(self):
+        super(Cice, self).set_model_output_paths()
+
+        res_dir = self.ice_nmls['setup_nml']['restart_dir']
+
+        # Use the local initialization restarts if present
+        # TODO: Check for multiple res_paths across input paths?
+        if self.expt.counter == 0:
+            for input_path in self.input_paths:
+                if os.path.isabs(res_dir):
+                    init_res_path = res_dir
+                else:
+                    init_res_path = os.path.join(input_path, res_dir)
+                if os.path.isdir(init_res_path):
+                    self.prior_restart_path = init_res_path
+
 
     #---
-    def setup(self, use_symlinks=True, repeat_run=False):
-        super(Cice, self).setup()
+    #def setup(self, use_symlinks=True, repeat_run=False):
+    #    super(Cice, self).setup()
 
-        # Create experiment directory structure
-        mkdir_p(self.work_input_path)
-        mkdir_p(self.work_restart_path)
-        mkdir_p(self.work_output_path)
+    #    # Either create a new INPUT path or link a previous RESTART as INPUT
+    #    if self.prior_restart_path and not repeat_run:
+    #        restart_files = os.listdir(self.prior_res_path)
+    #        for f in restart_files:
+    #            f_res = os.path.join(self.prior_res_path, f)
+    #            f_input = os.path.join(self.work_input_path, f)
+    #            if use_symlinks:
+    #                os.symlink(f_res, f_input)
+    #            else:
+    #                sh.copy(f_res, f_input)
 
-        # Either create a new INPUT path or link a previous RESTART as INPUT
-        if self.prior_restart_path and not repeat_run:
-            restart_files = os.listdir(self.prior_res_path)
-            for f in restart_files:
-                f_res = os.path.join(self.prior_res_path, f)
-                f_input = os.path.join(self.work_input_path, f)
-                if use_symlinks:
-                    os.symlink(f_res, f_input)
-                else:
-                    sh.copy(f_res, f_input)
+    #    # TODO: Deep restart paths (path/to/restart) (strip work_path)
+    #    res_path = os.path.basename(self.work_restart_path)
 
-        # TODO: Deep restart paths (path/to/restart) (strip work_path)
-        res_path = os.path.basename(self.work_restart_path)
+    #    # Link any input data to INPUT
+    #    for input_path in self.input_paths:
+    #        for f in os.listdir(input_path):
 
-        # Link any input data to INPUT
-        for input_path in self.input_paths:
-            for f in os.listdir(input_path):
-
-                # TODO: Refactor to merge these for loops?
-
-                # Transfer any local (initialization) restarts
-                if f == res_path:
-                    input_res_path = os.path.join(input_path, res_path)
-                    for f_res in os.listdir(input_res_path):
-                        f_res_input = os.path.join(input_res_path, f_res)
-                        f_res_work = os.path.join(self.work_restart_path, f_res)
-                        if use_symlinks:
-                            os.symlink(f_res_input, f_res_work)
-                        else:
-                            sh.copy(f_res_input, f_res_work)
-
-                f_input = os.path.join(input_path, f)
-                f_work = os.path.join(self.work_path, f)
-                # Do not use input file if it is in RESTART
-                if not os.path.exists(f_work):
-                    if use_symlinks:
-                        os.symlink(f_input, f_work)
-                    else:
-                        sh.copy(f_input, f_work)
+    #            # Transfer any local (initialization) restarts
+    #            if f == res_path:
+    #                input_res_path = os.path.join(input_path, res_path)
+    #                for f_res in os.listdir(input_res_path):
+    #                    f_res_input = os.path.join(input_res_path, f_res)
+    #                    f_res_work = os.path.join(self.work_restart_path, f_res)
+    #                    if use_symlinks:
+    #                        os.symlink(f_res_input, f_res_work)
+    #                    else:
+    #                        sh.copy(f_res_input, f_res_work)
 
 
     #--

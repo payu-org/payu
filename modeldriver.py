@@ -33,6 +33,7 @@ class Model(object):
         # Path names
         self.work_input_path = None
         self.work_restart_path = None
+        self.work_init_path = None
         self.exec_path = None
 
 
@@ -52,6 +53,7 @@ class Model(object):
         self.work_input_path = self.work_path
         self.work_restart_path = self.work_path
         self.work_output_path = self.work_path
+        self.work_init_path = self.work_path
 
         exec_name = self.config.get('exe', self.default_exec)
         if exec_name:
@@ -114,9 +116,12 @@ class Model(object):
 
 
     #---
-    def setup(self):
+    def setup(self, use_symlinks=True):
 
-        mkdir_p(self.work_path)
+        # Create experiment directory structure
+        mkdir_p(self.work_input_path)
+        mkdir_p(self.work_restart_path)
+        mkdir_p(self.work_output_path)
 
         # Copy configuration files from control path
         for f in self.config_files:
@@ -132,6 +137,30 @@ class Model(object):
                     pass
                 else:
                     raise
+
+        # Either create a new INPUT path or link a previous RESTART as INPUT
+        if self.prior_restart_path and not self.expt.repeat_run:
+            restart_files = os.listdir(self.prior_restart_path)
+            for f in restart_files:
+                f_restart = os.path.join(self.prior_restart_path, f)
+                f_input = os.path.join(self.work_init_path, f)
+                if use_symlinks:
+                    os.symlink(f_restart, f_input)
+                else:
+                    sh.copy(f_restart, f_input)
+
+        # Link input data
+        for input_path in self.input_paths:
+            input_files = os.listdir(input_path)
+            for f in input_files:
+                f_input = os.path.join(input_path, f)
+                f_work_input = os.path.join(self.work_input_path, f)
+                # Do not use input file if it is in RESTART
+                if not os.path.exists(f_work_input):
+                    if use_symlinks:
+                        os.symlink(f_input, f_work_input)
+                    else:
+                        sh.copy(f_input, f_work_input)
 
 
     #---

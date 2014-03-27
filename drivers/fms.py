@@ -17,8 +17,8 @@ import shutil as sh
 import subprocess as sp
 
 # Local
-from fsops import mkdir_p
-from modeldriver import Model
+from ..fsops import mkdir_p
+from ..modeldriver import Model
 
 class Fms(Model):
 
@@ -37,41 +37,7 @@ class Fms(Model):
         # Define local FMS directories
         self.work_restart_path = os.path.join(self.work_path, 'RESTART')
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
-
-
-    #---
-    def setup(self, use_symlinks=True, repeat_run=False):
-
-        super(Fms, self).setup()
-
-        # Create experiment directory structure
-        mkdir_p(self.work_input_path)
-        mkdir_p(self.work_restart_path)
-
-        # Either create a new INPUT path or link a previous RESTART as INPUT
-        if self.prior_restart_path and not self.expt.repeat_run:
-            restart_files = os.listdir(self.prior_restart_path)
-            for f in restart_files:
-                f_restart = os.path.join(self.prior_restart_path, f)
-                f_input = os.path.join(self.work_input_path, f)
-                if use_symlinks:
-                    os.symlink(f_restart, f_input)
-                else:
-                    sh.copy(f_restart, f_input)
-
-        # Link any input data to INPUT
-        for input_path in self.input_paths:
-            input_files = os.listdir(input_path)
-            for f in input_files:
-                f_input = os.path.join(input_path, f)
-                f_work_input = os.path.join(self.work_input_path, f)
-                # Do not use input file if it is in RESTART
-                # TODO: Is this really what I want? Or should I warn the user?
-                if not os.path.exists(f_work_input):
-                    if use_symlinks:
-                        os.symlink(f_input, f_work_input)
-                    else:
-                        sh.copy(f_input, f_work_input)
+        self.work_init_path = self.work_input_path
 
 
     #--
@@ -85,8 +51,6 @@ class Fms(Model):
         cmd = 'mv {src} {dst}'.format(src=self.work_restart_path,
                                       dst=self.restart_path)
         sp.check_call(shlex.split(cmd))
-
-        #super(Fms, self).archive(**kwargs)
 
 
     #---
