@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 """
-The payu interface for the CICE model
+The payu interface for the MATM model
 -------------------------------------------------------------------------------
 Contact: Marshall Ward <marshall.ward@anu.edu.au>
 -------------------------------------------------------------------------------
@@ -20,22 +20,17 @@ import subprocess as sp
 # Local
 from ..modeldriver import Model
 
-class Access(Model):
+class Matm(Model):
 
     #---
     def __init__(self, expt, name, config):
-        super(Access, self).__init__(expt, name, config)
+        super(Matm, self).__init__(expt, name, config)
 
-        self.model_type = 'access'
+        self.model_type = 'matm'
+        self.default_exec = 'matm'
 
         self.modules = ['pbs',
                         'openmpi']
 
-        for model in self.expt.models:
-            if model.model_type == 'cice':
-                model.config_files = ['cice_in.nml',
-                                      'input_ice.nml',
-                                      'input_ice_gfdl.nml',
-                                      'input_ice_monin.nml']
-
-                model.ice_nml_fname = 'cice_in.nml'
+        self.config_files = ['input_atm.nml',
+                             'data_4_matm.table']

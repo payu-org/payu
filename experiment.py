@@ -113,18 +113,12 @@ class Experiment(object):
 
         model_fields = ['model', 'exe', 'input', 'ncpus', 'npernode']
 
-        if self.model_name:
-            ModelType = model_index[self.model_name]
-            model_config = {f: self.config[f] for f in model_fields
-                               if f in self.config}
-            self.model = ModelType(self, self.model_name, model_config)
-        else:
-            self.model = None
-
+        # TODO: Rename this to self.submodels
         self.models = []
-        #self.submodels = []
 
         submodels = self.config.get('submodels', {})
+
+        # --- TODO: Delete this block
         if not submodels:
 
             solo_model = self.config.get('model')
@@ -133,11 +127,21 @@ class Experiment(object):
 
             submodels[solo_model] = {f: self.config[f] for f in model_fields
                                      if f in self.config}
+        # --- TODO: end delete
 
         for m_name, m_config in submodels.iteritems():
 
             ModelType = model_index[m_config['model']]
             self.models.append(ModelType(self, m_name, m_config))
+
+        # Load the top-level model
+        if self.model_name:
+            ModelType = model_index[self.model_name]
+            model_config = {f: self.config[f] for f in model_fields
+                               if f in self.config}
+            self.model = ModelType(self, self.model_name, model_config)
+        else:
+            self.model = None
 
 
     #---
@@ -395,7 +399,7 @@ class Experiment(object):
         mpi_progs = []
         for model in self.models:
 
-            # Skip models without executables:
+            # Skip models without executables (e.g. couplers)
             if not model.exec_path:
                 continue
 

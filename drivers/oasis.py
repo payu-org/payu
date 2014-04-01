@@ -28,7 +28,7 @@ class Oasis(Model):
         super(Oasis, self).__init__(expt, name, config)
 
         self.model_type = 'oasis'
-        self.default_exec = 'oasis'
+        #self.default_exec = 'oasis'
 
         # NOTE: OASIS3 uses an executable, but OASIS4 does not
         # TODO: Detect version?
@@ -38,7 +38,6 @@ class Oasis(Model):
                         'openmpi']
 
         self.config_files = ['namcouple']
-        self.optional_config_files = ['cf_name_table.txt']
 
 
     def setup(self):

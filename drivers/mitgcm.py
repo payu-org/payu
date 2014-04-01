@@ -51,23 +51,23 @@ class Mitgcm(Model):
                              if f.startswith('data')]
         self.config_files.append('eedata')
 
-        # payu setup
+        # Generic model setup
         super(Mitgcm, self).setup()
 
         # Link restart files to work directory
         if self.prior_restart_path and not repeat_run:
-            restart_files = [f for f in os.listdir(self.prior_restart_path)
-                             if f.startswith('pickup')]
+        #    restart_files = [f for f in os.listdir(self.prior_restart_path)
+        #                     if f.startswith('pickup')]
 
-            for f in restart_files:
-                f_restart = os.path.join(self.prior_restart_path, f)
-                f_work = os.path.join(self.work_path, f)
-                if use_symlinks:
-                    os.symlink(f_restart, f_work)
-                else:
-                    sh.copy(f_restart, f_work)
+        #    for f in restart_files:
+        #        f_restart = os.path.join(self.prior_restart_path, f)
+        #        f_work = os.path.join(self.work_path, f)
+        #        if use_symlinks:
+        #            os.symlink(f_restart, f_work)
+        #        else:
+        #            sh.copy(f_restart, f_work)
 
-            # Determine total number of timesteps since initialisation
+        #    # Determine total number of timesteps since initialisation
             core_restarts = [f for f in os.listdir(self.prior_restart_path)
                                 if f.startswith('pickup.')]
             try:

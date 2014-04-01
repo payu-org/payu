@@ -37,12 +37,14 @@ class Cice(Model):
 
         self.config_files = ['ice_in']
 
+        self.ice_nml_fname = 'ice_in'
+
 
     #---
     def set_model_pathnames(self):
         super(Cice, self).set_model_pathnames()
 
-        ice_nml_path = os.path.join(self.control_path, 'ice_in')
+        ice_nml_path = os.path.join(self.control_path, self.ice_nml_fname)
         self.ice_nmls = f90nml.read(ice_nml_path)
 
         # Assume local paths are relative to the work path

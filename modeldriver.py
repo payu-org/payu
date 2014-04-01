@@ -140,6 +140,7 @@ class Model(object):
 
         # Either create a new INPUT path or link a previous RESTART as INPUT
         if self.prior_restart_path and not self.expt.repeat_run:
+            # TODO: use get_restart_files()
             restart_files = os.listdir(self.prior_restart_path)
             for f in restart_files:
                 f_restart = os.path.join(self.prior_restart_path, f)
