@@ -34,3 +34,9 @@ class Matm(Model):
 
         self.config_files = ['input_atm.nml',
                              'data_4_matm.table']
+
+
+    def set_model_pathnames(self):
+        super(Matm, self).set_model_pathnames()
+
+        self.work_input_path = os.path.join(self.work_path, 'INPUT')
