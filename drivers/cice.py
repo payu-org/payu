@@ -61,7 +61,18 @@ class Cice(Model):
             work_out_path = os.path.join(self.work_path, work_out_path)
         self.work_output_path = work_out_path
 
-        
+        # Determine if there is a work input path
+        grid_nml = self.ice_nmls['grid_nml']
+        input_path, grid_fname = os.path.split(grid_nml['grid_file'])
+        if input_path and not input_path == '.':
+            assert not os.path.isabs(input_path)
+            self.work_input_path = os.path.join(self.work_path, input_path)
+
+        # Assert that kmt uses the same directory
+        kmt_input_path, kmt_fname = os.path.split(grid_nml['kmt_file'])
+        assert input_path == kmt_input_path
+
+
     def set_model_output_paths(self):
         super(Cice, self).set_model_output_paths()
 
@@ -77,40 +88,6 @@ class Cice(Model):
                     init_res_path = os.path.join(input_path, res_dir)
                 if os.path.isdir(init_res_path):
                     self.prior_restart_path = init_res_path
-
-
-    #---
-    #def setup(self, use_symlinks=True, repeat_run=False):
-    #    super(Cice, self).setup()
-
-    #    # Either create a new INPUT path or link a previous RESTART as INPUT
-    #    if self.prior_restart_path and not repeat_run:
-    #        restart_files = os.listdir(self.prior_res_path)
-    #        for f in restart_files:
-    #            f_res = os.path.join(self.prior_res_path, f)
-    #            f_input = os.path.join(self.work_input_path, f)
-    #            if use_symlinks:
-    #                os.symlink(f_res, f_input)
-    #            else:
-    #                sh.copy(f_res, f_input)
-
-    #    # TODO: Deep restart paths (path/to/restart) (strip work_path)
-    #    res_path = os.path.basename(self.work_restart_path)
-
-    #    # Link any input data to INPUT
-    #    for input_path in self.input_paths:
-    #        for f in os.listdir(input_path):
-
-    #            # Transfer any local (initialization) restarts
-    #            if f == res_path:
-    #                input_res_path = os.path.join(input_path, res_path)
-    #                for f_res in os.listdir(input_res_path):
-    #                    f_res_input = os.path.join(input_res_path, f_res)
-    #                    f_res_work = os.path.join(self.work_restart_path, f_res)
-    #                    if use_symlinks:
-    #                        os.symlink(f_res_input, f_res_work)
-    #                    else:
-    #                        sh.copy(f_res_input, f_res_work)
 
 
     #--

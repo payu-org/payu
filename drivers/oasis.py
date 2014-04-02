@@ -28,7 +28,7 @@ class Oasis(Model):
         super(Oasis, self).__init__(expt, name, config)
 
         self.model_type = 'oasis'
-        #self.default_exec = 'oasis'
+        self.copy_inputs = True
 
         # NOTE: OASIS3 uses an executable, but OASIS4 does not
         # TODO: Detect version?
@@ -44,24 +44,20 @@ class Oasis(Model):
         super(Oasis, self).setup()
 
         # Copy OASIS data to the other submodels
-        input_filepaths = []
-        for input_path in self.input_paths:
-            for f in os.listdir(input_path):
-                input_filepaths.append(os.path.join(input_path, f))
+
+        # TODO: Parse namecouple to determine filelist
+        # TODO: Let users map files to models
+        input_fnames = os.listdir(self.work_path)
 
         for model in self.expt.models:
 
-            # Skip the oasis model
+            # Skip the oasis self-reference
             if model == self:
                 continue
 
-            mkdir_p(model.work_path)
+            mkdir_p(model.work_input_path)
 
-            f_src = os.path.join(self.control_path, 'namcouple')
-            f_dest = os.path.join(model.work_path, 'namcouple')
-            os.symlink(f_src, f_dest)
-
-            for f_path in input_filepaths:
-                f_name = os.path.basename(f_path)
-                f_work_path = os.path.join(model.work_path, f_name)
-                os.symlink(f_path, f_work_path)
+            for f_name in input_fnames:
+                f_path = os.path.join(self.work_path, f_name)
+                f_sympath = os.path.join(model.work_input_path, f_name)
+                os.symlink(f_path, f_sympath)

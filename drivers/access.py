@@ -39,3 +39,22 @@ class Access(Model):
                                       'input_ice_monin.nml']
 
                 model.ice_nml_fname = 'cice_in.nml'
+
+
+    #---
+    def archive(self):
+
+        for model in self.expt.models:
+            model.archive()
+
+            if model.name == 'atmosphere':
+                # move a2i to coupler restart
+                pass
+            elif model.name == 'ice':
+                # move i2a, i2o to restart
+                pass
+            elif model.name == 'ocean':
+                # move o2i to coupler
+                pass
+            else:
+                pass

@@ -9,7 +9,6 @@ import sys
 # Local
 from fsops import mkdir_p
 
-# TODO: Redesign the various models to subclass Model
 class Model(object):
 
     def __init__(self, expt, model_name, model_config):
@@ -20,7 +19,6 @@ class Model(object):
         self.config = model_config
 
         #---
-        # Null stuff, mostly to remind me what needs configuring in the drivers
 
         # Model details
         self.model_type = None
@@ -35,6 +33,10 @@ class Model(object):
         self.work_restart_path = None
         self.work_init_path = None
         self.exec_path = None
+
+        # Control flags
+        self.copy_restarts = False
+        self.copy_inputs = False
 
 
     #---
@@ -112,11 +114,11 @@ class Model(object):
 
             if self.prior_restart_path:
                 self.prior_restart_path = os.path.join(self.prior_restart_path,
-                                                   self.name)
+                                                       self.name)
 
 
     #---
-    def setup(self, use_symlinks=True):
+    def setup(self):
 
         # Create experiment directory structure
         mkdir_p(self.work_input_path)
@@ -138,17 +140,16 @@ class Model(object):
                 else:
                     raise
 
-        # Either create a new INPUT path or link a previous RESTART as INPUT
+        # Link restart files from prior run
         if self.prior_restart_path and not self.expt.repeat_run:
-            # TODO: use get_restart_files()
             restart_files = os.listdir(self.prior_restart_path)
             for f in restart_files:
                 f_restart = os.path.join(self.prior_restart_path, f)
                 f_input = os.path.join(self.work_init_path, f)
-                if use_symlinks:
-                    os.symlink(f_restart, f_input)
+                if self.copy_restarts:
+                    shutil.copy(f_restart, f_input)
                 else:
-                    sh.copy(f_restart, f_input)
+                    os.symlink(f_restart, f_input)
 
         # Link input data
         for input_path in self.input_paths:
@@ -158,10 +159,10 @@ class Model(object):
                 f_work_input = os.path.join(self.work_input_path, f)
                 # Do not use input file if it is in RESTART
                 if not os.path.exists(f_work_input):
-                    if use_symlinks:
-                        os.symlink(f_input, f_work_input)
+                    if self.copy_inputs:
+                        shutil.copy(f_input, f_work_input)
                     else:
-                        sh.copy(f_input, f_work_input)
+                        os.symlink(f_input, f_work_input)
 
 
     #---

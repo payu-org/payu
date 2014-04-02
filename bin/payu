@@ -74,6 +74,10 @@ def payu_parse():
                          dest='n_runs')
 
     #---
+    archive_cmd = subcmd.add_parser('archive')
+    archive_cmd.set_defaults(cmd=call_archive)
+
+    #---
     collate_cmd = subcmd.add_parser('collate')
     collate_cmd.set_defaults(cmd=call_collate)
 
@@ -274,7 +278,6 @@ def call_collate(pbs_config, pbs_vars, current_run=None, n_runs=None):
     submit_job(collate_script, pbs_config, pbs_vars)
 
 
-#TODO: Merge sweep and init
 #---
 def call_sweep(config_path, hard_sweep=False):
 
@@ -286,10 +289,20 @@ def call_sweep(config_path, hard_sweep=False):
     rc = sp.call(cmd)
     assert rc == 0
 
+
 #---
 def call_init(model_name, config_path):
 
     cmd = 'payu-init -m {} -c {}'.format(model_name, config_path)
+    cmd = shlex.split(cmd)
+    rc = sp.call(cmd)
+    assert rc == 0
+
+
+#---
+def call_archive(model_name, config_path):
+
+    cmd = 'payu-archive -m {} -c {}'.format(model_name, config_path)
     cmd = shlex.split(cmd)
     rc = sp.call(cmd)
     assert rc == 0
