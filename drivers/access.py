@@ -48,43 +48,34 @@ class Access(Model):
     #---
     def setup(self):
 
-        cpl_nml_fname = {'cice': 'input_ice.nml',
-                         'matm': 'input_atm.nml'}
+        cpl_keys = {'cice': ('input_ice.nml', 'coupling_nml', 'runtime0'),
+                    'matm': ('input_atm.nml', 'coupling', 'truntime0')}
 
-        cpl_namelist = {'cice': 'coupling_nml',
-                        'matm': 'coupling'}
-
-        cpl_runtime0_key = {'cice': 'runtime0',
-                            'matm': 'truntime0'}
-
-        # TODO: set up model dict?
         for model in self.expt.models:
             if model.model_type in ('cice', 'matm'):
 
-                nml_fname = cpl_nml_fname[model.model_type]
-                cpl_name = cpl_namelist[model.model_type]
-                runtime0_key = cpl_runtime0_key[model.model_type]
+                cpl_fname, cpl_group, runtime0_key = cpl_keys[model.model_type]
 
-                nml_path = os.path.join(model.work_path, nml_fname)
-                cpl_nml = f90nml.read(nml_path)
+                cpl_fpath = os.path.join(model.work_path, cpl_fname)
+                cpl_nml = f90nml.read(cpl_fpath)
 
-                # TODO: Calculate inidate, runtime0
+                # TODO: Calculate inidate
                 inidate = 'i dont know'
-                cpl_nml[cpl_name]['inidate'] = inidate
+                cpl_nml[cpl_group]['inidate'] = inidate
 
-                prior_nml_path = os.path.join(model.prior_output_path,
-                                              nml_fname)
-                prior_cpl_nml = f90nml.read(prior_nml_path)
+                prior_cpl_fpath = os.path.join(model.prior_output_path,
+                                               cpl_fname)
+                prior_cpl_nml = f90nml.read(prior_cpl_fpath)
 
-                # Calculate truntime0
-                coupling_nml = prior_cpl_nml[cpl_name]
-                runtime0 = coupling_nml[runtime0_key] + coupling_nml['runtime']
+                # Calculate initial runtime (runtime0, in seconds)
+                cpl_nml_grp = prior_cpl_nml[cpl_group]
+                runtime0 = cpl_nml_grp[runtime0_key] + cpl_nml_grp['runtime']
 
-                cpl_nml[cpl_name][runtime0_key] = runtime0
+                cpl_nml[cpl_group][runtime0_key] = runtime0
 
-                nml_path = os.path.join(model.work_path, nml_fname)
-                f90nml.write(cpl_nml, nml_path + '~')
-                shutil.move(nml_path + '~', nml_path)
+                nml_work_path = os.path.join(model.work_path, cpl_fname)
+                f90nml.write(cpl_nml, nml_work_path + '~')
+                shutil.move(nml_work_path + '~', nml_work_path)
 
 
     #---
