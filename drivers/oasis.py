@@ -47,7 +47,8 @@ class Oasis(Model):
 
         # TODO: Parse namecouple to determine filelist
         # TODO: Let users map files to models
-        input_fnames = os.listdir(self.work_path)
+        input_files = [f for f in os.listdir(self.work_path)
+                        if not f in self.config_files]
 
         for model in self.expt.models:
 
@@ -55,9 +56,14 @@ class Oasis(Model):
             if model == self:
                 continue
 
-            mkdir_p(model.work_input_path)
+            mkdir_p(model.work_path)
+            for f_name in self.config_files:
+                f_path = os.path.join(self.work_path, f_name)
+                f_sympath = os.path.join(model.work_path, f_name)
+                os.symlink(f_path, f_sympath)
 
-            for f_name in input_fnames:
+            mkdir_p(model.work_input_path)
+            for f_name in input_files:
                 f_path = os.path.join(self.work_path, f_name)
                 f_sympath = os.path.join(model.work_input_path, f_name)
                 os.symlink(f_path, f_sympath)
