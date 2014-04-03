@@ -19,6 +19,7 @@ import subprocess as sp
 
 # Local
 from ..modeldriver import Model
+from ..fsops import mkdir_p
 
 class Matm(Model):
 
@@ -43,4 +44,6 @@ class Matm(Model):
 
 
     def archive(self):
-        pass
+
+        # Create an empty restart directory
+        mkdir_p(self.restart_path)

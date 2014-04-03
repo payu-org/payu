@@ -1,0 +1,24 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# Force Python version
+from payu import reversion
+reversion.repython('2.7.5', __file__)
+
+# Standard Library
+import os
+
+# Local
+from payu.experiment import Experiment
+
+
+#---
+def payu_archive():
+
+    expt = Experiment()
+    expt.archive()
+
+
+#---
+if __name__ == '__main__':
+    payu_archive()

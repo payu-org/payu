@@ -373,6 +373,9 @@ class Experiment(object):
         for model in self.models:
             model.setup()
 
+        # Call the macro-model setup
+        self.model.setup()
+
         setup_script = self.userscripts.get('setup')
         if setup_script:
             self.run_userscript(setup_script)

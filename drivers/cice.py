@@ -16,7 +16,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 import os
 import sys
 import shlex
-import shutil as sh
+import shutil
 import subprocess as sp
 
 # Local
@@ -90,7 +90,24 @@ class Cice(Model):
                     self.prior_restart_path = init_res_path
 
 
-    #--
+    #---
+    def setup(self):
+        super(Cice, self).setup()
+
+        if self.expt.counter > 0:
+            setup_nml = self.ice_nmls['setup_nml']
+
+            setup_nml['runtype'] = 'continue'
+            setup_nml['restart'] = True
+
+            # TODO: Remove write protection from f90nml?
+            nml_path = os.path.join(self.work_path, self.ice_nml_fname)
+            
+            f90nml.write(self.ice_nmls, nml_path + '~')
+            shutil.move(nml_path + '~', nml_path)
+
+
+    #---
     def archive(self, **kwargs):
 
         for f in os.listdir(self.work_input_path):

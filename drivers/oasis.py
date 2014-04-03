@@ -28,6 +28,7 @@ class Oasis(Model):
         super(Oasis, self).__init__(expt, name, config)
 
         self.model_type = 'oasis'
+        self.copy_restarts = True
         self.copy_inputs = True
 
         # NOTE: OASIS3 uses an executable, but OASIS4 does not

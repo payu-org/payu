@@ -17,6 +17,9 @@ import shlex
 import shutil
 import subprocess as sp
 
+# Extensions
+import f90nml
+
 # Local
 from ..modeldriver import Model
 
@@ -31,6 +34,7 @@ class Access(Model):
         self.modules = ['pbs',
                         'openmpi']
 
+        # TODO: set up model dict?
         for model in self.expt.models:
             if model.model_type == 'cice':
                 model.config_files = ['cice_in.nml',
@@ -42,19 +46,49 @@ class Access(Model):
 
 
     #---
+    def setup(self):
+
+        cpl_nml_fname = {'cice': 'input_ice.nml',
+                         'matm': 'input_atm.nml'}
+
+        cpl_namelist = {'cice': 'coupling_nml',
+                        'matm': 'coupling'}
+
+        cpl_runtime0_key = {'cice': 'runtime0',
+                            'matm': 'truntime0'}
+
+        # TODO: set up model dict?
+        for model in self.expt.models:
+            if model.model_type in ('cice', 'matm'):
+
+                nml_fname = cpl_nml_fname[model.model_type]
+                cpl_name = cpl_namelist[model.model_type]
+                runtime0_key = cpl_runtime0_key[model.model_type]
+
+                nml_path = os.path.join(model.work_path, nml_fname)
+                cpl_nml = f90nml.read(nml_path)
+
+                # TODO: Calculate inidate, runtime0
+                inidate = 'i dont know'
+                cpl_nml[cpl_name]['inidate'] = inidate
+
+                prior_nml_path = os.path.join(model.prior_output_path,
+                                              nml_fname)
+                prior_cpl_nml = f90nml.read(prior_nml_path)
+
+                # Calculate truntime0
+                coupling_nml = prior_cpl_nml[cpl_name]
+                runtime0 = coupling_nml[runtime0_key] + coupling_nml['runtime']
+
+                cpl_nml[cpl_name][runtime0_key] = runtime0
+
+                nml_path = os.path.join(model.work_path, nml_fname)
+                f90nml.write(cpl_nml, nml_path + '~')
+                shutil.move(nml_path + '~', nml_path)
+
+
+    #---
     def archive(self):
 
         for model in self.expt.models:
             model.archive()
-
-            if model.name == 'atmosphere':
-                # move a2i to coupler restart
-                pass
-            elif model.name == 'ice':
-                # move i2a, i2o to restart
-                pass
-            elif model.name == 'ocean':
-                # move o2i to coupler
-                pass
-            else:
-                pass
