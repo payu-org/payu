@@ -40,3 +40,7 @@ class Matm(Model):
         super(Matm, self).set_model_pathnames()
 
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
+
+
+    def archive(self):
+        pass

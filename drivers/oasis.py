@@ -15,7 +15,7 @@ import os
 import sys
 import shlex
 import shutil
-import subprocess as sp
+import subprocess
 
 # Local
 from ..fsops import mkdir_p
@@ -48,7 +48,7 @@ class Oasis(Model):
         # TODO: Parse namecouple to determine filelist
         # TODO: Let users map files to models
         input_files = [f for f in os.listdir(self.work_path)
-                        if not f in self.config_files]
+                       if not f in self.config_files]
 
         for model in self.expt.models:
 
@@ -67,3 +67,19 @@ class Oasis(Model):
                 f_path = os.path.join(self.work_path, f_name)
                 f_sympath = os.path.join(model.work_input_path, f_name)
                 os.symlink(f_path, f_sympath)
+
+
+    #---
+    def archive(self):
+
+        # TODO: Determine the exchange files
+        restart_files = ['a2i.nc', 'i2a.nc', 'i2o.nc', 'o2i.nc']
+
+        mkdir_p(self.restart_path)
+        for f in restart_files:
+            f_src = os.path.join(self.work_input_path, f)
+            f_dst = os.path.join(self.restart_path, f)
+
+            cmd = 'mv {} {}'.format(f_src, f_dst)
+            rc = subprocess.call(shlex.split(cmd))
+            assert rc == 0

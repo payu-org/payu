@@ -93,7 +93,6 @@ class Cice(Model):
     #--
     def archive(self, **kwargs):
 
-        # NOTE: CICE uses work directory as input
         for f in os.listdir(self.work_input_path):
             f_path = os.path.join(self.work_input_path, f)
             if os.path.islink(f_path):
