@@ -11,6 +11,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 """
 
 # Standard Library
+import datetime
 import os
 import sys
 import shlex
@@ -59,18 +60,32 @@ class Access(Model):
                 cpl_fpath = os.path.join(model.work_path, cpl_fname)
                 cpl_nml = f90nml.read(cpl_fpath)
 
-                # TODO: Calculate inidate
-                inidate = 'i dont know'
+                if model.prior_output_path:
+                    prior_cpl_fpath = os.path.join(model.prior_output_path,
+                                                   cpl_fname)
+                    prior_cpl_nml = f90nml.read(prior_cpl_fpath)
+
+                    # Calculate initial runtime (runtime0, in seconds)
+                    cpl_nml_grp = prior_cpl_nml[cpl_group]
+                    runtime0 = cpl_nml_grp[runtime0_key] + cpl_nml_grp['runtime']
+
+                    prior_idate = prior_cpl_nml[cpl_group]['init_date']
+                    init_date = datetime.date(int(prior_idate[0:4]),
+                                              int(prior_idate[4:6]),
+                                              int(prior_idate[6:8]))
+
+                    dt_run = datetime.timedelta(seconds=runtime0)
+
+                    # TODO: Leap year correction
+
+                    t_new = init_date + dt_run
+                    inidate = '{:04}{:02}{:02}'.format(t_new.year, t_new.month,
+                                                       t_new.day)
+                else:
+                    inidate = cpl_nml[cpl_group]['init_date']
+                    runtime0 = 0
+
                 cpl_nml[cpl_group]['inidate'] = inidate
-
-                prior_cpl_fpath = os.path.join(model.prior_output_path,
-                                               cpl_fname)
-                prior_cpl_nml = f90nml.read(prior_cpl_fpath)
-
-                # Calculate initial runtime (runtime0, in seconds)
-                cpl_nml_grp = prior_cpl_nml[cpl_group]
-                runtime0 = cpl_nml_grp[runtime0_key] + cpl_nml_grp['runtime']
-
                 cpl_nml[cpl_group][runtime0_key] = runtime0
 
                 nml_work_path = os.path.join(model.work_path, cpl_fname)
