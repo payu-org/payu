@@ -70,17 +70,20 @@ class Access(Model):
                     runtime0 = cpl_nml_grp[runtime0_key] + cpl_nml_grp['runtime']
 
                     prior_idate = prior_cpl_nml[cpl_group]['init_date']
-                    init_date = datetime.date(int(prior_idate[0:4]),
-                                              int(prior_idate[4:6]),
-                                              int(prior_idate[6:8]))
+
+                    prior_year = prior_idate / 10**4
+                    prior_month = (prior_idate % 10**4 / 10**2)
+                    prior_day = (prior_idate % 10**2)
+
+                    init_date = datetime.date(prior_year, prior_month, prior_day)
 
                     dt_run = datetime.timedelta(seconds=runtime0)
 
                     # TODO: Leap year correction
 
                     t_new = init_date + dt_run
-                    inidate = '{:04}{:02}{:02}'.format(t_new.year, t_new.month,
-                                                       t_new.day)
+                    inidate = (t_new.year * 10**4 + t_new.month * 10**2
+                               + t_new.day)
                 else:
                     inidate = cpl_nml[cpl_group]['init_date']
                     runtime0 = 0
