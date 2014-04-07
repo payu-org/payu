@@ -35,7 +35,6 @@ class Access(Model):
         self.modules = ['pbs',
                         'openmpi']
 
-        # TODO: set up model dict?
         for model in self.expt.models:
             if model.model_type == 'cice':
                 model.config_files = ['cice_in.nml',
@@ -67,7 +66,8 @@ class Access(Model):
 
                     # Calculate initial runtime (runtime0, in seconds)
                     cpl_nml_grp = prior_cpl_nml[cpl_group]
-                    runtime0 = cpl_nml_grp[runtime0_key] + cpl_nml_grp['runtime']
+                    runtime0 = float(cpl_nml_grp[runtime0_key]
+                                     + cpl_nml_grp['runtime'])
 
                     prior_idate = prior_cpl_nml[cpl_group]['init_date']
 
@@ -86,10 +86,13 @@ class Access(Model):
                                + t_new.day)
                 else:
                     inidate = cpl_nml[cpl_group]['init_date']
-                    runtime0 = 0
+                    runtime0 = 0.
 
                 cpl_nml[cpl_group]['inidate'] = inidate
                 cpl_nml[cpl_group][runtime0_key] = runtime0
+
+                if model.model_type == 'cice':
+                    cpl_nml[cpl_group]['jobnum'] = 1 + self.expt.counter
 
                 nml_work_path = os.path.join(model.work_path, cpl_fname)
                 f90nml.write(cpl_nml, nml_work_path + '~')

@@ -82,6 +82,7 @@ class Experiment(object):
         # TODO: Move this stuff somewhere else
         self.userscripts = self.config.get('userscripts', {})
 
+        self.debug = self.config.get('debug', False)
         self.postscript = self.config.get('postscript')
         self.repeat_run = self.config.get('repeat', False)
 
@@ -212,6 +213,9 @@ class Experiment(object):
         # TODO: Improved ipm support
         if 'ipm' in self.modules:
             os.environ['IPM_LOGDIR'] = self.work_path
+
+        if self.debug:
+            module('load', 'totalview')
 
 
     #---
@@ -398,6 +402,9 @@ class Experiment(object):
         # XXX: I think this may be broken
         if user_flags:
             mpi_flags.extend(list(user_flags))
+
+        if self.debug:
+            mpi_flags.append('--debug')
 
         mpi_progs = []
         for model in self.models:
