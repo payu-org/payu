@@ -10,7 +10,8 @@ Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
 
-# XXX: This doesn't work, don't use it at the moment!
+# Python 3 preparation
+from __future__ import print_function
 
 # Standard Library
 import os
@@ -73,6 +74,7 @@ class Cice(Model):
         assert input_path == kmt_input_path
 
 
+    #---
     def set_model_output_paths(self):
         super(Cice, self).set_model_output_paths()
 
@@ -91,20 +93,34 @@ class Cice(Model):
 
 
     #---
+    def get_prior_restart_files(self):
+        return [f for f in os.listdir(self.prior_restart_path)
+                if f.startswith('iced.')]
+
+
+    #---
     def setup(self):
         super(Cice, self).setup()
 
         if self.expt.counter > 0:
+
+            # Update input namelist
             setup_nml = self.ice_nmls['setup_nml']
 
             setup_nml['runtype'] = 'continue'
             setup_nml['restart'] = True
 
-            # TODO: Remove write protection from f90nml?
             nml_path = os.path.join(self.work_path, self.ice_nml_fname)
-            
             f90nml.write(self.ice_nmls, nml_path + '~')
             shutil.move(nml_path + '~', nml_path)
+
+            # Generate ice.restart_file
+            # TODO: Check the filenames more aggressively
+            last_restart_file = sorted(self.get_prior_restart_files())[-1]
+
+            res_ptr_path = os.path.join(self.work_init_path, 'ice.restart_file')
+            with open(res_ptr_path, 'w') as res_ptr:
+                print(last_restart_file, file=res_ptr)
 
 
     #---

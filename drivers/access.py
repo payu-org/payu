@@ -12,6 +12,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 # Standard Library
 import datetime
+import errno
 import os
 import sys
 import shlex
@@ -44,6 +45,7 @@ class Access(Model):
 
                 model.ice_nml_fname = 'cice_in.nml'
 
+                model.access_restarts = ['u_star.nc', 'sicemass.nc']
 
     #---
     def setup(self):
@@ -52,8 +54,30 @@ class Access(Model):
                     'matm': ('input_atm.nml', 'coupling', 'truntime0')}
 
         for model in self.expt.models:
+
+            if model.model_type == 'cice':
+
+                # Stage the supplemental input files
+                if model.prior_restart_path:
+                    for f_name in model.access_restarts:
+                        f_src = os.path.join(model.prior_restart_path, f_name)
+                        f_dst = os.path.join(model.work_input_path, f_name)
+
+                        if os.path.isfile(f_src):
+
+                            try:
+                                os.symlink(f_src, f_dst)
+                            except OSError as ec:
+                                if ec.errno == errno.EEXIST:
+                                    os.remove(f_dst)
+                                    os.symlink(f_src, f_dst)
+                                else:
+                                    raise
+
+
             if model.model_type in ('cice', 'matm'):
 
+                # Update the supplemental OASIS namelists
                 cpl_fname, cpl_group, runtime0_key = cpl_keys[model.model_type]
 
                 cpl_fpath = os.path.join(model.work_path, cpl_fname)
@@ -75,7 +99,8 @@ class Access(Model):
                     prior_month = (prior_idate % 10**4 / 10**2)
                     prior_day = (prior_idate % 10**2)
 
-                    init_date = datetime.date(prior_year, prior_month, prior_day)
+                    init_date = datetime.date(prior_year, prior_month,
+                                              prior_day)
 
                     dt_run = datetime.timedelta(seconds=runtime0)
 
@@ -103,4 +128,11 @@ class Access(Model):
     def archive(self):
 
         for model in self.expt.models:
-            model.archive()
+            if model.model_type == 'cice':
+
+                # Move supplemental restart files to RESTART path
+                for f_name in model.access_restarts:
+                    f_src = os.path.join(model.work_path, f_name)
+                    f_dst = os.path.join(model.restart_path, f_name)
+
+                    shutil.move(f_src, f_dst)

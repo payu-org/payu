@@ -118,6 +118,11 @@ class Model(object):
 
 
     #---
+    def get_prior_restart_files(self):
+        return os.listdir(self.prior_restart_path)
+
+
+    #---
     def setup(self):
 
         # Create experiment directory structure
@@ -142,7 +147,7 @@ class Model(object):
 
         # Link restart files from prior run
         if self.prior_restart_path and not self.expt.repeat_run:
-            restart_files = os.listdir(self.prior_restart_path)
+            restart_files = self.get_prior_restart_files()
             for f in restart_files:
                 f_restart = os.path.join(self.prior_restart_path, f)
                 f_input = os.path.join(self.work_init_path, f)

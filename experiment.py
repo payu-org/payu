@@ -482,12 +482,15 @@ class Experiment(object):
         if os.path.islink(self.work_sym_path):
             os.remove(self.work_sym_path)
 
-        # TODO: restart archival is handled by each model. Abstract this!
+        # TODO: Refactor this
         if len(self.models) > 1:
             mkdir_p(self.restart_path)
 
-        for model in self.models:
-            model.archive()
+            for model in self.models:
+                model.archive()
+
+        # Archive a single model, or postprocess a suite of models
+        self.model.archive()
 
         # Double-check that the run path does not exist
         if os.path.exists(self.output_path):
