@@ -26,8 +26,6 @@ class Mitgcm(Model):
 
     #---
     def __init__(self, expt, name, config):
-
-        # payu initalisation
         super(Mitgcm, self).__init__(expt, name, config)
 
         # Model-specific configuration
@@ -40,7 +38,6 @@ class Mitgcm(Model):
 
         # NOTE: We use a subroutine to generate the MITgcm configuration list
         self.config_files = None
-
 
 
     #---
