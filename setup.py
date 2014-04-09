@@ -16,10 +16,9 @@ setup(
     author = 'Marshall Ward',
     author_email = 'python@marshallward.org',
     url = 'http://github.com/marshallward/payu',
-    license = 'Apache Software License 2.0',
 
     packages = find_packages(),
-    install_requires = ['f90nml'],
+    install_requires = ['f90nml', 'PyYAML'],
     scripts = payu_scripts,
 
     classifiers = [
