@@ -39,6 +39,11 @@ class Mom(Fms):
         self.model_type = 'mom'
         self.default_exec = 'fms_MOM_SIS.x'
 
+        # Default repo and build details. 
+        self.repo_url = 'git://github.com/BreakawayLabs/mom.git'
+        self.repo_tag = 'master'
+        self.build_command = './MOM_compile.csh --platform nci --type MOM_SIS'
+
         self.modules = ['pbs',
                         'openmpi']
 
@@ -49,69 +54,23 @@ class Mom(Fms):
 
         self.optional_config_files = ['blob_diag_table']
 
-
     #---
-    def get_codebase(self):
-        assert self.lab_path
+    def set_model_pathnames(self):
+        super(Mom, self).set_model_pathnames()
 
-        # TODO: Move to some "set_pathname" function
-        self.codebase_path = os.path.join(self.lab_path, 'codebase')
-        # TODO: User-defined repository URL and branch
-        repo_url = 'git://github.com/coecms/mom.git'
+        self.build_exec_path = os.path.join(self.codebase_path, 'exec', 'nci',
+                                            'MOM_SIS')
+        self.build_path = os.path.join(self.codebase_path, 'exp')
 
-        if os.path.isdir(self.codebase_path):
-
-            # TODO: Improve repo existence check
-            codebase_git_path = os.path.join(self.codebase_path, '.git')
-            if not os.path.isdir(codebase_git_path):
-                print('payu: warning: Codebase exists, but does not have its '
-                                     '.git directory')
-                sys.exit(1)
-
-        else:
-            cmd = 'git clone {} {}'.format(repo_url, self.codebase_path)
-
-            cmd = shlex.split(cmd)
-            rc = sp.call(cmd)
-            assert rc == 0
-
-
-    #---
     def build_model(self):
-        assert self.codebase_path
-
-        # TODO: User-defined type and platform
-        platform = 'raijin'
-        exec_type = 'MOM_SIS'
-
-        curdir = os.getcwd()
-        os.chdir(os.path.join(self.codebase_path, 'exp'))
-
-        cmd = ('./MOM_compile.csh --platform {} --type {}'
-               ''.format(platform, exec_type))
-
-        cmd = shlex.split(cmd)
-        rc = sp.call(cmd)
-        assert rc == 0
-
-        # Copy executable
-        assert self.bin_path
-        mkdir_p(self.bin_path)
-
-        exec_path = os.path.join(self.codebase_path, 'exec', platform,
-                                 exec_type, 'fms_{}.x'.format(exec_type))
-        shutil.copy(exec_path, self.bin_path)
-
-        # Copy mppnccombine
-        mppnc_exec = 'mppnccombine.{}'.format(platform)
+        super(Mom, self).build_model()
+        
+        # Model is built, now copy over mppnccombine.
+        mppnc_exec = 'mppnccombine.nci'
 
         mppnc_src = os.path.join(self.codebase_path, 'bin', mppnc_exec)
-        mppnc_dest = os.path.join(self.bin_path, 'mppnccombine')
+        mppnc_dest = os.path.join(self.expt.bin_path, 'mppnccombine')
         shutil.copy(mppnc_src, mppnc_dest)
-
-        # Return to working directory
-        os.chdir(curdir)
-
 
     #---
     def setup(self):

@@ -4,7 +4,9 @@
 import errno
 import os
 import shutil
+import shlex
 import sys
+import subprocess as sp
 
 # Local
 from fsops import mkdir_p
@@ -33,11 +35,19 @@ class Model(object):
         self.work_restart_path = None
         self.work_init_path = None
         self.exec_path = None
+        self.exec_name = None
+        self.codebase_path = None
+        self.build_exec_path = None
+        self.build_path = None
 
         # Control flags
         self.copy_restarts = False
         self.copy_inputs = False
 
+        # Codebase details
+        self.repo_url = None
+        self.repo_tag = None
+        self.build_command = None
 
     #---
     def set_model_pathnames(self):
@@ -45,6 +55,8 @@ class Model(object):
         self.control_path = self.expt.control_path
         self.input_basepath = self.expt.input_basepath
         self.work_path = self.expt.work_path
+        self.codebase_path = os.path.join(self.expt.lab_path, 'codebase',
+                                          self.name)
 
         if len(self.expt.models) > 1:
 
@@ -57,9 +69,9 @@ class Model(object):
         self.work_output_path = self.work_path
         self.work_init_path = self.work_path
 
-        exec_name = self.config.get('exe', self.default_exec)
-        if exec_name:
-            self.exec_path = os.path.join(self.expt.bin_path, exec_name)
+        self.exec_name = self.config.get('exe', self.default_exec)
+        if self.exec_name:
+            self.exec_path = os.path.join(self.expt.bin_path, self.exec_name)
         else:
             self.exec_path = None
 
@@ -178,3 +190,75 @@ class Model(object):
     #---
     def collate(self):
         raise NotImplementedError
+
+    #---
+    def build_model(self):
+
+        # Check to see if executable already exists.
+        if self.exec_path and os.path.exists(self.exec_path):
+            print('payu: warning: {} will be overwritten.'.format(self.exec_path))
+
+        # First step is always to go to the codebase. 
+        curdir = os.getcwd() 
+        os.chdir(self.codebase_path)
+
+        # Do the build. First check whether there is a build command in the
+        # config. If not check for the model default, otherwise just run make.
+        try:
+            cmd = self.config['build']['command']
+        except KeyError:
+            if self.build_path and self.build_command:
+                cmd = 'cd {} && {}'.format(self.build_path, self.build_command)
+            else:
+                cmd = 'make'
+
+        print('Running command {}'.format(cmd))
+        rc = sp.call(cmd, shell=True)
+        assert rc == 0
+
+        try: 
+            build_exec_path = self.config['build']['exec_path']
+        except KeyError:
+            if self.build_exec_path:
+                build_exec_path = self.build_exec_path
+            else:
+                build_exec_path = self.codebase_path
+
+        # Copy newly build executable to bin dir.
+        if self.exec_path:
+            build_exec_path = os.path.join(build_exec_path, self.exec_name)
+            shutil.copy(build_exec_path, self.exec_path)
+
+        os.chdir(curdir)
+
+    #---
+    def get_codebase(self):
+
+        assert self.repo_url
+        assert self.repo_tag
+        assert self.codebase_path
+
+        if os.path.isdir(self.codebase_path):
+            return 
+
+        try:
+            self.repo_url = self.config['build']['repository']
+        except KeyError:
+            # Use default.
+            pass
+
+        try:
+            self.repo_tag = self.config['build']['tag']
+        except KeyError:
+            if not self.repo_tag:
+                self.repo_tag = 'master'
+
+        cmd = 'git clone {} {}'.format(self.repo_url, self.codebase_path)
+        rc = sp.call(shlex.split(cmd))
+        assert rc == 0
+       
+        curdir = os.getcwd() 
+        os.chdir(self.codebase_path)
+        rc = sp.call(shlex.split('git checkout {}'.format(self.repo_tag)))
+        assert rc == 0
+        os.chdir(curdir)
