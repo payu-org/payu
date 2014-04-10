@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 """
-The payu interface for the CICE model
+The payu interface for the ACCESS coupled climate model
 -------------------------------------------------------------------------------
 Contact: Marshall Ward <marshall.ward@anu.edu.au>
 -------------------------------------------------------------------------------
-Distributed as part of Payu, Copyright 2011-2012 Marshall Ward
+Distributed as part of Payu, Copyright 2011 Marshall Ward
 Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
