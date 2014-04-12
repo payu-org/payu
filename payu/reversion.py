@@ -4,7 +4,7 @@ import os
 import sys
 
 execfile('/opt/Modules/default/init/python')
-def repython(python_version, script_path):
+def repython(version, script_path):
 
     # Ensure that payu is loaded
     try:
@@ -14,9 +14,14 @@ def repython(python_version, script_path):
         pass
 
     # NOTE: Older versions (<2.7) require the version as a tuple
-    python_version_tuple = tuple(int(i) for i in python_version.split('.'))
+    version_tuple = tuple(int(i) for i in version.split('.'))
+    module_name = os.path.join('python', version)
 
-    if sys.version_info < python_version_tuple:
+    python_modules = [m for m in os.environ['LOADEDMODULES'].split(':')
+                      if m.startswith('python')]
+
+    if sys.version_info < version_tuple or not module_name in python_modules:
+
         # First unload all python (and supporting) modules
         python_modules = [m for m in os.environ['LOADEDMODULES'].split(':')
                           if m.startswith('python')]
@@ -25,7 +30,7 @@ def repython(python_version, script_path):
             module('unload', mod)
 
         # Replace with specified version
-        module('load', os.path.join('python', python_version))
+        module('load', module_name)
 
         # Replace the current python process with the updated version
         os.execl(script_path, *sys.argv)
