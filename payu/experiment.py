@@ -112,7 +112,7 @@ class Experiment(object):
         self.model_name = self.config.get('model')
         assert self.model_name
 
-        model_fields = ['model', 'exe', 'input', 'ncpus', 'npernode']
+        model_fields = ['model', 'exe', 'input', 'ncpus', 'npernode', 'build']
 
         # TODO: Rename this to self.submodels
         self.models = []
@@ -346,14 +346,18 @@ class Experiment(object):
 
 
     #---
-    def get_codebase():
-        raise NotImplementedError
+    def get_codebase(self):
 
+        for model in self.models:
+            model.get_codebase()
 
     #---
-    def build_model():
-        raise NotImplementedError
+    def build_model(self):
 
+        self.load_modules()
+
+        for model in self.models:
+            model.build_model()
 
     #---
     def setup(self, do_stripe=False):

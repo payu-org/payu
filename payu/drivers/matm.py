@@ -30,6 +30,10 @@ class Matm(Model):
         self.model_type = 'matm'
         self.default_exec = 'matm'
 
+        # Default repo details. 
+        self.repo_url = 'https://github.com/nicholash/matm.git'
+        self.repo_tag = 'master'
+
         self.modules = ['pbs',
                         'openmpi']
 
@@ -40,8 +44,8 @@ class Matm(Model):
     def set_model_pathnames(self):
         super(Matm, self).set_model_pathnames()
 
+        self.build_exec_path = os.path.join(self.codebase_path, 'build_nt62')
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
-
 
     def archive(self):
 
