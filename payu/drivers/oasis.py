@@ -31,12 +31,15 @@ class Oasis(Model):
         self.copy_restarts = True
         self.copy_inputs = True
 
+        # Default repo details. 
+        self.repo_url = 'https://github.com/nicholash/oasis3-mct.git'
+        self.repo_tag = 'access'
+
         # NOTE: OASIS3 uses an executable, but OASIS4 does not
         # TODO: Detect version?
         # if oasis_version == 3: self.default_exec = 'oasis'
 
-        self.modules = ['pbs',
-                        'openmpi']
+        self.modules = ['pbs', 'intel-fc', 'intel-cc', 'openmpi']
 
         self.config_files = ['namcouple']
 
