@@ -49,6 +49,7 @@ class Model(object):
         self.repo_tag = None
         self.build_command = None
 
+
     #---
     def set_model_pathnames(self):
 
@@ -191,6 +192,7 @@ class Model(object):
     def collate(self):
         raise NotImplementedError
 
+
     #---
     def build_model(self):
 
@@ -230,6 +232,7 @@ class Model(object):
             shutil.copy(build_exec_path, self.exec_path)
 
         os.chdir(curdir)
+
 
     #---
     def get_codebase(self):
