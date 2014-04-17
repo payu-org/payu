@@ -26,6 +26,7 @@ execfile('/opt/Modules/default/init/python')
 
 
 class Mom(Fms):
+
     #---
     def __init__(self, expt, name, config):
 
@@ -54,6 +55,7 @@ class Mom(Fms):
 
         self.optional_config_files = ['blob_diag_table']
 
+
     #---
     def set_model_pathnames(self):
         super(Mom, self).set_model_pathnames()
@@ -62,6 +64,8 @@ class Mom(Fms):
                                             'MOM_SIS')
         self.build_path = os.path.join(self.codebase_path, 'exp')
 
+
+    #---
     def build_model(self):
         super(Mom, self).build_model()
         
@@ -71,6 +75,7 @@ class Mom(Fms):
         mppnc_src = os.path.join(self.codebase_path, 'bin', mppnc_exec)
         mppnc_dest = os.path.join(self.expt.bin_path, 'mppnccombine')
         shutil.copy(mppnc_src, mppnc_dest)
+
 
     #---
     def setup(self):
