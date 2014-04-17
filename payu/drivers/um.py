@@ -10,7 +10,11 @@ http://www.apache.org/licenses/LICENSE-2.0
 """
 
 from payu.modeldriver import Model
-
+import os
+import sys
+import imp
+import shlex
+import shutil
 
 class UnifiedModel(Model):
 
@@ -23,7 +27,6 @@ class UnifiedModel(Model):
 
         self.modules = ['pbs',
                         'openmpi']
-
 
     #---
     def archive(self):
@@ -89,38 +92,10 @@ class UnifiedModel(Model):
     def setup(self):
         super(UnifiedModel, self).setup()
 
-        if self.expt.counter > 0:
+        # Set up environment variables needed to run UM. 
+        # Look for a python file in the config directory.
+        um_env = imp.load_source('um_env',
+                os.path.join(self.control_path, 'um_env.py'))
 
-            # Update input namelist
-            setup_nml = self.ice_nmls['setup_nml']
-
-            setup_nml['runtype'] = 'continue'
-            setup_nml['restart'] = True
-
-            nml_path = os.path.join(self.work_path, self.ice_nml_fname)
-            f90nml.write(self.ice_nmls, nml_path + '~')
-            shutil.move(nml_path + '~', nml_path)
-
-            # Generate ice.restart_file
-            # TODO: Check the filenames more aggressively
-            last_restart_file = sorted(self.get_prior_restart_files())[-1]
-
-            res_ptr_path = os.path.join(self.work_init_path, 'ice.restart_file')
-            with open(res_ptr_path, 'w') as res_ptr:
-                print(last_restart_file, file=res_ptr)
-
-
-    #---
-    def archive(self, **kwargs):
-
-        for f in os.listdir(self.work_input_path):
-            f_path = os.path.join(self.work_input_path, f)
-            if os.path.islink(f_path):
-                os.remove(f_path)
-
-        # Archive restart files before processing model output
-        cmd = 'mv {src} {dst}'.format(src=self.work_restart_path,
-                                      dst=self.restart_path)
-        rc = sp.Popen(shlex.split(cmd)).wait()
-        assert rc == 0
-
+        # Put all in the current environment. 
+        os.environ.update(um_env.vars)
