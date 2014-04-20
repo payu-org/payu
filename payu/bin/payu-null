@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-from payu import cmd
-
-if __name__ == '__main__':
-    cmd.parse()
+from payu import parser
+parser.parse()
