@@ -28,6 +28,12 @@ class UnifiedModel(Model):
         self.modules = ['pbs',
                         'openmpi']
 
+        self.config_files = ['CNTLALL', 'CNTLATM', 'CNTLGEN', 'CONTCNTL',
+                              'errflag', 'exstat', 'ftxx', 'ftxx.new',
+                              'ftxx.vars', 'hnlist', 'ihist', 'INITHIS',
+                              'namelists', 'PPCNTL', 'PRESM_A', 'SIZES',
+                              'STASHC', 'UAFILES_A', 'UAFLDS_A', 'parexe']
+
     #---
     def archive(self):
         raise NotImplementedError
