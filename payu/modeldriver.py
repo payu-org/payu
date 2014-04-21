@@ -205,6 +205,9 @@ class Model(object):
     #---
     def build_model(self):
 
+        if not self.repo_url:
+            return 
+
         # Check to see if executable already exists.
         if self.exec_path and os.path.exists(self.exec_path):
             print('payu: warning: {} will be overwritten.'
@@ -246,7 +249,9 @@ class Model(object):
     #---
     def get_codebase(self):
 
-        assert self.repo_url
+        if not self.repo_url:
+            return 
+
         assert self.repo_tag
         assert self.codebase_path
 
