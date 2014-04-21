@@ -96,6 +96,14 @@ class UnifiedModel(Model):
         # Look for a python file in the config directory.
         um_env = imp.load_source('um_env',
                 os.path.join(self.control_path, 'um_env.py'))
+        vars = um_env.vars
+
+        assert len(self.input_paths) == 1
+
+        # Set some paths
+        for k in vars.keys():
+            vars[k] = vars[k].format(input_path=self.input_paths[0],
+                                     work_path=self.work_path)
 
         # Put all in the current environment. 
-        os.environ.update(um_env.vars)
+        os.environ.update(vars)
