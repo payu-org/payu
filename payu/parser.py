@@ -3,7 +3,9 @@
 # Standard Library
 import argparse
 import errno
+import importlib
 import os
+import pkgutil
 import sys
 
 # Extensions
@@ -11,7 +13,7 @@ import yaml
 
 # Local
 from modelindex import index as supported_models
-from subcommands import list_cmd, init_cmd
+import subcommands
 
 # Default configuration
 default_config_filename = 'config.yaml'
@@ -19,18 +21,15 @@ default_config_filename = 'config.yaml'
 #---
 def parse():
 
-    subcmds = [list_cmd, init_cmd]
+    # Build the list of subcommand modules
+    modnames = [mod for (_, mod, _)
+                in pkgutil.iter_modules(subcommands.__path__,
+                                        prefix=subcommands.__name__ + '.')
+                if mod.endswith('_cmd')]
 
-#    subcmd = {'list': list_cmd,
-#              'init': payu_init,
-#              'build': payu_build,
-#              'setup': payu_setup,
-#              'run': payu_run,
-#              'archive': payu_archive,
-#              'collate': payu_collate,
-#              'sweep': payu_sweep,
-#             }
+    subcmds = [importlib.import_module(mod) for mod in modnames]
 
+    # Construct the subcommand parser
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
 
@@ -41,36 +40,6 @@ def parse():
         for arg in cmd.arguments:
             cmd_parser.add_argument(*arg['flags'], **arg['parameters'])
 
-        # Add subcommand arguments
-        ## TODO: Organise this better
-        #if not cmd_name == 'list':
-        #    cmd_parser.add_argument('--model', '-m',
-        #                            action='store',
-        #                            dest='model_type',
-        #                            default=None,
-        #                            help='Select model type')
-
-        #    cmd_parser.add_argument('--config', '-c',
-        #                            action='store',
-        #                            dest='config_path',
-        #                            default=None,
-        #                            help='Configuration file path')
-
-        #if cmd_name in ('setup', 'run', 'archive', 'collate'):
-
-        #    cmd_parser.add_argument('--initial', '-i',
-        #                            action='store',
-        #                            dest='init_run')
-
-        #    cmd_parser.add_argument('--nruns', '-n',
-        #                            action='store',
-        #                            dest='n_runs')
-
-        #if cmd_name == 'sweep':
-        #    cmd_parser.add_argument('--hard',
-        #                            action='store_true',
-        #                            dest='hard_sweep')
-
     # Display help if no arguments are provided
     if len(sys.argv) == 1:
         parser.print_help()
@@ -78,36 +47,6 @@ def parse():
         args = vars(parser.parse_args())
         run_cmd = args.pop('run_cmd')
         run_cmd(**args)
-
-
-#---
-def payu_build():
-    pass
-
-
-#---
-def payu_setup():
-    pass
-
-
-#---
-def payu_run():
-    pass
-
-
-#---
-def payu_archive():
-    pass
-
-
-#---
-def payu_collate():
-    pass
-
-
-#---
-def payu_sweep():
-    pass
 
 
 #---
