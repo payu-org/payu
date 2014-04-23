@@ -13,6 +13,7 @@ from payu.modeldriver import Model
 import os
 import sys
 import imp
+import fileinput
 import shlex
 import shutil
 
@@ -28,11 +29,18 @@ class UnifiedModel(Model):
         self.modules = ['pbs',
                         'openmpi']
 
-        self.config_files = ['CNTLALL', 'CNTLATM', 'CNTLGEN', 'CONTCNTL',
-                              'errflag', 'exstat', 'ftxx', 'ftxx.new',
-                              'ftxx.vars', 'hnlist', 'ihist', 'INITHIS',
-                              'namelists', 'PPCNTL', 'PRESM_A', 'SIZES',
-                              'STASHC', 'UAFILES_A', 'UAFLDS_A', 'parexe']
+        self.config_files = ['CNTLALL', 'prefix.CNTLATM', 'prefix.CNTLGEN',
+                             'prefix.CONTCNTL', 'errflag', 'exstat',
+                             'ftxx', 'ftxx.new', 'ftxx.vars',
+                             'hnlist', 'ihist', 'INITHIS',
+                             'namelists', 'PPCNTL', 'prefix.PRESM_A',
+                             'SIZES', 'STASHC', 'UAFILES_A', 'UAFLDS_A',
+                             'parexe']
+
+    def set_model_pathnames(self):
+        super(UnifiedModel, self).set_model_pathnames()
+
+        self.work_input_path = os.path.join(self.work_path, 'INPUT')
 
     #---
     def archive(self):
@@ -110,6 +118,13 @@ class UnifiedModel(Model):
         for k in vars.keys():
             vars[k] = vars[k].format(input_path=self.input_paths[0],
                                      work_path=self.work_path)
+
+        # Paths need to be set in parexe also.
+        parexe = os.path.join(self.work_path, 'parexe')
+        for line in fileinput.input(parexe, inplace=True):
+            line = line.format(input_path=self.input_paths[0],
+                               work_path=self.work_path)
+            print(line)
 
         # Put all in the current environment. 
         os.environ.update(vars)
