@@ -14,7 +14,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 import os
 import sys
 import shlex
-import shutil
 import subprocess
 
 # Local
@@ -31,7 +30,7 @@ class Oasis(Model):
         self.copy_restarts = True
         self.copy_inputs = True
 
-        # Default repo details. 
+        # Default repo details.
         self.repo_url = 'https://github.com/nicholash/oasis3-mct.git'
         self.repo_tag = 'access'
 

@@ -12,10 +12,10 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 # Standard library
 import os
-import shutil as sh
+import shutil
 
 # Local
-from fms import Fms
+from payu.drivers.fms import Fms
 
 class Gold(Fms):
 
@@ -62,4 +62,4 @@ class Gold(Fms):
 
         input_file.close()
         temp_file.close()
-        sh.move(temp_filepath, input_filepath)
+        shutil.move(temp_filepath, input_filepath)

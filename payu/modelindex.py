@@ -1,13 +1,13 @@
 # coding: utf-8
 
-from drivers.access import Access
-from drivers.cice import Cice
-from drivers.gold import Gold
-from drivers.matm import Matm
-from drivers.mitgcm import Mitgcm
-from drivers.mom import Mom
-from drivers.oasis import Oasis
-from drivers.um import UnifiedModel
+from payu.drivers.access import Access
+from payu.drivers.cice import Cice
+from payu.drivers.gold import Gold
+from payu.drivers.matm import Matm
+from payu.drivers.mitgcm import Mitgcm
+from payu.drivers.mom import Mom
+from payu.drivers.oasis import Oasis
+from payu.drivers.um import UnifiedModel
 
 from modeldriver import Model
 

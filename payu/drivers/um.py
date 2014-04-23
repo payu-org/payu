@@ -10,15 +10,8 @@ Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
 
-# Standard Library
-import os
-import sys
-import shlex
-import shutil
-import subprocess as sp
+from payu.modeldriver import Model
 
-# Local
-from ..modeldriver import Model
 
 class UnifiedModel(Model):
 
@@ -31,10 +24,3 @@ class UnifiedModel(Model):
 
         self.modules = ['pbs',
                         'openmpi']
-
-
-    def setup(self):
-        super(UnifiedModel, self).setup()
-
-        # TODO: Environment variables
-

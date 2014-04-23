@@ -9,7 +9,7 @@ import sys
 import subprocess as sp
 
 # Local
-from fsops import mkdir_p
+from payu.fsops import mkdir_p
 
 class Model(object):
 
@@ -200,8 +200,8 @@ class Model(object):
         if self.exec_path and os.path.exists(self.exec_path):
             print('payu: warning: {} will be overwritten.'.format(self.exec_path))
 
-        # First step is always to go to the codebase. 
-        curdir = os.getcwd() 
+        # First step is always to go to the codebase.
+        curdir = os.getcwd()
         os.chdir(self.codebase_path)
 
         # Do the build. First check whether there is a build command in the
@@ -218,7 +218,7 @@ class Model(object):
         rc = sp.call(cmd, shell=True)
         assert rc == 0
 
-        try: 
+        try:
             build_exec_path = self.config['build']['exec_path']
         except KeyError:
             if self.build_exec_path:
@@ -242,7 +242,7 @@ class Model(object):
         assert self.codebase_path
 
         if os.path.isdir(self.codebase_path):
-            return 
+            return
 
         try:
             self.repo_url = self.config['build']['repository']
@@ -259,8 +259,8 @@ class Model(object):
         cmd = 'git clone {} {}'.format(self.repo_url, self.codebase_path)
         rc = sp.call(shlex.split(cmd))
         assert rc == 0
-       
-        curdir = os.getcwd() 
+
+        curdir = os.getcwd()
         os.chdir(self.codebase_path)
         rc = sp.call(shlex.split('git checkout {}'.format(self.repo_tag)))
         assert rc == 0

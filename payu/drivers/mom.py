@@ -18,8 +18,8 @@ import subprocess as sp
 import sys
 
 # Local
-from fms import Fms
-from ..fsops import mkdir_p
+from payu.drivers.fms import Fms
+from payu.fsops import mkdir_p
 
 # Module support (for NCO)
 execfile('/opt/Modules/default/init/python')
@@ -40,7 +40,7 @@ class Mom(Fms):
         self.model_type = 'mom'
         self.default_exec = 'fms_MOM_SIS.x'
 
-        # Default repo and build details. 
+        # Default repo and build details.
         self.repo_url = 'git://github.com/BreakawayLabs/mom.git'
         self.repo_tag = 'master'
         self.build_command = './MOM_compile.csh --platform nci --type MOM_SIS'
@@ -68,7 +68,7 @@ class Mom(Fms):
     #---
     def build_model(self):
         super(Mom, self).build_model()
-        
+
         # Model is built, now copy over mppnccombine.
         mppnc_exec = 'mppnccombine.nci'
 
@@ -174,7 +174,7 @@ class Mom(Fms):
 
         t_end = t_start + dt_days
 
-        print 't_start: {0}, t_end: {1}'.format(t_start, t_end)
+        print('t_start: {}, t_end: {}'.format(t_start, t_end))
 
         # TODO: Periodic forcing cycle
         # Non-integer ratios will be complicated. This is a temporary solution

@@ -14,16 +14,13 @@ http://www.apache.org/licenses/LICENSE-2.0
 import datetime
 import errno
 import os
-import sys
-import shlex
 import shutil
-import subprocess as sp
 
 # Extensions
 import f90nml
 
 # Local
-from ..modeldriver import Model
+from payu.modeldriver import Model
 
 class Access(Model):
 

@@ -15,7 +15,6 @@ from __future__ import print_function
 
 # Standard Library
 import errno
-import grp
 import getpass
 import os
 import pwd
@@ -29,8 +28,8 @@ import subprocess as sp
 import yaml
 
 # Local
-from fsops import mkdir_p, make_symlink
-from modelindex import index as model_index
+from payu.fsops import mkdir_p, make_symlink
+from payu.modelindex import index as model_index
 
 # Environment module support on vayu
 execfile('/opt/Modules/default/init/python')
@@ -46,7 +45,7 @@ default_restart_freq = 5
 class Experiment(object):
 
     #---
-    def __init__(self, **kwargs):
+    def __init__(self):
 
         # Disable group write access and all public access
         perms = 0o0027
@@ -250,7 +249,7 @@ class Experiment(object):
 
         # Construct the laboratory absolute path if necessary
         if os.path.isabs(lab_name):
-                self.lab_path = lab_name
+            self.lab_path = lab_name
         else:
             # Check under the default root path
             user_name = self.config.get('user', default_user)
@@ -651,10 +650,10 @@ class Experiment(object):
         except (OSError, sp.CalledProcessError) as exc:
             # Now try to run the script explicitly
             if type(exc) == OSError and exc.errno == errno.ENOENT:
-                    cmd = os.path.join(self.control_path, script_cmd)
-                    # Simplistic recursion check
-                    assert os.path.isfile(cmd)
-                    self.run_userscript(cmd)
+                cmd = os.path.join(self.control_path, script_cmd)
+                # Simplistic recursion check
+                assert os.path.isfile(cmd)
+                self.run_userscript(cmd)
 
             # If we get a "non-executable" error, then guess the type
             elif type(exc) == OSError and exc.errno == errno.EACCES:

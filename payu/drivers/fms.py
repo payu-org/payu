@@ -17,8 +17,8 @@ import shutil as sh
 import subprocess as sp
 
 # Local
-from ..fsops import mkdir_p
-from ..modeldriver import Model
+from payu.fsops import mkdir_p
+from payu.modeldriver import Model
 
 class Fms(Model):
 

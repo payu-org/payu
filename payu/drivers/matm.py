@@ -12,14 +12,10 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 # Standard Library
 import os
-import sys
-import shlex
-import shutil
-import subprocess as sp
 
 # Local
-from ..modeldriver import Model
-from ..fsops import mkdir_p
+from payu.modeldriver import Model
+from payu.fsops import mkdir_p
 
 class Matm(Model):
 
@@ -30,7 +26,7 @@ class Matm(Model):
         self.model_type = 'matm'
         self.default_exec = 'matm'
 
-        # Default repo details. 
+        # Default repo details
         self.repo_url = 'https://github.com/nicholash/matm.git'
         self.repo_tag = 'master'
 
@@ -41,12 +37,15 @@ class Matm(Model):
                              'data_4_matm.table']
 
 
+    #---
     def set_model_pathnames(self):
         super(Matm, self).set_model_pathnames()
 
         self.build_exec_path = os.path.join(self.codebase_path, 'build_nt62')
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
 
+
+    #---
     def archive(self):
 
         # Create an empty restart directory

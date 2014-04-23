@@ -19,8 +19,8 @@ import sys
 import yaml
 
 # Local
-from modelindex import index as supported_models
-import subcommands
+from payu.modelindex import index as supported_models
+import payu.subcommands
 
 # Default configuration
 default_config_filename = 'config.yaml'
@@ -30,8 +30,8 @@ def parse():
 
     # Build the list of subcommand modules
     modnames = [mod for (_, mod, _)
-                in pkgutil.iter_modules(subcommands.__path__,
-                                        prefix=subcommands.__name__ + '.')
+                in pkgutil.iter_modules(payu.subcommands.__path__,
+                                        prefix=payu.subcommands.__name__ + '.')
                 if mod.endswith('_cmd')]
 
     subcmds = [importlib.import_module(mod) for mod in modnames]
@@ -61,7 +61,7 @@ def get_config(config_path):
 
     if not config_path and os.path.isfile(default_config_filename):
         config_path = default_config_filename
- 
+
     try:
         with open(config_path, 'r') as config_file:
             config = yaml.load(config_file)
@@ -187,5 +187,5 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
     try:
         subprocess.call(shlex.split(cmd))
     except subprocess.CalledProcessError as exc:
-        print('payu: error: qsub submission error {}'.format(exc.errno))
+        print('payu: error: qsub submission error {}'.format(exc.returncode))
         raise
