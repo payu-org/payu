@@ -10,4 +10,4 @@ parameters = {'description': 'Build the climate model executable'}
 arguments = [args.model, args.config]
 
 def runcmd(model_type, config_path):
-    print('welcome to build')
+    print('payu: build is not yet supported')

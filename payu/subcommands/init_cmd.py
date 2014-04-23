@@ -10,4 +10,4 @@ parameters = {'description': 'Initialize the model laboratory'}
 arguments = [args.model, args.config]
 
 def runcmd(model_type, config_path):
-    print('welcome to init')
+    print('payu: init is not yet supported')

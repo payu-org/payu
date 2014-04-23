@@ -3,29 +3,7 @@
 
 # Force Python version
 from payu import reversion
-reversion.repython('2.7.5', __file__)
+reversion.repython('2.7.6', __file__)
 
-# Standard Library
-import os
-
-# Local
-from payu.experiment import Experiment
-
-
-#---
-def payu_run():
-
-    expt = Experiment()
-
-    expt.setup()
-    expt.run()
-    expt.archive()
-
-    if expt.n_runs > 0:
-        expt.resubmit()
-
-
-#---
-if __name__ == '__main__':
-
-    payu_run()
+from payu.subcommands import run_cmd
+run_cmd.runscript()
