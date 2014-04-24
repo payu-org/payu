@@ -101,9 +101,11 @@ class Access(Model):
 
                     dt_run = datetime.timedelta(seconds=runtime0)
 
-                    # TODO: Leap year correction
+                    # NOTE: datetime assumes a Gregorian calendar
+                    #       We shift ahead past any potential leapdays
+                    dt_leap = get_leapdays(init_date, init_date + dt_run)
 
-                    t_new = init_date + dt_run
+                    t_new = init_date + dt_run + dt_leap
                     inidate = (t_new.year * 10**4 + t_new.month * 10**2
                                + t_new.day)
                 else:
@@ -133,3 +135,22 @@ class Access(Model):
                     f_dst = os.path.join(model.restart_path, f_name)
 
                     shutil.move(f_src, f_dst)
+
+
+def get_leapdays(init_date, final_date, calendar=None):
+
+    # TODO: Check calendar
+
+    y_i = init_date.year
+    y_f = final_date.year
+
+    # Julian leap days
+    n_days = (final_date.year - 1) // 4 - (init_date.year - 1) // 4
+
+    # Gregorian correction
+    n_days -= (final_date.year - 1) // 100 - (init_date.year - 1) // 100
+    n_days += (final_date.year - 1) // 400 - (init_date.year - 1) // 400
+
+    # TODO: Internal date correction
+
+    return datetime.timedelta(days=n_days)
