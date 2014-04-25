@@ -198,7 +198,8 @@ class Model(object):
 
         # Check to see if executable already exists.
         if self.exec_path and os.path.exists(self.exec_path):
-            print('payu: warning: {} will be overwritten.'.format(self.exec_path))
+            print('payu: warning: {} will be overwritten.'
+                  ''.format(self.exec_path))
 
         # First step is always to go to the codebase.
         curdir = os.getcwd()

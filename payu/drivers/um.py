@@ -24,3 +24,13 @@ class UnifiedModel(Model):
 
         self.modules = ['pbs',
                         'openmpi']
+
+
+    #---
+    def archive(self):
+        pass
+
+
+    #---
+    def collate(self):
+        pass

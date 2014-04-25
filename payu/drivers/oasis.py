@@ -86,3 +86,8 @@ class Oasis(Model):
             cmd = 'mv {} {}'.format(f_src, f_dst)
             rc = subprocess.call(shlex.split(cmd))
             assert rc == 0
+
+
+    #---
+    def collate(self):
+        pass

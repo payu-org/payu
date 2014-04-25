@@ -22,7 +22,7 @@ import subprocess as sp
 
 # Local
 import f90nml
-from ..modeldriver import Model
+from payu.modeldriver import Model
 
 class Cice(Model):
 
@@ -33,7 +33,7 @@ class Cice(Model):
         self.model_type = 'cice'
         self.default_exec = 'cice'
 
-        # Default repo details. 
+        # Default repo details
         self.repo_url = 'https://github.com/nicholash/cice.git'
         self.repo_tag = 'access'
 
@@ -146,48 +146,4 @@ class Cice(Model):
 
     #---
     def collate(self):
-
-        # Set the stacksize to be unlimited
-        import resource as res
-        res.setrlimit(res.RLIMIT_STACK, (res.RLIM_INFINITY, res.RLIM_INFINITY))
-
-        # Locate the FMS collation tool
-        mppnc_path = None
-        for f in os.listdir(self.bin_path):
-            if f.startswith('mppnccombine'):
-                mppnc_path = os.path.join(self.bin_path, f)
-                break
-        assert mppnc_path
-
-        # Generate collated file list and identify the first tile
-        tile_fnames = [f for f in os.listdir(self.output_path)
-                         if f[-4:].isdigit() and f[-8:-4] == '.nc.']
-
-        mnc_tiles = {}
-        for t in tile_fnames:
-            t_name, t_ext = os.path.splitext(t)
-            t_ext = t_ext.lstrip('.')
-
-            try:
-                if int(t_ext) < int(mnc_tiles[t_name]):
-                    mnc_tiles[t_name] = t_ext
-            except KeyError:
-                mnc_tiles[t_name] = t_ext
-
-        # Collate each tileset into a single file
-        for f in mnc_tiles:
-            tile_path = os.path.join(self.output_path, f)
-
-            # Remove the collated file if it already exists, since it is
-            # probably from a failed collation attempt
-            # TODO: Validate this somehow
-            if os.path.isfile(tile_path):
-                os.remove(tile_path)
-
-            cmd = '{mppnc} -n {tid} -r -64 {fpath}'.format(
-                        mppnc = mppnc_path,
-                        tid = mnc_tiles[f],
-                        fpath = tile_path)
-            cmd = shlex.split(cmd)
-            rc = sp.Popen(cmd).wait()
-            assert rc == 0
+        pass

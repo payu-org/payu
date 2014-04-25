@@ -22,6 +22,9 @@ import f90nml
 # Local
 from payu.modeldriver import Model
 
+# Calendar types
+NOLEAP, GREGORIAN = range(2)
+
 class Access(Model):
 
     #---
@@ -100,12 +103,13 @@ class Access(Model):
                                               prior_day)
 
                     dt_run = datetime.timedelta(seconds=runtime0)
+                    t_new = init_date + dt_run
 
-                    # NOTE: datetime assumes a Gregorian calendar
-                    #       We shift ahead past any potential leapdays
-                    dt_leap = get_leapdays(init_date, init_date + dt_run)
+                    # Skip ahead if using a NOLEAP calendar
+                    if cpl_nml_grp['caltype'] == 0:
+                        dt_leap = get_leapdays(init_date, init_date + dt_run)
+                        t_new += dt_leap
 
-                    t_new = init_date + dt_run + dt_leap
                     inidate = (t_new.year * 10**4 + t_new.month * 10**2
                                + t_new.day)
                 else:
@@ -137,12 +141,12 @@ class Access(Model):
                     shutil.move(f_src, f_dst)
 
 
-def get_leapdays(init_date, final_date, calendar=None):
+    #---
+    def collate(self):
+        raise NotImplementedError
 
-    # TODO: Check calendar
 
-    y_i = init_date.year
-    y_f = final_date.year
+def get_leapdays(init_date, final_date):
 
     # Julian leap days
     n_days = (final_date.year - 1) // 4 - (init_date.year - 1) // 4

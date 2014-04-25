@@ -11,16 +11,16 @@ http://www.apache.org/licenses/LICENSE-2.0
 """
 
 # Standard Library
-import errno
 import os
 import re
 import sys
+import shlex
 import shutil as sh
 import subprocess as sp
 
 # Local
-from ..fsops import mkdir_p, patch_nml
-from ..modeldriver import Model
+from payu.fsops import mkdir_p
+from payu.modeldriver import Model
 
 class Mitgcm(Model):
 
@@ -41,7 +41,7 @@ class Mitgcm(Model):
 
 
     #---
-    def setup(self, use_symlinks=True, repeat_run=False):
+    def setup(self):
 
         # TODO: Find a better place to generate this list
         self.config_files = [f for f in os.listdir(self.control_path)
@@ -52,19 +52,9 @@ class Mitgcm(Model):
         super(Mitgcm, self).setup()
 
         # Link restart files to work directory
-        if self.prior_restart_path and not repeat_run:
-        #    restart_files = [f for f in os.listdir(self.prior_restart_path)
-        #                     if f.startswith('pickup')]
+        if self.prior_restart_path and not self.expt.repeat_run:
 
-        #    for f in restart_files:
-        #        f_restart = os.path.join(self.prior_restart_path, f)
-        #        f_work = os.path.join(self.work_path, f)
-        #        if use_symlinks:
-        #            os.symlink(f_restart, f_work)
-        #        else:
-        #            sh.copy(f_restart, f_work)
-
-        #    # Determine total number of timesteps since initialisation
+            # Determine total number of timesteps since initialisation
             core_restarts = [f for f in os.listdir(self.prior_restart_path)
                                 if f.startswith('pickup.')]
             try:
@@ -75,18 +65,6 @@ class Mitgcm(Model):
         else:
             n_iter0 = 0
 
-        ## Link any input data to work directory
-        #for input_path in self.input_paths:
-        #    for f in os.listdir(input_path):
-        #        f_input = os.path.join(input_path, f)
-        #        f_work = os.path.join(self.work_path, f)
-        #        # Do not use a input file if an identical restart file exists
-        #        if not os.path.exists(f_work):
-        #            if use_symlinks:
-        #                os.symlink(f_input, f_work)
-        #            else:
-        #                sh.copy(f_input, f_work)
-
         # Update configuration file 'data'
 
         data_path = os.path.join(self.work_path, 'data')
@@ -96,13 +74,13 @@ class Mitgcm(Model):
         dt = None
         n_timesteps = None
 
-        p_dt = re.compile('^ *deltat *=', re.IGNORECASE)
-        p_nt = re.compile('^ *ntimesteps *=', re.IGNORECASE)
+        p_dt = re.compile(r'^ *deltat *=', re.IGNORECASE)
+        p_nt = re.compile(r'^ *ntimesteps *=', re.IGNORECASE)
         for line in data_file:
             if p_dt.match(line):
-                dt = float(re.sub('[^\d]', '', line.split('=')[1]))
+                dt = float(re.sub(r'[^\d]', '', line.split('=')[1]))
             elif p_nt.match(line):
-                n_timesteps = int(re.sub('[^\d]', '', line.split('=')[1]))
+                n_timesteps = int(re.sub(r'[^\d]', '', line.split('=')[1]))
 
         # Update checkpoint intervals
         # NOTE: Consider permitting pchkpt_freq < dt * n_timesteps
@@ -117,9 +95,9 @@ class Mitgcm(Model):
         # "Rewind" data file
         data_file.seek(0)
 
-        p_niter0 = re.compile('^ *niter0 *=', re.IGNORECASE)
-        p_pchkpt_freq = re.compile('^ *pchkptfreq *=', re.IGNORECASE)
-        p_chkpt_freq = re.compile('^ *chkptfreq *=', re.IGNORECASE)
+        p_niter0 = re.compile(r'^ *niter0 *=', re.IGNORECASE)
+        p_pchkpt_freq = re.compile(r'^ *pchkptfreq *=', re.IGNORECASE)
+        p_chkpt_freq = re.compile(r'^ *chkptfreq *=', re.IGNORECASE)
 
         for line in data_file:
             if p_niter0.match(line):
@@ -143,7 +121,7 @@ class Mitgcm(Model):
             tmp_path = data_mnc_path + '~'
             tmp = open(tmp_path, 'w')
 
-            p_mnc_outdir = re.compile('^ *mnc_outdir_str *=', re.IGNORECASE)
+            p_mnc_outdir = re.compile(r'^ *mnc_outdir_str *=', re.IGNORECASE)
 
             data_mnc_file = open(data_mnc_path, 'r')
             for line in data_mnc_file:
@@ -164,53 +142,9 @@ class Mitgcm(Model):
                 data_mnc.write(' monitor_mnc=.TRUE.,\n')
                 data_mnc.write(' &\n')
 
-        # XXX: These iter0's are only necessary on first submission
-        # If you update them to nIter0 it will re-initialize everything and
-        # break the process.
-        # I need to fix this stuff up; for now just comment it out
-
-        # Patch data.flt (if present)
-        #data_flt_path = os.path.join(self.work_path, 'data.flt')
-        #flt_iter0_pattern = '^ *flt_iter0 *='
-        #flt_iter0_replace = ' FLT_Iter0 = {0},\n'.format(n_iter0)
-
-        #patch_nml(data_flt_path, flt_iter0_pattern, flt_iter0_replace)
-
-        # Patch data.ptracers (if present)
-        #data_ptracers_path = os.path.join(self.work_path, 'data.ptracers')
-        #ptrc_iter0_pattern = '^ *ptracers_iter0 *='
-        #ptrc_iter0_replace = ' PTRACERS_Iter0 = {0},\n'.format(n_iter0)
-
-        #patch_nml(data_ptracers_path, ptrc_iter0_pattern, ptrc_iter0_replace)
-
 
     #---
-    # XXX: Dud function; delete it
-    def run(self, *flags):
-        flags = flags + ('-mca mpi_affinity_alone 1',
-                         '-wd %s' % self.work_path)
-        super(Mitgcm, self).run(*flags)
-
-        # Remove symbolic links to input or pickup files:
-        for f in os.listdir(self.work_path):
-            f_path = os.path.join(self.work_path, f)
-            if os.path.islink(f_path):
-                os.remove(f_path)
-
-        # Move files outside of mnc_* directories
-        mnc_paths = [os.path.join(self.work_path, d)
-                     for d in os.listdir(self.work_path)
-                     if d.startswith('mnc_')]
-
-        for path in mnc_paths:
-            for f in os.listdir(path):
-                f_path = os.path.join(path, f)
-                sh.move(f_path, self.work_path)
-            os.rmdir(path)
-
-
-    #---
-    def archive(self, **kwargs):
+    def archive(self):
 
         # Remove symbolic links to input or pickup files:
         for f in os.listdir(self.work_path):
@@ -239,10 +173,10 @@ class Mitgcm(Model):
         # Tar and compress the output files
         stdout_files = [f for f in os.listdir(self.work_path)
                         if f.startswith('STDOUT.')]
-        cmd = ('tar -C %s -c -j -f %s' % (self.work_path,
-                os.path.join(self.work_path, 'STDOUT.tar.bz2') )
-                ).split() + stdout_files
-        rc = sp.Popen(cmd).wait()
+        cmd = 'tar -C {} -c -j -f {}'.format(self.work_path,
+                    os.path.join(self.work_path, 'STDOUT.tar.bz2'))
+
+        rc = sp.Popen(shlex.split(cmd) + stdout_files).wait()
         assert rc == 0
 
         for f in stdout_files:
