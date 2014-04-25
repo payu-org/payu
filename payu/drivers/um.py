@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # coding: utf-8
 """
 The payu interface for the UM atmosphere model
@@ -28,9 +27,9 @@ class UnifiedModel(Model):
 
     #---
     def archive(self):
-        pass
+        raise NotImplementedError
 
 
     #---
     def collate(self):
-        pass
+        raise NotImplementedError

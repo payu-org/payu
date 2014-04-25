@@ -44,12 +44,11 @@ class Fms(Model):
     def archive(self, **kwargs):
 
         # Remove the 'INPUT' path
-        cmd = 'rm -rf {path}'.format(path=self.work_input_path)
+        cmd = 'rm -rf {}'.format(self.work_input_path)
         rc = sp.check_call(shlex.split(cmd))
 
         # Archive restart files before processing model output
-        cmd = 'mv {src} {dst}'.format(src=self.work_restart_path,
-                                      dst=self.restart_path)
+        cmd = 'mv {} {}'.format(self.work_restart_path, self.restart_path)
         sp.check_call(shlex.split(cmd))
 
 
@@ -93,10 +92,11 @@ class Fms(Model):
             if os.path.isfile(tile_path):
                 os.remove(tile_path)
 
-            cmd = '{mppnc} -n {tid} -r -64 {fpath}'.format(
-                        mppnc = mppnc_path,
-                        tid = mnc_tiles[f],
-                        fpath = tile_path)
-            cmd = shlex.split(cmd)
-            rc = sp.Popen(cmd).wait()
-            assert rc == 0
+            cmd = '{} -n {} -r -64 {}'.format(mppnc_path, mnc_tiles[f],
+                                              tile_path)
+            try:
+                sp.check_call(shlex.split(cmd)).wait()
+            except sp.CalledProcessError as exc:
+                print('payu: error: mppnccombine failed (error {})'
+                      ''.format(exc.returncode))
+                raise

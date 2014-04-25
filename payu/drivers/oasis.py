@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # coding: utf-8
 """
 The payu interface for the OASIS coupler

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # coding: utf-8
 """
 The payu interface for MOM
@@ -98,7 +97,7 @@ class Mom(Fms):
         # Need to make these input arguments
         default_core2iaf_path = '/g/data1/v45/mom/core2iaf'
         if core2iaf_path == None:
-           core2iaf_path = default_core2iaf_path
+            core2iaf_path = default_core2iaf_path
 
         default_driver_name = 'coupler'
         if driver_name == None:
@@ -131,7 +130,7 @@ class Mom(Fms):
             tstamp_file.close()
 
         else:
-            input_nml = open('input.nml','r')
+            input_nml = open('input.nml', 'r')
             for line in input_nml:
                 if line.strip().startswith(date_vname[driver_name]):
                     tstamp = line.split('=')[1].split(',')
@@ -154,7 +153,7 @@ class Mom(Fms):
         cal_dt = {'years': 0, 'months': 0, 'days': 0,
                   'hours': 0, 'minutes': 0, 'seconds': 0}
 
-        input_nml = open('input.nml','r')
+        input_nml = open('input.nml', 'r')
         for line in input_nml:
             for vname in cal_dt.keys():
                 if line.strip().startswith(vname):
