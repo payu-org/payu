@@ -66,7 +66,6 @@ class Experiment(object):
         self.init_models()
 
         # TODO: Move to run/collate/sweep?
-        self.set_pbs_config()
         self.set_lab_pathnames()
         self.set_expt_pathnames()
         self.set_counters()
@@ -214,13 +213,6 @@ class Experiment(object):
 
         if self.debug:
             module('load', 'totalview')
-
-
-    #---
-    def set_pbs_config(self):
-
-        default_job_name = os.path.basename(os.getcwd())
-        self.job_name = self.config.get('jobname', default_job_name)
 
 
     #---
