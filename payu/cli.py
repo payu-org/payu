@@ -182,7 +182,7 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
     cmd = '{} {} {}'.format(pbs_qsub, pbs_flags, pbs_script)
 
     try:
-        subprocess.call(shlex.split(cmd))
+        subprocess.check_call(shlex.split(cmd))
     except subprocess.CalledProcessError as exc:
         print('payu: error: qsub submission error {}'.format(exc.returncode))
         raise
