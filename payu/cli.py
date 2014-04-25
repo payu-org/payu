@@ -1,8 +1,5 @@
 # coding: utf-8
 
-from payu import reversion
-reversion.repython('2.7.6', __file__)
-
 # Standard Library
 import argparse
 import errno
