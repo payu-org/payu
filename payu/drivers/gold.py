@@ -51,10 +51,10 @@ class Gold(Fms):
     #---
     def init_config(self):
         input_filepath = os.path.join(self.work_path, 'input.nml')
-        temp_filepath  = ''.join([input_filepath, '~'])
+        temp_filepath = ''.join([input_filepath, '~'])
 
         input_file = open(input_filepath)
-        temp_file  = open(temp_filepath, 'w')
+        temp_file = open(temp_filepath, 'w')
 
         for line in input_file:
             temp_file.write(line.replace("input_filename = 'r'",

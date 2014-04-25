@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # coding: utf-8
 """
 Payu: A generic driver for numerical models on the NCI computing clusters
@@ -98,8 +97,8 @@ class Experiment(object):
         try:
             with open(config_fname, 'r') as config_file:
                 self.config = yaml.load(config_file)
-        except IOError as ec:
-            if ec.errno == errno.ENOENT:
+        except IOError as exc:
+            if exc.errno == errno.ENOENT:
                 self.config = {}
             else:
                 raise
@@ -163,8 +162,8 @@ class Experiment(object):
             try:
                 restart_dirs = [d for d in os.listdir(self.archive_path)
                                 if d.startswith('restart')]
-            except OSError as ec:
-                if ec.errno == errno.ENOENT:
+            except OSError as exc:
+                if exc.errno == errno.ENOENT:
                     restart_dirs = None
                 else:
                     raise
@@ -219,11 +218,6 @@ class Experiment(object):
 
     #---
     def set_pbs_config(self):
-
-        default_n_cpus = os.environ.get('PBS_NCPUS', 1)
-        self.n_cpus = self.config.get('ncpus', default_n_cpus)
-
-        self.n_cpus_per_node = self.config.get('npernode')
 
         default_job_name = os.path.basename(os.getcwd())
         self.job_name = self.config.get('jobname', default_job_name)
@@ -371,9 +365,11 @@ class Experiment(object):
         # TODO: Make this more configurable
         if do_stripe:
             cmd = 'lfs setstripe -c 8 -s 8m {}'.format(self.work_path)
-            cmd = shlex.split(cmd)
-            rc = sp.call(cmd)
-            assert rc == 0
+            try:
+                sp.check_call(shlex.split(cmd))
+            except sp.CalledProcessError as exc:
+                print('Lustre striping failed (error {})'
+                      ''.format(exc.returncode))
 
         make_symlink(self.work_path, self.work_sym_path)
 
@@ -433,14 +429,11 @@ class Experiment(object):
 
             mpi_progs.append(' '.join(model_prog))
 
-        cmd = '{mpirun} {flags} {progs}'.format(
-                    mpirun = mpirun_cmd,
-                    flags = ' '.join(mpi_flags),
-                    progs = ' : '.join(mpi_progs))
+        cmd = '{} {} {}'.format(mpirun_cmd,
+                                ' '.join(mpi_flags),
+                                ' : '.join(mpi_progs))
 
-        cmd = shlex.split(cmd)
-
-        rc = sp.call(cmd, stdout=f_out, stderr=f_err)
+        rc = sp.call(shlex.split(cmd), stdout=f_out, stderr=f_err)
         f_out.close()
         f_err.close()
 
@@ -510,7 +503,7 @@ class Experiment(object):
         # TODO: Move to subroutine
         restart_freq = self.config.get("restart_freq", default_restart_freq)
 
-        if (self.counter >= restart_freq and self.counter % restart_freq == 0):
+        if self.counter >= restart_freq and self.counter % restart_freq == 0:
             i_s = self.counter - restart_freq
             i_e = self.counter - 1
             prior_restart_dirs = ('restart{:03}'.format(i)
@@ -586,7 +579,7 @@ class Experiment(object):
                         key=ssh_key_path)
 
         if rsync_protocol:
-            rsync_cmd += '--protocol={p} '.format(p=rsync_protocol)
+            rsync_cmd += '--protocol={} '.format(rsync_protocol)
 
         run_cmd = rsync_cmd + '{src} {dst}'.format(src=self.output_path,
                                                    dst=remote_url)
@@ -611,10 +604,9 @@ class Experiment(object):
 
         for input_path in self.input_paths:
             # Using explicit path separators to rename the input directory
-            input_cmd = rsync_cmd + '{src} {dst}'.format(
-                            src = input_path + os.path.sep,
-                            dst = os.path.join(remote_url, 'input')
-                                    + os.path.sep)
+            input_cmd = rsync_cmd + '{} {}'.format(
+                            input_path + os.path.sep,
+                            os.path.join(remote_url, 'input') + os.path.sep)
             rsync_calls.append(input_cmd)
 
         for cmd in rsync_calls:
@@ -716,7 +708,8 @@ class Experiment(object):
             os.remove(self.work_sym_path)
 
         # TODO: model outstreams and pbs logs need to be handled separately
-        short_job_name = self.job_name[:15]
+        default_job_name = os.path.basename(os.getcwd())
+        short_job_name = self.config.get('jobname', default_job_name)[:15]
 
         logs = [f for f in os.listdir(os.curdir) if os.path.isfile(f) and
                 (f == self.stdout_fname or
