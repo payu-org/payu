@@ -1,6 +1,13 @@
 # coding: utf-8
+"""payu.cli
+   ========
 
-# Standard Library
+   Command line interface tools
+
+   :copyright: Copyright 2011-2014 Marshall Ward
+   :license: Apache License, Version 2.0, see LICENSE for details
+"""
+
 import argparse
 import errno
 import importlib
@@ -12,18 +19,16 @@ from string import digits
 import subprocess
 import sys
 
-# Extensions
 import yaml
 
-# Local
 from payu.modelindex import index as supported_models
 import payu.subcommands
 
 # Default configuration
 default_config_filename = 'config.yaml'
 
-#---
 def parse():
+    """Parse the command line inputs and execute the subcommand."""
 
     # Build the list of subcommand modules
     modnames = [mod for (_, mod, _)
@@ -55,6 +60,7 @@ def parse():
 
 #---
 def get_config(config_path):
+    """Open the configuration file and construct the configuration data. """
 
     if not config_path and os.path.isfile(default_config_filename):
         config_path = default_config_filename
@@ -77,6 +83,7 @@ def get_config(config_path):
 
 #---
 def get_model_type(model_type, config):
+    """Determine and validate the active model type."""
 
     # If no model type is given, then check the config file
     if not model_type:
