@@ -11,7 +11,7 @@
 import os
 import sys
 
-execfile('/opt/Modules/default/init/python')
+import payu.envmod as envmod
 
 def repython(version, script_path):
     """Update the Python environment modules to the specified ``version`` and
@@ -19,10 +19,13 @@ def repython(version, script_path):
     script specified by ``script_path``.
     """
 
+    # Establish the environment modules
+    envmod.setup()
+
     # Ensure that payu is loaded
     try:
-        module('use', os.environ['PAYU_MODULEPATH'])
-        module('load', os.environ['PAYU_MODULENAME'])
+        envmod.module('use', os.environ['PAYU_MODULEPATH'])
+        envmod.module('load', os.environ['PAYU_MODULENAME'])
     except KeyError:
         pass
 
@@ -40,10 +43,10 @@ def repython(version, script_path):
                           if m.startswith('python')]
 
         for mod in python_modules:
-            module('unload', mod)
+            envmod.module('unload', mod)
 
         # Replace with specified version
-        module('load', module_name)
+        envmod.module('load', module_name)
 
         # Replace the current python process with the updated version
         os.execl(script_path, *sys.argv)
