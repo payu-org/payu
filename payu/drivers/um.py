@@ -35,7 +35,7 @@ class UnifiedModel(Model):
                              'hnlist', 'ihist', 'INITHIS',
                              'namelists', 'PPCNTL', 'prefix.PRESM_A',
                              'SIZES', 'STASHC', 'UAFILES_A', 'UAFLDS_A',
-                             'parexe']
+                             'parexe', 'cable.nml']
 
     def set_model_pathnames(self):
         super(UnifiedModel, self).set_model_pathnames()
