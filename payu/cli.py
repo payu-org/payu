@@ -1,6 +1,5 @@
 # coding: utf-8
 """payu.cli
-   ========
 
    Command line interface tools
 
@@ -14,13 +13,12 @@ import importlib
 import os
 import pkgutil
 import shlex
-import socket
-from string import digits
 import subprocess
 import sys
 
 import yaml
 
+import payu
 import payu.envmod as envmod
 from payu.modelindex import index as supported_models
 import payu.subcommands
@@ -41,6 +39,9 @@ def parse():
 
     # Construct the subcommand parser
     parser = argparse.ArgumentParser()
+    parser.add_argument('--version', action='version',
+                        version='payu {}'.format(payu.__version__))
+
     subparsers = parser.add_subparsers()
 
     for cmd in subcmds:
@@ -134,8 +135,6 @@ def get_env_vars(init_run=None, n_runs=None):
 def submit_job(pbs_script, pbs_config, pbs_vars=None):
     """Submit a userscript the scheduler."""
 
-    hostname = socket.gethostname().rstrip(digits)
-
     pbs_flags = []
 
     pbs_queue = pbs_config.get('queue', 'normal')
@@ -155,21 +154,18 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
 
     pbs_mem = pbs_config.get('mem')
     if pbs_mem:
-        mem_rname = 'vmem' if hostname == 'vayu' else 'mem'
-        pbs_flags.append('-l {}={}'.format(mem_rname, pbs_mem))
+        pbs_flags.append('-l mem={}'.format(pbs_mem))
 
     pbs_jobname = pbs_config.get('jobname')
     if pbs_jobname:
         # PBSPro has a 15-character jobname limit
-        pbs_jobname = pbs_jobname[:15]
-        pbs_flags.append('-N {}'.format(pbs_jobname))
+        pbs_flags.append('-N {}'.format(pbs_jobname[:15]))
 
     pbs_priority = pbs_config.get('priority')
     if pbs_priority:
         pbs_flags.append('-p {}'.format(pbs_priority))
 
-    pbs_wd = '-wd' if hostname == 'vayu' else '-l wd'
-    pbs_flags.append(pbs_wd)
+    pbs_flags.append('-l wd')
 
     pbs_join = pbs_config.get('join', 'oe')
     if not pbs_join in ('oe', 'eo', 'n'):

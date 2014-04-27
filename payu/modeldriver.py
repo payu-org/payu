@@ -1,4 +1,11 @@
 # coding: utf-8
+"""payu.modeldriver
+
+   Generic driver to be inherited by other models
+
+   :copyright: Copyright 2011-2014 Marshall Ward
+   :license: Apache License, Version 2.0, see LICENSE for details
+"""
 
 # Standard Library
 import errno
@@ -12,6 +19,7 @@ import subprocess as sp
 from payu.fsops import mkdir_p
 
 class Model(object):
+    """Abstract model class"""
 
     def __init__(self, expt, model_name, model_config):
 
@@ -144,16 +152,16 @@ class Model(object):
         mkdir_p(self.work_output_path)
 
         # Copy configuration files from control path
-        for f in self.config_files:
-            f_path = os.path.join(self.control_path, f)
+        for f_name in self.config_files:
+            f_path = os.path.join(self.control_path, f_name)
             shutil.copy(f_path, self.work_path)
 
-        for f in self.optional_config_files:
-            f_path = os.path.join(self.control_path, f)
+        for f_name in self.optional_config_files:
+            f_path = os.path.join(self.control_path, f_name)
             try:
                 shutil.copy(f_path, self.work_path)
-            except IOError as ec:
-                if ec.errno == errno.ENOENT:
+            except IOError as exc:
+                if exc.errno == errno.ENOENT:
                     pass
                 else:
                     raise
@@ -161,9 +169,9 @@ class Model(object):
         # Link restart files from prior run
         if self.prior_restart_path and not self.expt.repeat_run:
             restart_files = self.get_prior_restart_files()
-            for f in restart_files:
-                f_restart = os.path.join(self.prior_restart_path, f)
-                f_input = os.path.join(self.work_init_path, f)
+            for f_name in restart_files:
+                f_restart = os.path.join(self.prior_restart_path, f_name)
+                f_input = os.path.join(self.work_init_path, f_name)
                 if self.copy_restarts:
                     shutil.copy(f_restart, f_input)
                 else:
@@ -172,9 +180,9 @@ class Model(object):
         # Link input data
         for input_path in self.input_paths:
             input_files = os.listdir(input_path)
-            for f in input_files:
-                f_input = os.path.join(input_path, f)
-                f_work_input = os.path.join(self.work_input_path, f)
+            for f_name in input_files:
+                f_input = os.path.join(input_path, f_name)
+                f_work_input = os.path.join(self.work_input_path, f_name)
                 # Do not use input file if it is in RESTART
                 if not os.path.exists(f_work_input):
                     if self.copy_inputs:
@@ -216,8 +224,12 @@ class Model(object):
                 cmd = 'make'
 
         print('Running command {}'.format(cmd))
-        rc = sp.call(cmd, shell=True)
-        assert rc == 0
+        try:
+            sp.check_call(shlex.split(cmd))
+        except sp.CalledProcessError as exc:
+            print('payu: error: build failed (error {})'
+                  ''.format(exc.returncode))
+            raise
 
         try:
             build_exec_path = self.config['build']['exec_path']
