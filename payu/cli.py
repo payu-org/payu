@@ -193,7 +193,7 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
     envmod.module('load', 'pbs')
 
     # Construct full command
-    cmd = 'qsub {} {}'.format(''.join(pbs_flags), pbs_script)
+    cmd = 'qsub {} {}'.format(' '.join(pbs_flags), pbs_script)
 
     try:
         subprocess.check_call(shlex.split(cmd))
