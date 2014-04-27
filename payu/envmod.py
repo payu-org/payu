@@ -2,7 +2,7 @@
 """envmodules
    ==========
 
-   A modular port of the Environment Modules Python ``init`` script 
+   A modular port of the Environment Modules Python ``init`` script
 """
 
 import os
@@ -42,6 +42,6 @@ def module(command, *args):
 
     cmd = '{0} python {1} {2}'.format(modulecmd, command, ' '.join(args))
 
-    envs, err = subprocess.Popen(shlex.split(cmd),
-                                 stdout=subprocess.PIPE).communicate()
+    envs, _ = subprocess.Popen(shlex.split(cmd),
+                               stdout=subprocess.PIPE).communicate()
     exec(envs)

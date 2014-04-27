@@ -9,8 +9,6 @@ from payu.drivers.mom import Mom
 from payu.drivers.oasis import Oasis
 from payu.drivers.um import UnifiedModel
 
-from payu.modeldriver import Model
-
 index = {
     'access':   Access,
     'cice':     Cice,
