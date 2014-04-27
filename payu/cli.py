@@ -21,11 +21,12 @@ import sys
 
 import yaml
 
+import payu.envmod as envmod
 from payu.modelindex import index as supported_models
 import payu.subcommands
 
 # Default configuration
-default_config_filename = 'config.yaml'
+DEFAULT_CONFIG = 'config.yaml'
 
 def parse():
     """Parse the command line inputs and execute the subcommand."""
@@ -62,8 +63,8 @@ def parse():
 def get_config(config_path):
     """Open the configuration file and construct the configuration data. """
 
-    if not config_path and os.path.isfile(default_config_filename):
-        config_path = default_config_filename
+    if not config_path and os.path.isfile(DEFAULT_CONFIG):
+        config_path = DEFAULT_CONFIG
 
     try:
         with open(config_path, 'r') as config_file:
@@ -102,6 +103,7 @@ def get_model_type(model_type, config):
 
 #---
 def get_env_vars(init_run=None, n_runs=None):
+    """Construct the environment variables used by payu for resubmissions."""
 
     payu_modname = next(mod for mod in os.environ['LOADEDMODULES'].split(':')
                         if mod.startswith('payu'))
@@ -130,10 +132,10 @@ def get_env_vars(init_run=None, n_runs=None):
 
 #---
 def submit_job(pbs_script, pbs_config, pbs_vars=None):
+    """Submit a userscript the scheduler."""
 
     hostname = socket.gethostname().rstrip(digits)
 
-    pbs_qsub = 'qsub'
     pbs_flags = []
 
     pbs_queue = pbs_config.get('queue', 'normal')
@@ -158,7 +160,7 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
 
     pbs_jobname = pbs_config.get('jobname')
     if pbs_jobname:
-        # TODO: Only truncate when using PBSPro
+        # PBSPro has a 15-character jobname limit
         pbs_jobname = pbs_jobname[:15]
         pbs_flags.append('-N {}'.format(pbs_jobname))
 
@@ -169,8 +171,12 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
     pbs_wd = '-wd' if hostname == 'vayu' else '-l wd'
     pbs_flags.append(pbs_wd)
 
-    # TODO: Make this optional
-    pbs_flags.append('-j oe')
+    pbs_join = pbs_config.get('join', 'oe')
+    if not pbs_join in ('oe', 'eo', 'n'):
+        print('payu: error: unknown qsub IO stream join setting.')
+        sys.exit(-1)
+    else:
+        pbs_flags.append('-j {}'.format(pbs_join))
 
     if pbs_vars:
         pbs_vstring = ','.join('{}={}'.format(k, v)
@@ -182,11 +188,12 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
     if pbs_flags_extend:
         pbs_flags.append(pbs_flags_extend)
 
-    # Collect flags
-    pbs_flags = ' '.join(pbs_flags)
+    # Enable PBS, in case it's not available
+    envmod.setup()
+    envmod.module('load', 'pbs')
 
     # Construct full command
-    cmd = '{} {} {}'.format(pbs_qsub, pbs_flags, pbs_script)
+    cmd = 'qsub {} {}'.format(''.join(pbs_flags), pbs_script)
 
     try:
         subprocess.check_call(shlex.split(cmd))
