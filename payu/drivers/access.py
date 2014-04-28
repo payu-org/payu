@@ -21,9 +21,6 @@ import f90nml
 # Local
 from payu.modeldriver import Model
 
-# Calendar types
-NOLEAP, GREGORIAN = range(2)
-
 class Access(Model):
 
     #---

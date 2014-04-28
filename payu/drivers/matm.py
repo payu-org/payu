@@ -49,3 +49,8 @@ class Matm(Model):
 
         # Create an empty restart directory
         mkdir_p(self.restart_path)
+
+
+    #---
+    def collate(self):
+        pass
