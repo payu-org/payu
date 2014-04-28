@@ -1,13 +1,14 @@
 # coding: utf-8
 
 # Standard Library
+import argparse
 import os
 
 # Local
-import args
 import payu
 from payu import cli
 from payu.experiment import Experiment
+import payu.subcommands.args as args
 
 title = 'collate'
 parameters = {'description': 'Collate tiled output into single output files'}
@@ -59,6 +60,17 @@ def runcmd(model_type, config_path, init_run, n_runs):
 
 #---
 def runscript():
+
+    parser = argparse.ArgumentParser()
+    for arg in arguments:
+        parser.add_argument(*arg['flags'], **arg['parameters'])
+
+    run_args = vars(parser.parse_args())
+
+    pbs_vars = cli.get_env_vars(run_args['init_run'], run_args['n_runs'])
+    for var in pbs_vars:
+        os.environ[var] = str(pbs_vars[var])
+
     expt = Experiment()
     expt.collate()
 

@@ -108,7 +108,7 @@ class Fms(Model):
             cmd = '{} -n {} -r -64 {}'.format(mppnc_path, mnc_tiles[f],
                                               tile_path)
             try:
-                sp.check_call(shlex.split(cmd)).wait()
+                sp.check_call(shlex.split(cmd))
             except sp.CalledProcessError as exc:
                 print('payu: error: mppnccombine failed (error {})'
                       ''.format(exc.returncode))
