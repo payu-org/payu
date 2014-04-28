@@ -40,16 +40,29 @@ class Fms(Model):
         self.work_init_path = self.work_input_path
 
 
-    #--
+    #---
     def archive(self, **kwargs):
 
         # Remove the 'INPUT' path
         cmd = 'rm -rf {}'.format(self.work_input_path)
-        rc = sp.check_call(shlex.split(cmd))
+        try:
+            sp.check_call(shlex.split(cmd))
+        except sp.CalledProcessError as exc:
+            print('payu: error: Archival cleanup failed (error {})'
+                  ''.format(exc.returncode))
+            raise
 
         # Archive restart files before processing model output
+        if os.path.isdir(self.restart_path):
+            os.rmdir(self.restart_path)
+
         cmd = 'mv {} {}'.format(self.work_restart_path, self.restart_path)
-        sp.check_call(shlex.split(cmd))
+        try:
+            sp.check_call(shlex.split(cmd))
+        except sp.CalledProcessError as exc:
+            print('payu: error: Restart archival failed (error {})'
+                  ''.format(exc.returncode))
+            raise
 
 
     #---
