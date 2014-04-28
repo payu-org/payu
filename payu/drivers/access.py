@@ -88,6 +88,8 @@ class Access(Model):
                     cpl_nml_grp = prior_cpl_nml[cpl_group]
                     runtime0 = float(cpl_nml_grp[runtime0_key]
                                      + cpl_nml_grp['runtime'])
+                    # runtime (without the 0) is the runtime of the current run.
+                    runtime = cpl_nml_grp['runtime']
 
                     prior_idate = prior_cpl_nml[cpl_group]['init_date']
 
@@ -106,8 +108,27 @@ class Access(Model):
                         dt_leap = get_leapdays(init_date, init_date + dt_run)
                         t_new += dt_leap
 
+                    t_new = init_date + dt_run
                     inidate = (t_new.year * 10**4 + t_new.month * 10**2
                                + t_new.day)
+
+                    def includes_leap_day(date, runtime):
+                        assert(date.day == 1)
+                    
+                        if (calendar.isleap(date.year) and 
+                            ((date.month == 1 and runtime >= 60*86400) or
+                            (date.month == 2 and runtime >= 29*86400))):
+                            return  True
+                        
+                        return False
+                        
+                    # If the new inidate is a leap year, then we need to
+                    # extend the runtime.
+                    if includes_leap_day(t_new, runtime):
+                        runtime += 86400
+
+                    cpl_nml[cpl_group]['runtime'] = runtime
+
                 else:
                     inidate = cpl_nml[cpl_group]['init_date']
                     runtime0 = 0.
