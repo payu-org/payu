@@ -53,9 +53,7 @@ def runcmd(model_type, config_path, init_run, n_runs):
         except KeyError:
             pass
 
-    payu_path = os.path.dirname(payu.__file__)
-    collate_script = os.path.join(payu_path, 'bin', 'payu-collate')
-    cli.submit_job(collate_script, pbs_config, pbs_vars)
+    cli.submit_job('payu-collate', pbs_config, pbs_vars)
 
 
 #---

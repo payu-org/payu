@@ -189,6 +189,13 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
     envmod.setup()
     envmod.module('load', 'pbs')
 
+    # If script path does not exist, then check the PATH directories
+    if not os.path.isabs(pbs_script):
+        for path in os.environ['PATH'].split(':'):
+            if os.path.isdir(path) and pbs_script in os.listdir(path):
+                pbs_script = os.path.join(path, pbs_script)
+                break
+
     # Construct full command
     cmd = 'qsub {} {}'.format(' '.join(pbs_flags), pbs_script)
 

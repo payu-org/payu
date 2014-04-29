@@ -63,9 +63,7 @@ def runcmd(config_path, init_run, n_runs):
     if not pbs_mem and n_cpus > max_cpus_per_node:
         pbs_config['mem'] = '{}GB'.format((n_cpus // max_cpus_per_node) * 31)
 
-    payu_path = os.path.dirname(payu.__file__)
-    run_script = os.path.join(payu_path, 'bin', 'payu-run')
-    cli.submit_job(run_script, pbs_config, pbs_vars)
+    cli.submit_job('payu-run', pbs_config, pbs_vars)
 
 
 #---
