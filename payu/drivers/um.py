@@ -9,9 +9,12 @@ Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
 
+from __future__ import print_function
+
 from payu.modeldriver import Model
 import os
 import imp
+import glob
 import datetime
 import shutil
 import fileinput
@@ -38,7 +41,7 @@ class UnifiedModel(Model):
                              'SIZES', 'STASHC', 'UAFILES_A', 'UAFLDS_A',
                              'parexe', 'cable.nml']
 
-        self.restart = ['restart_dump.astart']
+        self.restart = 'restart_dump.astart'
 
     def set_model_pathnames(self):
         super(UnifiedModel, self).set_model_pathnames()
@@ -47,11 +50,16 @@ class UnifiedModel(Model):
 
     #---
     def archive(self):
-        raise NotImplementedError
         
-        #f_src = os.path.join(model.work_path, self.restart)
-        #f_dst = os.path.join(model.restart_path, self.restart)
-        #shutil.move(f_src, f_dst)
+        restart_dump = glob.glob(os.path.join(self.work_path, 'aiihca.da*'))
+        assert len(restart_dump) == 1
+        f_dst = os.path.join(self.restart_path, self.restart)
+        shutil.move(restart_dump[0], f_dst)
+
+        output_files = glob.glob(os.path.join(self.work_path, 'aiihca.*'))
+        for o in output_files:
+            f_dst = os.path.join(self.output_path, os.path.basename(o))
+            shutil.move(o, f_dst)
 
     #---
     def collate(self):
@@ -61,19 +69,20 @@ class UnifiedModel(Model):
     def setup(self):
         super(UnifiedModel, self).setup()
 
-        # Stage the UM restart file. What about the CABLE restart?
-        #f_src = os.path.join(model.prior_restart_path, self.restart)
-        #f_dst = os.path.join(model.work_path, self.restart)
+        # Stage the UM restart file.
+        if self.prior_restart_path:
+            f_src = os.path.join(self.prior_restart_path, self.restart)
+            f_dst = os.path.join(self.work_path, self.restart)
 
-        #if os.path.isfile(f_src):
-        #    try:
-        #        os.symlink(f_src, f_dst)
-        #    except OSError as ec:
-        #        if ec.errno == errno.EEXIST:
-        #            os.remove(f_dst)
-        #            os.symlink(f_src, f_dst)
-        #        else:
-        #            raise
+            if os.path.isfile(f_src):
+                try:
+                    os.symlink(f_src, f_dst)
+                except OSError as ec:
+                    if ec.errno == errno.EEXIST:
+                        os.remove(f_dst)
+                        os.symlink(f_src, f_dst)
+                    else:
+                        raise
 
         # Set up environment variables needed to run UM. 
         # Look for a python file in the config directory.
@@ -93,15 +102,15 @@ class UnifiedModel(Model):
         for line in fileinput.input(parexe, inplace=True):
             line = line.format(input_path=self.input_paths[0],
                                work_path=self.work_path)
-            print(line)
+            print(line, end='')
 
         # Put all in the current environment. 
         os.environ.update(vars)
 
-        # Modify namelists for a continuation.
+        # Modify namelists for a continuation run.
         if self.prior_output_path:
 
-            nml_path = os.path.join(self.work_path, 'namelist')
+            nml_path = os.path.join(self.work_path, 'namelists')
             nml = f90nml.read(nml_path)
 
             runtime = um_time_to_time(nml['NLSTCALL']['RUN_RESUBMIT_INC'])
@@ -116,39 +125,38 @@ class UnifiedModel(Model):
             shutil.move(nml_path + '~', nml_path)
 
             # Tell CABLE that this is a continuation run.
+            # FIXME: can't use f90nml here because it does not support '%'
             nml_path = os.path.join(self.work_path, 'cable.nml')
-            nml = f90nml.read(nml_path)
-            nml['cable']['cable_user%CABLE_RUNTIME_COUPLED'] = True
-            f90nml.write(nml, nml_path + '~')
-            shutil.move(nml_path + '~', nml_path)
+            for line in fileinput.input(nml_path, inplace=True):
+                line = line.replace('cable_user%CABLE_RUNTIME_COUPLED = .FALSE.', 
+                                    'cable_user%CABLE_RUNTIME_COUPLED = .TRUE.')
+                print(line, end='')
 
 
-    def date_to_um_date(date):
 
-        assert date.day == 1 and date.hour == 0 and date.minute == 0 and date.second == 0
+def date_to_um_date(date):
 
-        return '{}, {}, {}, 0, 0, 0'.format(date.year, date.month, date.day)
+    assert date.day == 1 and date.hour == 0 and date.minute == 0 and date.second == 0
 
-    def um_date_to_date(um_date):
-        """
-        Convert a string with format 'year, month, day, hour, minute, second'
-        to a datetime date.
-        """
+    return [date.year, date.month, date.day, 0, 0, 0] 
 
-        years, months, days, hours, minutes, seconds = map(int, um_date.split(','))
+def um_date_to_date(d):
+    """
+    Convert a string with format 'year, month, day, hour, minute, second'
+    to a datetime date.
+    """
 
-        return datetime.datetime(years=years, months=months, days=days,
-                                 hours=hours, minues=minutes, seconds=seconds)
+    return datetime.datetime(year=d[0], month=d[1], day=d[2],
+                             hour=d[3], minute=d[4], second=d[5])
 
-    def um_time_to_time(um_date):
-        """
-        Convert a string with format 'year, month, day, hour, minute, second'
-        to a datetime timedelta object.
+def um_time_to_time(d):
+    """
+    Convert a string with format 'year, month, day, hour, minute, second'
+    to a datetime timedelta object.
 
-        Only days are supported. 
-        """
+    Only days are supported. 
+    """
 
-        years, months, days, hours, minutes, seconds = map(int, um_date.split(','))
-        assert years == 0 and months == 0 and hours == 0 and minutes == 0 and seconds == 0
+    assert d[0] == 0 and d[1] == 0 and d[3] == 0 and d[4] == 0 and d[5] == 0
 
-        return datetime.timedelta(days=days)
+    return datetime.timedelta(days=d[2])
