@@ -80,61 +80,43 @@ class Access(Model):
                 cpl_nml = f90nml.read(cpl_fpath)
 
                 if model.prior_output_path:
+
+                    # Calculate start date of the run, and update the total
+                    # experiment runtime. 
                     prior_cpl_fpath = os.path.join(model.prior_output_path,
                                                    cpl_fname)
                     prior_cpl_nml = f90nml.read(prior_cpl_fpath)
-
-                    # Calculate initial runtime (runtime0, in seconds)
                     cpl_nml_grp = prior_cpl_nml[cpl_group]
-                    runtime0 = float(cpl_nml_grp[runtime0_key]
+                    # The total time in seconds since the beginning of
+                    # the experiment.
+                    exp_runtime = float(cpl_nml_grp[runtime0_key]
                                      + cpl_nml_grp['runtime'])
-                    # runtime (without the 0) is the runtime of the current run.
-                    runtime = cpl_nml_grp['runtime']
+                    exp_runtime = datetime.timedelta(seconds=exp_runtime)
 
-                    prior_idate = prior_cpl_nml[cpl_group]['init_date']
-
-                    prior_year = prior_idate / 10**4
-                    prior_month = (prior_idate % 10**4 / 10**2)
-                    prior_day = (prior_idate % 10**2)
-
-                    init_date = datetime.date(prior_year, prior_month,
-                                              prior_day)
-
-                    dt_run = datetime.timedelta(seconds=runtime0)
-                    t_new = init_date + dt_run
+                    # experiment start date.
+                    exp_init_date = int_to_date(prior_cpl_nml[cpl_group]['init_date'])
+                    # run start date.
+                    run_init_date = exp_init_date + exp_runtime
 
                     # Skip ahead if using a NOLEAP calendar
                     if cpl_nml_grp['caltype'] == 0:
-                        dt_leap = get_leapdays(init_date, init_date + dt_run)
-                        t_new += dt_leap
-
-                    t_new = init_date + dt_run
-                    inidate = (t_new.year * 10**4 + t_new.month * 10**2
-                               + t_new.day)
-
-                    def includes_leap_day(date, runtime):
-                        assert(date.day == 1)
-                    
-                        if (calendar.isleap(date.year) and 
-                            ((date.month == 1 and runtime >= 60*86400) or
-                            (date.month == 2 and runtime >= 29*86400))):
-                            return  True
-                        
-                        return False
-                        
-                    # If the new inidate is a leap year, then we need to
-                    # extend the runtime.
-                    if includes_leap_day(t_new, runtime):
-                        runtime += 86400
-
-                    cpl_nml[cpl_group]['runtime'] = runtime
+                        dt_leap = get_leapdays(exp_init_date,
+                                               exp_init_date + exp_runtime)
+                        run_init_date += dt_leap
 
                 else:
-                    inidate = cpl_nml[cpl_group]['init_date']
-                    runtime0 = 0.
+                    run_init_date = int_to_date(cpl_nml[cpl_group]['init_date'])
+                    exp_runtime = datetime.timedelta(seconds=0)
 
-                cpl_nml[cpl_group]['inidate'] = inidate
-                cpl_nml[cpl_group][runtime0_key] = runtime0
+                # If there is a leap day in this run then increase runtime.
+                run_runtime = cpl_nml[cpl_group]['runtime']
+                leap_days = get_leapdays(run_init_date, run_init_date +
+                                         datetime.timedelta(seconds=run_runtime))
+                run_runtime += (leap_days.total_seconds())
+                cpl_nml[cpl_group]['runtime'] = run_runtime
+
+                cpl_nml[cpl_group]['inidate'] = date_to_int(run_init_date)
+                cpl_nml[cpl_group][runtime0_key] = exp_runtime.total_seconds()
 
                 if model.model_type == 'cice':
                     cpl_nml[cpl_group]['jobnum'] = 1 + self.expt.counter
@@ -163,15 +145,49 @@ class Access(Model):
         raise NotImplementedError
 
 
+def int_to_date(date):
+    """
+    Convert an int of form yyyymmdd to a python date object.
+    """
+
+    year = date / 10**4
+    month = date % 10**4 / 10**2
+    day = date % 10**2
+
+    return datetime.date(year, month, day)
+
+def date_to_int(date):
+
+    return (date.year * 10**4 + date.month * 10**2 + date.day)
+
+
+def includes_leap_day(init_date, runtime):
+
+    assert(date.day == 1)
+
+    if (calendar.isleap(date.year) and 
+        ((date.month == 1 and runtime >= 60*86400) or
+        (date.month == 2 and runtime >= 29*86400))):
+        return  True
+    
+    return False
+
+
 def get_leapdays(init_date, final_date):
+    """
+    Find the number of leap days between arbitrary dates.
 
-    # Julian leap days
-    n_days = (final_date.year - 1) // 4 - (init_date.year - 1) // 4
+    FIXME: calculate this instead of iterating. 
+    """
 
-    # Gregorian correction
-    n_days -= (final_date.year - 1) // 100 - (init_date.year - 1) // 100
-    n_days += (final_date.year - 1) // 400 - (init_date.year - 1) // 400
+    curr_date = init_date 
+    leap_days = 0
 
-    # TODO: Internal date correction
+    while curr_date != final_date:
 
-    return datetime.timedelta(days=n_days)
+        if curr_date.month == 2 and curr_date.day == 29:
+            leap_days += 1
+
+        curr_date += datetime.timedelta(days=1)
+
+    return datetime.timedelta(days=leap_days)
