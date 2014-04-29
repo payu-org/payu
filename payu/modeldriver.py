@@ -215,15 +215,25 @@ class Model(object):
 
         # First step is always to go to the codebase.
         curdir = os.getcwd()
-        os.chdir(self.codebase_path)
 
         # Do the build. First check whether there is a build command in the
         # config. If not check for the model default, otherwise just run make.
+
+        try:
+            build_path = self.config['build']['path_to_build_command']
+        except KeyError:
+            if self.build_path:
+                build_path = self.build_path
+            else:
+                build_path = './'
+
+        os.chdir(os.path.join(self.codebase_path, build_path))
+
         try:
             cmd = self.config['build']['command']
         except KeyError:
-            if self.build_path and self.build_command:
-                cmd = 'cd {} && {}'.format(self.build_path, self.build_command)
+            if self.build_command:
+                cmd = self.build_command
             else:
                 cmd = 'make'
 
@@ -231,7 +241,7 @@ class Model(object):
         sp.check_call(shlex.split(cmd))
 
         try:
-            build_exec_path = self.config['build']['exec_path']
+            build_exec_path = os.path.join(self.codebase_path, self.config['build']['exec_path'])
         except KeyError:
             if self.build_exec_path:
                 build_exec_path = self.build_exec_path
