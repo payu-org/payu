@@ -161,18 +161,6 @@ def date_to_int(date):
     return (date.year * 10**4 + date.month * 10**2 + date.day)
 
 
-def includes_leap_day(init_date, runtime):
-
-    assert(date.day == 1)
-
-    if (calendar.isleap(date.year) and 
-        ((date.month == 1 and runtime >= 60*86400) or
-        (date.month == 2 and runtime >= 29*86400))):
-        return  True
-    
-    return False
-
-
 def get_leapdays(init_date, final_date):
     """
     Find the number of leap days between arbitrary dates.
