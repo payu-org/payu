@@ -59,17 +59,10 @@ class Oasis(Model):
                 continue
 
             mkdir_p(model.work_path)
-            for f_name in self.config_files:
+            for f_name in (self.config_files + input_files):
                 f_path = os.path.join(self.work_path, f_name)
                 f_sympath = os.path.join(model.work_path, f_name)
                 os.symlink(f_path, f_sympath)
-
-            mkdir_p(model.work_input_path)
-            for f_name in input_files:
-                f_path = os.path.join(self.work_path, f_name)
-                f_sympath = os.path.join(model.work_input_path, f_name)
-                os.symlink(f_path, f_sympath)
-
 
     #---
     def archive(self):
@@ -79,12 +72,12 @@ class Oasis(Model):
 
         mkdir_p(self.restart_path)
         for f in restart_files:
-            f_src = os.path.join(self.work_input_path, f)
+            f_src = os.path.join(self.work_path, f)
             f_dst = os.path.join(self.restart_path, f)
 
             cmd = 'mv {} {}'.format(f_src, f_dst)
             rc = subprocess.call(shlex.split(cmd))
-            assert rc == 0
+            #assert rc == 0
 
 
     #---
