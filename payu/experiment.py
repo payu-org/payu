@@ -357,11 +357,7 @@ class Experiment(object):
         # TODO: Make this more configurable
         if do_stripe:
             cmd = 'lfs setstripe -c 8 -s 8m {}'.format(self.work_path)
-            try:
-                sp.check_call(shlex.split(cmd))
-            except sp.CalledProcessError as exc:
-                print('Lustre striping failed (error {})'
-                      ''.format(exc.returncode))
+            sp.check_call(shlex.split(cmd))
 
         make_symlink(self.work_path, self.work_sym_path)
 
@@ -485,11 +481,7 @@ class Experiment(object):
             sys.exit('payu: error: Archived path already exists.')
 
         cmd = 'mv {} {}'.format(self.work_path, self.output_path)
-        try:
-            sp.check_call(shlex.split(cmd))
-        except sp.CalledProcessError as exc:
-            sys.exit('payu: error: {} (error {})'
-                     ''.format(cmd, exc.returncode))
+        sp.check_call(shlex.split(cmd))
 
         # Remove old restart files
         # TODO: Move to subroutine
@@ -504,12 +496,7 @@ class Experiment(object):
             for restart_dirname in prior_restart_dirs:
                 restart_path = os.path.join(self.archive_path, restart_dirname)
                 cmd = 'rm -rf {}'.format(restart_path)
-                cmd = shlex.split(cmd)
-                try:
-                    sp.check_call(cmd)
-                except sp.CalledProcessError:
-                    print('payu: warning: Could not delete directories {}'
-                          ''.format(' '.join(prior_restart_dirs)))
+                sp.check_call(shlex.split(cmd))
 
         collate = self.config.get('collate', True)
         if collate:

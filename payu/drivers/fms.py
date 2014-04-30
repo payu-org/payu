@@ -45,12 +45,7 @@ class Fms(Model):
 
         # Remove the 'INPUT' path
         cmd = 'rm -rf {}'.format(self.work_input_path)
-        try:
-            sp.check_call(shlex.split(cmd))
-        except sp.CalledProcessError as exc:
-            print('payu: error: Archival cleanup failed (error {})'
-                  ''.format(exc.returncode))
-            raise
+        sp.check_call(shlex.split(cmd))
 
         # Archive restart files before processing model output
         if os.path.isdir(self.restart_path):

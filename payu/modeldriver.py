@@ -225,12 +225,7 @@ class Model(object):
                 cmd = 'make'
 
         print('Running command {}'.format(cmd))
-        try:
-            sp.check_call(shlex.split(cmd))
-        except sp.CalledProcessError as exc:
-            print('payu: error: build failed (error {})'
-                  ''.format(exc.returncode))
-            raise
+        sp.check_call(shlex.split(cmd))
 
         try:
             build_exec_path = self.config['build']['exec_path']
