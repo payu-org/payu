@@ -50,11 +50,19 @@ class UnifiedModel(Model):
 
     #---
     def archive(self):
-        
-        restart_dump = glob.glob(os.path.join(self.work_path, 'aiihca.da*'))
-        assert len(restart_dump) == 1
+
+        # Need to figure out the end date of the model.
+        nml_path = os.path.join(self.work_path, 'namelists')
+        nml = f90nml.read(nml_path)
+        runtime = um_time_to_time(nml['NLSTCALL']['RUN_RESUBMIT_INC'])
+        init_date = um_date_to_date(nml['NLSTCALL']['MODEL_BASIS_TIME'])
+
+        end_date = date_to_um_dump_date(init_date + runtime)
+       
+        restart_dump = os.path.join(self.work_path,
+                                    'aiihca.da{}'.format(end_date))
         f_dst = os.path.join(self.restart_path, self.restart)
-        shutil.move(restart_dump[0], f_dst)
+        shutil.move(restart_dump, f_dst)
 
         output_files = glob.glob(os.path.join(self.work_path, 'aiihca.*'))
         for o in output_files:
@@ -133,8 +141,31 @@ class UnifiedModel(Model):
                 print(line, end='')
 
 
+def date_to_um_dump_date(date):
+    """
+    Convert a time date object to a um dump format date which is yymd0
+    
+    To accomodate two digit months and days the UM uses letters. e.g. 1st oct 
+    is writting 01a10.
+    """
+
+    assert(date.month <= 12)
+
+    month = str(date.month)
+    if date.month == 10:
+        month = 'a'
+    elif date.month == 11:
+        month = 'b'
+    elif date.month == 12:
+        month = 'c'
+
+    return (str(date.year).zfill(2) + month + str(date.day) + str(0))
+
 
 def date_to_um_date(date):
+    """
+    Convert a date object to 'year, month, day, hour, minute, second.'
+    """
 
     assert date.day == 1 and date.hour == 0 and date.minute == 0 and date.second == 0
 
