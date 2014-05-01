@@ -70,7 +70,7 @@ class UnifiedModel(Model):
 
     #---
     def collate(self):
-        raise NotImplementedError
+        pass
 
     #---
     def setup(self):
