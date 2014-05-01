@@ -137,7 +137,8 @@ class Access(Model):
                     f_src = os.path.join(model.work_path, f_name)
                     f_dst = os.path.join(model.restart_path, f_name)
 
-                    shutil.move(f_src, f_dst)
+                    if os.path.exists(f_src):
+                        shutil.move(f_src, f_dst)
 
 
     #---
