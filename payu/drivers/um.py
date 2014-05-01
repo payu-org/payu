@@ -20,6 +20,8 @@ import shutil
 import fileinput
 import f90nml
 
+from ..fsops import mkdir_p
+
 class UnifiedModel(Model):
 
     #---
@@ -51,6 +53,8 @@ class UnifiedModel(Model):
     #---
     def archive(self):
 
+        mkdir_p(self.restart_path)
+
         # Need to figure out the end date of the model.
         nml_path = os.path.join(self.work_path, 'namelists')
         nml = f90nml.read(nml_path)
@@ -62,12 +66,7 @@ class UnifiedModel(Model):
         restart_dump = os.path.join(self.work_path,
                                     'aiihca.da{}'.format(end_date))
         f_dst = os.path.join(self.restart_path, self.restart)
-        shutil.move(restart_dump, f_dst)
-
-        output_files = glob.glob(os.path.join(self.work_path, 'aiihca.*'))
-        for o in output_files:
-            f_dst = os.path.join(self.output_path, os.path.basename(o))
-            shutil.move(o, f_dst)
+        shutil.copy(restart_dump, f_dst)
 
     #---
     def collate(self):
