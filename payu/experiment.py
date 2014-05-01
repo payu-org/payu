@@ -350,7 +350,7 @@ class Experiment(object):
 
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
-            sys.exit('payu: error: Archived path already exists.')
+            sys.exit('payu: error: Output path already exists.')
 
         mkdir_p(self.work_path)
 
@@ -483,7 +483,7 @@ class Experiment(object):
 
         # Double-check that the run path does not exist
         if os.path.exists(self.output_path):
-            sys.exit('payu: error: Archived path already exists.')
+            sys.exit('payu: error: Output path already exists.')
 
         cmd = 'mv {} {}'.format(self.work_path, self.output_path)
         sp.check_call(shlex.split(cmd))
