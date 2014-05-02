@@ -16,6 +16,7 @@ import os
 import imp
 import glob
 import datetime
+import errno
 import shutil
 import fileinput
 import f90nml
@@ -36,7 +37,7 @@ class UnifiedModel(Model):
 
         # TODO: many of these can probably be ignored.
         self.config_files = ['CNTLALL', 'prefix.CNTLATM', 'prefix.CNTLGEN',
-                             'prefix.CONTCNTL', 'errflag', 'exstat',
+                             'CONTCNTL', 'errflag', 'exstat',
                              'ftxx', 'ftxx.new', 'ftxx.vars',
                              'hnlist', 'ihist', 'INITHIS',
                              'namelists', 'PPCNTL', 'prefix.PRESM_A',
@@ -79,7 +80,7 @@ class UnifiedModel(Model):
         # Stage the UM restart file.
         if self.prior_restart_path:
             f_src = os.path.join(self.prior_restart_path, self.restart)
-            f_dst = os.path.join(self.work_path, self.restart)
+            f_dst = os.path.join(self.work_input_path, self.restart)
 
             if os.path.isfile(f_src):
                 try:
@@ -99,31 +100,34 @@ class UnifiedModel(Model):
 
         assert len(self.input_paths) == 1
 
-        # Set some paths
+        # Set paths in environment variables.
         for k in vars.keys():
             vars[k] = vars[k].format(input_path=self.input_paths[0],
                                      work_path=self.work_path)
+        os.environ.update(vars)
 
-        # Paths need to be set in parexe also.
+        # The above needs to be done in parexe also. 
+        # FIXME: a better way to do this or remove. 
         parexe = os.path.join(self.work_path, 'parexe')
         for line in fileinput.input(parexe, inplace=True):
             line = line.format(input_path=self.input_paths[0],
                                work_path=self.work_path)
-            print(line, end='')
 
-        # Put all in the current environment. 
-        os.environ.update(vars)
+            print(line, end='')
 
         # Modify namelists for a continuation run.
         if self.prior_output_path:
 
-            nml_path = os.path.join(self.work_path, 'namelists')
+            nml_path = os.path.join(self.prior_output_path, 'namelists')
             nml = f90nml.read(nml_path)
 
             runtime = um_time_to_time(nml['NLSTCALL']['RUN_RESUBMIT_INC'])
             init_date = um_date_to_date(nml['NLSTCALL']['MODEL_BASIS_TIME'])
 
             new_init_date = init_date + runtime
+
+            nml_path = os.path.join(self.work_path, 'namelists')
+            nml = f90nml.read(nml_path)
 
             nml['NLSTCALL']['MODEL_BASIS_TIME'] = date_to_um_date(new_init_date)
             nml['NLSTCALL']['ANCIL_REFTIME'] = date_to_um_date(new_init_date)
@@ -166,7 +170,7 @@ def date_to_um_date(date):
     Convert a date object to 'year, month, day, hour, minute, second.'
     """
 
-    assert date.day == 1 and date.hour == 0 and date.minute == 0 and date.second == 0
+    assert date.hour == 0 and date.minute == 0 and date.second == 0
 
     return [date.year, date.month, date.day, 0, 0, 0] 
 
