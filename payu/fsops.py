@@ -31,12 +31,9 @@ def mkdir_p(path):
 def make_symlink(src_path, lnk_path):
 
     # Check for Lustre 60-character symbolic link path bug
-    for f_path in (src_path, lnk_path):
-        if CHECK_LUSTRE_PATH_LEN and len(f_path) == 60:
-            if os.path.isabs(f_path):
-                f_path = '/.' + f_path
-            else:
-                f_path = './' + f_path
+    if CHECK_LUSTRE_PATH_LEN:
+        src_path = patch_lustre_path(src_path)
+        lnk_path = patch_lustre_path(lnk_path)
 
     try:
         os.symlink(src_path, lnk_path)
@@ -52,6 +49,18 @@ def make_symlink(src_path, lnk_path):
             if os.path.realpath(lnk_path) != src_path:
                 os.remove(lnk_path)
                 os.symlink(src_path, lnk_path)
+
+
+#---
+def patch_lustre_path(f_path):
+
+    if CHECK_LUSTRE_PATH_LEN and len(f_path) == 60:
+        if os.path.isabs(f_path):
+            f_path = '/.' + f_path
+        else:
+            f_path = './' + f_path
+
+    return f_path
 
 
 #---
