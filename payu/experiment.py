@@ -208,7 +208,8 @@ class Experiment(object):
             module('load', mod)
 
         # TODO: Improved ipm support
-        if 'ipm' in self.modules:
+        if self.config.get('ipm', False):
+            module('load', 'ipm')
             os.environ['IPM_LOGDIR'] = self.work_path
 
         if self.debug:

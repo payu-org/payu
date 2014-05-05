@@ -17,7 +17,7 @@ import sys
 import subprocess as sp
 
 # Local
-from payu.fsops import mkdir_p
+from payu.fsops import make_symlink, mkdir_p
 
 class Model(object):
     """Abstract model class"""
@@ -176,7 +176,7 @@ class Model(object):
                 if self.copy_restarts:
                     shutil.copy(f_restart, f_input)
                 else:
-                    os.symlink(f_restart, f_input)
+                    make_symlink(f_restart, f_input)
 
         # Link input data
         for input_path in self.input_paths:
@@ -189,7 +189,7 @@ class Model(object):
                     if self.copy_inputs:
                         shutil.copy(f_input, f_work_input)
                     else:
-                        os.symlink(f_input, f_work_input)
+                        make_symlink(f_input, f_work_input)
 
 
     #---
