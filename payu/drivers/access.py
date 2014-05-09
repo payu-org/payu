@@ -113,7 +113,7 @@ class Access(Model):
                 leap_days = get_leapdays(run_init_date, run_init_date +
                                          datetime.timedelta(seconds=run_runtime))
                 run_runtime += (leap_days.total_seconds())
-                cpl_nml[cpl_group]['runtime'] = run_runtime
+                cpl_nml[cpl_group]['runtime'] = int(run_runtime) 
 
                 cpl_nml[cpl_group]['inidate'] = date_to_int(run_init_date)
                 cpl_nml[cpl_group][runtime0_key] = exp_runtime.total_seconds()
