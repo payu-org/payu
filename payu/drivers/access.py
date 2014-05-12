@@ -21,6 +21,9 @@ import f90nml
 # Local
 from payu.modeldriver import Model
 
+NOLEAP = 0
+GREGORIAN = 1
+
 class Access(Model):
 
     #---
@@ -99,7 +102,7 @@ class Access(Model):
                     run_init_date = exp_init_date + exp_runtime
 
                     # Skip ahead if using a NOLEAP calendar
-                    if cpl_nml_grp['caltype'] == 0:
+                    if cpl_nml_grp['caltype'] == NOLEAP:
                         dt_leap = get_leapdays(exp_init_date,
                                                exp_init_date + exp_runtime)
                         run_init_date += dt_leap
@@ -108,15 +111,16 @@ class Access(Model):
                     run_init_date = int_to_date(cpl_nml[cpl_group]['init_date'])
                     exp_runtime = datetime.timedelta(seconds=0)
 
-                # If there is a leap day in this run then increase runtime.
-                run_runtime = cpl_nml[cpl_group]['runtime']
-                leap_days = get_leapdays(run_init_date, run_init_date +
-                                         datetime.timedelta(seconds=run_runtime))
-                run_runtime += (leap_days.total_seconds())
-                cpl_nml[cpl_group]['runtime'] = int(run_runtime) 
-
                 cpl_nml[cpl_group]['inidate'] = date_to_int(run_init_date)
                 cpl_nml[cpl_group][runtime0_key] = exp_runtime.total_seconds()
+
+                # If there is a leap day in this run then increase runtime.
+                if cpl_nml[cpl_group]['caltype'] == GREGORIAN:
+                    run_runtime = cpl_nml[cpl_group]['runtime']
+                    leap_days = get_leapdays(run_init_date, run_init_date +
+                                             datetime.timedelta(seconds=run_runtime))
+                    run_runtime += (leap_days.total_seconds())
+                    cpl_nml[cpl_group]['runtime'] = int(run_runtime) 
 
                 if model.model_type == 'cice':
                     cpl_nml[cpl_group]['jobnum'] = 1 + self.expt.counter
