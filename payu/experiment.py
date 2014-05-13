@@ -209,7 +209,7 @@ class Experiment(object):
 
         # TODO: Improved ipm support
         if self.config.get('ipm', False):
-            module('load', 'ipm')
+            module('load', 'ipm/2.0.2')
             os.environ['IPM_LOGDIR'] = self.work_path
 
         if self.debug:
@@ -412,7 +412,11 @@ class Experiment(object):
 
             model_npernode = model.config.get('npernode')
             if model_npernode:
-                model_prog.append('-npernode {}'.format(model_npernode))
+                if model_npernode % 2 == 0:
+                    npernode_flag = '-npersocket {}'.format(model_npernode / 2)
+                else:
+                    npernode_flag = '-npernode {}'.format(model_npernode)
+                model_prog.append(npernode_flag)
 
             model_prog.append(model.exec_path)
 
