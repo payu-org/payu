@@ -44,7 +44,9 @@ default_restart_freq = 5
 class Experiment(object):
 
     #---
-    def __init__(self):
+    def __init__(self, lab_name=None):
+
+        self.lab_name = lab_name
 
         # Disable group write access and all public access
         perms = 0o0027
@@ -230,17 +232,17 @@ class Experiment(object):
 
         # Laboratory path
 
-        # Determine laboratory name
-        lab_name = self.config.get('laboratory', self.model_name)
-        self.lab_name = lab_name
+        if not self.lab_name:
+            self.lab_name = self.config.get('laboratory', self.model_name)
 
         # Construct the laboratory absolute path if necessary
-        if os.path.isabs(lab_name):
-            self.lab_path = lab_name
+        if os.path.isabs(self.lab_name):
+            self.lab_path = self.lab_name
         else:
             # Check under the default root path
             user_name = self.config.get('user', default_user)
-            self.lab_path = os.path.join(self.short_path, user_name, lab_name)
+            self.lab_path = os.path.join(self.short_path, user_name,
+                                         self.lab_name)
 
         # Validate the path
         if not os.path.isdir(self.lab_path):
