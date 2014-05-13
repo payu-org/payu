@@ -2,12 +2,15 @@
 
 # Local
 import args
+from payu.experiment import Experiment
 
 # Configuration
 title = 'build'
 parameters = {'description': 'Build the climate model executable'}
 
-arguments = [args.model, args.config]
+arguments = [args.model, args.config, args.laboratory]
 
-def runcmd(model_type, config_path):
-    print('payu: build is not yet supported')
+def runcmd(model_type, config_path, lab_path):
+
+    expt = Experiment(lab_name)
+    expt.build_model()
