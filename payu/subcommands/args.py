@@ -36,7 +36,7 @@ initial = {'flags':
          }
 
 
-# Configuration file
+# Number of runs.
 nruns = {'flags':
             ('--nruns', '-n'),
           'parameters':
@@ -46,6 +46,19 @@ nruns = {'flags':
              'help':    'Number of successive experiments ro run',
             }
          }
+
+
+# Laboratory path
+laboratory = {'flags':
+                ('--laboratory', '-l'),
+                'parameters':
+                    {'action':  'store',
+                     'dest':    'lab_name',
+                     'default': None,
+                     'help':    'The laboratory, this will over-ride the \
+                                 value given in config.yaml',
+                    }
+             }
 
 hard_sweep = {'flags':
                 ('--hard',),

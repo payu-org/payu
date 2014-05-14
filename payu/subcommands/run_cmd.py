@@ -12,9 +12,9 @@ from payu.experiment import Experiment
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
 
-arguments = [args.config, args.initial, args.nruns]
+arguments = [args.config, args.initial, args.nruns, args.laboratory]
 
-def runcmd(config_path, init_run, n_runs):
+def runcmd(config_path, init_run, n_runs, lab_name):
 
     # Get job submission configuration
     pbs_config = cli.get_config(config_path)
@@ -68,7 +68,14 @@ def runcmd(config_path, init_run, n_runs):
 
 #---
 def runscript():
-    expt = Experiment()
+
+    parser = argparse.ArgumentParser()
+    for arg in arguments:
+        parser.add_argument(*arg['flags'], **arg['parameters'])
+
+    args = parser.parse_args()
+
+    expt = Experiment(args.lab_name)
     expt.setup()
     expt.run()
     expt.archive()
