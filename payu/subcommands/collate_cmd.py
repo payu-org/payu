@@ -17,7 +17,7 @@ arguments = [args.model, args.config, args.initial, args.nruns, args.laboratory]
 
 
 #---
-def runcmd(model_type, config_path, init_run, n_runs, lab_path):
+def runcmd(model_type, config_path, init_run, n_runs, lab_name):
 
     pbs_config = cli.get_config(config_path)
     pbs_vars = cli.get_env_vars(init_run, n_runs)

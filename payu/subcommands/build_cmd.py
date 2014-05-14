@@ -10,7 +10,7 @@ parameters = {'description': 'Build the climate model executable'}
 
 arguments = [args.model, args.config, args.laboratory]
 
-def runcmd(model_type, config_path, lab_path):
+def runcmd(model_type, config_path, lab_name):
 
     expt = Experiment(lab_name)
     expt.build_model()
