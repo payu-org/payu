@@ -13,11 +13,11 @@ import payu.subcommands.args as args
 title = 'collate'
 parameters = {'description': 'Collate tiled output into single output files'}
 
-arguments = [args.model, args.config, args.initial, args.nruns]
+arguments = [args.model, args.config, args.initial, args.nruns, args.laboratory]
 
 
 #---
-def runcmd(model_type, config_path, init_run, n_runs):
+def runcmd(model_type, config_path, init_run, n_runs, lab_name):
 
     pbs_config = cli.get_config(config_path)
     pbs_vars = cli.get_env_vars(init_run, n_runs)
@@ -69,7 +69,7 @@ def runscript():
     for var in pbs_vars:
         os.environ[var] = str(pbs_vars[var])
 
-    expt = Experiment()
+    expt = Experiment(run_args['lab_name'])
     expt.collate()
 
     if expt.postscript:
