@@ -12,8 +12,8 @@ NCI (National Computing Infrastructure) in Australia.
 Usage
 =====
 
-Initialization
---------------
+Installation
+------------
 
 If you have access to the ``v45`` project on ``raijin``, then add the ``v45``
 modules to your environment and load the ``payu`` module::
@@ -23,6 +23,21 @@ modules to your environment and load the ``payu`` module::
 
 You may want to include these lines in your ``.login`` (for ``tcsh``) or
 ``.profile`` (for bash) scripts.
+
+If you do not have access to ``v45``, then payu can be installed locally::
+
+   python setup.py install --user
+
+Local installations will also require the installation of the f90nml_ and
+PyYAML_ packages.
+
+
+.. _f90nml: https://pypi.python.org/pypi/f90nml
+.. _PyYAML: https://pypi.python.org/pypi/PyYAML
+
+
+Model Initialization
+--------------------
 
 To see a list of supported climate models, type::
 

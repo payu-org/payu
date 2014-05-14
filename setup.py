@@ -1,34 +1,44 @@
-import os
-from setuptools import setup, find_packages
+"""setup.py
+   Installation script for payu
 
-payu_version = __import__('payu').__version__
-payu_scripts = [os.path.join('payu/bin', f) for f in os.listdir('payu/bin')]
+   Additional configuration settings are in ``setup.cfg``.
+"""
+
+import os
+from distutils.core import setup
+
+PKG_NAME = 'payu'
+PKG_VERSION = __import__(PKG_NAME).__version__
+PKG_SCRIPTS = [os.path.join('bin', f) for f in os.listdir('bin')]
+PKG_PKGS = [path for (path, dirs, files) in os.walk(PKG_NAME)
+             if '__init__.py' in files]
 
 with open('README.rst') as f:
-    readme_rst = f.read()
+    README_RST = f.read()
 
 setup(
-    name = 'payu',
-    version = payu_version,
-    description = 'A climate model workflow manager for supercomputing '
-                  'environments.',
-    long_description = readme_rst,
-    author = 'Marshall Ward',
-    author_email = 'python@marshallward.org',
-    url = 'http://github.com/marshallward/payu',
+    name=PKG_NAME,
+    version=PKG_VERSION,
+    description='A climate model workflow manager for supercomputing '
+                'environments.',
+    long_description=README_RST,
+    author='Marshall Ward',
+    author_email='python@marshallward.org',
+    url='http://github.com/marshallward/payu',
 
-    packages = find_packages(),
-    install_requires = ['f90nml', 'PyYAML'],
-    scripts = payu_scripts,
+    packages=PKG_PKGS,
+    requires=['f90nml', 'PyYAML'],
+    scripts=PKG_SCRIPTS,
 
-    classifiers = [
+    classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: Apache Software License',
+        'Operating System :: POSIX :: Linux',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Topic :: Utilities',
     ],
 
-    keywords = 'payu supercomputer model climate workflow'
+    keywords='{} supercomputer model climate workflow'.format(PKG_NAME)
 )
