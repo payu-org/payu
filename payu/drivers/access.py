@@ -21,8 +21,7 @@ import f90nml
 # Local
 from payu.modeldriver import Model
 
-NOLEAP = 0
-GREGORIAN = 1
+NOLEAP, GREGORIAN = range(2)
 
 class Access(Model):
 
@@ -182,5 +181,16 @@ def get_leapdays(init_date, final_date):
             leap_days += 1
 
         curr_date += datetime.timedelta(days=1)
+
+    return datetime.timedelta(days=leap_days)
+
+def calculate_leapdays(init_date, final_date):
+    """Currently unsupported, it only works for differences in years."""
+
+    leap_days = (final_date.year - 1) // 4 - (init_date.year - 1) // 4
+    leap_days -= (final_date.year - 1) // 100 - (init_date.year - 1) // 100
+    leap_days += (final_date.year - 1) // 400 - (init_date.year - 1) // 400
+
+    # TODO: Internal date correction (e.g. init_date is 1-March or later)
 
     return datetime.timedelta(days=leap_days)

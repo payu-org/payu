@@ -107,15 +107,31 @@ def get_model_type(model_type, config):
 def get_env_vars(init_run=None, n_runs=None):
     """Construct the environment variables used by payu for resubmissions."""
 
-    payu_modname = next(mod for mod in os.environ['LOADEDMODULES'].split(':')
-                        if mod.startswith('payu'))
-    payu_modpath = next(mod for mod in os.environ['_LMFILES_'].split(':')
-                        if payu_modname in mod).rstrip(payu_modname)
+    payu_env_vars = {'PYTHONPATH': os.environ['PYTHONPATH']}
 
-    payu_env_vars = {'PYTHONPATH': os.environ['PYTHONPATH'],
-                     'PAYU_MODULENAME': payu_modname,
-                     'PAYU_MODULEPATH': payu_modpath,
-                    }
+    payu_modnames = [mod for mod in os.environ['LOADEDMODULES'].split(':')
+                     if mod.startswith('payu')]
+    if payu_modnames:
+        payu_mname = payu_modnames[0]
+
+        payu_modpaths = [mod for mod in os.environ['_LMFILES_'].split(':')
+                         if payu_mname in mod]
+
+        payu_mpath = payu_modpaths[0].rstrip(payu_mname)
+
+        payu_env_vars['PAYU_MODULENAME'] = payu_mname
+        payu_env_vars['PAYU_MODULEPATH'] = payu_mpath
+
+    else:
+        # Explicitly set and pass the executable paths
+        for path in os.environ['PATH'].split(':'):
+            if 'payu' in os.listdir(path):
+                payu_binpath = path
+                break
+            payu_binpath = None
+
+        if payu_binpath:
+            payu_env_vars['PAYU_PATH'] = payu_binpath
 
     if init_run:
         init_run = int(init_run)

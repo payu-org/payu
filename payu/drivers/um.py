@@ -11,17 +11,21 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 from __future__ import print_function
 
-from payu.modeldriver import Model
-import os
-import imp
-import glob
+# Standard Library
 import datetime
 import errno
-import shutil
 import fileinput
+import glob
+import imp
+import os
+import shutil
+
+# Extensions
 import f90nml
 
-from ..fsops import mkdir_p
+# Local
+from payu.fsops import mkdir_p
+from payu.modeldriver import Model
 
 class UnifiedModel(Model):
 

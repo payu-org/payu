@@ -14,6 +14,11 @@ DEFAULT_VERSION = '3.2.6'
 def setup():
     """Set the environment modules used by the Environment Module system."""
 
+    # Update PATH
+    payu_path = os.environ.get('PAYU_PATH')
+    if payu_path and not payu_path in os.environ['PATH'].split(':'):
+        os.environ['PATH'] = ':'.join([payu_path, os.environ['PATH']])
+
     module_version = os.environ.get('MODULE_VERSION', DEFAULT_VERSION)
     module_basepath = os.path.join('/opt/Modules', module_version)
 
