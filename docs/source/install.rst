@@ -26,7 +26,7 @@ latest codebase::
    python setup.py install --user
 
 Payu depends on the following modules, which may need to be installed
-separately:
+separately if you are not using the environment modules:
 
    * f90nml_
    * PyYAML_
@@ -41,23 +41,23 @@ General Use
 Requirements
 ------------
 
-Payu is not supported for general use, and it would be tremendous surprise if
+Payu is not supported for general use, and it would be a tremendous surprise if
 it even worked on other machines. In particular, the following services are
 presumed to be available:
 
    * `Environment Modules`_: Not only do we assume support for environment
      modules, but we also assume the existence of certain modules, such as
-     an OpenMPI module or even particular version of Python.
+     an OpenMPI module and particular versions of Python.
 
-   * `PBS Scheduler`_: Payu relies on several executables that are provided
-     with most PBS implementations, such as Torque or PBSPro. Most of the
-     argument flags are currently based around PBSPro conventions.
+   * `PBS Scheduler`_: Payu relies on executables that are provided with most
+     PBS implementations, such as Torque or PBSPro. Most of the argument flags
+     are currently based around PBSPro conventions.
 
    * `MPI`_: Jobs are submitted via ``mpirun`` and most of the argument flags
-     are customised based on experiment configuration.
+     are based on the OpenMPI implementation. We also rely on Raijin's internal
+     preprocessing scripts for a few tasks.
 
-There are also some additional assumptions based on the particular
-supercomputer architecture of Raijin.
+There are also some additional assumptions based on the architecture of Raijin.
 
 Despite these rather strict requirements, there is opportunity for generalising
 payu for other platforms, such as through new drivers for alternative
