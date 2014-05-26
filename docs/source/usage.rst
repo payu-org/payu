@@ -8,6 +8,20 @@ This document outlines the basic procedure to setup and run an experiment with
 payu.
 
 
+Overview
+========
+
+The general layout of a payu-supported experiment consists of two directories:
+
+* The *laboratory*, which contains the executable, input files, actively
+  running experiments, and archived model output, and the
+
+* The *control directory*, where the experiment is configured and run.
+
+This separation allows us to run multiple self-resubmitting experiments
+simultaneously that can share common executables and input data.
+
+
 Setting up the laboratory
 =========================
 
@@ -28,13 +42,15 @@ Currently, the automated setup and build routines have some bugs that need
 fixing, so most users will have to set up the laboratory manually.
 
 1. Create a directory for the laboratory to reside. The default directory path
-   is shown below::
+   is shown below:
+
+   .. code:: sh
 
       mkdir -p /short/${PROJECT}/${USER}/${MODEL}
 
    where ``${MODEL}`` is from the list of supported models. For example, if
-   your username is ``abc123`` and you are in ``v45``, then the default
-   laboratory directory for the MOM ocean model would be
+   your username is ``abc123`` and your default project is ``v45``, then the
+   default laboratory directory for the MOM ocean model would be
    ``/short/v45/abc123/mom``.
 
 2. Create subdirectories for the model binaries and input fields::
@@ -55,7 +71,15 @@ fixing, so most users will have to set up the laboratory manually.
 
    You will want a unique name for each input directory.
 
-5. Return to the home directory and create a *control directory*.
+5. Return to the home directory and create a *control directory*::
+
+      mkdir -p ${HOME}/${MODEL}/my_expt
+      cd ${HOME}/${MODEL}/my_expt
+
+   Although the example control directory here is in the user's home directory,
+   they can be placed anywhere and there is no predefined location.
+
+6. Copy any input text files
 
 
 Automatic setup
