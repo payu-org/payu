@@ -384,6 +384,11 @@ class Experiment(object):
         f_out = open(self.stdout_fname, 'w')
         f_err = open(self.stderr_fname, 'w')
 
+        # Set OMPI environment variables
+        ompi_env = self.config.get('ompi', {})
+        for env in ompi_env:
+            os.environ[env] = ompi_env[env]
+
         mpirun_cmd = 'mpirun'
 
         mpi_flags = self.config.get('mpirun', [])
@@ -428,7 +433,16 @@ class Experiment(object):
                                 ' '.join(mpi_flags),
                                 ' : '.join(mpi_progs))
 
-        rc = sp.call(shlex.split(cmd), stdout=f_out, stderr=f_err)
+        # I could merge these, but I am nervous about passing all of os.environ
+        if ompi_env:
+            proc = sp.Popen(shlex.split(cmd), stdout=f_out, stderr=f_err,
+                            env=os.environ)
+            proc.wait()
+            rc = proc.returncode
+        else:
+            rc = sp.call(shlex.split(cmd), stdout=f_out, stderr=f_err)
+
+        # Export any OMPI variables, in case we are running though a script
         f_out.close()
         f_err.close()
 
