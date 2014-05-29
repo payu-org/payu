@@ -107,7 +107,22 @@ def get_model_type(model_type, config):
 def get_env_vars(init_run=None, n_runs=None):
     """Construct the environment variables used by payu for resubmissions."""
 
-    payu_env_vars = {'PYTHONPATH': os.environ['PYTHONPATH']}
+    payu_env_vars = {}
+
+    # Pass along the current PYTHONPATH, and append payu's path if necessary
+    payu_path, _ = os.path.split(payu.__path__[0])
+
+    try:
+        py_paths = os.environ['PYTHONPATH'].split(':')
+        py_abspaths = [os.path.abspath(p) for p in py_paths]
+
+        if not os.path.abspath(payu_path) in py_abspaths:
+            py_paths.insert(0, payu_path)
+
+        payu_env_vars['PYTHONPATH'] = ':'.join(py_paths)
+
+    except KeyError:
+        payu_env_vars['PYTHONPATH'] = payu_path
 
     payu_modnames = [mod for mod in os.environ['LOADEDMODULES'].split(':')
                      if mod.startswith('payu')]
