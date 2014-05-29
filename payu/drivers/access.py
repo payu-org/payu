@@ -19,6 +19,7 @@ import shutil
 import f90nml
 
 # Local
+from payu.fsops import make_symlink
 from payu.modeldriver import Model
 
 NOLEAP, GREGORIAN = range(2)
@@ -62,16 +63,7 @@ class Access(Model):
                         f_dst = os.path.join(model.work_input_path, f_name)
 
                         if os.path.isfile(f_src):
-
-                            try:
-                                os.symlink(f_src, f_dst)
-                            except OSError as ec:
-                                if ec.errno == errno.EEXIST:
-                                    os.remove(f_dst)
-                                    os.symlink(f_src, f_dst)
-                                else:
-                                    raise
-
+                            make_symlink(f_src, f_dst)
 
             if model.model_type in ('cice', 'matm'):
 
@@ -84,7 +76,7 @@ class Access(Model):
                 if model.prior_output_path:
 
                     # Calculate start date of the run, and update the total
-                    # experiment runtime. 
+                    # experiment runtime.
                     prior_cpl_fpath = os.path.join(model.prior_output_path,
                                                    cpl_fname)
                     prior_cpl_nml = f90nml.read(prior_cpl_fpath)
@@ -119,7 +111,7 @@ class Access(Model):
                     leap_days = get_leapdays(run_init_date, run_init_date +
                                              datetime.timedelta(seconds=run_runtime))
                     run_runtime += (leap_days.total_seconds())
-                    cpl_nml[cpl_group]['runtime'] = int(run_runtime) 
+                    cpl_nml[cpl_group]['runtime'] = int(run_runtime)
 
                 if model.model_type == 'cice':
                     cpl_nml[cpl_group]['jobnum'] = 1 + self.expt.counter
@@ -169,10 +161,10 @@ def get_leapdays(init_date, final_date):
     """
     Find the number of leap days between arbitrary dates.
 
-    FIXME: calculate this instead of iterating. 
+    FIXME: calculate this instead of iterating.
     """
 
-    curr_date = init_date 
+    curr_date = init_date
     leap_days = 0
 
     while curr_date != final_date:

@@ -206,7 +206,7 @@ class Model(object):
     def build_model(self):
 
         if not self.repo_url:
-            return 
+            return
 
         # Check to see if executable already exists.
         if self.exec_path and os.path.exists(self.exec_path):
@@ -241,7 +241,8 @@ class Model(object):
         sp.check_call(shlex.split(cmd))
 
         try:
-            build_exec_path = os.path.join(self.codebase_path, self.config['build']['exec_path'])
+            build_exec_path = os.path.join(self.codebase_path,
+                                           self.config['build']['exec_path'])
         except KeyError:
             if self.build_exec_path:
                 build_exec_path = self.build_exec_path
@@ -260,7 +261,7 @@ class Model(object):
     def get_codebase(self):
 
         if not self.repo_url:
-            return 
+            return
 
         assert self.repo_tag
         assert self.codebase_path

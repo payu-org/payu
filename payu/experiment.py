@@ -27,11 +27,11 @@ import subprocess as sp
 import yaml
 
 # Local
+from payu import envmod
 from payu.fsops import mkdir_p, make_symlink
 from payu.modelindex import index as model_index
 
 # Environment module support on vayu
-execfile('/opt/Modules/default/init/python')
 module_path = '/projects/v45/modules'
 core_modules = ['python', 'payu']
 
@@ -203,19 +203,19 @@ class Experiment(object):
         for mod in loaded_mods:
             mod_base = mod.split('/')[0]
             if not mod_base in core_modules:
-                module('unload', mod)
+                envmod.module('unload', mod)
 
         # Now load model-dependent modules
         for mod in self.modules:
-            module('load', mod)
+            envmod.module('load', mod)
 
         # TODO: Improved ipm support
         if self.config.get('ipm', False):
-            module('load', 'ipm/2.0.2')
+            envmod.module('load', 'ipm/2.0.2')
             os.environ['IPM_LOGDIR'] = self.work_path
 
         if self.debug:
-            module('load', 'totalview')
+            envmod.module('load', 'totalview')
 
 
     #---
@@ -512,7 +512,7 @@ class Experiment(object):
             i_s = self.counter - restart_freq
             i_e = self.counter - 1
             prior_restart_dirs = ('restart{:03}'.format(i)
-                              for i in range(i_s, i_e))
+                                    for i in range(i_s, i_e))
 
             for restart_dirname in prior_restart_dirs:
                 restart_path = os.path.join(self.archive_path, restart_dirname)
@@ -655,7 +655,7 @@ class Experiment(object):
                            '.sh': '/bin/bash',
                            '.csh': '/bin/tcsh'}
 
-                f_base, f_ext = os.path.splitext(script_cmd)
+                _, f_ext = os.path.splitext(script_cmd)
                 shell_name = ext_cmd.get(f_ext)
                 if shell_name:
                     print('payu: warning: Assuming that {} is a {} script '
