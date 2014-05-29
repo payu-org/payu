@@ -38,9 +38,6 @@ separately if you are not using the environment modules:
 General Use
 ===========
 
-Requirements
-------------
-
 Payu is not supported for general use, and it would be a tremendous surprise if
 it even worked on other machines. In particular, the following services are
 presumed to be available:
