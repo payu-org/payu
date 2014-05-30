@@ -17,7 +17,6 @@ import shutil as sh
 import subprocess as sp
 
 # Local
-from payu.fsops import mkdir_p
 from payu.modeldriver import Model
 
 class Fms(Model):
@@ -52,12 +51,7 @@ class Fms(Model):
             os.rmdir(self.restart_path)
 
         cmd = 'mv {} {}'.format(self.work_restart_path, self.restart_path)
-        try:
-            sp.check_call(shlex.split(cmd))
-        except sp.CalledProcessError as exc:
-            print('payu: error: Restart archival failed (error {})'
-                  ''.format(exc.returncode))
-            raise
+        sp.check_call(shlex.split(cmd))
 
 
     #---
@@ -102,9 +96,4 @@ class Fms(Model):
 
             cmd = '{} -n {} -r -64 {}'.format(mppnc_path, mnc_tiles[f],
                                               tile_path)
-            try:
-                sp.check_call(shlex.split(cmd))
-            except sp.CalledProcessError as exc:
-                print('payu: error: mppnccombine failed (error {})'
-                      ''.format(exc.returncode))
-                raise
+            sp.check_call(shlex.split(cmd))
