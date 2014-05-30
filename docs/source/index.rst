@@ -46,11 +46,3 @@ Support and Development
 
 * Mailing List: https://groups.google.com/group/payu-climate
 * Source: https://github.com/marshallward/payu
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

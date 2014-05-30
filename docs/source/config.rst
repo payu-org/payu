@@ -58,20 +58,21 @@ These settings are primarily used by the PBS scheduler.
    The default value requests (almost) all of the nodes' memory for jobs using
    multiple nodes.
 
-   In general, it is good practice to keep this number as low
-   as possible.
+   In general, it is good practice to keep this number as low as possible.
 
 ``walltime``
    The amount of time required to run an individual job, specified as
-   ``hh:mm:ss``. Equivalent to ``qsub -l walltime=TIME``. Jobs with shorter
-   walltimes will generally run before jobs with longer walltimes.
+   ``hh:mm:ss``. Equivalent to ``qsub -l walltime=TIME``.
+
+   Jobs with shorter walltimes will generally be prioritised ahead of jobs with
+   longer walltimes.
 
 ``priority``
    Job priority setting. Equivalent to ``qsub -p PRIORITY``.
 
 ``qsub_flags``
-   This is a generic configuration marker for any unsupported qsub flags. It
-   will appear be used in any payu calls to ``qsub``.
+   This is a generic configuration marker for any unsupported qsub flags. This
+   setting is applied to any ``qsub`` calls.
 
 
 Collation
@@ -81,13 +82,13 @@ Collation scheduling can be configured independently of model runs. Currently,
 all collation jobs are single CPU jobs and are not parallelised.
 
 ``collate_queue`` (*Default:* ``copyq``)
-   PBS queue used for collation jobs
+   PBS queue used for collation jobs.
 
 ``collate_walltime``
-   Time required for output collation
+   Time required for output collation.
 
 ``collate_mem``
-   Memory required for output collation
+   Memory required for output collation.
 
 
 Model
@@ -105,39 +106,57 @@ configuration.
    experiment in ``~/mom/bowl1``, then ``mom`` will be used as the model type.
    However, it is generally better to specify the model type.
 
-``submodels``
-   If one is running a coupled model containing several submodels, then each
-   model is configured individually within a ``submodel`` namespace, such as in
-   the example below.
-
-   TODO
-
-``exe``
-
-``input``
-
 ``shortpath`` (*Default:* ``/short/${PROJECT}``)
    The top-level directory for general scratch space, where laboratories and
    model output are stored. Users who run from multiple projects will generally
    want to set this explicitly.
 
-``user`` (*Default:* ``${USER}``)
-   The username used to construct the laboratory paths. It is generally
-   recommended that laboratories be stored under username, so this setting is
-   usually not necessary (nor recommended).
+``input``
+   Listing of the directories containing model input fields, linked to the
+   experiment during setup. This can either be the name of a directory in the
+   laboratory's ``input`` directory::
 
-``laboratory`` (*Default:* ``/short/${PROJECT}/${USER}/${MODEL}``)
-   The top-level directory for the model laboratory, where the codebase, model
-   executables, input fields, running jobs, and archived output are stored.
-   This is generally not configured.
+      input: core_inputs
 
-``control`` (*Default: current directory*)
-   The control path for the experiment. The default setting is the current
-   working directory, and is generally not configured.
+   the absolute path of an external directory::
 
-``experiment`` (*Default: current directory*)
-   The experiment name used for archival. The default setting uses the
-   ``control`` directory name, and is generally not configured.
+      input: /short/v45/core_input/iaf/
+
+   or a list of input directories::
+
+      input:
+         - year_100_restarts
+         - core_inputs
+
+   If there are multiple files in each directory with the same name, then the
+   earlier directory of the list takes precedence.
+
+``submodels``
+   If one is running a coupled model containing several submodels, then each
+   model is configured individually within a ``submodel`` namespace, such as in
+   the example below for the ACCESS driver::
+
+      model: access
+      submodels:
+         atmosphere:
+            model: matm
+            exe: matm_MPI1_nt62.exe
+            input: iaf_matm_simon
+            ncpus: 1
+         ocean:
+            model: mom
+            exe: fms_MOM_ACCESS_kate.x
+            input: iaf_mom
+            ncpus: 120
+         ice:
+            model: cice
+            exe: cice_MPI1_6p.exe
+            input: iaf_cice
+            ncpus: 6
+         coupler:
+            model: oasis
+            input: iaf_oasis
+            ncpus: 0
 
 ``restart_freq`` (*Default:* ``5``)
    Specifies the rate of saved restart files. For the default rate of 5, we
@@ -150,6 +169,25 @@ configuration.
    Restarts 10 through 13 are not deleted until ``restart014`` has been saved.
 
    ``restart_freq: 1`` saves all restart files.
+
+*The following model-based tags are typically not configured*
+
+``user`` (*Default:* ``${USER}``)
+   The username used to construct the laboratory paths. It is generally
+   recommended that laboratories be stored under username, so this setting is
+   usually not necessary (nor recommended).
+
+``laboratory`` (*Default:* ``/short/${PROJECT}/${USER}/${MODEL}``)
+   The top-level directory for the model laboratory, where the codebase, model
+   executables, input fields, running jobs, and archived output are stored.
+
+``control`` (*Default: current directory*)
+   The control path for the experiment. The default setting is the path of the
+   current working directory.
+
+``experiment`` (*Default: current directory*)
+   The experiment name used for archival. The default setting uses the
+   ``control`` directory name.
 
 
 Postprocessing
@@ -202,9 +240,7 @@ Miscellaneous
 ``mpirun``
    Append any unsupported ``mpirun`` arguments to the ``mpirun`` call of the
    model. This setting supports both single lines and a list of input
-   arguments. Example shown below:
-
-   .. code::
+   arguments. Example shown below::
 
       mpirun:
          - -mca mpi_preconnect_mpi 1   # Enable preconnecting
@@ -214,9 +250,7 @@ Miscellaneous
 ``ompi``
    Enable any environment variables required by ``mpirun`` during execution,
    such as ``OMPI_MCA_coll``. The following example below disables "matching
-   transport layer" and "collective algorithm" components:
-
-   .. code::
+   transport layer" and "collective algorithm" components::
 
       ompi:
          OMPI_MCA_coll: ''
