@@ -131,6 +131,11 @@ configuration.
    If there are multiple files in each directory with the same name, then the
    earlier directory of the list takes precedence.
 
+``exe``
+   Binary executable for the model. This can either be a filename in the
+   laboratorys ``bin`` directory, or an absolute filepath. Various model
+   drivers typically define their own default executable names.
+
 ``submodels``
    If one is running a coupled model containing several submodels, then each
    model is configured individually within a ``submodel`` namespace, such as in
