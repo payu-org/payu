@@ -1,3 +1,12 @@
+.. _design:
+
+============
+Design Notes
+============
+
+This section describes miscellaneous information about the design of payu.
+
+
 Model and Experiment Layout
 ===========================
 

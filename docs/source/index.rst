@@ -39,6 +39,7 @@ Contents:
    install
    usage
    config
+   design
 
 
 Support and Development
