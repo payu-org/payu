@@ -90,6 +90,10 @@ all collation jobs are single CPU jobs and are not parallelised.
 ``collate_mem``
    Memory required for output collation.
 
+``collate_ignore``
+   Ignore these files during collation. This can either be a single filename or
+   a list of filenames. Only FMS models (MOM, GOLD) support this setting.
+
 
 Model
 -----
