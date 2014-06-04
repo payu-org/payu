@@ -75,6 +75,13 @@ class Fms(Model):
                 break
         assert mppnc_path
 
+        # Import list of collated files to ignore
+        collate_ignore = config.get('collate_ignore')
+        if collate_ignore is None:
+            collate_ignore = []
+        elif type(collate_ignore) != list:
+            collate_ignore = [collate_ignore]
+
         # Generate collated file list and identify the first tile
         tile_fnames = [f for f in os.listdir(self.output_path)
                          if f[-4:].isdigit() and f[-8:-4] == '.nc.']
@@ -83,6 +90,10 @@ class Fms(Model):
         for t in tile_fnames:
             t_name, t_ext = os.path.splitext(t)
             t_ext = t_ext.lstrip('.')
+
+            # Skip any files listed in the ignore list
+            if t_name in collate_ignore:
+                continue
 
             try:
                 if int(t_ext) < int(mnc_tiles[t_name]):
