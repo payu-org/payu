@@ -70,7 +70,7 @@ class Fms(Model):
         assert mppnc_path
 
         # Import list of collated files to ignore
-        collate_ignore = config.get('collate_ignore')
+        collate_ignore = self.expt.config.get('collate_ignore')
         if collate_ignore is None:
             collate_ignore = []
         elif type(collate_ignore) != list:
