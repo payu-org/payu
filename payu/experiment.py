@@ -41,7 +41,7 @@ default_restart_freq = 5
 class Experiment(object):
 
     #---
-    def __init__(self, lab=None):
+    def __init__(self, lab):
 
         self.lab = lab
 
