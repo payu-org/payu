@@ -45,10 +45,6 @@ class Experiment(object):
 
         self.lab = lab
 
-        # Disable group write access and all public access
-        perms = 0o0027
-        os.umask(perms)
-
         # TODO: replace with dict, check versions via key-value pairs
         self.modules = set()
 
@@ -65,7 +61,6 @@ class Experiment(object):
         self.init_models()
 
         # TODO: Move to run/collate/sweep?
-        self.set_lab_pathnames()
         self.set_expt_pathnames()
         self.set_counters()
 
@@ -201,59 +196,18 @@ class Experiment(object):
 
 
     #---
-    def set_lab_pathnames(self):
+    def set_expt_pathnames(self):
 
         # Local "control" path
         self.control_path = self.config.get('control', os.getcwd())
 
-        # Top-level "short term storage" path
-        default_short_path = os.path.join('/short', os.environ.get('PROJECT'))
-        self.short_path = self.config.get('shortpath', default_short_path)
-
-        default_user = pwd.getpwuid(os.getuid()).pw_name
-
-        # Laboratory path
-
-        if not self.lab_name:
-            self.lab_name = self.config.get('laboratory', self.model_name)
-
-        # Construct the laboratory absolute path if necessary
-        if os.path.isabs(self.lab_name):
-            self.lab_path = self.lab_name
-        else:
-            # Check under the default root path
-            user_name = self.config.get('user', default_user)
-            self.lab_path = os.path.join(self.short_path, user_name,
-                                         self.lab_name)
-
-        # Validate the path
-        if not os.path.isdir(self.lab_path):
-            sys.exit('payu: error: Laboratory path {} not found.'
-                     ''.format(self.lab_path))
-
-        # Executable "binary" path
-        self.bin_path = os.path.join(self.lab_path, 'bin')
-
-        # Laboratory input path
-        self.input_basepath = os.path.join(self.lab_path, 'input')
-
-        # Source code base path
-        self.codebase_path = os.path.join(self.lab_path, 'codebase')
-
-
-    #---
-    def set_expt_pathnames(self):
-
         # Experiment name
-        assert self.control_path
-        default_experiment = os.path.basename(self.control_path)
-        self.experiment = self.config.get('experiment', default_experiment)
+        expt_name = self.config.get('experiment',
+                                    os.path.basename(self.control_path))
 
         # Experiment subdirectories
-        assert self.lab_path
-        self.archive_path = os.path.join(self.lab_path, 'archive',
-                                         self.experiment)
-        self.work_path = os.path.join(self.lab_path, 'work', self.experiment)
+        self.archive_path = os.path.join(self.lab.archive_path, expt_name)
+        self.work_path = os.path.join(self.lab.work_path, expt_name)
 
         # Symbolic link paths to output
         self.work_sym_path = os.path.join(self.control_path, 'work')
@@ -303,12 +257,6 @@ class Experiment(object):
     #---
     def init(self):
         # TODO: The name `init` is too generic
-
-        assert self.lab_path
-        mkdir_p(self.lab_path)
-
-        assert self.input_basepath
-        mkdir_p(self.input_basepath)
 
         # Check out source code
         self.get_codebase()

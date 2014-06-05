@@ -29,11 +29,11 @@ class Laboratory(object):
         os.umask(perms)
 
         # Attach inputs
-        self.config = read_config(config_path)
+        config = read_config(config_path)
 
         # Set model type
         if not model_type:
-            model_type = self.config.get('model')
+            model_type = config.get('model')
 
         if not model_type:
             raise ValueError('Cannot determine model type.')
@@ -42,19 +42,20 @@ class Laboratory(object):
 
         # Set top-level lab path if provided
         if lab_path:
-            self.lab_path = lab_path
+            self.basepath = lab_path
         else:
-            self.lab_path = self.config.get('laboratory')
+            self.basepath = config.get('laboratory')
 
         # If no lab path is set, generate a default path
-        if not self.lab_path:
-            self.lab_path = self.get_default_lab_path()
+        if not self.basepath:
+            self.basepath = self.get_default_lab_path(config)
 
         # Set subdirectory paths
-        self.archive_path = os.path.join(self.lab_path, 'archive')
-        self.bin_path = os.path.join(self.lab_path, 'bin')
-        self.input_basepath = os.path.join(self.lab_path, 'input')
-        self.codebase_path = os.path.join(self.lab_path, 'codebase')
+        self.archive_path = os.path.join(self.basepath, 'archive')
+        self.bin_path = os.path.join(self.basepath, 'bin')
+        self.codebase_path = os.path.join(self.basepath, 'codebase')
+        self.input_basepath = os.path.join(self.basepath, 'input')
+        self.work_path = os.path.join(self.basepath, 'work')
 
         # Create laboratory directories
         mkdir_p(self.archive_path)
@@ -64,20 +65,20 @@ class Laboratory(object):
 
 
     #---
-    def get_default_lab_path(self):
+    def get_default_lab_path(self, config):
         """Generate a default laboratory path based on user environment."""
 
         # Default path settings
         default_short_path = os.path.join('/short', os.environ.get('PROJECT'))
         default_user = pwd.getpwuid(os.getuid()).pw_name
 
-        short_path = self.config.get('shortpath', default_short_path)
-        lab_name = self.config.get('laboratory', self.model_type)
+        short_path = config.get('shortpath', default_short_path)
+        lab_name = config.get('laboratory', self.model_type)
 
         if os.path.isabs(lab_name):
             lab_path = lab_name
         else:
-            user_name = self.config.get('user', default_user)
+            user_name = config.get('user', default_user)
             lab_path = os.path.join(short_path, user_name, lab_name)
 
         return lab_path
