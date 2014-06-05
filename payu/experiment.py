@@ -28,7 +28,7 @@ import yaml
 
 # Local
 from payu import envmod
-from payu.fsops import mkdir_p, make_symlink
+from payu.fsops import mkdir_p, make_symlink, read_config
 from payu.modelindex import index as model_index
 
 # Environment module support on vayu
@@ -37,7 +37,6 @@ core_modules = ['python', 'payu']
 
 # Default payu parameters
 default_archive_url = 'dc.nci.org.au'
-default_config_fname = 'config.yaml'
 default_restart_freq = 5
 
 #==============================================================================
@@ -56,7 +55,7 @@ class Experiment(object):
         self.modules = set()
 
         # TODO: __init__ should not be a config dumping ground!
-        self.read_config()
+        self.config = read_config()
 
         # Set stacksize
         # NOTE: Possible PBS issue in setting non-unlimited stacksizes
@@ -88,21 +87,6 @@ class Experiment(object):
         init_script = self.userscripts.get('init')
         if init_script:
             self.run_userscript(init_script)
-
-
-    #---
-    def read_config(self):
-        # TODO: Parse the PAYU_CONFIGPATH envar
-        config_fname = default_config_fname
-
-        try:
-            with open(config_fname, 'r') as config_file:
-                self.config = yaml.load(config_file)
-        except IOError as exc:
-            if exc.errno == errno.ENOENT:
-                self.config = {}
-            else:
-                raise
 
 
     #---

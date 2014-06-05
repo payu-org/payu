@@ -2,7 +2,7 @@
 
 # Local
 import args
-from payu.experiment import Experiment
+from payu.laboratory import Laboratory
 
 # Configuration
 title = 'init'
@@ -12,5 +12,5 @@ arguments = [args.model, args.config, args.laboratory]
 
 def runcmd(model_type, config_path, lab_name):
 
-    expt = Experiment(lab_name)
-    expt.init()
+    lab = Laboratory(model_type, config_path)
+    lab.init()
