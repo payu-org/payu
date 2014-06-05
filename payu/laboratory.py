@@ -44,27 +44,23 @@ class Laboratory(object):
         if lab_path:
             self.lab_path = lab_path
         else:
-            self.lab_path = None
-
-        # Create placeholders for lab subdirectories
-        self.archive_path = None
-        self.bin_path = None
-        self.input_basepath = None
-        self.codebase_path = None
-
-
-    #---
-    def set_lab_pathnames(self):
-        """Determine laboratory directory pathnames."""
+            self.lab_path = self.config.get('laboratory')
 
         # If no lab path is set, generate a default path
         if not self.lab_path:
             self.lab_path = self.get_default_lab_path()
 
+        # Set subdirectory paths
         self.archive_path = os.path.join(self.lab_path, 'archive')
         self.bin_path = os.path.join(self.lab_path, 'bin')
         self.input_basepath = os.path.join(self.lab_path, 'input')
         self.codebase_path = os.path.join(self.lab_path, 'codebase')
+
+        # Create laboratory directories
+        mkdir_p(self.archive_path)
+        mkdir_p(self.bin_path)
+        mkdir_p(self.codebase_path)
+        mkdir_p(self.input_basepath)
 
 
     #---
@@ -85,15 +81,3 @@ class Laboratory(object):
             lab_path = os.path.join(short_path, user_name, lab_name)
 
         return lab_path
-
-
-    #---
-    def init(self):
-        """Get laboratory pathnames and create subdirectories."""
-
-        self.set_lab_pathnames()
-
-        mkdir_p(self.archive_path)
-        mkdir_p(self.bin_path)
-        mkdir_p(self.codebase_path)
-        mkdir_p(self.input_basepath)

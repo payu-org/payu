@@ -1,12 +1,10 @@
-# coding: utf-8
-"""
-Payu: A generic driver for numerical models on the NCI computing clusters
--------------------------------------------------------------------------------
-Contact: Marshall Ward <marshall.ward@anu.edu.au>
--------------------------------------------------------------------------------
-Distributed as part of Payu, Copyright 2011 Marshall Ward
-Licensed under the Apache License, Version 2.0
-http://www.apache.org/licenses/LICENSE-2.0
+"""payu.experiment
+   ===============
+
+   Interface to an individual experiment managed by payu
+
+   :copyright: Copyright 2011-2014 Marshall Ward, see AUTHORS for details.
+   :license: Apache License, Version 2.0, see LICENSE for details.
 """
 
 # Python3 preparation
@@ -43,9 +41,9 @@ default_restart_freq = 5
 class Experiment(object):
 
     #---
-    def __init__(self, lab_name=None):
+    def __init__(self, lab=None):
 
-        self.lab_name = lab_name
+        self.lab = lab
 
         # Disable group write access and all public access
         perms = 0o0027
@@ -266,8 +264,8 @@ class Experiment(object):
 
         # Stream output filenames
         # TODO: per-model output streams?
-        self.stdout_fname = self.lab_name + '.out'
-        self.stderr_fname = self.lab_name + '.err'
+        self.stdout_fname = self.lab.model_type + '.out'
+        self.stderr_fname = self.lab.model_type + '.err'
 
 
     #---
