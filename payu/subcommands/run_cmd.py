@@ -15,7 +15,7 @@ parameters = {'description': 'Run the model experiment'}
 
 arguments = [args.config, args.initial, args.nruns, args.laboratory]
 
-def runcmd(config_path, init_run, n_runs, lab_name):
+def runcmd(config_path, init_run, n_runs, lab_path):
 
     # Get job submission configuration
     pbs_config = cli.get_config(config_path)
@@ -76,7 +76,7 @@ def runscript():
 
     args = parser.parse_args()
 
-    expt = Experiment(args.lab_name)
+    expt = Experiment(args.lab_path)
     expt.setup()
     expt.run()
     expt.archive()

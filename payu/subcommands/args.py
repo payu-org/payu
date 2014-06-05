@@ -50,10 +50,10 @@ nruns = {'flags':
 
 # Laboratory path
 laboratory = {'flags':
-                ('--laboratory', '-l'),
+                ('--laboratory', '--lab', '-l'),
                 'parameters':
                     {'action':  'store',
-                     'dest':    'lab_name',
+                     'dest':    'lab_path',
                      'default': None,
                      'help':    'The laboratory, this will over-ride the \
                                  value given in config.yaml',

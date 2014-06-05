@@ -17,7 +17,7 @@ arguments = [args.model, args.config, args.initial, args.nruns, args.laboratory]
 
 
 #---
-def runcmd(model_type, config_path, init_run, n_runs, lab_name):
+def runcmd(model_type, config_path, init_run, n_runs, lab_path):
 
     pbs_config = cli.get_config(config_path)
     pbs_vars = cli.get_env_vars(init_run, n_runs)
@@ -69,7 +69,7 @@ def runscript():
     for var in pbs_vars:
         os.environ[var] = str(pbs_vars[var])
 
-    expt = Experiment(run_args['lab_name'])
+    expt = Experiment(run_args['lab_path'])
     expt.collate()
 
     if expt.postscript:

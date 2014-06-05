@@ -32,7 +32,7 @@ def mkdir_p(path):
 
 
 #---
-def read_config(self, config_fname=None):
+def read_config(config_fname=None):
 
     if not config_fname:
         config_fname = DEFAULT_CONFIG_FNAME
