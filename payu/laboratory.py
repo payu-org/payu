@@ -57,12 +57,6 @@ class Laboratory(object):
         self.input_basepath = os.path.join(self.basepath, 'input')
         self.work_path = os.path.join(self.basepath, 'work')
 
-        # Create laboratory directories
-        mkdir_p(self.archive_path)
-        mkdir_p(self.bin_path)
-        mkdir_p(self.codebase_path)
-        mkdir_p(self.input_basepath)
-
 
     #---
     def get_default_lab_path(self, config):
@@ -82,3 +76,14 @@ class Laboratory(object):
             lab_path = os.path.join(short_path, user_name, lab_name)
 
         return lab_path
+
+
+    #---
+    def initialize(self):
+        """Create the laboratory directories."""
+
+        # Create laboratory directories
+        mkdir_p(self.archive_path)
+        mkdir_p(self.bin_path)
+        mkdir_p(self.codebase_path)
+        mkdir_p(self.input_basepath)
