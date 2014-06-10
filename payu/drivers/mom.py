@@ -17,6 +17,7 @@ import subprocess as sp
 import sys
 
 # Local
+import f90nml
 from payu.drivers.fms import Fms
 from payu.fsops import mkdir_p
 
@@ -85,6 +86,18 @@ class Mom(Fms):
         if use_core2iaf:
             self.core2iaf_setup()
 
+        # Set the runtime. 
+        if self.expt.runtime:
+            nml_path = os.path.join(self.work_path, 'input.nml')
+            nml = f90nml.read(nml_path)
+            ocean_solo_nml = nml['ocean_solo_nml']
+
+            ocean_solo_nml['years'] = self.expt.runtime['years']
+            ocean_solo_nml['months'] = self.expt.runtime['months']
+            ocean_solo_nml['days'] = self.expt.runtime['days']
+
+            f90nml.write(nml, nml_path + '~')
+            shutil.move(nml_path + '~', nml_path)
 
     #---
     def core2iaf_setup(self, core2iaf_path=None, driver_name=None):

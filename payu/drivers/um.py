@@ -24,6 +24,7 @@ import f90nml
 # Local
 from payu.fsops import mkdir_p, make_symlink
 from payu.modeldriver import Model
+import payu.calendar as cal
 
 class UnifiedModel(Model):
 
@@ -115,25 +116,21 @@ class UnifiedModel(Model):
 
             print(line, end='')
 
+
+        work_nml_path = os.path.join(self.work_path, 'namelists')
+        work_nml = f90nml.read(work_nml_path)
+
         # Modify namelists for a continuation run.
         if self.prior_output_path:
 
-            nml_path = os.path.join(self.prior_output_path, 'namelists')
-            nml = f90nml.read(nml_path)
+            prior_nml_path = os.path.join(self.prior_output_path, 'namelists')
+            prior_nml = f90nml.read(prior_nml_path)
 
-            runtime = um_time_to_time(nml['NLSTCALL']['RUN_RESUBMIT_INC'])
-            init_date = um_date_to_date(nml['NLSTCALL']['MODEL_BASIS_TIME'])
+            init_date = um_date_to_date(prior_nml['NLSTCALL']['MODEL_BASIS_TIME'])
+            runtime = um_time_to_time(prior_nml['NLSTCALL']['RUN_RESUBMIT_INC'])
 
-            new_init_date = init_date + runtime
-
-            nml_path = os.path.join(self.work_path, 'namelists')
-            nml = f90nml.read(nml_path)
-
-            nml['NLSTCALL']['MODEL_BASIS_TIME'] = date_to_um_date(new_init_date)
-            nml['NLSTCALL']['ANCIL_REFTIME'] = date_to_um_date(new_init_date)
-
-            f90nml.write(nml, nml_path + '~')
-            shutil.move(nml_path + '~', nml_path)
+            run_start_date = cal.date_plus_seconds(init_date, runtime,
+                                                   cal.GREGORIAN)
 
             # Tell CABLE that this is a continuation run.
             # FIXME: can't use f90nml here because it does not support '%'
@@ -142,6 +139,27 @@ class UnifiedModel(Model):
                 line = line.replace('cable_user%CABLE_RUNTIME_COUPLED = .FALSE.',
                                     'cable_user%CABLE_RUNTIME_COUPLED = .TRUE.')
                 print(line, end='')
+
+        else:
+            run_start_date = um_date_to_date(work_nml['NLSTCALL']['MODEL_BASIS_TIME'])
+
+        # Set the runtime for this run. 
+        if self.expt.runtime:
+            run_runtime = runtime_from_date(run_start_date, 
+                                            self.expt.runtime['years'],
+                                            self.expt.runtime['months'],
+                                            self.expt.runtime['days'], 
+                                            cal.GREGORIAN)
+        else:
+            run_runtime = um_time_to_time(work_nml['NLSTCALL']['RUN_RESUBMIT_INC'])
+ 
+        # Write out and save new calendar information. 
+        work_nml['NLSTCALL']['MODEL_BASIS_TIME'] = date_to_um_date(run_start_date)
+        work_nml['NLSTCALL']['ANCIL_REFTIME'] = date_to_um_date(run_start_date)
+        work_nml['NLSTCALL']['RUN_RESUBMIT_INC'] = time_to_um_time(run_runtime)
+
+        f90nml.write(work_nml, work_nml_path + '~')
+        shutil.move(work_nml_path + '~', work_nml_path)
 
 
 #---
@@ -184,7 +202,7 @@ def um_date_to_date(d):
 #---
 def um_time_to_time(d):
     """
-    Convert a string with format 'year, month, day, hour, minute, second'
+    Convert a list with format [year, month, day, hour, minute, second]
     to a datetime timedelta object.
 
     Only days are supported.
@@ -193,3 +211,16 @@ def um_time_to_time(d):
     assert d[0] == 0 and d[1] == 0 and d[3] == 0 and d[4] == 0 and d[5] == 0
 
     return datetime.timedelta(days=d[2])
+
+def time_to_um_time(d):
+    """
+    Convert a datetime delta object to a list with format [year, month, day, hour,
+       minute, second]
+
+    Only days are supported.
+    """
+
+    seconds = d.total_seconds()
+    assert(seconds % 86400 == 0)
+
+    return [0, 0, seconds / 86400, 0, 0, 0]
