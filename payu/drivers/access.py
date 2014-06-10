@@ -91,14 +91,13 @@ class Access(Model):
 
                     # The total time in seconds since the beginning of
                     # the experiment.
-                    total_runtime = float(cpl_nml_grp[runtime0_key] +
+                    total_runtime = int(cpl_nml_grp[runtime0_key] +
                                           cpl_nml_grp['runtime'])
-                    total_runtime = datetime.timedelta(seconds=total_runtime)
                     run_start_date = cal.date_plus_seconds(init_date, total_runtime,
                                                            caltype)
 
                 else:
-                    total_runtime = datetime.timedelta(seconds=0)
+                    total_runtime = 0
                     run_start_date = init_date
 
                 # Get new runtime for this run. We get this from either the
@@ -114,7 +113,7 @@ class Access(Model):
 
                 # Now write out new run start date and total runtime.
                 cpl_nml[cpl_group]['inidate'] = cal.date_to_int(run_start_date)
-                cpl_nml[cpl_group][runtime0_key] = int(total_runtime.total_seconds())
+                cpl_nml[cpl_group][runtime0_key] = total_runtime
                 cpl_nml[cpl_group]['runtime'] = int(run_runtime)
 
                 if model.model_type == 'cice':

@@ -138,10 +138,10 @@ class Cice(Model):
             # The total time in seconds since the beginning of
             # the experiment.
             total_runtime = prior_setup_nml['istep0'] + prior_setup_nml['npt']
-            total_runtime = float(total_runtime * prior_setup_nml['dt'])
-            run_start_date = date_plus_seconds(init_date, total_runtime, caltype)
+            total_runtime = total_runtime * prior_setup_nml['dt']
+            run_start_date = cal.date_plus_seconds(init_date, total_runtime, caltype)
         else:
-            total_runtime = datetime.timedelta(seconds=0)
+            total_runtime = 0
             run_start_date = init_date
 
         # Set runtime for this run. 
@@ -157,7 +157,8 @@ class Cice(Model):
 
         # Now write out new run start date and total runtime.
         setup_nml['npt'] = run_runtime / setup_nml['dt']
-        setup_nml['istep0'] = int(total_runtime.total_seconds()) / setup_nml['dt']
+        assert(total_runtime % setup_nml['dt'] == 0)
+        setup_nml['istep0'] = int(total_runtime / setup_nml['dt'])
 
         nml_path = os.path.join(self.work_path, self.ice_nml_fname)
         f90nml.write(self.ice_nmls, nml_path + '~')
