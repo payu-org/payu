@@ -14,6 +14,10 @@ import os
 import re
 import shutil
 
+import yaml
+
+DEFAULT_CONFIG_FNAME = 'config.yaml'
+
 # Lustre target paths for symbolic paths cannot be 60 characters (yes, really)
 # Delete this once this bug in Lustre is fixed
 CHECK_LUSTRE_PATH_LEN = True
@@ -25,6 +29,24 @@ def mkdir_p(path):
     except OSError as ec:
         if ec.errno != errno.EEXIST:
             raise
+
+
+#---
+def read_config(config_fname=None):
+
+    if not config_fname:
+        config_fname = DEFAULT_CONFIG_FNAME
+
+    try:
+        with open(config_fname, 'r') as config_file:
+            config = yaml.load(config_file)
+    except IOError as exc:
+        if exc.errno == errno.ENOENT:
+            config = {}
+        else:
+            raise
+
+    return config
 
 
 #---

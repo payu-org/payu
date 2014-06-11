@@ -1,12 +1,10 @@
-# coding: utf-8
-"""
-Payu: A generic driver for numerical models on the NCI computing clusters
--------------------------------------------------------------------------------
-Contact: Marshall Ward <marshall.ward@anu.edu.au>
--------------------------------------------------------------------------------
-Distributed as part of Payu, Copyright 2011 Marshall Ward
-Licensed under the Apache License, Version 2.0
-http://www.apache.org/licenses/LICENSE-2.0
+"""payu.experiment
+   ===============
+
+   Interface to an individual experiment managed by payu
+
+   :copyright: Copyright 2011-2014 Marshall Ward, see AUTHORS for details.
+   :license: Apache License, Version 2.0, see LICENSE for details.
 """
 
 # Python3 preparation
@@ -28,7 +26,7 @@ import yaml
 
 # Local
 from payu import envmod
-from payu.fsops import mkdir_p, make_symlink
+from payu.fsops import mkdir_p, make_symlink, read_config
 from payu.modelindex import index as model_index
 
 # Environment module support on vayu
@@ -37,26 +35,21 @@ core_modules = ['python', 'payu']
 
 # Default payu parameters
 default_archive_url = 'dc.nci.org.au'
-default_config_fname = 'config.yaml'
 default_restart_freq = 5
 
 #==============================================================================
 class Experiment(object):
 
     #---
-    def __init__(self, lab_name=None):
+    def __init__(self, lab):
 
-        self.lab_name = lab_name
-
-        # Disable group write access and all public access
-        perms = 0o0027
-        os.umask(perms)
+        self.lab = lab
 
         # TODO: replace with dict, check versions via key-value pairs
         self.modules = set()
 
         # TODO: __init__ should not be a config dumping ground!
-        self.read_config()
+        self.config = read_config()
 
         # Set stacksize
         # NOTE: Possible PBS issue in setting non-unlimited stacksizes
@@ -68,7 +61,6 @@ class Experiment(object):
         self.init_models()
 
         # TODO: Move to run/collate/sweep?
-        self.set_lab_pathnames()
         self.set_expt_pathnames()
         self.set_counters()
 
@@ -88,21 +80,6 @@ class Experiment(object):
         init_script = self.userscripts.get('init')
         if init_script:
             self.run_userscript(init_script)
-
-
-    #---
-    def read_config(self):
-        # TODO: Parse the PAYU_CONFIGPATH envar
-        config_fname = default_config_fname
-
-        try:
-            with open(config_fname, 'r') as config_file:
-                self.config = yaml.load(config_file)
-        except IOError as exc:
-            if exc.errno == errno.ENOENT:
-                self.config = {}
-            else:
-                raise
 
 
     #---
@@ -219,59 +196,18 @@ class Experiment(object):
 
 
     #---
-    def set_lab_pathnames(self):
+    def set_expt_pathnames(self):
 
         # Local "control" path
         self.control_path = self.config.get('control', os.getcwd())
 
-        # Top-level "short term storage" path
-        default_short_path = os.path.join('/short', os.environ.get('PROJECT'))
-        self.short_path = self.config.get('shortpath', default_short_path)
-
-        default_user = pwd.getpwuid(os.getuid()).pw_name
-
-        # Laboratory path
-
-        if not self.lab_name:
-            self.lab_name = self.config.get('laboratory', self.model_name)
-
-        # Construct the laboratory absolute path if necessary
-        if os.path.isabs(self.lab_name):
-            self.lab_path = self.lab_name
-        else:
-            # Check under the default root path
-            user_name = self.config.get('user', default_user)
-            self.lab_path = os.path.join(self.short_path, user_name,
-                                         self.lab_name)
-
-        # Validate the path
-        if not os.path.isdir(self.lab_path):
-            sys.exit('payu: error: Laboratory path {} not found.'
-                     ''.format(self.lab_path))
-
-        # Executable "binary" path
-        self.bin_path = os.path.join(self.lab_path, 'bin')
-
-        # Laboratory input path
-        self.input_basepath = os.path.join(self.lab_path, 'input')
-
-        # Source code base path
-        self.codebase_path = os.path.join(self.lab_path, 'codebase')
-
-
-    #---
-    def set_expt_pathnames(self):
-
         # Experiment name
-        assert self.control_path
-        default_experiment = os.path.basename(self.control_path)
-        self.experiment = self.config.get('experiment', default_experiment)
+        expt_name = self.config.get('experiment',
+                                    os.path.basename(self.control_path))
 
         # Experiment subdirectories
-        assert self.lab_path
-        self.archive_path = os.path.join(self.lab_path, 'archive',
-                                         self.experiment)
-        self.work_path = os.path.join(self.lab_path, 'work', self.experiment)
+        self.archive_path = os.path.join(self.lab.archive_path, expt_name)
+        self.work_path = os.path.join(self.lab.work_path, expt_name)
 
         # Symbolic link paths to output
         self.work_sym_path = os.path.join(self.control_path, 'work')
@@ -282,8 +218,8 @@ class Experiment(object):
 
         # Stream output filenames
         # TODO: per-model output streams?
-        self.stdout_fname = self.lab_name + '.out'
-        self.stderr_fname = self.lab_name + '.err'
+        self.stdout_fname = self.lab.model_type + '.out'
+        self.stderr_fname = self.lab.model_type + '.err'
 
 
     #---
@@ -321,12 +257,6 @@ class Experiment(object):
     #---
     def init(self):
         # TODO: The name `init` is too generic
-
-        assert self.lab_path
-        mkdir_p(self.lab_path)
-
-        assert self.input_basepath
-        mkdir_p(self.input_basepath)
 
         # Check out source code
         self.get_codebase()

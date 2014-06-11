@@ -63,15 +63,15 @@ class Model(object):
     def set_model_pathnames(self):
 
         self.control_path = self.expt.control_path
-        self.input_basepath = self.expt.input_basepath
+        self.input_basepath = self.expt.lab.input_basepath
         self.work_path = self.expt.work_path
-        self.codebase_path = os.path.join(self.expt.lab_path, 'codebase',
-                                          self.name)
+        self.codebase_path = self.expt.lab.codebase_path
 
         if len(self.expt.models) > 1:
 
             self.control_path = os.path.join(self.control_path, self.name)
             self.work_path = os.path.join(self.work_path, self.name)
+            self.codebase_path = os.path.join(self.codebase_path, self.name)
 
         # NOTE: Individual models may override the work subdirectories
         self.work_input_path = self.work_path
@@ -81,7 +81,8 @@ class Model(object):
 
         self.exec_name = self.config.get('exe', self.default_exec)
         if self.exec_name:
-            self.exec_path = os.path.join(self.expt.bin_path, self.exec_name)
+            self.exec_path = os.path.join(self.expt.lab.bin_path,
+                                          self.exec_name)
         else:
             self.exec_path = None
 
