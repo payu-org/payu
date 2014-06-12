@@ -38,7 +38,7 @@ def runtime_from_date(start_date, years, months, days, caltype):
 
 def date_plus_seconds(init_date, seconds, caltype):
     """
-    Get a new_date = date + days.
+    Get a new_date = date + seconds.
 
     Ignores Feb 29 for no-leap days. 
     """

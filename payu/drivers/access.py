@@ -123,11 +123,12 @@ class Access(Model):
                 f90nml.write(cpl_nml, nml_work_path + '~')
                 shutil.move(nml_work_path + '~', nml_work_path)
 
-        # Now change the oasis runtime. These needs to be done after the others. 
+        # Now change the oasis runtime. This needs to be done after the others. 
         for model in self.expt.models:
             if model.model_type == 'oasis':
                 namcouple = os.path.join(model.work_path, 'namcouple')
 
+                s = ''
                 with open(namcouple, 'r+') as f:
                     s = f.read()
                     m = re.search(r"^[ \t]*\$RUNTIME.*?^[ \t]*(\d+)", s,
@@ -135,7 +136,7 @@ class Access(Model):
                     assert(m is not None)
                     s = s[:m.start(1)] + str(run_runtime) + s[m.end(1):]
 
-                    f.seek(0)
+                with open(namcouple, 'w') as f:
                     f.write(s)
 
     #---
