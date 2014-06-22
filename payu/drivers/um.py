@@ -13,9 +13,7 @@ from __future__ import print_function
 
 # Standard Library
 import datetime
-import errno
 import fileinput
-import glob
 import imp
 import os
 import shutil
@@ -50,10 +48,13 @@ class UnifiedModel(Model):
 
         self.restart = 'restart_dump.astart'
 
+
+    #---
     def set_model_pathnames(self):
         super(UnifiedModel, self).set_model_pathnames()
 
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
+
 
     #---
     def archive(self):
@@ -73,9 +74,11 @@ class UnifiedModel(Model):
         f_dst = os.path.join(self.restart_path, self.restart)
         shutil.copy(restart_dump, f_dst)
 
+
     #---
     def collate(self):
         pass
+
 
     #---
     def setup(self):
@@ -141,6 +144,7 @@ class UnifiedModel(Model):
                 print(line, end='')
 
 
+#---
 def date_to_um_dump_date(date):
     """
     Convert a time date object to a um dump format date which is yymd0
@@ -150,18 +154,12 @@ def date_to_um_dump_date(date):
     """
 
     assert(date.month <= 12)
-
-    month = str(date.month)
-    if date.month == 10:
-        month = 'a'
-    elif date.month == 11:
-        month = 'b'
-    elif date.month == 12:
-        month = 'c'
+    month = hex(date.month)[2:]
 
     return (str(date.year).zfill(2) + month + str(date.day) + str(0))
 
 
+#---
 def date_to_um_date(date):
     """
     Convert a date object to 'year, month, day, hour, minute, second.'
@@ -171,6 +169,8 @@ def date_to_um_date(date):
 
     return [date.year, date.month, date.day, 0, 0, 0]
 
+
+#---
 def um_date_to_date(d):
     """
     Convert a string with format 'year, month, day, hour, minute, second'
@@ -180,6 +180,8 @@ def um_date_to_date(d):
     return datetime.datetime(year=d[0], month=d[1], day=d[2],
                              hour=d[3], minute=d[4], second=d[5])
 
+
+#---
 def um_time_to_time(d):
     """
     Convert a string with format 'year, month, day, hour, minute, second'

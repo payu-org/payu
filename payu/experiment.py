@@ -14,15 +14,11 @@ from __future__ import print_function
 import errno
 import getpass
 import os
-import pwd
 import resource
 import sys
 import shlex
 import shutil as sh
 import subprocess as sp
-
-# Extensions
-import yaml
 
 # Local
 from payu import envmod
@@ -115,7 +111,7 @@ class Experiment(object):
         if self.model_name:
             ModelType = model_index[self.model_name]
             model_config = {f: self.config[f] for f in model_fields
-                               if f in self.config}
+                            if f in self.config}
             self.model = ModelType(self, self.model_name, model_config)
         else:
             self.model = None
@@ -442,7 +438,7 @@ class Experiment(object):
             i_s = self.counter - restart_freq
             i_e = self.counter - 1
             prior_restart_dirs = ('restart{:03}'.format(i)
-                                    for i in range(i_s, i_e))
+                                  for i in range(i_s, i_e))
 
             for restart_dirname in prior_restart_dirs:
                 restart_path = os.path.join(self.archive_path, restart_dirname)
@@ -505,8 +501,8 @@ class Experiment(object):
                                             path=remote_path)
 
         # Rsync ouput and restart files
-        rsync_cmd = 'rsync -a --safe-links -e "ssh -i {key}" '.format(
-                        key=ssh_key_path)
+        rsync_cmd = ('rsync -a --safe-links -e "ssh -i {}" '
+                     ''.format(ssh_key_path))
 
         if rsync_protocol:
             rsync_cmd += '--protocol={} '.format(rsync_protocol)
@@ -519,12 +515,10 @@ class Experiment(object):
             # Tar restart files before rsyncing
             restart_tar_path = self.restart_path + '.tar.gz'
 
-            cmd = 'tar -C {path} -czf {fpath} {res}'.format(
-                        path=self.archive_path,
-                        fpath=restart_tar_path,
-                        res=os.path.basename(self.restart_path)
-                        ).split()
-            rc = sp.Popen(cmd).wait()
+            cmd = ('tar -C {} -czf {} {}'
+                   ''.format(self.archive_path, restart_tar_path,
+                             os.path.basename(self.restart_path)))
+            sp.check_call(shlex.split(cmd))
 
             restart_cmd = ('{} {} {}'
                            ''.format(rsync_cmd, restart_tar_path, remote_url))

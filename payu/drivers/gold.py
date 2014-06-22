@@ -11,12 +11,15 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 # Standard library
 import os
-import shutil
+
+# Extensions
+import f90nml
 
 # Local
 from payu.drivers.fms import Fms
 
 class Gold(Fms):
+    """Interface to GFDL's GOLD ocean model."""
 
     #---
     def __init__(self, expt, name, config):
@@ -42,23 +45,16 @@ class Gold(Fms):
         # FMS initialisation
         super(Gold, self).setup()
 
-        # GOLD-specific initialisation
-        if self.expt.counter == 0:
-            self.init_config()
+        self.init_config()
 
 
     #---
     def init_config(self):
-        input_filepath = os.path.join(self.work_path, 'input.nml')
-        temp_filepath = ''.join([input_filepath, '~'])
+        """Patch input.nml as a new or restart run."""
 
-        input_file = open(input_filepath)
-        temp_file = open(temp_filepath, 'w')
+        input_fpath = os.path.join(self.work_path, 'input.nml')
 
-        for line in input_file:
-            temp_file.write(line.replace("input_filename = 'r'",
-                                         "input_filename = 'n'"))
+        input_nml = f90nml.read(input_fpath)
+        input_nml['input_filename'] = 'n' if self.expt.counter == 0 else 'r'
 
-        input_file.close()
-        temp_file.close()
-        shutil.move(temp_filepath, input_filepath)
+        f90nml.write(input_nml, input_fpath, force=True)
