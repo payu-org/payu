@@ -153,7 +153,7 @@ class Cice(Model):
                                                 caltype)
 
         else:
-            run_runtime = setup_nml['ntp']*setup_nml['dt']
+            run_runtime = setup_nml['npt']*setup_nml['dt']
 
         # Now write out new run start date and total runtime.
         setup_nml['npt'] = run_runtime / setup_nml['dt']
