@@ -17,7 +17,7 @@ parameters = {'description': 'Run the model experiment'}
 arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory]
 
-def runcmd(config_path, init_run, n_runs, lab_path):
+def runcmd(model_type, config_path, init_run, n_runs, lab_path):
 
     # Get job submission configuration
     pbs_config = cli.get_config(config_path)

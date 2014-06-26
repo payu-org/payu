@@ -55,6 +55,8 @@ class Gold(Fms):
         input_fpath = os.path.join(self.work_path, 'input.nml')
 
         input_nml = f90nml.read(input_fpath)
-        input_nml['input_filename'] = 'n' if self.expt.counter == 0 else 'r'
+
+        input_type = 'n' if self.expt.counter == 0 else 'r'
+        input_nml['GOLD_input_nml']['input_filename'] = input_type
 
         f90nml.write(input_nml, input_fpath, force=True)

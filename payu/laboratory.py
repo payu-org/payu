@@ -24,12 +24,12 @@ class Laboratory(object):
 
     def __init__(self, model_type=None, config_path=None, lab_path=None):
 
-        # Disable group write access and all public access
-        perms = 0o0027
-        os.umask(perms)
-
         # Attach inputs
         config = read_config(config_path)
+
+        # Set the file permission mask
+        perms = config.get('umask', 0o0027)
+        os.umask(perms)
 
         # Set model type
         if not model_type:
