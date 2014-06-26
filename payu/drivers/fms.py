@@ -63,9 +63,9 @@ class Fms(Model):
 
         # Locate the FMS collation tool
         mppnc_path = None
-        for f in os.listdir(self.expt.bin_path):
+        for f in os.listdir(self.expt.lab.bin_path):
             if f.startswith('mppnccombine'):
-                mppnc_path = os.path.join(self.expt.bin_path, f)
+                mppnc_path = os.path.join(self.expt.lab.bin_path, f)
                 break
         assert mppnc_path
 

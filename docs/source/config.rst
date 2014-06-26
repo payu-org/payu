@@ -70,6 +70,13 @@ These settings are primarily used by the PBS scheduler.
 ``priority``
    Job priority setting. Equivalent to ``qsub -p PRIORITY``.
 
+``umask`` (*Default: 027*)
+   Default permission mask ("umask") for new files created during model
+   execution. Nonzero values will disable specific permissions, following
+   standard octal notation.
+
+   The first digit should be a zero when using standard octal format.
+
 ``qsub_flags``
    This is a generic configuration marker for any unsupported qsub flags. This
    setting is applied to any ``qsub`` calls.
