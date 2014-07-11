@@ -44,7 +44,7 @@ class Access(Model):
 
                 model.ice_nml_fname = 'cice_in.nml'
 
-                model.access_restarts = ['u_star.nc', 'sicemass.nc']
+                model.access_restarts = ['u_star.nc', 'sicemass.nc', 'mice.nc']
 
     #---
     def setup(self):
