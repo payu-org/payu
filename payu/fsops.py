@@ -81,6 +81,16 @@ def make_symlink(src_path, lnk_path):
 
 
 #---
+def splitpath(path):
+
+    head, tail = os.path.split(path)
+    if tail == '':
+        return head,
+
+    return splitpath(head) + (tail, )
+
+
+#---
 def patch_lustre_path(f_path):
     """Patch any 60-character pathnames, to avoid a current Lustre bug."""
 

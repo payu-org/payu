@@ -50,3 +50,22 @@ def module(command, *args):
     envs, _ = subprocess.Popen(shlex.split(cmd),
                                stdout=subprocess.PIPE).communicate()
     exec(envs)
+
+
+def modfix(bin_path, lib_name):
+    # Local import to avoid reversion interference
+    from payu import fsops
+
+    # TODO: Use objdump instead of ldd
+    cmd = 'ldd {}'.format(bin_path)
+    slibs = subprocess.check_output(shlex.split(cmd)).split('\n')
+
+    for lib_entry in slibs:
+        if lib_name in lib_entry:
+            lib_path = lib_entry.split()[2]
+
+            mod_name, mod_version = fsops.splitpath(lib_path)[2:4]
+
+            module('unload', mod_name)
+            module('load', os.path.join(mod_name, mod_version))
+            break

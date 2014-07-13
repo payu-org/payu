@@ -182,10 +182,16 @@ class Experiment(object):
         for mod in self.modules:
             envmod.module('load', mod)
 
-        # TODO: Improved ipm support
+        # TODO: Consolidate this profiling stuff
         if self.config.get('ipm', False):
             envmod.module('load', 'ipm/2.0.2')
             os.environ['IPM_LOGDIR'] = self.work_path
+
+        if self.config.get('mpiP', False):
+            envmod.module('load', 'mpiP')
+
+        if self.config.get('hpctoolkit', False):
+            envmod.module('load', 'hpctoolkit')
 
         if self.debug:
             envmod.module('load', 'totalview')
@@ -310,10 +316,10 @@ class Experiment(object):
         f_out = open(self.stdout_fname, 'w')
         f_err = open(self.stderr_fname, 'w')
 
-        # Set OMPI environment variables
-        ompi_env = self.config.get('ompi', {})
-        for env in ompi_env:
-            os.environ[env] = ompi_env[env]
+        # Set MPI environment variables
+        env = self.config.get('env', {})
+        for var in env:
+            os.environ[var] = env[var]
 
         mpirun_cmd = 'mpirun'
 
@@ -328,12 +334,19 @@ class Experiment(object):
         if self.debug:
             mpi_flags.append('--debug')
 
+        gprof = self.config.get('gprof', False)
+
         mpi_progs = []
         for model in self.models:
 
             # Skip models without executables (e.g. couplers)
             if not model.exec_path:
                 continue
+
+            # Update MPI library module
+            # TODO: Check for MPI library mismatch across multiple binaries
+            # TODO: Someday use this to update all modules
+            envmod.modfix(model.exec_path, 'libmpi.so')
 
             model_prog = []
 
@@ -351,6 +364,14 @@ class Experiment(object):
                     npernode_flag = '-npernode {}'.format(model_npernode)
                 model_prog.append(npernode_flag)
 
+            if self.config.get('hpctoolkit', False):
+                os.environ['HPCRUN_EVENT_LIST'] = 'WALLCLOCK@5000'
+                model_prog.append('hpcrun')
+
+            # TODO: This is too NCI-specific, let's add our own script
+            if gprof:
+                model_prog.append('/apps/pgprof/parallel_gprof')
+
             model_prog.append(model.exec_path)
 
             mpi_progs.append(' '.join(model_prog))
@@ -359,16 +380,15 @@ class Experiment(object):
                                 ' '.join(mpi_flags),
                                 ' : '.join(mpi_progs))
 
-        # I could merge these, but I am nervous about passing all of os.environ
-        if ompi_env:
+        if env:
+            # TODO: Replace with mpirun -x flag inputs
             proc = sp.Popen(shlex.split(cmd), stdout=f_out, stderr=f_err,
-                            env=os.environ)
+                            env=os.environ.copy())
             proc.wait()
             rc = proc.returncode
         else:
             rc = sp.call(shlex.split(cmd), stdout=f_out, stderr=f_err)
 
-        # Export any OMPI variables, in case we are running though a script
         f_out.close()
         f_err.close()
 
@@ -377,6 +397,19 @@ class Experiment(object):
             fpath = os.path.join(self.work_path, fname)
             if os.path.getsize(fpath) == 0:
                 os.remove(fpath)
+
+        # Store any profiling logs
+        if gprof:
+            gmon_dir = os.path.join(model.work_path, 'gmon')
+            mkdir_p(gmon_dir)
+
+            gmon_fnames = [f for f in os.listdir(model.work_path)
+                           if f.startswith('gmon.out')]
+
+            for gmon in gmon_fnames:
+                f_src = os.path.join(model.work_path, gmon)
+                f_dst = os.path.join(gmon_dir, gmon)
+                sh.move(f_src, f_dst)
 
         # TODO: Need a model-specific cleanup method call here
         if rc != 0:
