@@ -171,21 +171,35 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
     pbs_queue = pbs_config.get('queue', 'normal')
     pbs_flags.append('-q {}'.format(pbs_queue))
 
-    # Raijin doesn't read $PROJECT, which is required at login
     pbs_project = pbs_config.get('project', os.environ['PROJECT'])
     pbs_flags.append('-P {}'.format(pbs_project))
 
-    pbs_walltime = pbs_config.get('walltime')
-    if pbs_walltime:
-        pbs_flags.append('-l walltime={}'.format(pbs_walltime))
+    pbs_resources = ['walltime', 'ncpus', 'mem', 'jobfs']
 
-    pbs_ncpus = pbs_config.get('ncpus')
-    if pbs_ncpus:
-        pbs_flags.append('-l ncpus={}'.format(pbs_ncpus))
+    for res_key in pbs_resources:
+        res_flags = []
+        res_val = pbs_config.get(res_key)
+        if res_val:
+            res_flags.append('{}={}'.format(res_key, res_val))
 
-    pbs_mem = pbs_config.get('mem')
-    if pbs_mem:
-        pbs_flags.append('-l mem={}'.format(pbs_mem))
+        if res_flags:
+            pbs_flags.append('-l {}'.format(','.join(res_flags)))
+
+    #pbs_walltime = pbs_config.get('walltime')
+    #if pbs_walltime:
+    #    pbs_flags.append('-l walltime={}'.format(pbs_walltime))
+
+    #pbs_ncpus = pbs_config.get('ncpus')
+    #if pbs_ncpus:
+    #    pbs_flags.append('-l ncpus={}'.format(pbs_ncpus))
+
+    #pbs_mem = pbs_config.get('mem')
+    #if pbs_mem:
+    #    pbs_flags.append('-l mem={}'.format(pbs_mem))
+
+    #pbs_jobfs = pbs_config.get('jobfs')
+    #if pbs_mem:
+    #    pbs_flags.append('-l jobfs={}'.format(pbs_mem))
 
     pbs_jobname = pbs_config.get('jobname')
     if pbs_jobname:
