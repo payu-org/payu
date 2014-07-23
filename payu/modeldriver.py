@@ -267,9 +267,6 @@ class Model(object):
         assert self.repo_tag
         assert self.codebase_path
 
-        if os.path.isdir(self.codebase_path):
-            return
-
         try:
             self.repo_url = self.config['build']['repository']
         except KeyError:
@@ -282,12 +279,15 @@ class Model(object):
             if not self.repo_tag:
                 self.repo_tag = 'master'
 
-        cmd = 'git clone {} {}'.format(self.repo_url, self.codebase_path)
-        rc = sp.call(shlex.split(cmd))
-        assert rc == 0
+        if not os.path.exists(self.codebase_path):
+            cmd = 'git clone {} {}'.format(self.repo_url, self.codebase_path)
+            rc = sp.call(shlex.split(cmd))
+            assert rc == 0
 
         curdir = os.getcwd()
         os.chdir(self.codebase_path)
         rc = sp.call(shlex.split('git checkout {}'.format(self.repo_tag)))
+        assert rc == 0
+        rc = sp.call(shlex.split('git pull'))
         assert rc == 0
         os.chdir(curdir)
