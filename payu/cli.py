@@ -185,22 +185,6 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
         if res_flags:
             pbs_flags.append('-l {}'.format(','.join(res_flags)))
 
-    #pbs_walltime = pbs_config.get('walltime')
-    #if pbs_walltime:
-    #    pbs_flags.append('-l walltime={}'.format(pbs_walltime))
-
-    #pbs_ncpus = pbs_config.get('ncpus')
-    #if pbs_ncpus:
-    #    pbs_flags.append('-l ncpus={}'.format(pbs_ncpus))
-
-    #pbs_mem = pbs_config.get('mem')
-    #if pbs_mem:
-    #    pbs_flags.append('-l mem={}'.format(pbs_mem))
-
-    #pbs_jobfs = pbs_config.get('jobfs')
-    #if pbs_mem:
-    #    pbs_flags.append('-l jobfs={}'.format(pbs_mem))
-
     pbs_jobname = pbs_config.get('jobname')
     if pbs_jobname:
         # PBSPro has a 15-character jobname limit

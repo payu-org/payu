@@ -346,7 +346,7 @@ class Experiment(object):
             # Update MPI library module
             # TODO: Check for MPI library mismatch across multiple binaries
             # TODO: Someday use this to update all modules
-            envmod.modfix(model.exec_path, 'libmpi.so')
+            envmod.lib_update(model.exec_path, 'libmpi.so')
 
             model_prog = []
 
@@ -478,13 +478,13 @@ class Experiment(object):
                 cmd = 'rm -rf {}'.format(restart_path)
                 sp.check_call(shlex.split(cmd))
 
-        collate = self.config.get('collate', True)
-        if collate:
+        if self.config.get('collate', True):
             cmd = 'payu collate -i {}'.format(self.counter)
+            sp.check_call(shlex.split(cmd))
 
-            cmd = shlex.split(cmd)
-            rc = sp.Popen(cmd).wait()
-            assert rc == 0
+        if self.config.get('hpctoolkit', False):
+            cmd = 'payu profile -i {}'.format(self.counter)
+            sp.check_call(shlex.split(cmd))
 
         archive_script = self.userscripts.get('archive')
         if archive_script:
@@ -496,6 +496,12 @@ class Experiment(object):
 
         for model in self.models:
             model.collate()
+
+
+    #---
+    def profile(self):
+        for model in self.models:
+            model.profile()
 
 
     #---

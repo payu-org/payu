@@ -17,6 +17,7 @@ import sys
 import subprocess as sp
 
 # Local
+from payu import envmod
 from payu.fsops import make_symlink, mkdir_p
 
 class Model(object):
@@ -291,3 +292,39 @@ class Model(object):
         rc = sp.call(shlex.split('git pull'))
         assert rc == 0
         os.chdir(curdir)
+
+
+    #---
+    # TODO: Replace with call to "profile" drivers
+    def profile(self):
+
+        if self.expt.config.get('hpctoolkit'):
+
+            envmod.module('load', 'hpctoolkit')
+
+            # Create the code structure file
+            hpcstruct_fname = '{}.hpcstruct'.format(self.exec_name)
+            hpcstruct_path = os.path.join(self.expt.lab.bin_path,
+                                          hpcstruct_fname)
+
+            # TODO: Validate struct file
+            if not os.path.isfile(hpcstruct_path):
+                cmd = 'hpcstruct -o {} {}'.format(hpcstruct_path,
+                                                  self.exec_path)
+                sp.check_call(shlex.split(cmd))
+
+            # Parse the profile output
+            hpctk_header = 'hpctoolkit-{}-measurements'.format(self.exec_name)
+            hpctk_measure_dir = [os.path.join(self.output_path, f)
+                                 for f in os.listdir(self.output_path)
+                                 if f.startswith(hpctk_header)][0]
+
+            hpctk_db_dir = hpctk_measure_dir.replace('measurements',
+                                                     'database')
+
+            # TODO: This needs to be model-specifc
+            src_path = os.path.join(self.codebase_path, 'src')
+
+            cmd = 'hpcprof-mpi -S {} -I {} -o {} {}'.format(
+                    hpcstruct_path, src_path, hpctk_db_dir, hpctk_measure_dir)
+            sp.check_call(shlex.split(cmd))

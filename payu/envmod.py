@@ -52,7 +52,7 @@ def module(command, *args):
     exec(envs)
 
 
-def modfix(bin_path, lib_name):
+def lib_update(bin_path, lib_name):
     # Local import to avoid reversion interference
     from payu import fsops
 

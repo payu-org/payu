@@ -17,6 +17,9 @@ import shlex
 import shutil as sh
 import subprocess as sp
 
+# Extensions
+import f90nml
+
 # Local
 from payu.fsops import mkdir_p
 from payu.modeldriver import Model
