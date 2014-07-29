@@ -14,6 +14,7 @@ import datetime
 import errno
 import os
 import shutil
+import re
 
 # Extensions
 import f90nml
@@ -21,8 +22,7 @@ import f90nml
 # Local
 from payu.fsops import make_symlink
 from payu.modeldriver import Model
-
-NOLEAP, GREGORIAN = range(2)
+import payu.calendar as cal
 
 class Access(Model):
 
@@ -44,13 +44,16 @@ class Access(Model):
 
                 model.ice_nml_fname = 'cice_in.nml'
 
-                model.access_restarts = ['u_star.nc', 'sicemass.nc']
+                model.access_restarts = ['u_star.nc', 'sicemass.nc', 'mice.nc']
 
     #---
     def setup(self):
 
         cpl_keys = {'cice': ('input_ice.nml', 'coupling_nml', 'runtime0'),
                     'matm': ('input_atm.nml', 'coupling', 'truntime0')}
+
+        # Keep track of this in order to set the oasis runtime. 
+        run_runtime = 0
 
         for model in self.expt.models:
 
@@ -73,45 +76,45 @@ class Access(Model):
                 cpl_fpath = os.path.join(model.work_path, cpl_fname)
                 cpl_nml = f90nml.read(cpl_fpath)
 
+                # Which calendar are we using, noleap or Gregorian.
+                caltype = cpl_nml[cpl_group]['caltype']
+                init_date = cal.int_to_date(cpl_nml[cpl_group]['init_date'])
+
+                # Get time info about the beginning of this run. We're interested
+                # in: 1) start date of run, 2) total runtime of all previous runs.
                 if model.prior_output_path:
 
-                    # Calculate start date of the run, and update the total
-                    # experiment runtime.
                     prior_cpl_fpath = os.path.join(model.prior_output_path,
                                                    cpl_fname)
                     prior_cpl_nml = f90nml.read(prior_cpl_fpath)
                     cpl_nml_grp = prior_cpl_nml[cpl_group]
+
                     # The total time in seconds since the beginning of
                     # the experiment.
-                    exp_runtime = float(cpl_nml_grp[runtime0_key]
-                                     + cpl_nml_grp['runtime'])
-                    exp_runtime = datetime.timedelta(seconds=exp_runtime)
-
-                    # experiment start date.
-                    exp_init_date = int_to_date(prior_cpl_nml[cpl_group]['init_date'])
-                    # run start date.
-                    run_init_date = exp_init_date + exp_runtime
-
-                    # Skip ahead if using a NOLEAP calendar
-                    if cpl_nml_grp['caltype'] == NOLEAP:
-                        dt_leap = get_leapdays(exp_init_date,
-                                               exp_init_date + exp_runtime)
-                        run_init_date += dt_leap
+                    total_runtime = int(cpl_nml_grp[runtime0_key] +
+                                          cpl_nml_grp['runtime'])
+                    run_start_date = cal.date_plus_seconds(init_date, total_runtime,
+                                                           caltype)
 
                 else:
-                    run_init_date = int_to_date(cpl_nml[cpl_group]['init_date'])
-                    exp_runtime = datetime.timedelta(seconds=0)
+                    total_runtime = 0
+                    run_start_date = init_date
 
-                cpl_nml[cpl_group]['inidate'] = date_to_int(run_init_date)
-                cpl_nml[cpl_group][runtime0_key] = exp_runtime.total_seconds()
-
-                # If there is a leap day in this run then increase runtime.
-                if cpl_nml[cpl_group]['caltype'] == GREGORIAN:
+                # Get new runtime for this run. We get this from either the
+                # 'runtime' part of the payu config, or from the namelist
+                if self.expt.runtime:
+                    run_runtime = cal.runtime_from_date(run_start_date, 
+                                                        self.expt.runtime['years'],
+                                                        self.expt.runtime['months'],
+                                                        self.expt.runtime['days'], 
+                                                        caltype)
+                else:
                     run_runtime = cpl_nml[cpl_group]['runtime']
-                    leap_days = get_leapdays(run_init_date, run_init_date +
-                                             datetime.timedelta(seconds=run_runtime))
-                    run_runtime += (leap_days.total_seconds())
-                    cpl_nml[cpl_group]['runtime'] = int(run_runtime)
+
+                # Now write out new run start date and total runtime.
+                cpl_nml[cpl_group]['inidate'] = cal.date_to_int(run_start_date)
+                cpl_nml[cpl_group][runtime0_key] = total_runtime
+                cpl_nml[cpl_group]['runtime'] = int(run_runtime)
 
                 if model.model_type == 'cice':
                     cpl_nml[cpl_group]['jobnum'] = 1 + self.expt.counter
@@ -120,6 +123,21 @@ class Access(Model):
                 f90nml.write(cpl_nml, nml_work_path + '~')
                 shutil.move(nml_work_path + '~', nml_work_path)
 
+        # Now change the oasis runtime. This needs to be done after the others. 
+        for model in self.expt.models:
+            if model.model_type == 'oasis':
+                namcouple = os.path.join(model.work_path, 'namcouple')
+
+                s = ''
+                with open(namcouple, 'r+') as f:
+                    s = f.read()
+                    m = re.search(r"^[ \t]*\$RUNTIME.*?^[ \t]*(\d+)", s,
+                                  re.MULTILINE | re.DOTALL)
+                    assert(m is not None)
+                    s = s[:m.start(1)] + str(run_runtime) + s[m.end(1):]
+
+                with open(namcouple, 'w') as f:
+                    f.write(s)
 
     #---
     def archive(self):
@@ -135,54 +153,7 @@ class Access(Model):
                     if os.path.exists(f_src):
                         shutil.move(f_src, f_dst)
 
-
     #---
     def collate(self):
         raise NotImplementedError
 
-
-def int_to_date(date):
-    """
-    Convert an int of form yyyymmdd to a python date object.
-    """
-
-    year = date / 10**4
-    month = date % 10**4 / 10**2
-    day = date % 10**2
-
-    return datetime.date(year, month, day)
-
-def date_to_int(date):
-
-    return (date.year * 10**4 + date.month * 10**2 + date.day)
-
-
-def get_leapdays(init_date, final_date):
-    """
-    Find the number of leap days between arbitrary dates.
-
-    FIXME: calculate this instead of iterating.
-    """
-
-    curr_date = init_date
-    leap_days = 0
-
-    while curr_date != final_date:
-
-        if curr_date.month == 2 and curr_date.day == 29:
-            leap_days += 1
-
-        curr_date += datetime.timedelta(days=1)
-
-    return datetime.timedelta(days=leap_days)
-
-def calculate_leapdays(init_date, final_date):
-    """Currently unsupported, it only works for differences in years."""
-
-    leap_days = (final_date.year - 1) // 4 - (init_date.year - 1) // 4
-    leap_days -= (final_date.year - 1) // 100 - (init_date.year - 1) // 100
-    leap_days += (final_date.year - 1) // 400 - (init_date.year - 1) // 400
-
-    # TODO: Internal date correction (e.g. init_date is 1-March or later)
-
-    return datetime.timedelta(days=leap_days)

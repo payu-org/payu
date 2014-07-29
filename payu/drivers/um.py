@@ -18,12 +18,11 @@ import imp
 import os
 import shutil
 
-# Extensions
-import f90nml
-
 # Local
 from payu.fsops import mkdir_p, make_symlink
 from payu.modeldriver import Model
+from payu.fnamelist import FortranNamelist
+import payu.calendar as cal
 
 class UnifiedModel(Model):
 
@@ -63,9 +62,16 @@ class UnifiedModel(Model):
 
         # Need to figure out the end date of the model.
         nml_path = os.path.join(self.work_path, 'namelists')
-        nml = f90nml.read(nml_path)
-        runtime = um_time_to_time(nml['NLSTCALL']['RUN_RESUBMIT_INC'])
-        init_date = um_date_to_date(nml['NLSTCALL']['MODEL_BASIS_TIME'])
+        nml = FortranNamelist(nml_path)
+
+        resubmit_inc = nml.get_value('NLSTCALL','RUN_RESUBMIT_INC')
+        resubmit_inc = map(int, resubmit_inc.split(','))
+        runtime = um_time_to_time(resubmit_inc)
+        runtime = datetime.timedelta(seconds=runtime)
+
+        basis_time = nml.get_value('NLSTCALL','MODEL_BASIS_TIME')
+        basis_time = map(int, basis_time.split(','))
+        init_date = um_date_to_date(basis_time)
 
         end_date = date_to_um_dump_date(init_date + runtime)
 
@@ -115,33 +121,70 @@ class UnifiedModel(Model):
 
             print(line, end='')
 
+
+        # FIXME: The UM does some ugly things with namelists, e.g. it will
+        # repeat the same namelist (with different contents) multiple times
+        # in the same file and rely on file advancement to read it multiple
+        # times. At present f90nml doesn't have support for this so we use
+        # a regex search and replace approach.
+        work_nml_path = os.path.join(self.work_path, 'namelists')
+        work_nml = FortranNamelist(work_nml_path)
+
         # Modify namelists for a continuation run.
         if self.prior_output_path:
 
-            nml_path = os.path.join(self.prior_output_path, 'namelists')
-            nml = f90nml.read(nml_path)
+            prior_nml_path = os.path.join(self.prior_output_path, 'namelists')
+            prior_nml = FortranNamelist(prior_nml_path)
 
-            runtime = um_time_to_time(nml['NLSTCALL']['RUN_RESUBMIT_INC'])
-            init_date = um_date_to_date(nml['NLSTCALL']['MODEL_BASIS_TIME'])
+            basis_time = prior_nml.get_value('NLSTCALL', 'MODEL_BASIS_TIME')
+            basis_time = map(int, basis_time.split(','))
+            init_date = um_date_to_date(basis_time)
+            resubmit_inc = prior_nml.get_value('NLSTCALL', 'RUN_RESUBMIT_INC')
+            resubmit_inc = map(int, resubmit_inc.split(','))
+            runtime = um_time_to_time(resubmit_inc)
 
-            new_init_date = init_date + runtime
+            run_start_date = cal.date_plus_seconds(init_date,
+                                                   runtime,
+                                                   cal.GREGORIAN)
 
-            nml_path = os.path.join(self.work_path, 'namelists')
-            nml = f90nml.read(nml_path)
-
-            nml['NLSTCALL']['MODEL_BASIS_TIME'] = date_to_um_date(new_init_date)
-            nml['NLSTCALL']['ANCIL_REFTIME'] = date_to_um_date(new_init_date)
-
-            f90nml.write(nml, nml_path + '~')
-            shutil.move(nml_path + '~', nml_path)
+            # Write out and save new calendar information. 
+            run_start_date_um = date_to_um_date(run_start_date)
+            run_start_date_um = str(run_start_date_um)[1:-1]
+            work_nml.set_value('NLSTCALL', 'MODEL_BASIS_TIME',
+                               run_start_date_um)
+            work_nml.set_value('NLSTCALL', 'ANCIL_REFTIME',
+                               run_start_date_um)
 
             # Tell CABLE that this is a continuation run.
             # FIXME: can't use f90nml here because it does not support '%'
-            nml_path = os.path.join(self.work_path, 'cable.nml')
-            for line in fileinput.input(nml_path, inplace=True):
-                line = line.replace('cable_user%CABLE_RUNTIME_COUPLED = .FALSE.',
-                                    'cable_user%CABLE_RUNTIME_COUPLED = .TRUE.')
-                print(line, end='')
+            cable_nml_path = os.path.join(self.work_path, 'cable.nml')
+            cable_nml = FortranNamelist(cable_nml_path)
+            cable_nml.set_value('cable', 'cable_user%CABLE_RUNTIME_COUPLED',
+                                '.FALSE.')
+            cable_nml.write()
+
+        else:
+            run_start_date = work_nml.get_value('NLSTCALL', 'MODEL_BASIS_TIME')
+            run_start_date = map(int, run_start_date.split(','))
+            run_start_date = um_date_to_date(run_start_date)
+            
+
+        # Set the runtime for this run. 
+        if self.expt.runtime:
+            run_runtime = cal.runtime_from_date(run_start_date, 
+                                                self.expt.runtime['years'],
+                                                self.expt.runtime['months'],
+                                                self.expt.runtime['days'], 
+                                                cal.GREGORIAN)
+            run_runtime = time_to_um_time(run_runtime)
+            # Convert to str.
+            run_runtime = str(run_runtime)[1:-1]
+            work_nml.set_value('NLSTCALL', 'RUN_RESUBMIT_INC', run_runtime)
+            work_nml.set_value('NLSTCALL', 'RUN_TARGET_END', run_runtime)
+            work_nml.set_value('STSHCOMP', 'RUN_TARGET_END', run_runtime)
+                               
+ 
+        work_nml.write()
 
 
 #---
@@ -184,12 +227,24 @@ def um_date_to_date(d):
 #---
 def um_time_to_time(d):
     """
-    Convert a string with format 'year, month, day, hour, minute, second'
-    to a datetime timedelta object.
+    Convert a list with format [year, month, day, hour, minute, second]
+    to a number of seconds.
 
     Only days are supported.
     """
 
     assert d[0] == 0 and d[1] == 0 and d[3] == 0 and d[4] == 0 and d[5] == 0
 
-    return datetime.timedelta(days=d[2])
+    return d[2]*86400
+
+def time_to_um_time(seconds):
+    """
+    Convert a number of seconds to a list with format [year, month, day, hour,
+       minute, second]
+
+    Only days are supported.
+    """
+
+    assert(seconds % 86400 == 0)
+
+    return [0, 0, seconds / 86400, 0, 0, 0]

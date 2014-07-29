@@ -47,6 +47,11 @@ class Experiment(object):
         # TODO: __init__ should not be a config dumping ground!
         self.config = read_config()
 
+        self.runtime = None
+        if (self.config.has_key('calendar') and 
+            self.config['calendar'].has_key('runtime')):
+            self.runtime = self.config['calendar']['runtime']
+
         # Set stacksize
         # NOTE: Possible PBS issue in setting non-unlimited stacksizes
         stacksize = self.config.get('stacksize')
