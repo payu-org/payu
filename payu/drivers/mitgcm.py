@@ -12,7 +12,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 # Standard Library
 import errno
 import os
-import re
 import sys
 import shlex
 import shutil as sh
@@ -85,97 +84,29 @@ class Mitgcm(Model):
 
         data_nml.write(data_path, force=True)
 
-        #data_file = open(data_path, 'r')
-
-        ## First scan the file for the necessary parameters
-        #dt = None
-        #n_timesteps = None
-
-        #p_dt = re.compile(r'^ *deltat *=', re.IGNORECASE)
-        #p_nt = re.compile(r'^ *ntimesteps *=', re.IGNORECASE)
-        #for line in data_file:
-        #    if p_dt.match(line):
-        #        dt = float(re.sub(r'[^\d]', '', line.split('=')[1]))
-        #    elif p_nt.match(line):
-        #        n_timesteps = int(re.sub(r'[^\d]', '', line.split('=')[1]))
-
-        ## Update checkpoint intervals
-        #pchkpt_freq = dt * n_timesteps
-        #chkpt_freq = 0.
-
-        ## Next, patch data with updated values
-        #temp_path = data_path + '~'
-        #temp_file = open(temp_path, 'w')
-
-        ## "Rewind" data file
-        #data_file.seek(0)
-
-        #p_niter0 = re.compile(r'^ *niter0 *=', re.IGNORECASE)
-        #p_pchkpt_freq = re.compile(r'^ *pchkptfreq *=', re.IGNORECASE)
-        #p_chkpt_freq = re.compile(r'^ *chkptfreq *=', re.IGNORECASE)
-
-        #for line in data_file:
-        #    if p_niter0.match(line):
-        #        temp_file.write(' nIter0={},\n'.format(n_iter0))
-        #    elif p_pchkpt_freq.match(line):
-        #        temp_file.write(' pChkptFreq={},\n'.format(pchkpt_freq))
-        #    elif p_chkpt_freq.match(line):
-        #        temp_file.write(' chkptFreq={},\n'.format(chkpt_freq))
-        #    else:
-        #        temp_file.write(line)
-
-        #temp_file.close()
-        #data_file.close()
-        #sh.move(temp_path, data_path)
-
         # Patch or create data.mnc
         mnc_header = os.path.join(self.work_path, 'mnc_')
 
         data_mnc_path = os.path.join(self.work_path, 'data.mnc')
         try:
             data_mnc_nml = f90nml.read(data_mnc_path)
-            data_mnc_nml['mnc01']['mnc_outdir_str'] = mnc_header
+            data_mnc_nml['mnc_01']['mnc_outdir_str'] = mnc_header
             data_mnc_nml.write(data_mnc_path, force=True)
 
-        except IOError as exc
+        except IOError as exc:
             if exc.errno == errno.ENOENT:
 
-                mnc01_grp = {'mnc_use_outdir': True,
+                mnc_01_grp = {'mnc_use_outdir': True,
                              'mnc_use_name_ni0': True,
                              'mnc_outdir_str': mnc_header,
                              'mnc_outdir_date': True,
                              'monitor_mnc': True
                             }
-                data_mnc_nml = {'mnc01': mnc01_grp}
+                data_mnc_nml = {'mnc_01': mnc_01_grp}
 
                 f90nml.write(data_mnc_nml, data_mnc_path)
             else:
                 raise
-
-        #if os.path.exists(data_mnc_path):
-        #    tmp_path = data_mnc_path + '~'
-        #    tmp = open(tmp_path, 'w')
-
-        #    p_mnc_outdir = re.compile(r'^ *mnc_outdir_str *=', re.IGNORECASE)
-
-        #    data_mnc_file = open(data_mnc_path, 'r')
-        #    for line in data_mnc_file:
-        #        if p_mnc_outdir.match(line):
-        #            tmp.write(" mnc_outdir_str='{}',\n".format(mnc_header))
-        #        else:
-        #            tmp.write(line)
-        #    data_mnc_file.close()
-        #    tmp.close()
-        #    sh.move(tmp_path, data_mnc_path)
-        #else:
-        #    with open(data_mnc_path, 'w') as data_mnc:
-        #        data_mnc.write(' &MNC_01\n')
-        #        data_mnc.write(' mnc_use_outdir=.TRUE.,\n')
-        #        data_mnc.write(' mnc_use_name_ni0=.TRUE.,\n')
-        #        data_mnc.write(" mnc_outdir_str='{}',\n".format(mnc_header))
-        #        data_mnc.write(' mnc_outdir_date=.TRUE.,\n')
-        #        data_mnc.write(' monitor_mnc=.TRUE.,\n')
-        #        data_mnc.write(' &\n')
 
 
     #---
