@@ -48,7 +48,7 @@ class Experiment(object):
         self.config = read_config()
 
         self.runtime = None
-        if (self.config.has_key('calendar') and 
+        if (self.config.has_key('calendar') and
             self.config['calendar'].has_key('runtime')):
             self.runtime = self.config['calendar']['runtime']
 
@@ -189,7 +189,7 @@ class Experiment(object):
 
         # TODO: Consolidate this profiling stuff
         if self.config.get('ipm', False):
-            envmod.module('load', 'ipm/2.0.2')
+            envmod.module('load', 'ipm')
             os.environ['IPM_LOGDIR'] = self.work_path
 
         if self.config.get('mpiP', False):
@@ -324,7 +324,13 @@ class Experiment(object):
         # Set MPI environment variables
         env = self.config.get('env', {})
         for var in env:
-            os.environ[var] = env[var]
+
+            if env[var] is None:
+                env_value = ''
+            else:
+                env_value = str(env[var])
+
+            os.environ[var] = env_value
 
         mpirun_cmd = 'mpirun'
 
@@ -351,6 +357,7 @@ class Experiment(object):
             # Update MPI library module
             # TODO: Check for MPI library mismatch across multiple binaries
             # TODO: Someday use this to update all modules
+            # TODO: Intel MPI check
             envmod.lib_update(model.exec_path, 'libmpi.so')
 
             model_prog = []
