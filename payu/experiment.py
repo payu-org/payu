@@ -260,26 +260,13 @@ class Experiment(object):
         for model in self.models:
             model.set_model_output_paths()
 
-
-    #---
-    def init(self):
-        # TODO: The name `init` is too generic
-
-        # Check out source code
-        self.get_codebase()
-        self.build_model()
-
-
-    #---
-    def get_codebase(self):
-
-        for model in self.models:
-            model.get_codebase()
-
     #---
     def build_model(self):
 
         self.load_modules()
+
+        for model in self.models:
+            model.get_codebase()
 
         for model in self.models:
             model.build_model()
