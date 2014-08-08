@@ -73,7 +73,7 @@ class Mom(Fms):
         mppnc_exec = 'mppnccombine.nci'
 
         mppnc_src = os.path.join(self.codebase_path, 'bin', mppnc_exec)
-        mppnc_dest = os.path.join(self.expt.bin_path, 'mppnccombine')
+        mppnc_dest = os.path.join(self.expt.lab.bin_path, 'mppnccombine')
         shutil.copy(mppnc_src, mppnc_dest)
 
 
