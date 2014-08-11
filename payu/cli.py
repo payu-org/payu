@@ -103,7 +103,7 @@ def get_model_type(model_type, config):
 
 
 #---
-def get_env_vars(init_run=None, n_runs=None):
+def set_env_vars(init_run=None, n_runs=None, lab_path=None):
     """Construct the environment variables used by payu for resubmissions."""
 
     payu_env_vars = {}
@@ -158,6 +158,9 @@ def get_env_vars(init_run=None, n_runs=None):
         assert n_runs > 0
 
         payu_env_vars['PAYU_N_RUNS'] = n_runs
+
+    if lab_path:
+        payu_env_vars['PAYU_LAB_PATH'] = lab_path
 
     return payu_env_vars
 
