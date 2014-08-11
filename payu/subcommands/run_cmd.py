@@ -23,7 +23,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
 
     # Get job submission configuration
     pbs_config = cli.get_config(config_path)
-    pbs_vars = cli.get_env_vars(init_run, n_runs)
+    pbs_vars = cli.set_env_vars(init_run, n_runs, lab_path)
 
     # Set the queue
     # NOTE: Maybe force all jobs on the normal queue

@@ -21,7 +21,7 @@ arguments = [args.model, args.config, args.initial, args.nruns,
 def runcmd(model_type, config_path, init_run, n_runs, lab_path):
 
     pbs_config = cli.get_config(config_path)
-    pbs_vars = cli.get_env_vars(init_run, n_runs)
+    pbs_vars = cli.set_env_vars(init_run, n_runs, lab_path)
 
     collate_queue = pbs_config.get('collate_queue', 'copyq')
     pbs_config['queue'] = collate_queue

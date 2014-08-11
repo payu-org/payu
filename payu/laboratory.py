@@ -43,6 +43,8 @@ class Laboratory(object):
         # Set top-level lab path if provided
         if lab_path:
             self.basepath = lab_path
+        elif 'PAYU_LAB_PATH' in os.environ:
+            self.basepath = os.environ.get('PAYU_LAB_PATH')
         else:
             self.basepath = config.get('laboratory')
 
