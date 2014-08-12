@@ -67,7 +67,7 @@ def runscript():
     run_args = parser.parse_args()
 
     pbs_vars = cli.set_env_vars(run_args.init_run, run_args.n_runs,
-                                args.lab_path)
+                                run_args.lab_path)
     for var in pbs_vars:
         os.environ[var] = str(pbs_vars[var])
 
