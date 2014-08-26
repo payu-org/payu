@@ -17,6 +17,7 @@ import fileinput
 import imp
 import os
 import shutil
+import string
 
 # Local
 from payu.fsops import mkdir_p, make_symlink
@@ -197,9 +198,11 @@ def date_to_um_dump_date(date):
     """
 
     assert(date.month <= 12)
-    month = hex(date.month)[2:]
 
-    return (str(date.year).zfill(2) + month + str(date.day) + str(0))
+    um_d = string.digits + string.letters[:26]
+
+    # TODO: Check how Y2K dates are handled
+    return '{:02}{}{}0'.format(date.year, um_d[date.month], um_d[date.day])
 
 
 #---
