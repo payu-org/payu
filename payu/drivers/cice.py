@@ -23,6 +23,7 @@ import datetime
 # Local
 import f90nml
 from payu.modeldriver import Model
+from payu.fsops import make_symlink
 import payu.calendar as cal
 
 class Cice(Model):
@@ -112,7 +113,7 @@ class Cice(Model):
 
         setup_nml = self.ice_nmls['setup_nml']
         init_date = datetime.date(year=setup_nml['year_init'], month=1, day=1)
-            
+
         if setup_nml['days_per_year'] == 365:
             caltype = cal.NOLEAP
         else:
@@ -136,21 +137,29 @@ class Cice(Model):
                                           self.ice_nml_fname)
             prior_setup_nml = f90nml.read(prior_nml_path)['setup_nml']
 
-            # The total time in seconds since the beginning of
-            # the experiment.
+            # The total time in seconds since the beginning of the experiment
             total_runtime = prior_setup_nml['istep0'] + prior_setup_nml['npt']
             total_runtime = total_runtime * prior_setup_nml['dt']
             run_start_date = cal.date_plus_seconds(init_date, total_runtime, caltype)
+
         else:
+            # Locate and link any restart files (if required)
+            if not setup_nml['ice_ic'] in ('none', 'default'):
+                self.link_restart(setup_nml['ice_ic'])
+
+            if setup_nml['restart']:
+                self.link_restart(setup_nml['pointer_file'])
+
+            # Initialise runtime
             total_runtime = 0
             run_start_date = init_date
 
-        # Set runtime for this run. 
+        # Set runtime for this run.
         if self.expt.runtime:
-            run_runtime = cal.runtime_from_date(run_start_date, 
+            run_runtime = cal.runtime_from_date(run_start_date,
                                                 self.expt.runtime['years'],
                                                 self.expt.runtime['months'],
-                                                self.expt.runtime['days'], 
+                                                self.expt.runtime['days'],
                                                 caltype)
 
         else:
@@ -173,13 +182,29 @@ class Cice(Model):
             if os.path.islink(f_path):
                 os.remove(f_path)
 
-        # Archive restart files before processing model output
-        cmd = 'mv {src} {dst}'.format(src=self.work_restart_path,
-                                      dst=self.restart_path)
-        rc = sp.Popen(shlex.split(cmd)).wait()
-        assert rc == 0
+        os.rename(self.work_restart_path, self.restart_path)
 
 
     #---
     def collate(self):
         pass
+
+
+    #---
+    def link_restart(self, fpath):
+
+        input_work_path = os.path.join(self.work_path, fpath)
+
+        # Exit if the restart file already exists
+        if os.path.isfile(input_work_path):
+            return
+
+        input_path = None
+        for i_path in self.input_paths:
+            test_path = os.path.join(i_path, fpath)
+            if os.path.isfile(test_path):
+                input_path = test_path
+                break
+        assert input_path
+
+        make_symlink(input_path, input_work_path)
