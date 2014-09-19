@@ -13,6 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 from __future__ import print_function
 
 # Standard Library
+import errno
 import os
 import sys
 import shlex
@@ -123,11 +124,16 @@ class Cice(Model):
 
             # Generate ice.restart_file
             # TODO: Check the filenames more aggressively
-            last_restart_file = sorted(self.get_prior_restart_files())[-1]
+            try:
+                prior_restart_file = sorted(self.get_prior_restart_files())[-1]
+            except IndexError:
+                print('payu: error: No restart file available.')
+                sys.exit(errno.ENOENT)
 
-            res_ptr_path = os.path.join(self.work_init_path, 'ice.restart_file')
+            res_ptr_path = os.path.join(self.work_init_path,
+                                        'ice.restart_file')
             with open(res_ptr_path, 'w') as res_ptr:
-                print(last_restart_file, file=res_ptr)
+                print(prior_restart_file, file=res_ptr)
 
             # Update input namelist
             setup_nml['runtype'] = 'continue'
@@ -170,9 +176,11 @@ class Cice(Model):
         assert(total_runtime % setup_nml['dt'] == 0)
         setup_nml['istep0'] = int(total_runtime / setup_nml['dt'])
 
+        # Force creation of a dump (restart) file at end of run
+        setup_nml['dump_last'] = True
+
         nml_path = os.path.join(self.work_path, self.ice_nml_fname)
-        f90nml.write(self.ice_nmls, nml_path + '~')
-        shutil.move(nml_path + '~', nml_path)
+        self.ice_nmls.write(nml_path, force=True)
 
     #---
     def archive(self, **kwargs):

@@ -53,6 +53,13 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
         except KeyError:
             pass
 
+    # Disable hyperthreading
+    qsub_flags = []
+    for flag in pbs_config.get('qsub_flags', '').split():
+        if not 'hyperthread' in flag:
+            qsub_flags.append(flag)
+    pbs_config['qsub_flags'] = ' '.join(qsub_flags)
+
     cli.submit_job('payu-profile', pbs_config, pbs_vars)
 
 
@@ -65,7 +72,7 @@ def runscript():
 
     run_args = parser.parse_args()
 
-    pbs_vars = cli.get_env_vars(run_args.init_run, run_args.n_runs)
+    pbs_vars = cli.set_env_vars(run_args.init_run, run_args.n_runs)
     for var in pbs_vars:
         os.environ[var] = str(pbs_vars[var])
 

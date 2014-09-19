@@ -285,7 +285,7 @@ class Model(object):
     # TODO: Replace with call to "profile" drivers
     def profile(self):
 
-        if self.expt.config.get('hpctoolkit'):
+        if self.expt.config.get('hpctoolkit') and self.exec_name:
 
             envmod.module('load', 'hpctoolkit')
 
