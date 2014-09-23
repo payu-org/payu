@@ -120,7 +120,7 @@ class Cice(Model):
         else:
             caltype = cal.GREGORIAN
 
-        if self.prior_output_path:
+        if self.prior_output_path and not self.expt.repeat_run:
 
             # Generate ice.restart_file
             # TODO: Check the filenames more aggressively

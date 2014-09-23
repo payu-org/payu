@@ -19,10 +19,12 @@ import os
 import shutil
 import string
 
+# Extensions
+import f90nml
+
 # Local
 from payu.fsops import mkdir_p, make_symlink
 from payu.modeldriver import Model
-from payu.fnamelist import FortranNamelist
 import payu.calendar as cal
 
 class UnifiedModel(Model):
@@ -63,15 +65,13 @@ class UnifiedModel(Model):
 
         # Need to figure out the end date of the model.
         nml_path = os.path.join(self.work_path, 'namelists')
-        nml = FortranNamelist(nml_path)
+        nml = f90nml.read(nml_path)
 
-        resubmit_inc = nml.get_value('NLSTCALL','RUN_RESUBMIT_INC')
-        resubmit_inc = map(int, resubmit_inc.split(','))
+        resubmit_inc = nml['NLSTCALL']['RUN_RESUBMIT_INC']
         runtime = um_time_to_time(resubmit_inc)
         runtime = datetime.timedelta(seconds=runtime)
 
-        basis_time = nml.get_value('NLSTCALL','MODEL_BASIS_TIME')
-        basis_time = map(int, basis_time.split(','))
+        basis_time = nml['NLSTCALL']['MODEL_BASIS_TIME']
         init_date = um_date_to_date(basis_time)
 
         end_date = date_to_um_dump_date(init_date + runtime)
@@ -123,25 +123,18 @@ class UnifiedModel(Model):
             print(line, end='')
 
 
-        # FIXME: The UM does some ugly things with namelists, e.g. it will
-        # repeat the same namelist (with different contents) multiple times
-        # in the same file and rely on file advancement to read it multiple
-        # times. At present f90nml doesn't have support for this so we use
-        # a regex search and replace approach.
         work_nml_path = os.path.join(self.work_path, 'namelists')
-        work_nml = FortranNamelist(work_nml_path)
+        work_nml = f90nml.read(work_nml_path)
 
         # Modify namelists for a continuation run.
         if self.prior_output_path:
 
             prior_nml_path = os.path.join(self.prior_output_path, 'namelists')
-            prior_nml = FortranNamelist(prior_nml_path)
+            prior_nml = f90nml.read(prior_nml_path)
 
-            basis_time = prior_nml.get_value('NLSTCALL', 'MODEL_BASIS_TIME')
-            basis_time = map(int, basis_time.split(','))
+            basis_time = prior_nml['NLSTCALL']['MODEL_BASIS_TIME']
             init_date = um_date_to_date(basis_time)
-            resubmit_inc = prior_nml.get_value('NLSTCALL', 'RUN_RESUBMIT_INC')
-            resubmit_inc = map(int, resubmit_inc.split(','))
+            resubmit_inc = prior_nml['NLSTCALL']['RUN_RESUBMIT_INC']
             runtime = um_time_to_time(resubmit_inc)
 
             run_start_date = cal.date_plus_seconds(init_date,
@@ -150,23 +143,17 @@ class UnifiedModel(Model):
 
             # Write out and save new calendar information. 
             run_start_date_um = date_to_um_date(run_start_date)
-            run_start_date_um = str(run_start_date_um)[1:-1]
-            work_nml.set_value('NLSTCALL', 'MODEL_BASIS_TIME',
-                               run_start_date_um)
-            work_nml.set_value('NLSTCALL', 'ANCIL_REFTIME',
-                               run_start_date_um)
+            work_nml['NLSTCALL']['MODEL_BASIS_TIME'] = run_start_date_um
+            work_nml['NLSTCALL']['ANCIL_REFTIME'] = run_start_date_um
 
             # Tell CABLE that this is a continuation run.
-            # FIXME: can't use f90nml here because it does not support '%'
             cable_nml_path = os.path.join(self.work_path, 'cable.nml')
-            cable_nml = FortranNamelist(cable_nml_path)
-            cable_nml.set_value('cable', 'cable_user%CABLE_RUNTIME_COUPLED',
-                                '.FALSE.')
-            cable_nml.write()
+            cable_nml = f90nml.read(cable_nml_path)
+            cable_nml['cable']['cable_user']['CABLE_RUNTIME_COUPLED'] = False
+            cable_nml.write(cable_nml_path, force=True)
 
         else:
-            run_start_date = work_nml.get_value('NLSTCALL', 'MODEL_BASIS_TIME')
-            run_start_date = map(int, run_start_date.split(','))
+            run_start_date = work_nml['NLSTCALL']['MODEL_BASIS_TIME']
             run_start_date = um_date_to_date(run_start_date)
             
 
@@ -178,14 +165,11 @@ class UnifiedModel(Model):
                                                 self.expt.runtime['days'], 
                                                 cal.GREGORIAN)
             run_runtime = time_to_um_time(run_runtime)
-            # Convert to str.
-            run_runtime = str(run_runtime)[1:-1]
-            work_nml.set_value('NLSTCALL', 'RUN_RESUBMIT_INC', run_runtime)
-            work_nml.set_value('NLSTCALL', 'RUN_TARGET_END', run_runtime)
-            work_nml.set_value('STSHCOMP', 'RUN_TARGET_END', run_runtime)
-                               
- 
-        work_nml.write()
+            work_nml['NLSTCALL']['RUN_RESUBMIT_INC'] = run_runtime
+            work_nml['NLSTCALL']['RUN_TARGET_END'] = run_runtime
+            work_nml['STSHCOMP']['RUN_TARGET_END'] = run_runtime
+
+        work_nml.write(work_nml_path, force=True)
 
 
 #---

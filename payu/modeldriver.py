@@ -285,7 +285,7 @@ class Model(object):
     # TODO: Replace with call to "profile" drivers
     def profile(self):
 
-        if self.expt.config.get('hpctoolkit') and self.exec_name:
+        if self.expt.config.get('hpctoolkit', False) and self.exec_name:
 
             envmod.module('load', 'hpctoolkit')
 
@@ -314,4 +314,15 @@ class Model(object):
 
             cmd = 'hpcprof-mpi -S {} -I {} -o {} {}'.format(
                     hpcstruct_path, src_path, hpctk_db_dir, hpctk_measure_dir)
+            sp.check_call(shlex.split(cmd))
+
+        elif self.expt.config.get('scalasca', False):
+
+            envmod.module('use', '/home/900/mpc900/my_modules')
+            envmod.module('load', 'scalasca')
+
+            scorep_path = [os.path.join(self.output_path, f)
+                           for f in os.listdir(self.output_path)
+                           if f.startswith('scorep')][0]
+            cmd = 'scalasca -examine -s {}'.format(scorep_path)
             sp.check_call(shlex.split(cmd))

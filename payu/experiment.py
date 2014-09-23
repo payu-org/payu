@@ -198,6 +198,10 @@ class Experiment(object):
         if self.config.get('hpctoolkit', False):
             envmod.module('load', 'hpctoolkit')
 
+        if self.config.get('scalasca', False):
+            envmod.module('use', '/home/900/mpc900/my_modules')
+            envmod.module('load', 'scalasca')
+
         if self.debug:
             envmod.module('load', 'totalview')
 
@@ -320,6 +324,9 @@ class Experiment(object):
             os.environ[var] = env_value
 
         mpirun_cmd = 'mpirun'
+
+        if self.config.get('scalasca', False):
+            mpirun_cmd = ' '.join(['scalasca -analyze', mpirun_cmd])
 
         mpi_flags = self.config.get('mpirun', [])
         if type(mpi_flags) != list:
