@@ -189,7 +189,7 @@ class Experiment(object):
 
         # TODO: Consolidate this profiling stuff
         if self.config.get('ipm', False):
-            envmod.module('load', 'ipm')
+            envmod.module('load', 'ipm/2.0.2')
             os.environ['IPM_LOGDIR'] = self.work_path
 
         if self.config.get('mpiP', False):
@@ -197,6 +197,10 @@ class Experiment(object):
 
         if self.config.get('hpctoolkit', False):
             envmod.module('load', 'hpctoolkit')
+
+        if self.config.get('scalasca', False):
+            envmod.module('use', '/home/900/mpc900/my_modules')
+            envmod.module('load', 'scalasca')
 
         if self.debug:
             envmod.module('load', 'totalview')
@@ -321,9 +325,16 @@ class Experiment(object):
 
         mpirun_cmd = 'mpirun'
 
+        if self.config.get('scalasca', False):
+            mpirun_cmd = ' '.join(['scalasca -analyze', mpirun_cmd])
+
         mpi_flags = self.config.get('mpirun', [])
         if type(mpi_flags) != list:
             mpi_flags = [mpi_flags]
+
+        # TODO: More uniform support needed here
+        if self.config.get('scalasca', False):
+            mpi_flags = ['\"{}\"'.format(f) for f in mpi_flags]
 
         # XXX: I think this may be broken
         if user_flags:
@@ -361,6 +372,9 @@ class Experiment(object):
                     npernode_flag = '-npersocket {}'.format(model_npernode / 2)
                 else:
                     npernode_flag = '-npernode {}'.format(model_npernode)
+
+                if self.config.get('scalasca', False):
+                    npernode_flag = '\"{}\"'.format(npernode_flag)
                 model_prog.append(npernode_flag)
 
             if self.config.get('hpctoolkit', False):
