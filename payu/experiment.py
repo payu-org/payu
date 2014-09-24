@@ -332,6 +332,10 @@ class Experiment(object):
         if type(mpi_flags) != list:
             mpi_flags = [mpi_flags]
 
+        # TODO: More uniform support needed here
+        if self.config.get('scalasca', False):
+            mpi_flags = ['\"{}\"'.format(f) for f in mpi_flags]
+
         # XXX: I think this may be broken
         if user_flags:
             mpi_flags.extend(list(user_flags))
@@ -368,6 +372,9 @@ class Experiment(object):
                     npernode_flag = '-npersocket {}'.format(model_npernode / 2)
                 else:
                     npernode_flag = '-npernode {}'.format(model_npernode)
+
+                if self.config.get('scalasca', False):
+                    npernode_flag = '\"{}\"'.format(npernode_flag)
                 model_prog.append(npernode_flag)
 
             if self.config.get('hpctoolkit', False):

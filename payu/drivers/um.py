@@ -92,7 +92,7 @@ class UnifiedModel(Model):
         super(UnifiedModel, self).setup()
 
         # Stage the UM restart file.
-        if self.prior_restart_path:
+        if self.prior_restart_path and not self.expt.repeat_run:
             f_src = os.path.join(self.prior_restart_path, self.restart)
             f_dst = os.path.join(self.work_input_path, self.restart)
 
@@ -127,7 +127,7 @@ class UnifiedModel(Model):
         work_nml = f90nml.read(work_nml_path)
 
         # Modify namelists for a continuation run.
-        if self.prior_output_path:
+        if self.prior_output_path and not self.expt.repeat_run:
 
             prior_nml_path = os.path.join(self.prior_output_path, 'namelists')
             prior_nml = f90nml.read(prior_nml_path)
