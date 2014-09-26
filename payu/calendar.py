@@ -31,7 +31,7 @@ def runtime_from_date(start_date, years, months, days, caltype):
     runtime = end_date - start_date
 
     if caltype == NOLEAP:
-        runtime += get_leapdays(start_date, end_date)
+        runtime -= get_leapdays(start_date, end_date)
 
     return int(runtime.total_seconds())
 
@@ -46,7 +46,7 @@ def date_plus_seconds(init_date, seconds, caltype):
     end_date = init_date + datetime.timedelta(seconds=seconds)
 
     if caltype == NOLEAP:
-        end_date += get_leapdays(init_date, end_date)
+        end_date -= get_leapdays(init_date, end_date)
 
     return end_date
     
