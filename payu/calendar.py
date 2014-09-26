@@ -46,7 +46,7 @@ def date_plus_seconds(init_date, seconds, caltype):
     end_date = init_date + datetime.timedelta(seconds=seconds)
 
     if caltype == NOLEAP:
-        end_date -= get_leapdays(init_date, end_date)
+        end_date += get_leapdays(init_date, end_date)
 
     return end_date
     
