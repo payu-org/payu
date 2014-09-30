@@ -96,7 +96,7 @@ class Mom(Fms):
             ocean_solo_nml['months'] = self.expt.runtime['months']
             ocean_solo_nml['days'] = self.expt.runtime['days']
 
-            f90nml.write(nml, nml_path, force=True)
+            f90nml.write(input_nml, input_nml_path, force=True)
 
         # Construct the land CPU mask
         if self.expt.config.get('mask_table', False):
