@@ -1,19 +1,18 @@
 # coding: utf-8
-"""
-The payu interface for MOM
--------------------------------------------------------------------------------
-Primary Contact: Marshall Ward <marshall.ward@anu.edu.au>
--------------------------------------------------------------------------------
-Distributed as part of Payu, Copyright 2011-2012 Marshall Ward
-Licensed under the Apache License, Version 2.0
-http://www.apache.org/licenses/LICENSE-2.0
+"""payu.drivers.mom
+   ================
+
+   Driver interface to the MOM ocean model.
+
+   :copyright: Copyright 2011-2014 Marshall Ward, see AUTHORS for details
+   :license: Apache License, Version 2.0, see LICENSE for details
 """
 
 # Standard Library
 import os
 import shlex
 import shutil
-import subprocess as sp
+import subprocess
 import sys
 
 # Local
@@ -53,7 +52,7 @@ class Mom(Fms):
                              'field_table',
                              'input.nml']
 
-        self.optional_config_files = ['blob_diag_table']
+        self.optional_config_files = ['blob_diag_table', 'mask_table']
 
 
     #---
@@ -82,22 +81,99 @@ class Mom(Fms):
         # FMS initialisation
         super(Mom, self).setup()
 
+        input_nml_path = os.path.join(self.work_path, 'input.nml')
+        input_nml = f90nml.read(input_nml_path)
+
         use_core2iaf = self.config.get('core2iaf')
         if use_core2iaf:
             self.core2iaf_setup()
 
-        # Set the runtime. 
+        # Set the runtime
         if self.expt.runtime:
-            nml_path = os.path.join(self.work_path, 'input.nml')
-            nml = f90nml.read(nml_path)
-            ocean_solo_nml = nml['ocean_solo_nml']
+            ocean_solo_nml = input_nml['ocean_solo_nml']
 
             ocean_solo_nml['years'] = self.expt.runtime['years']
             ocean_solo_nml['months'] = self.expt.runtime['months']
             ocean_solo_nml['days'] = self.expt.runtime['days']
 
-            f90nml.write(nml, nml_path + '~')
-            shutil.move(nml_path + '~', nml_path)
+            f90nml.write(input_nml, input_nml_path, force=True)
+
+        # Construct the land CPU mask
+        if self.expt.config.get('mask_table', False):
+            import netCDF4
+
+            # Get the grid spec path
+            grid_spec_fname = 'grid_spec.nc'
+            for input_dir in self.input_paths:
+                if grid_spec_fname in os.listdir(input_dir):
+                    grid_spec_path = os.path.join(input_dir, grid_spec_fname)
+                    break
+            assert grid_spec_path
+
+            grid_spec_nc = netCDF4.Dataset(grid_spec_path)
+            grid_vars = grid_spec_nc.variables
+
+            # Get the ocean mosaic file
+            # TODO: Do not assume mosaic format
+            ocn_mosaic_fname = ''.join(grid_vars['ocn_mosaic_file'][:].data)
+            for input_dir in self.input_paths:
+                if ocn_mosaic_fname in os.listdir(input_dir):
+                    ocn_mosaic_path = os.path.join(input_dir, ocn_mosaic_fname)
+                    break
+
+            # Get the topography file
+            ocn_topog_fname = ''.join(grid_vars['ocn_topog_file'][:].data)
+            for input_dir in self.input_paths:
+                if ocn_topog_fname in os.listdir(input_dir):
+                    ocn_topog_path = os.path.join(input_dir, ocn_topog_fname)
+                    break
+
+            grid_spec_nc.close()
+
+            check_mask = os.path.join(self.expt.lab.bin_path, 'check_mask')
+            f_null = open(os.devnull, 'w')
+
+            # Generate ocean mask_table
+            ocn_layout = input_nml['ocean_model_nml']['layout']
+
+            cmd = ('{} --grid_file {} --ocean_topog {} --layout {}'
+                   ''.format(check_mask, ocn_mosaic_path, ocn_topog_path,
+                             ','.join([str(s) for s in ocn_layout])))
+            subprocess.call(shlex.split(cmd), stdout=f_null)
+            ocn_mask_fname = [f for f in os.listdir(os.curdir)
+                              if f.startswith('mask_table')][0]
+
+            ocn_mask_path = os.path.join(self.work_input_path,
+                                         'ocean_mask_table')
+            shutil.copy(ocn_mask_fname, ocn_mask_path)
+
+            # Generate the ice mask_table
+            ice_layout = input_nml['ice_model_nml']['layout']
+
+            if ice_layout == ocn_layout:
+                ice_mask_fname = ocn_mask_fname
+            else:
+                cmd = ('{} --grid_file {} --ocean_topog {} --layout {}'
+                       ''.format(check_mask, ocn_mosaic_path, ocn_topog_path,
+                                 ','.join([str(s) for s in ice_layout])))
+                subprocess.call(shlex.split(cmd), stdout=f_null)
+                ice_mask_fname = [f for f in os.listdir(os.curdir)
+                                  if f.startswith('mask_table')][0]
+
+            ice_mask_path = os.path.join(self.work_input_path,
+                                         'ice_mask_table')
+
+            shutil.copy(ice_mask_fname, ice_mask_path)
+
+            try:
+                os.remove(ocn_mask_fname)
+                os.remove(ice_mask_fname)
+            except OSError as exc:
+                # TODO: Check this exception
+                pass
+
+            f_null.close()
+
 
     #---
     def core2iaf_setup(self, core2iaf_path=None, driver_name=None):
@@ -221,5 +297,5 @@ class Mom(Fms):
 
             cmd = 'ncks -d %s,%.1f,%.1f -o %s %s' \
                     % (t_axis, t_start, t_end, out_fpath, in_fpath)
-            rc = sp.Popen(shlex.split(cmd)).wait()
+            rc = subprocess.Popen(shlex.split(cmd)).wait()
             assert rc == 0

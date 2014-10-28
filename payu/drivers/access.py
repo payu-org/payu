@@ -38,9 +38,9 @@ class Access(Model):
         for model in self.expt.models:
             if model.model_type == 'cice':
                 model.config_files = ['cice_in.nml',
-                                      'input_ice.nml',
-                                      'input_ice_gfdl.nml',
-                                      'input_ice_monin.nml']
+                                      'input_ice.nml']
+                model.optional_config_files =  ['input_ice_gfdl.nml',
+                                                'input_ice_monin.nml']
 
                 model.ice_nml_fname = 'cice_in.nml'
 

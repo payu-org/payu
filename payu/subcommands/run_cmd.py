@@ -34,7 +34,18 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
     max_cpus_per_node = 16
 
     # Increase the cpu request to match a complete node
-    n_cpus = pbs_config.get('ncpus', 1)
+    if 'submodels' in pbs_config and not 'ncpus' in pbs_config:
+
+        submodel_config = pbs_config['submodels']
+
+        n_cpus_request = 0
+        for model in submodel_config:
+            n_cpus_request += submodel_config[model].get('ncpus', 0)
+
+    else:
+        n_cpus_request = pbs_config.get('ncpus', 1)
+
+    n_cpus = n_cpus_request
     n_cpus_per_node = pbs_config.get('npernode', max_cpus_per_node)
 
     assert n_cpus_per_node <= max_cpus_per_node
@@ -57,10 +68,12 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
         n_cpus = max_cpus_per_node * n_nodes
 
         # Update the ncpus field in the config
-        if n_cpus != pbs_config['ncpus']:
+        if n_cpus != n_cpus_request:
             print('payu: warning: CPU request increased from {} to {}'
-                  ''.format(pbs_config['ncpus'], n_cpus))
-            pbs_config['ncpus'] = n_cpus
+                  ''.format(n_cpus_request, n_cpus))
+
+    # Update the (possibly unchanged) value of ncpus
+    pbs_config['ncpus'] = n_cpus
 
     # Set memory to use the complete node if unspeficied
     # TODO: Move RAM per node as variable
