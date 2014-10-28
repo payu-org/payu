@@ -188,8 +188,14 @@ class Experiment(object):
             envmod.module('load', mod)
 
         # TODO: Consolidate this profiling stuff
-        if self.config.get('ipm', False):
-            envmod.module('load', 'ipm/2.0.2')
+        c_ipm = self.config.get('ipm', False)
+        if c_ipm:
+            if isinstance(c_ipm, str):
+                ipm_mod = os.path.join('ipm', c_ipm)
+            else:
+                ipm_mod = 'ipm'
+
+            envmod.module('load', ipm_mod)
             os.environ['IPM_LOGDIR'] = self.work_path
 
         if self.config.get('mpiP', False):

@@ -1,14 +1,12 @@
 # coding: utf-8
-"""
-The payu interface for the UM atmosphere model
--------------------------------------------------------------------------------
-Contact: Marshall Ward <marshall.ward@anu.edu.au>
--------------------------------------------------------------------------------
-Distributed as part of Payu, Copyright 2011 Marshall Ward
-Licensed under the Apache License, Version 2.0
-http://www.apache.org/licenses/LICENSE-2.0
-"""
+"""payu.drivers.um
+   ===============
 
+   The payu interface for the UM atmosphere model
+
+   :copyright: Copyright 2011-2014 Marshall Ward, see AUTHORS for details
+   :license: Apache License, Version 2.0, see LICENSE for details
+"""
 from __future__ import print_function
 
 # Standard Library
@@ -103,15 +101,15 @@ class UnifiedModel(Model):
         # Look for a python file in the config directory.
         um_env = imp.load_source('um_env',
                 os.path.join(self.control_path, 'um_env.py'))
-        vars = um_env.vars
+        um_vars = um_env.vars
 
         assert len(self.input_paths) == 1
 
         # Set paths in environment variables.
-        for k in vars.keys():
-            vars[k] = vars[k].format(input_path=self.input_paths[0],
-                                     work_path=self.work_path)
-        os.environ.update(vars)
+        for k in um_vars.keys():
+            um_vars[k] = um_vars[k].format(input_path=self.input_paths[0],
+                                           work_path=self.work_path)
+        os.environ.update(um_vars)
 
         # The above needs to be done in parexe also.
         # FIXME: a better way to do this or remove.
@@ -119,9 +117,7 @@ class UnifiedModel(Model):
         for line in fileinput.input(parexe, inplace=True):
             line = line.format(input_path=self.input_paths[0],
                                work_path=self.work_path)
-
             print(line, end='')
-
 
         work_nml_path = os.path.join(self.work_path, 'namelists')
         work_nml = f90nml.read(work_nml_path)
