@@ -24,6 +24,7 @@ import subprocess as sp
 from payu import envmod
 from payu.fsops import mkdir_p, make_symlink, read_config
 from payu.modelindex import index as model_index
+from payu.runlog import Runlog
 
 # Environment module support on vayu
 module_path = '/projects/v45/modules'
@@ -33,7 +34,7 @@ core_modules = ['python', 'payu']
 default_archive_url = 'dc.nci.org.au'
 default_restart_freq = 5
 
-#==============================================================================
+
 class Experiment(object):
 
     #---
@@ -81,6 +82,9 @@ class Experiment(object):
         init_script = self.userscripts.get('init')
         if init_script:
             self.run_userscript(init_script)
+
+        # Logging
+        self.runlog = Runlog(self)
 
 
     #---
@@ -161,7 +165,6 @@ class Experiment(object):
         if stacksize == 'unlimited':
             stacksize = resource.RLIM_INFINITY
         else:
-            # TODO: User-friendly explanation
             assert type(stacksize) is int
 
         resource.setrlimit(resource.RLIMIT_STACK,
@@ -170,10 +173,15 @@ class Experiment(object):
 
     #---
     def load_modules(self):
-        # TODO: ``reversion`` makes a lot of this redundant
 
-        for model in self.models:
-            self.modules.update(model.modules)
+        # Scheduler
+        sched_modname = self.config.get('scheduler', 'pbs')
+        self.modules.add(sched_modname)
+
+        # MPI library
+        mpi_config = self.config.get('mpi', {})
+        mpi_modname = mpi_config.get('module', 'openmpi')
+        self.modules.add(mpi_modname)
 
         # Unload non-essential modules
         loaded_mods = os.environ.get('LOADEDMODULES', '').split(':')
@@ -329,10 +337,11 @@ class Experiment(object):
 
             os.environ[var] = env_value
 
-        mpirun_cmd = 'mpirun'
+        mpi_config = self.config.get('mpi', {})
+        mpi_runcmd = mpi_config.get('runcmd', 'mpirun')
 
         if self.config.get('scalasca', False):
-            mpirun_cmd = ' '.join(['scalasca -analyze', mpirun_cmd])
+            mpi_runcmd = ' '.join(['scalasca -analyze', mpi_runcmd])
 
         mpi_flags = self.config.get('mpirun', [])
         if type(mpi_flags) != list:
@@ -358,11 +367,10 @@ class Experiment(object):
             if not model.exec_path:
                 continue
 
-            # Update MPI library module
+            # Update MPI library module (if not explicitly set)
             # TODO: Check for MPI library mismatch across multiple binaries
-            # TODO: Someday use this to update all modules
-            # TODO: Intel MPI check
-            envmod.lib_update(model.exec_path, 'libmpi.so')
+            if not 'module' in self.config.get('mpi', {}):
+                envmod.lib_update(model.exec_path, 'libmpi.so')
 
             model_prog = []
 
@@ -395,9 +403,12 @@ class Experiment(object):
 
             mpi_progs.append(' '.join(model_prog))
 
-        cmd = '{} {} {}'.format(mpirun_cmd,
+        cmd = '{} {} {}'.format(mpi_runcmd,
                                 ' '.join(mpi_flags),
                                 ' : '.join(mpi_progs))
+
+        print(cmd)
+        self.runlog.commit()
 
         if env:
             # TODO: Replace with mpirun -x flag inputs
