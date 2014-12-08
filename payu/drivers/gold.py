@@ -30,9 +30,6 @@ class Gold(Fms):
         self.model_type = 'gold'
         self.default_exec = 'GOLD'
 
-        #self.modules = ['pbs',
-        #                'openmpi']
-
         self.config_files = ['GOLD_input',
                              'GOLD_override',
                              'diag_table',

@@ -44,9 +44,6 @@ class Mom(Fms):
         self.repo_tag = 'master'
         self.build_command = './MOM_compile.csh --platform nci --type MOM_SIS'
 
-        #self.modules = ['pbs',
-        #                'openmpi']
-
         self.config_files = ['data_table',
                              'diag_table',
                              'field_table',

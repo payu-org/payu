@@ -192,8 +192,8 @@ class Experiment(object):
                 envmod.module('unload', mod)
 
         # Now load model-dependent modules
-        #for mod in self.modules:
-        #    envmod.module('load', mod)
+        for mod in self.modules:
+            envmod.module('load', mod)
 
         # TODO: Consolidate this profiling stuff
         c_ipm = self.config.get('ipm', False)
@@ -379,11 +379,19 @@ class Experiment(object):
 
             model_prog.append('-wdir {}'.format(model.work_path))
 
+            # Append any model-specific MPI flags
+            model_flags = model.config.get('mpiflags', [])
+            if not isinstance(model_flags, list):
+                model_prog.append(model_flags)
+            else:
+                model_prog.extend(model_flags)
+
             model_ncpus = model.config.get('ncpus')
             if model_ncpus:
                 model_prog.append('-np {}'.format(model_ncpus))
 
             model_npernode = model.config.get('npernode')
+            # TODO: New Open MPI format?
             if model_npernode:
                 if model_npernode % 2 == 0:
                     npernode_flag = '-npersocket {}'.format(model_npernode / 2)
