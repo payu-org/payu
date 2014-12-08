@@ -29,8 +29,8 @@ class Matm(Model):
         self.repo_url = 'https://github.com/nicholash/matm.git'
         self.repo_tag = 'master'
 
-        self.modules = ['pbs',
-                        'openmpi']
+        #self.modules = ['pbs',
+        #                'openmpi']
 
         self.config_files = ['input_atm.nml',
                              'data_4_matm.table']

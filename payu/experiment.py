@@ -192,8 +192,8 @@ class Experiment(object):
                 envmod.module('unload', mod)
 
         # Now load model-dependent modules
-        for mod in self.modules:
-            envmod.module('load', mod)
+        #for mod in self.modules:
+        #    envmod.module('load', mod)
 
         # TODO: Consolidate this profiling stuff
         c_ipm = self.config.get('ipm', False)
@@ -215,6 +215,9 @@ class Experiment(object):
         if self.config.get('scalasca', False):
             envmod.module('use', '/home/900/mpc900/my_modules')
             envmod.module('load', 'scalasca')
+
+        if self.config.get('scorep', False):
+            envmod.module('load', 'scorep')
 
         if self.debug:
             envmod.module('load', 'totalview')

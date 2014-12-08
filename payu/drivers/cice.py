@@ -40,8 +40,8 @@ class Cice(Model):
         self.repo_url = 'https://github.com/nicholash/cice.git'
         self.repo_tag = 'access'
 
-        self.modules = ['pbs',
-                        'openmpi']
+        #self.modules = ['pbs',
+        #                'openmpi']
 
         self.config_files = ['ice_in']
 

@@ -34,8 +34,8 @@ class UnifiedModel(Model):
         self.model_type = 'um'
         self.default_exec = 'um'
 
-        self.modules = ['pbs',
-                        'openmpi']
+        #self.modules = ['pbs',
+        #                'openmpi']
 
         # TODO: many of these can probably be ignored.
         self.config_files = ['CNTLALL', 'prefix.CNTLATM', 'prefix.CNTLGEN',
