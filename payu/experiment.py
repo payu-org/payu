@@ -86,6 +86,8 @@ class Experiment(object):
         # Logging
         if self.config.get('runlog', False):
             self.runlog = Runlog(self)
+        else:
+            self.runlog = None
 
 
     #---
@@ -419,9 +421,10 @@ class Experiment(object):
                                 ' '.join(mpi_flags),
                                 ' : '.join(mpi_progs))
 
-        print(cmd)
-        self.runlog.commit()
+        if self.runlog:
+            self.runlog.commit()
 
+        print(cmd)
         if env:
             # TODO: Replace with mpirun -x flag inputs
             proc = sp.Popen(shlex.split(cmd), stdout=f_out, stderr=f_err,
