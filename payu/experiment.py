@@ -107,10 +107,9 @@ class Experiment(object):
                                      if f in self.config}
         # --- TODO: end delete
 
-        for m_name, m_config in submodels.iteritems():
-
+        for m_config in submodels:
             ModelType = model_index[m_config['model']]
-            self.models.append(ModelType(self, m_name, m_config))
+            self.models.append(ModelType(self, m_config['name'], m_config))
 
         # Load the top-level model
         if self.model_name:
@@ -362,7 +361,7 @@ class Experiment(object):
             # TODO: Check for MPI library mismatch across multiple binaries
             # TODO: Someday use this to update all modules
             # TODO: Intel MPI check
-            envmod.lib_update(model.exec_path, 'libmpi.so')
+            envmod.lib_update(model.exec_path, 'libmpi_usempi.so')
 
             model_prog = []
 
