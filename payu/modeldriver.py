@@ -155,7 +155,7 @@ class Model(object):
         mkdir_p(self.work_output_path)
 
         # mpirun wrapper bug management
-        mkdir_p(os.path.join(self.work_path, 'tmp'))
+        #mkdir_p(os.path.join(self.work_path, 'tmp'))
 
         # Copy configuration files from control path
         for f_name in self.config_files:

@@ -84,7 +84,8 @@ class Experiment(object):
             self.run_userscript(init_script)
 
         # Logging
-        self.runlog = Runlog(self)
+        if self.config.get('runlog', False):
+            self.runlog = Runlog(self)
 
 
     #---
@@ -98,18 +99,19 @@ class Experiment(object):
         # TODO: Rename this to self.submodels
         self.models = []
 
-        submodels = self.config.get('submodels', {})
+        submodels = self.config.get('submodels', [])
 
-        # --- TODO: Delete this block
         if not submodels:
 
             solo_model = self.config.get('model')
             if not solo_model:
                 sys.exit('payu: error: Unknown model configuration.')
 
-            submodels[solo_model] = {f: self.config[f] for f in model_fields
-                                     if f in self.config}
-        # --- TODO: end delete
+            submodel_config = {f: self.config[f] for f in model_fields
+                               if f in self.config}
+            submodel_config['name'] = solo_model
+
+            submodels = [submodel_config]
 
         for m_config in submodels:
             ModelType = model_index[m_config['model']]

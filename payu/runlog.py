@@ -43,27 +43,25 @@ class Runlog(object):
 
     def commit(self):
 
+        f_null = open(os.devnull, 'w')
+
         # TODO: We currently need git v1.9.x, but this may be too strict
         envmod.module('load', 'git')
-
-        # TODO: Remove this
-        cmd = 'git --version'
-        rc = subprocess.call(shlex.split(cmd))
 
         # Check if a repository exists
         cmd = 'git -C {} rev-parse'.format(self.expt.control_path)
         print(cmd)
-        rc = subprocess.call(shlex.split(cmd))
+        rc = subprocess.call(shlex.split(cmd), stdout=f_null)
         if rc:
             cmd = 'git init {}'.format(self.expt.control_path)
             print(cmd)
-            subprocess.check_call(shlex.split(cmd))
+            subprocess.check_call(shlex.split(cmd), stdout=f_null)
 
         # Add configuration files
         for fname in self.manifest:
             cmd = 'git -C {} add {}'.format(self.expt.control_path, fname)
             print(cmd)
-            subprocess.check_call(shlex.split(cmd))
+            subprocess.check_call(shlex.split(cmd), stdout=f_null)
 
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         commit_msg = '{}: Run {}'.format(timestamp, self.expt.counter)
@@ -72,6 +70,8 @@ class Runlog(object):
                                                  commit_msg)
         print(cmd)
         try:
-            subprocess.check_call(shlex.split(cmd))
+            subprocess.check_call(shlex.split(cmd), stdout=f_null)
         except subprocess.CalledProcessError:
             print('TODO: Check if commit is unchanged')
+
+        f_null.close()
