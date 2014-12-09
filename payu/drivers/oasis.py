@@ -17,8 +17,8 @@ import shutil
 import subprocess
 
 # Local
-from ..fsops import mkdir_p, make_symlink
-from ..modeldriver import Model
+from payu.fsops import mkdir_p, make_symlink
+from payu.modeldriver import Model
 
 class Oasis(Model):
 

@@ -361,7 +361,7 @@ class Experiment(object):
             # TODO: Check for MPI library mismatch across multiple binaries
             # TODO: Someday use this to update all modules
             # TODO: Intel MPI check
-            envmod.lib_update(model.exec_path, 'libmpi_usempi.so')
+            envmod.lib_update(model.exec_path, 'libmpi.so')
 
             model_prog = []
 
