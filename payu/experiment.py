@@ -107,10 +107,9 @@ class Experiment(object):
                                      if f in self.config}
         # --- TODO: end delete
 
-        for m_name, m_config in submodels.iteritems():
-
+        for m_config in submodels:
             ModelType = model_index[m_config['model']]
-            self.models.append(ModelType(self, m_name, m_config))
+            self.models.append(ModelType(self, m_config['name'], m_config))
 
         # Load the top-level model
         if self.model_name:

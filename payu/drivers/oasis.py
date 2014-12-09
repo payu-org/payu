@@ -17,8 +17,8 @@ import shutil
 import subprocess
 
 # Local
-from ..fsops import mkdir_p
-from ..modeldriver import Model
+from payu.fsops import mkdir_p, make_symlink
+from payu.modeldriver import Model
 
 class Oasis(Model):
 
@@ -63,7 +63,7 @@ class Oasis(Model):
             for f_name in (self.config_files + input_files):
                 f_path = os.path.join(self.work_path, f_name)
                 f_sympath = os.path.join(model.work_path, f_name)
-                os.symlink(f_path, f_sympath)
+                make_symlink(f_path, f_sympath)
 
     #---
     def archive(self):
