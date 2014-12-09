@@ -32,9 +32,6 @@ class Access(Model):
 
         self.model_type = 'access'
 
-        self.modules = ['pbs',
-                        'openmpi']
-
         for model in self.expt.models:
             if model.model_type == 'cice':
                 model.config_files = ['cice_in.nml',

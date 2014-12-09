@@ -38,8 +38,6 @@ class Oasis(Model):
         # TODO: Detect version?
         # if oasis_version == 3: self.default_exec = 'oasis'
 
-        self.modules = ['pbs', 'intel-fc', 'intel-cc', 'openmpi']
-
         self.config_files = ['namcouple']
 
 

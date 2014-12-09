@@ -319,7 +319,7 @@ class Model(object):
                     hpcstruct_path, src_path, hpctk_db_dir, hpctk_measure_dir)
             sp.check_call(shlex.split(cmd))
 
-        elif self.expt.config.get('scalasca', False):
+        if self.expt.config.get('scalasca', False):
 
             envmod.module('use', '/home/900/mpc900/my_modules')
             envmod.module('load', 'scalasca')
@@ -328,4 +328,17 @@ class Model(object):
                            for f in os.listdir(self.output_path)
                            if f.startswith('scorep')][0]
             cmd = 'scalasca -examine -s {}'.format(scorep_path)
+            sp.check_call(shlex.split(cmd))
+
+        if self.expt.config.get('scorep', True):
+
+            envmod.module('load', 'scorep')
+
+            scorep_path = [os.path.join(self.output_path, f)
+                           for f in os.listdir(self.output_path)
+                           if f.startswith('scorep')][0]
+            cube_path = [os.path.join(scorep_path, f)
+                         for f in os.listdir(scorep_path)
+                         if f.endswith('.cubex')][0]
+            cmd = 'scorep-score {}'.format(cube_path)
             sp.check_call(shlex.split(cmd))

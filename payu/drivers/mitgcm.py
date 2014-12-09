@@ -34,12 +34,7 @@ class Mitgcm(Model):
         self.model_type = 'mitgcm'
         self.default_exec = 'mitgcmuv'
 
-        self.modules = ['pbs',
-                        'openmpi',
-                        'netcdf']
-
         # NOTE: We use a subroutine to generate the MITgcm configuration list
-        self.config_files = None
 
 
     #---

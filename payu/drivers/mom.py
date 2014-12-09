@@ -44,9 +44,6 @@ class Mom(Fms):
         self.repo_tag = 'master'
         self.build_command = './MOM_compile.csh --platform nci --type MOM_SIS'
 
-        self.modules = ['pbs',
-                        'openmpi']
-
         self.config_files = ['data_table',
                              'diag_table',
                              'field_table',
@@ -100,79 +97,90 @@ class Mom(Fms):
 
         # Construct the land CPU mask
         if self.expt.config.get('mask_table', False):
-            import netCDF4
+            self.create_mask_table(input_nml)
 
-            # Get the grid spec path
-            grid_spec_fname = 'grid_spec.nc'
-            for input_dir in self.input_paths:
-                if grid_spec_fname in os.listdir(input_dir):
-                    grid_spec_path = os.path.join(input_dir, grid_spec_fname)
-                    break
-            assert grid_spec_path
 
-            grid_spec_nc = netCDF4.Dataset(grid_spec_path)
-            grid_vars = grid_spec_nc.variables
+    def create_mask_table(self, input_nml):
+        import netCDF4
 
-            # Get the ocean mosaic file
-            # TODO: Do not assume mosaic format
-            ocn_mosaic_fname = ''.join(grid_vars['ocn_mosaic_file'][:].data)
-            for input_dir in self.input_paths:
-                if ocn_mosaic_fname in os.listdir(input_dir):
-                    ocn_mosaic_path = os.path.join(input_dir, ocn_mosaic_fname)
-                    break
+        # Get the grid spec path
+        grid_spec_fname = 'grid_spec.nc'
+        for input_dir in self.input_paths:
+            if grid_spec_fname in os.listdir(input_dir):
+                grid_spec_path = os.path.join(input_dir, grid_spec_fname)
+                break
+        assert grid_spec_path
 
-            # Get the topography file
-            ocn_topog_fname = ''.join(grid_vars['ocn_topog_file'][:].data)
-            for input_dir in self.input_paths:
-                if ocn_topog_fname in os.listdir(input_dir):
-                    ocn_topog_path = os.path.join(input_dir, ocn_topog_fname)
-                    break
+        grid_spec_nc = netCDF4.Dataset(grid_spec_path)
+        grid_vars = grid_spec_nc.variables
 
-            grid_spec_nc.close()
+        # Get the ocean mosaic file
+        # TODO: Do not assume mosaic format
+        ocn_mosaic_fname = ''.join(grid_vars['ocn_mosaic_file'][:].data)
+        for input_dir in self.input_paths:
+            if ocn_mosaic_fname in os.listdir(input_dir):
+                ocn_mosaic_path = os.path.join(input_dir, ocn_mosaic_fname)
+                break
 
-            check_mask = os.path.join(self.expt.lab.bin_path, 'check_mask')
-            f_null = open(os.devnull, 'w')
+        # Get the topography file
+        ocn_topog_fname = ''.join(grid_vars['ocn_topog_file'][:].data)
+        for input_dir in self.input_paths:
+            if ocn_topog_fname in os.listdir(input_dir):
+                ocn_topog_path = os.path.join(input_dir, ocn_topog_fname)
+                break
 
-            # Generate ocean mask_table
-            ocn_layout = input_nml['ocean_model_nml']['layout']
+        grid_spec_nc.close()
 
+        check_mask = os.path.join(self.expt.lab.bin_path, 'check_mask')
+        f_null = open(os.devnull, 'w')
+
+        # Generate ocean mask_table
+        ocn_layout = input_nml['ocean_model_nml']['layout']
+
+        cmd = ('{} --grid_file {} --ocean_topog {} --layout {}'
+               ''.format(check_mask, ocn_mosaic_path, ocn_topog_path,
+                         ','.join([str(s) for s in ocn_layout])))
+        subprocess.call(shlex.split(cmd), stdout=f_null)
+        ocn_mask_fname = [f for f in os.listdir(os.curdir)
+                          if f.startswith('mask_table')][0]
+
+        ocn_mask_path = os.path.join(self.work_input_path,
+                                     'ocean_mask_table')
+        shutil.copy(ocn_mask_fname, ocn_mask_path)
+
+        # Generate the ice mask_table
+        ice_layout = input_nml['ice_model_nml']['layout']
+
+        if ice_layout == ocn_layout:
+            ice_mask_fname = ocn_mask_fname
+        else:
             cmd = ('{} --grid_file {} --ocean_topog {} --layout {}'
                    ''.format(check_mask, ocn_mosaic_path, ocn_topog_path,
-                             ','.join([str(s) for s in ocn_layout])))
+                             ','.join([str(s) for s in ice_layout])))
             subprocess.call(shlex.split(cmd), stdout=f_null)
-            ocn_mask_fname = [f for f in os.listdir(os.curdir)
+            ice_mask_fname = [f for f in os.listdir(os.curdir)
                               if f.startswith('mask_table')][0]
 
-            ocn_mask_path = os.path.join(self.work_input_path,
-                                         'ocean_mask_table')
-            shutil.copy(ocn_mask_fname, ocn_mask_path)
+        ice_mask_path = os.path.join(self.work_input_path,
+                                     'ice_mask_table')
 
-            # Generate the ice mask_table
-            ice_layout = input_nml['ice_model_nml']['layout']
+        shutil.copy(ice_mask_fname, ice_mask_path)
 
-            if ice_layout == ocn_layout:
-                ice_mask_fname = ocn_mask_fname
-            else:
-                cmd = ('{} --grid_file {} --ocean_topog {} --layout {}'
-                       ''.format(check_mask, ocn_mosaic_path, ocn_topog_path,
-                                 ','.join([str(s) for s in ice_layout])))
-                subprocess.call(shlex.split(cmd), stdout=f_null)
-                ice_mask_fname = [f for f in os.listdir(os.curdir)
-                                  if f.startswith('mask_table')][0]
+        try:
+            os.remove(ocn_mask_fname)
+            os.remove(ice_mask_fname)
+        except OSError:
+            # TODO: Check this a little bit better
+            pass
 
-            ice_mask_path = os.path.join(self.work_input_path,
-                                         'ice_mask_table')
+        f_null.close()
 
-            shutil.copy(ice_mask_fname, ice_mask_path)
+        # Read and return the number of land cells
+        with open(ocn_mask_path) as fmask:
+            land_cells = int(fmask.readline())
 
-            try:
-                os.remove(ocn_mask_fname)
-                os.remove(ice_mask_fname)
-            except OSError as exc:
-                # TODO: Check this exception
-                pass
+        return land_cells
 
-            f_null.close()
 
 
     #---
