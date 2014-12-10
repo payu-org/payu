@@ -413,6 +413,9 @@ class Experiment(object):
             if gprof:
                 model_prog.append('/apps/pgprof/parallel_gprof')
 
+            if self.config.get('massif', False):
+                model_prog.append('valgrind --tool=massif --pages-as-heap=yes --main-stacksize=1073741824')
+
             model_prog.append(model.exec_path)
 
             mpi_progs.append(' '.join(model_prog))

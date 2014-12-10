@@ -43,6 +43,9 @@ class Access(Model):
 
                 model.access_restarts = ['u_star.nc', 'sicemass.nc', 'mice.nc']
 
+                model.set_timestep = model.set_access_timestep
+
+
     #---
     def setup(self):
 

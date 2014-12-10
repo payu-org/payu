@@ -63,6 +63,11 @@ class Oasis(Model):
                 f_sympath = os.path.join(model.work_path, f_name)
                 make_symlink(f_path, f_sympath)
 
+
+    def set_timestep(self, t_step):
+        pass
+
+
     #---
     def archive(self):
 
