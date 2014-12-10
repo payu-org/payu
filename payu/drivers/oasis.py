@@ -16,9 +16,13 @@ import shlex
 import shutil
 import subprocess
 
+# Extensions
+import f90nml
+
 # Local
 from payu.fsops import mkdir_p, make_symlink
 from payu.modeldriver import Model
+from payu.namcouple import Namcouple
 
 class Oasis(Model):
 
@@ -65,7 +69,41 @@ class Oasis(Model):
 
 
     def set_timestep(self, t_step):
-        pass
+
+        namcpl_path = os.path.join(self.work_path, 'namcouple')
+        namcpl = Namcouple(namcpl_path, 'access')
+        namcpl.set_ice_ocean_coupling_timestep(str(t_step))
+        namcpl.write()
+
+        for model in self.expt.models:
+
+            if model.model_type == 'cice':
+
+                input_ice_path = os.path.join(model.work_path, 'input_ice.nml')
+                input_ice = f90nml.read(input_ice_path)
+
+                input_ice['coupling_nml']['dt_cpl_io'] = t_step
+
+                input_ice.write(input_ice_path, force=True)
+
+            elif model.model_type == 'matm':
+
+                input_atm_path = os.path.join(model.work_path, 'input_atm.nml')
+                input_atm = f90nml.read(input_atm_path)
+
+                input_atm['coupling']['dt_atm'] = t_step
+
+                input_atm.write(input_atm_path, force=True)
+
+            elif model.model_type == 'mom':
+
+                input_nml_path = os.path.join(model.work_path, 'input.nml')
+                input_nml = f90nml.read(input_nml_path)
+
+                input_nml['auscom_ice_nml']['dt_cpl'] = t_step
+                input_nml['ocean_solo_nml']['dt_cpld'] = t_step
+
+                input_nml.write(input_nml_path, force=True)
 
 
     #---
