@@ -196,18 +196,23 @@ class Model(object):
                     else:
                         make_symlink(f_input, f_work_input)
 
+        t_step = self.config.get('timestep')
+        if t_step:
+            self.set_timestep(t_step)
 
-    #---
+
+    def set_timestep(self):
+        raise NotImplementedError
+
+
     def archive(self):
         raise NotImplementedError
 
 
-    #---
     def collate(self):
         raise NotImplementedError
 
 
-    #---
     def build_model(self):
 
         if not self.repo_url:

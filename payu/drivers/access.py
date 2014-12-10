@@ -49,7 +49,7 @@ class Access(Model):
         cpl_keys = {'cice': ('input_ice.nml', 'coupling_nml', 'runtime0'),
                     'matm': ('input_atm.nml', 'coupling', 'truntime0')}
 
-        # Keep track of this in order to set the oasis runtime. 
+        # Keep track of this in order to set the oasis runtime.
         run_runtime = 0
 
         for model in self.expt.models:
@@ -100,10 +100,10 @@ class Access(Model):
                 # Get new runtime for this run. We get this from either the
                 # 'runtime' part of the payu config, or from the namelist
                 if self.expt.runtime:
-                    run_runtime = cal.runtime_from_date(run_start_date, 
+                    run_runtime = cal.runtime_from_date(run_start_date,
                                                         self.expt.runtime['years'],
                                                         self.expt.runtime['months'],
-                                                        self.expt.runtime['days'], 
+                                                        self.expt.runtime['days'],
                                                         caltype)
                 else:
                     run_runtime = cpl_nml[cpl_group]['runtime']
@@ -120,7 +120,7 @@ class Access(Model):
                 f90nml.write(cpl_nml, nml_work_path + '~')
                 shutil.move(nml_work_path + '~', nml_work_path)
 
-        # Now change the oasis runtime. This needs to be done after the others. 
+        # Now change the oasis runtime. This needs to be done after the others.
         for model in self.expt.models:
             if model.model_type == 'oasis':
                 namcouple = os.path.join(model.work_path, 'namcouple')
@@ -136,7 +136,7 @@ class Access(Model):
                 with open(namcouple, 'w') as f:
                     f.write(s)
 
-    #---
+
     def archive(self):
 
         for model in self.expt.models:
@@ -149,8 +149,3 @@ class Access(Model):
 
                     if os.path.exists(f_src):
                         shutil.move(f_src, f_dst)
-
-    #---
-    def collate(self):
-        raise NotImplementedError
-

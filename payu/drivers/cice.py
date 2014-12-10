@@ -179,6 +179,21 @@ class Cice(Model):
         nml_path = os.path.join(self.work_path, self.ice_nml_fname)
         self.ice_nmls.write(nml_path, force=True)
 
+
+    def set_timestep(self, t_step):
+
+        ice_in_path = os.path.join(self.work_path, self.ice_nml_fname)
+        ice_in = f90nml.read(ice_in_path)
+
+        dt = ice_in['setup_nml']['dt']
+        npt = ice_in['setup_nml']['npt']
+
+        ice_in['setup_nml']['dt'] = t_step
+        ice_in['setup_nml']['npt'] = int(dt) * int(npt) // int(t_step)
+
+        ice_in.write(ice_in_path, force=True)
+
+
     #---
     def archive(self, **kwargs):
 
