@@ -21,11 +21,14 @@ import shutil
 import subprocess as sp
 import datetime
 
-# Local
+# Extensions
 import f90nml
-from payu.modeldriver import Model
-from payu.fsops import make_symlink
+
+# Local
 import payu.calendar as cal
+from payu.fsops import make_symlink
+from payu.modeldriver import Model
+from payu.namcouple import Namcouple
 
 class Cice(Model):
 
@@ -194,6 +197,7 @@ class Cice(Model):
 
 
     # TODO: Figure out some way to move this to the ACCESS driver
+    # Re-read ice timestep and move this over there
     def set_access_timestep(self, t_step):
         self.set_local_timestep(t_step)
 
@@ -203,6 +207,16 @@ class Cice(Model):
         input_ice['coupling_nml']['dt_cice'] = t_step
 
         input_ice.write(input_ice_path, force=True)
+
+    # TODO: Move over to access driver
+    def set_oasis_timestep(self, t_step):
+        for model in self.expt.models:
+            if model.model_type == 'oasis':
+                namcpl_path = os.path.join(model.work_path, 'namcouple')
+                namcpl = Namcouple(namcpl_path, 'access')
+                namcpl.set_ice_timestep(str(t_step))
+                namcpl.write()
+
 
 
     #---

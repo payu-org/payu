@@ -79,6 +79,14 @@ class Oasis(Model):
 
             if model.model_type == 'cice':
 
+                # Set namcouple timesteps
+
+                ice_ts = model.config.get('timestep')
+                if ice_ts:
+                    model.set_oasis_timestep(ice_ts)
+
+                # Set ACCESS coupler timesteps
+
                 input_ice_path = os.path.join(model.work_path, 'input_ice.nml')
                 input_ice = f90nml.read(input_ice_path)
 
