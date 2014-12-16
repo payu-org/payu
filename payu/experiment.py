@@ -53,11 +53,10 @@ class Experiment(object):
             self.config['calendar'].has_key('runtime')):
             self.runtime = self.config['calendar']['runtime']
 
-        # Set stacksize
+        # Stacksize
         # NOTE: Possible PBS issue in setting non-unlimited stacksizes
-        stacksize = self.config.get('stacksize')
-        if stacksize:
-            self.set_stacksize(stacksize)
+        stacksize = self.config.get('stacksize', 'unlimited')
+        self.set_stacksize(stacksize)
 
         # Initialize the submodels
         self.init_models()
@@ -373,14 +372,19 @@ class Experiment(object):
             if not model.exec_path:
                 continue
 
+            mpi_config = self.config.get('mpi', {})
+            mpi_module = mpi_config.get('module', '')
+
             # Update MPI library module (if not explicitly set)
             # TODO: Check for MPI library mismatch across multiple binaries
-            if not 'module' in self.config.get('mpi', {}):
+            if mpi_module:
                 envmod.lib_update(model.exec_path, 'libmpi.so')
 
             model_prog = []
 
-            model_prog.append('-wdir {}'.format(model.work_path))
+            # Our MPICH wrapper does not support a working directory flag
+            if not mpi_module.startswith('mvapich'):
+                model_prog.append('-wdir {}'.format(model.work_path))
 
             # Append any model-specific MPI flags
             model_flags = model.config.get('mpiflags', [])
@@ -423,11 +427,15 @@ class Experiment(object):
         cmd = '{} {} {}'.format(mpi_runcmd,
                                 ' '.join(mpi_flags),
                                 ' : '.join(mpi_progs))
-
-        if self.runlog:
-            self.runlog.commit()
-
         print(cmd)
+
+        # Our MVAPICH wrapper does not support working directories
+        if mpi_module.startswith('mvapich'):
+            curdir = os.getcwd()
+            os.chdir(self.work_path)
+        else:
+            curdir = None
+
         if env:
             # TODO: Replace with mpirun -x flag inputs
             proc = sp.Popen(shlex.split(cmd), stdout=f_out, stderr=f_err,
@@ -436,6 +444,13 @@ class Experiment(object):
             rc = proc.returncode
         else:
             rc = sp.call(shlex.split(cmd), stdout=f_out, stderr=f_err)
+
+        # Return to control directory
+        if curdir:
+            os.chdir(curdir)
+
+        if self.runlog:
+            self.runlog.commit()
 
         f_out.close()
         f_err.close()
@@ -475,10 +490,11 @@ class Experiment(object):
 
         # Move logs to archive (or delete if empty)
         for f in (self.stdout_fname, self.stderr_fname):
-            if os.path.getsize(f) == 0:
-                os.remove(f)
+            f_path = os.path.join(self.control_path, f)
+            if os.path.getsize(f_path) == 0:
+                os.remove(f_path)
             else:
-                sh.move(f, self.work_path)
+                sh.move(f_path, self.work_path)
 
         run_script = self.userscripts.get('run')
         if run_script:

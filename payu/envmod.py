@@ -54,6 +54,7 @@ def module(command, *args):
 
 def lib_update(bin_path, lib_name):
     # Local import to avoid reversion interference
+    # TODO: Bad design, fixme!
     from payu import fsops
 
     # TODO: Use objdump instead of ldd
