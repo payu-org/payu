@@ -17,7 +17,7 @@ import os
 import resource
 import sys
 import shlex
-import shutil as sh
+import shutil
 import subprocess as sp
 
 # Local
@@ -303,6 +303,13 @@ class Experiment(object):
 
         mkdir_p(self.work_path)
 
+        # Archive the payu config
+        # TODO: This just copies the existing config.yaml file, but we should
+        #       reconstruct a new file including default values
+        config_src = os.path.join(self.control_path, 'config.yaml')
+        config_dst = os.path.join(self.work_path)
+        shutil.copy(config_src, config_dst)
+
         # Stripe directory in Lustre
         # TODO: Make this more configurable
         if do_stripe:
@@ -472,7 +479,7 @@ class Experiment(object):
             for gmon in gmon_fnames:
                 f_src = os.path.join(model.work_path, gmon)
                 f_dst = os.path.join(gmon_dir, gmon)
-                sh.move(f_src, f_dst)
+                shutil.move(f_src, f_dst)
 
         # TODO: Need a model-specific cleanup method call here
         if rc != 0:
@@ -494,7 +501,7 @@ class Experiment(object):
             if os.path.getsize(f_path) == 0:
                 os.remove(f_path)
             else:
-                sh.move(f_path, self.work_path)
+                shutil.move(f_path, self.work_path)
 
         run_script = self.userscripts.get('run')
         if run_script:
