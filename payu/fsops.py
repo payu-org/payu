@@ -48,6 +48,7 @@ def read_config(config_fname=None):
         if exc.errno == errno.ENOENT:
             config = {}
         else:
+            print('payu: warning: No configuration file found!')
             raise
 
     return config
