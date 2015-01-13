@@ -44,6 +44,9 @@ class Model(object):
         self.work_input_path = None
         self.work_restart_path = None
         self.work_init_path = None
+        # A string to add before the exe name, useful for e.g. gdb, gprof,
+        # valgrind
+        self.exec_prefix = None
         self.exec_path = None
         self.exec_name = None
         self.codebase_path = None
@@ -80,6 +83,7 @@ class Model(object):
         self.work_output_path = self.work_path
         self.work_init_path = self.work_path
 
+        self.exec_prefix = self.config.get('exe_prefix', '')
         self.exec_name = self.config.get('exe', self.default_exec)
         if self.exec_name:
             self.exec_path = os.path.join(self.expt.lab.bin_path,
@@ -154,8 +158,8 @@ class Model(object):
         mkdir_p(self.work_restart_path)
         mkdir_p(self.work_output_path)
 
-        # mpirun wrapper bug management
-        #mkdir_p(os.path.join(self.work_path, 'tmp'))
+        # tmp dir often needed for model/debugger/profiler
+        mkdir_p(os.path.join(self.work_path, 'tmp'))
 
         # Copy configuration files from control path
         for f_name in self.config_files:
