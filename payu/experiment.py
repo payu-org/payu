@@ -370,8 +370,6 @@ class Experiment(object):
         if self.debug:
             mpi_flags.append('--debug')
 
-        gprof = self.config.get('gprof', False)
-
         mpi_progs = []
         for model in self.models:
 
@@ -420,13 +418,7 @@ class Experiment(object):
                 os.environ['HPCRUN_EVENT_LIST'] = 'WALLCLOCK@5000'
                 model_prog.append('hpcrun')
 
-            # TODO: This is too NCI-specific, let's add our own script
-            if gprof:
-                model_prog.append('/apps/pgprof/parallel_gprof')
-
-            if self.config.get('massif', False):
-                model_prog.append('valgrind --tool=massif --pages-as-heap=yes --main-stacksize=1073741824')
-
+            model_prog.append(model.exec_prefix)
             model_prog.append(model.exec_path)
 
             mpi_progs.append(' '.join(model_prog))
