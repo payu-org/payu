@@ -69,4 +69,4 @@ def lib_update(bin_path, lib_name):
 
             module('unload', mod_name)
             module('load', os.path.join(mod_name, mod_version))
-            break
+            return '{}/{}'.format(mod_name, mod_version)
