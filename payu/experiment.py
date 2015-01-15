@@ -378,12 +378,12 @@ class Experiment(object):
                 continue
 
             mpi_config = self.config.get('mpi', {})
-            mpi_module = mpi_config.get('module', '')
+            mpi_module = mpi_config.get('module', None)
 
             # Update MPI library module (if not explicitly set)
             # TODO: Check for MPI library mismatch across multiple binaries
-            if mpi_module:
-                envmod.lib_update(model.exec_path, 'libmpi.so')
+            if mpi_module is None:
+                mpi_module = envmod.lib_update(model.exec_path, 'libmpi.so')
 
             model_prog = []
 
