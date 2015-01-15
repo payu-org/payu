@@ -460,19 +460,6 @@ class Experiment(object):
             if os.path.getsize(fpath) == 0:
                 os.remove(fpath)
 
-        # Store any profiling logs
-        if gprof:
-            gmon_dir = os.path.join(model.work_path, 'gmon')
-            mkdir_p(gmon_dir)
-
-            gmon_fnames = [f for f in os.listdir(model.work_path)
-                           if f.startswith('gmon.out')]
-
-            for gmon in gmon_fnames:
-                f_src = os.path.join(model.work_path, gmon)
-                f_dst = os.path.join(gmon_dir, gmon)
-                shutil.move(f_src, f_dst)
-
         # TODO: Need a model-specific cleanup method call here
         if rc != 0:
             sys.exit('payu: error {}; aborting.'.format(rc))
