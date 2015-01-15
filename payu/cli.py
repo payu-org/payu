@@ -229,5 +229,6 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
 
     # Construct full command
     cmd = 'qsub {} {}'.format(' '.join(pbs_flags), pbs_script)
+    print(cmd)
 
     subprocess.check_call(shlex.split(cmd))

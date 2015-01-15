@@ -339,7 +339,12 @@ class Experiment(object):
         f_err = open(self.stderr_fname, 'w')
 
         # Set MPI environment variables
-        env = self.config.get('env', {})
+        env = self.config.get('env')
+
+        # Explicitly check for `None`, in case of an empty `env:` entry
+        if env is None:
+            env = {}
+
         for var in env:
 
             if env[var] is None:
