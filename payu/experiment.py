@@ -378,12 +378,12 @@ class Experiment(object):
                 continue
 
             mpi_config = self.config.get('mpi', {})
-            mpi_module = mpi_config.get('module', '')
+            mpi_module = mpi_config.get('module', None)
 
             # Update MPI library module (if not explicitly set)
             # TODO: Check for MPI library mismatch across multiple binaries
-            if mpi_module:
-                envmod.lib_update(model.exec_path, 'libmpi.so')
+            if mpi_module is None:
+                mpi_module = envmod.lib_update(model.exec_path, 'libmpi.so')
 
             model_prog = []
 
@@ -459,19 +459,6 @@ class Experiment(object):
             fpath = os.path.join(self.work_path, fname)
             if os.path.getsize(fpath) == 0:
                 os.remove(fpath)
-
-        # Store any profiling logs
-        if gprof:
-            gmon_dir = os.path.join(model.work_path, 'gmon')
-            mkdir_p(gmon_dir)
-
-            gmon_fnames = [f for f in os.listdir(model.work_path)
-                           if f.startswith('gmon.out')]
-
-            for gmon in gmon_fnames:
-                f_src = os.path.join(model.work_path, gmon)
-                f_dst = os.path.join(gmon_dir, gmon)
-                shutil.move(f_src, f_dst)
 
         # TODO: Need a model-specific cleanup method call here
         if rc != 0:
