@@ -24,6 +24,7 @@ import subprocess as sp
 from payu import envmod
 from payu.fsops import mkdir_p, make_symlink, read_config
 from payu.modelindex import index as model_index
+import payu.profilers
 from payu.runlog import Runlog
 
 # Environment module support on vayu
@@ -39,7 +40,6 @@ class Experiment(object):
 
     #---
     def __init__(self, lab):
-
         self.lab = lab
 
         # TODO: replace with dict, check versions via key-value pairs
@@ -48,6 +48,7 @@ class Experiment(object):
         # TODO: __init__ should not be a config dumping ground!
         self.config = read_config()
 
+        # Model run time
         self.runtime = None
         if (self.config.has_key('calendar') and
             self.config['calendar'].has_key('runtime')):
@@ -73,6 +74,8 @@ class Experiment(object):
         # Miscellaneous configurations
         # TODO: Move this stuff somewhere else
         self.userscripts = self.config.get('userscripts', {})
+
+        self.profilers = []
 
         self.debug = self.config.get('debug', False)
         self.postscript = self.config.get('postscript')
@@ -126,6 +129,7 @@ class Experiment(object):
             self.model = ModelType(self, self.model_name, model_config)
         else:
             self.model = None
+
 
 
     #---
@@ -329,6 +333,16 @@ class Experiment(object):
         if setup_script:
             self.run_userscript(setup_script)
 
+        # Profiler setup
+        expt_profs = self.config.get('profilers', [])
+        if not isinstance(expt_profs, list):
+            expt_profs = [expt_profs]
+
+        for prof_name in expt_profs:
+            ProfType = payu.profilers.index[prof_name]
+            prof = ProfType(self)
+            self.profilers.append(prof)
+
 
     #---
     def run(self, *user_flags):
@@ -360,7 +374,11 @@ class Experiment(object):
         if self.config.get('scalasca', False):
             mpi_runcmd = ' '.join(['scalasca -analyze', mpi_runcmd])
 
-        mpi_flags = self.config.get('mpirun', [])
+        mpi_flags = self.config.get('mpirun')
+        # Correct an empty mpirun entry
+        if mpi_flags is None:
+            mpi_flags = []
+
         if type(mpi_flags) != list:
             mpi_flags = [mpi_flags]
 
@@ -423,6 +441,9 @@ class Experiment(object):
                 os.environ['HPCRUN_EVENT_LIST'] = 'WALLCLOCK@5000'
                 model_prog.append('hpcrun')
 
+            for prof in self.profilers:
+                model_prog.append(prof.wrapper)
+
             model_prog.append(model.exec_prefix)
             model_prog.append(model.exec_path)
 
@@ -464,6 +485,11 @@ class Experiment(object):
             fpath = os.path.join(self.work_path, fname)
             if os.path.getsize(fpath) == 0:
                 os.remove(fpath)
+
+        # Clean up any profiling output
+        # TODO: Move after `rc` code check?
+        for prof in self.profilers:
+            prof.postprocess()
 
         # TODO: Need a model-specific cleanup method call here
         if rc != 0:
