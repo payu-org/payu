@@ -21,7 +21,7 @@ import f90nml
 
 # Local
 from payu.fsops import make_symlink
-from payu.modeldriver import Model
+from payu.models.model import Model
 import payu.calendar as cal
 
 class Access(Model):

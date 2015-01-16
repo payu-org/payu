@@ -1,6 +1,6 @@
 # coding: utf-8
-"""payu.modeldriver
-   ================
+"""payu.models.model
+   =================
 
    Generic driver to be inherited by other models
 

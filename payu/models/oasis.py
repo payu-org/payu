@@ -21,7 +21,7 @@ import f90nml
 
 # Local
 from payu.fsops import mkdir_p, make_symlink
-from payu.modeldriver import Model
+from payu.models.model import Model
 from payu.namcouple import Namcouple
 
 class Oasis(Model):

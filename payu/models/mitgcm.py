@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 MITgcm payu interface
 -------------------------------------------------------------------------------
@@ -22,7 +21,7 @@ import f90nml
 
 # Local
 from payu.fsops import mkdir_p
-from payu.modeldriver import Model
+from payu.models.model import Model
 
 class Mitgcm(Model):
 

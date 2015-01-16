@@ -13,7 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 import os
 
 # Local
-from payu.modeldriver import Model
+from payu.models.model import Model
 from payu.fsops import mkdir_p
 
 class Matm(Model):

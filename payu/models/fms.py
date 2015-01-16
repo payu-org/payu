@@ -17,7 +17,7 @@ import shutil as sh
 import subprocess as sp
 
 # Local
-from payu.modeldriver import Model
+from payu.models.model import Model
 
 class Fms(Model):
 

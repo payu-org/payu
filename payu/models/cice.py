@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 The payu interface for the CICE model
 -------------------------------------------------------------------------------
@@ -27,7 +26,7 @@ import f90nml
 # Local
 import payu.calendar as cal
 from payu.fsops import make_symlink
-from payu.modeldriver import Model
+from payu.models.model import Model
 from payu.namcouple import Namcouple
 
 class Cice(Model):
