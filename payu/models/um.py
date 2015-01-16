@@ -1,6 +1,6 @@
 # coding: utf-8
-"""payu.drivers.um
-   ===============
+"""payu.models.um
+   ==============
 
    The payu interface for the UM atmosphere model
 

@@ -20,7 +20,7 @@ import yaml
 
 import payu
 import payu.envmod as envmod
-from payu.modelindex import index as supported_models
+from payu.models import index as supported_models
 import payu.subcommands
 
 # Default configuration

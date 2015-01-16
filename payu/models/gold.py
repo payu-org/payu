@@ -16,7 +16,7 @@ import os
 import f90nml
 
 # Local
-from payu.drivers.fms import Fms
+from payu.models.fms import Fms
 
 class Gold(Fms):
     """Interface to GFDL's GOLD ocean model."""

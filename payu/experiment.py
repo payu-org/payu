@@ -23,7 +23,7 @@ import subprocess as sp
 # Local
 from payu import envmod
 from payu.fsops import mkdir_p, make_symlink, read_config
-from payu.modelindex import index as model_index
+from payu.models import index as model_index
 import payu.profilers
 from payu.runlog import Runlog
 

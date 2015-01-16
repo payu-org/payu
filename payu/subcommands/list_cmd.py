@@ -1,7 +1,7 @@
 # coding: utf-8
 
 # Local
-from payu.modelindex import index as model_index
+from payu.models import index as model_index
 
 # Configuration
 title = 'list'

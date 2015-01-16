@@ -1,6 +1,6 @@
 # coding: utf-8
-"""payu.drivers.mom
-   ================
+"""payu.models.mom
+   ===============
 
    Driver interface to the MOM ocean model.
 
@@ -17,7 +17,7 @@ import sys
 
 # Local
 import f90nml
-from payu.drivers.fms import Fms
+from payu.models.fms import Fms
 from payu.fsops import mkdir_p
 
 # Module support (for NCO)
