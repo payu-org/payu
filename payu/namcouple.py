@@ -1,9 +1,10 @@
 import re
 import sys
 
+
 class Namcouple:
     """
-    Class to represent an OASIS namcouple file. 
+    Class to represent an OASIS namcouple file.
 
     Allows fields to be modified.
 
@@ -18,13 +19,14 @@ class Namcouple:
 
     def set_runtime(self, runtime):
 
-        m = re.search(r"^[ \t]*\$RUNTIME.*?^[ \t]*(\d+)", self.str, re.MULTILINE | re.DOTALL)
+        m = re.search(r"^[ \t]*\$RUNTIME.*?^[ \t]*(\d+)", self.str,
+                      re.MULTILINE | re.DOTALL)
         assert(m is not None)
         self.str = self.str[:m.start(1)] + str(runtime) + self.str[m.end(1):]
 
     def substitute_timestep(self, regex, timestep):
         """
-        Substitute a new timestep value using regex. 
+        Substitute a new timestep value using regex.
         """
 
         # Make one change at a time, each change affects subsequent matches.
@@ -36,7 +38,8 @@ class Namcouple:
                 if m.group(1) == timestep:
                     continue
                 else:
-                    self.str = self.str[:m.start(1)] + timestep + self.str[m.end(1):]
+                    self.str = (self.str[:m.start(1)] + timestep
+                                + self.str[m.end(1):])
                     none_updated = False
                     timestep_changed = True
                     break

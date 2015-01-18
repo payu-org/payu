@@ -12,8 +12,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 # Standard library
 import errno
 import os
-import re
-import shutil
 
 # Extensions
 import yaml
@@ -79,6 +77,7 @@ def make_symlink(src_path, lnk_path):
 
 
 def splitpath(path):
+    """Recursively split a filepath into all directories and files."""
 
     head, tail = os.path.split(path)
     if tail == '':

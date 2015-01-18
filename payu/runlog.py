@@ -27,7 +27,6 @@ class Runlog(object):
         self.manifest = []
         self.create_manifest()
 
-
     def create_manifest(self):
 
         config_path = os.path.join(self.expt.control_path,
@@ -39,7 +38,6 @@ class Runlog(object):
         for model in self.expt.models:
             self.manifest.extend(os.path.join(model.control_path, f)
                                  for f in model.config_files)
-
 
     def commit(self):
 
