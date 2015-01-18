@@ -20,6 +20,7 @@ import subprocess as sp
 from payu import envmod
 from payu.fsops import make_symlink, mkdir_p
 
+
 class Model(object):
     """Abstract model class"""
 
@@ -29,8 +30,6 @@ class Model(object):
         self.expt = expt
         self.name = model_name
         self.config = model_config
-
-        #---
 
         # Model details
         self.model_type = None
@@ -62,8 +61,6 @@ class Model(object):
         self.repo_tag = None
         self.build_command = None
 
-
-    #---
     def set_model_pathnames(self):
 
         self.control_path = self.expt.control_path
@@ -91,8 +88,6 @@ class Model(object):
         else:
             self.exec_path = None
 
-
-    #---
     def set_input_paths(self):
 
         if len(self.expt.models) == 1:
@@ -121,8 +116,6 @@ class Model(object):
                     sys.exit('payu: error: Input directory {} not found; '
                              'aborting.'.format(rel_path))
 
-
-    #---
     def set_model_output_paths(self):
 
         self.output_path = self.expt.output_path
@@ -144,13 +137,9 @@ class Model(object):
                 self.prior_restart_path = os.path.join(self.prior_restart_path,
                                                        self.name)
 
-
-    #---
     def get_prior_restart_files(self):
         return os.listdir(self.prior_restart_path)
 
-
-    #---
     def setup(self):
 
         # Create experiment directory structure
@@ -204,18 +193,14 @@ class Model(object):
         if t_step:
             self.set_timestep(t_step)
 
-
     def set_timestep(self):
         raise NotImplementedError
-
 
     def archive(self):
         raise NotImplementedError
 
-
     def collate(self):
         raise NotImplementedError
-
 
     def build_model(self):
 
@@ -270,8 +255,6 @@ class Model(object):
 
         os.chdir(curdir)
 
-
-    #---
     def get_codebase(self):
 
         if not self.repo_url:
@@ -292,10 +275,8 @@ class Model(object):
         sp.check_call(shlex.split('git pull'))
         os.chdir(curdir)
 
-
-    #---
-    # TODO: Replace with call to "profile" drivers
     def profile(self):
+        # TODO: Replace with call to "profile" drivers
 
         if self.expt.config.get('hpctoolkit', False) and self.exec_name:
 
@@ -325,7 +306,7 @@ class Model(object):
             src_path = os.path.join(self.codebase_path, 'src')
 
             cmd = 'hpcprof-mpi -S {} -I {} -o {} {}'.format(
-                    hpcstruct_path, src_path, hpctk_db_dir, hpctk_measure_dir)
+                hpcstruct_path, src_path, hpctk_db_dir, hpctk_measure_dir)
             sp.check_call(shlex.split(cmd))
 
         if self.expt.config.get('scalasca', False):

@@ -24,9 +24,9 @@ from payu.fsops import make_symlink
 from payu.models.model import Model
 import payu.calendar as cal
 
+
 class Access(Model):
 
-    #---
     def __init__(self, expt, name, config):
         super(Access, self).__init__(expt, name, config)
 
@@ -36,8 +36,8 @@ class Access(Model):
             if model.model_type == 'cice':
                 model.config_files = ['cice_in.nml',
                                       'input_ice.nml']
-                model.optional_config_files =  ['input_ice_gfdl.nml',
-                                                'input_ice_monin.nml']
+                model.optional_config_files = ['input_ice_gfdl.nml',
+                                               'input_ice_monin.nml']
 
                 model.ice_nml_fname = 'cice_in.nml'
 
@@ -45,8 +45,6 @@ class Access(Model):
 
                 model.set_timestep = model.set_access_timestep
 
-
-    #---
     def setup(self):
 
         cpl_keys = {'cice': ('input_ice.nml', 'coupling_nml', 'runtime0'),
@@ -80,8 +78,10 @@ class Access(Model):
                 caltype = cpl_nml[cpl_group]['caltype']
                 init_date = cal.int_to_date(cpl_nml[cpl_group]['init_date'])
 
-                # Get time info about the beginning of this run. We're interested
-                # in: 1) start date of run, 2) total runtime of all previous runs.
+                # Get time info about the beginning of this run. We're
+                # interested in:
+                #   1. start date of run
+                #   2. total runtime of all previous runs.
                 if model.prior_output_path:
 
                     prior_cpl_fpath = os.path.join(model.prior_output_path,
@@ -91,9 +91,10 @@ class Access(Model):
 
                     # The total time in seconds since the beginning of
                     # the experiment.
-                    total_runtime = int(cpl_nml_grp[runtime0_key] +
-                                          cpl_nml_grp['runtime'])
-                    run_start_date = cal.date_plus_seconds(init_date, total_runtime,
+                    total_runtime = int(cpl_nml_grp[runtime0_key]
+                                        + cpl_nml_grp['runtime'])
+                    run_start_date = cal.date_plus_seconds(init_date,
+                                                           total_runtime,
                                                            caltype)
 
                 else:
@@ -138,7 +139,6 @@ class Access(Model):
 
                 with open(namcouple, 'w') as f:
                     f.write(s)
-
 
     def archive(self):
 

@@ -19,16 +19,14 @@ import subprocess as sp
 # Local
 from payu.models.model import Model
 
+
 class Fms(Model):
 
-    #---
     def __init__(self, expt, name, config):
 
         # payu initalisation
         super(Fms, self).__init__(expt, name, config)
 
-
-    #---
     def set_model_pathnames(self):
 
         super(Fms, self).set_model_pathnames()
@@ -38,8 +36,6 @@ class Fms(Model):
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
         self.work_init_path = self.work_input_path
 
-
-    #---
     def archive(self, **kwargs):
 
         # Remove the 'INPUT' path
@@ -53,8 +49,6 @@ class Fms(Model):
         cmd = 'mv {} {}'.format(self.work_restart_path, self.restart_path)
         sp.check_call(shlex.split(cmd))
 
-
-    #---
     def collate(self):
 
         # Set the stacksize to be unlimited
@@ -78,7 +72,7 @@ class Fms(Model):
 
         # Generate collated file list and identify the first tile
         tile_fnames = [f for f in os.listdir(self.output_path)
-                         if f[-4:].isdigit() and f[-8:-4] == '.nc.']
+                       if f[-4:].isdigit() and f[-8:-4] == '.nc.']
 
         mnc_tiles = {}
         for t in tile_fnames:

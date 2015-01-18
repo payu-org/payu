@@ -24,9 +24,9 @@ from payu.fsops import mkdir_p, make_symlink
 from payu.models.model import Model
 from payu.namcouple import Namcouple
 
+
 class Oasis(Model):
 
-    #---
     def __init__(self, expt, name, config):
         super(Oasis, self).__init__(expt, name, config)
 
@@ -36,7 +36,6 @@ class Oasis(Model):
 
         self.config_files = ['namcouple']
 
-
     def setup(self):
         super(Oasis, self).setup()
 
@@ -45,7 +44,7 @@ class Oasis(Model):
         # TODO: Parse namecouple to determine filelist
         # TODO: Let users map files to models
         input_files = [f for f in os.listdir(self.work_path)
-                       if not f in self.config_files]
+                       if f not in self.config_files]
 
         for model in self.expt.models:
 
@@ -58,7 +57,6 @@ class Oasis(Model):
                 f_path = os.path.join(self.work_path, f_name)
                 f_sympath = os.path.join(model.work_path, f_name)
                 make_symlink(f_path, f_sympath)
-
 
     def set_timestep(self, t_step):
 
@@ -105,8 +103,6 @@ class Oasis(Model):
 
                 input_nml.write(input_nml_path, force=True)
 
-
-    #---
     def archive(self):
 
         # TODO: Determine the exchange files
@@ -120,6 +116,5 @@ class Oasis(Model):
             if os.path.exists(f_src):
                 shutil.move(f_src, f_dst)
 
-    #---
     def collate(self):
         pass

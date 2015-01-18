@@ -16,9 +16,9 @@ import os
 from payu.models.model import Model
 from payu.fsops import mkdir_p
 
+
 class Matm(Model):
 
-    #---
     def __init__(self, expt, name, config):
         super(Matm, self).__init__(expt, name, config)
 
@@ -32,22 +32,16 @@ class Matm(Model):
         self.config_files = ['input_atm.nml',
                              'data_4_matm.table']
 
-
-    #---
     def set_model_pathnames(self):
         super(Matm, self).set_model_pathnames()
 
         self.build_exec_path = os.path.join(self.codebase_path, 'build_nt62')
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
 
-
-    #---
     def archive(self):
 
         # Create an empty restart directory
         mkdir_p(self.restart_path)
 
-
-    #---
     def collate(self):
         pass

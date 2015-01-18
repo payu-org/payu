@@ -29,9 +29,9 @@ from payu.fsops import make_symlink
 from payu.models.model import Model
 from payu.namcouple import Namcouple
 
+
 class Cice(Model):
 
-    #---
     def __init__(self, expt, name, config):
         super(Cice, self).__init__(expt, name, config)
 
@@ -48,8 +48,6 @@ class Cice(Model):
 
         self.set_timestep = self.set_local_timestep
 
-
-    #---
     def set_model_pathnames(self):
         super(Cice, self).set_model_pathnames()
 
@@ -84,8 +82,6 @@ class Cice(Model):
         kmt_input_path, kmt_fname = os.path.split(grid_nml['kmt_file'])
         assert input_path == kmt_input_path
 
-
-    #---
     def set_model_output_paths(self):
         super(Cice, self).set_model_output_paths()
 
@@ -102,14 +98,10 @@ class Cice(Model):
                 if os.path.isdir(init_res_path):
                     self.prior_restart_path = init_res_path
 
-
-    #---
     def get_prior_restart_files(self):
         return [f for f in os.listdir(self.prior_restart_path)
                 if f.startswith('iced.')]
 
-
-    #---
     def setup(self):
         super(Cice, self).setup()
 
@@ -147,8 +139,8 @@ class Cice(Model):
             # The total time in seconds since the beginning of the experiment
             total_runtime = prior_setup_nml['istep0'] + prior_setup_nml['npt']
             total_runtime = total_runtime * prior_setup_nml['dt']
-            run_start_date = cal.date_plus_seconds(init_date, total_runtime, caltype)
-
+            run_start_date = cal.date_plus_seconds(init_date, total_runtime,
+                                                   caltype)
         else:
             # Locate and link any restart files (if required)
             if not setup_nml['ice_ic'] in ('none', 'default'):
@@ -183,7 +175,6 @@ class Cice(Model):
         nml_path = os.path.join(self.work_path, self.ice_nml_fname)
         self.ice_in.write(nml_path, force=True)
 
-
     def set_local_timestep(self, t_step):
         dt = self.ice_in['setup_nml']['dt']
         npt = self.ice_in['setup_nml']['npt']
@@ -194,10 +185,9 @@ class Cice(Model):
         ice_in_path = os.path.join(self.work_path, self.ice_nml_fname)
         self.ice_in.write(ice_in_path, force=True)
 
-
-    # TODO: Figure out some way to move this to the ACCESS driver
-    # Re-read ice timestep and move this over there
     def set_access_timestep(self, t_step):
+        # TODO: Figure out some way to move this to the ACCESS driver
+        # Re-read ice timestep and move this over there
         self.set_local_timestep(t_step)
 
         input_ice_path = os.path.join(self.work_path, 'input_ice.nml')
@@ -207,8 +197,8 @@ class Cice(Model):
 
         input_ice.write(input_ice_path, force=True)
 
-    # TODO: Move over to access driver
     def set_oasis_timestep(self, t_step):
+        # TODO: Move over to access driver
         for model in self.expt.models:
             if model.model_type == 'oasis':
                 namcpl_path = os.path.join(model.work_path, 'namcouple')
@@ -216,9 +206,6 @@ class Cice(Model):
                 namcpl.set_ice_timestep(str(t_step))
                 namcpl.write()
 
-
-
-    #---
     def archive(self, **kwargs):
 
         for f in os.listdir(self.work_input_path):
@@ -228,13 +215,9 @@ class Cice(Model):
 
         os.rename(self.work_restart_path, self.restart_path)
 
-
-    #---
     def collate(self):
         pass
 
-
-    #---
     def link_restart(self, fpath):
 
         input_work_path = os.path.join(self.work_path, fpath)
