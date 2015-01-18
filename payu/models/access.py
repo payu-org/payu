@@ -104,11 +104,12 @@ class Access(Model):
                 # Get new runtime for this run. We get this from either the
                 # 'runtime' part of the payu config, or from the namelist
                 if self.expt.runtime:
-                    run_runtime = cal.runtime_from_date(run_start_date,
-                                                        self.expt.runtime['years'],
-                                                        self.expt.runtime['months'],
-                                                        self.expt.runtime['days'],
-                                                        caltype)
+                    run_runtime = cal.runtime_from_date(
+                        run_start_date,
+                        self.expt.runtime['years'],
+                        self.expt.runtime['months'],
+                        self.expt.runtime['days'],
+                        caltype)
                 else:
                     run_runtime = cpl_nml[cpl_group]['runtime']
 

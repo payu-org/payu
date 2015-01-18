@@ -621,8 +621,8 @@ class Experiment(object):
         for input_path in self.input_paths:
             # Using explicit path separators to rename the input directory
             input_cmd = rsync_cmd + '{} {}'.format(
-                            input_path + os.path.sep,
-                            os.path.join(remote_url, 'input') + os.path.sep)
+                input_path + os.path.sep,
+                os.path.join(remote_url, 'input') + os.path.sep)
             rsync_calls.append(input_cmd)
 
         for cmd in rsync_calls:
