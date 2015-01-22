@@ -760,8 +760,8 @@ class Experiment(object):
                  f == self.stderr_fname or
                  f.startswith(short_job_name + '.o') or
                  f.startswith(short_job_name + '.e') or
-                 f.startswith(short_job_name + '_c.o') or
-                 f.startswith(short_job_name + '_c.e')
+                 f.startswith(short_job_name[:13] + '_c.o') or
+                 f.startswith(short_job_name[:13] + '_c.e')
                  )
                 ]
 
