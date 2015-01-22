@@ -38,7 +38,6 @@ default_restart_freq = 5
 
 class Experiment(object):
 
-    #---
     def __init__(self, lab):
         self.lab = lab
 
@@ -50,8 +49,8 @@ class Experiment(object):
 
         # Model run time
         self.runtime = None
-        if (self.config.has_key('calendar') and
-            self.config['calendar'].has_key('runtime')):
+        if ('calendar' in self.config
+                and 'runtime' in self.config['calendar']):
             self.runtime = self.config['calendar']['runtime']
 
         # Stacksize
@@ -91,8 +90,6 @@ class Experiment(object):
         else:
             self.runlog = None
 
-
-    #---
     def init_models(self):
 
         self.model_name = self.config.get('model')
@@ -130,9 +127,6 @@ class Experiment(object):
         else:
             self.model = None
 
-
-
-    #---
     def set_counters(self):
         # Assume that ``set_paths`` has already been called
         assert self.archive_path
@@ -164,8 +158,6 @@ class Experiment(object):
             else:
                 self.counter = 0
 
-
-    #---
     def set_stacksize(self, stacksize):
 
         if stacksize == 'unlimited':
@@ -176,8 +168,6 @@ class Experiment(object):
         resource.setrlimit(resource.RLIMIT_STACK,
                            (stacksize, resource.RLIM_INFINITY))
 
-
-    #---
     def load_modules(self):
 
         # Scheduler
@@ -194,7 +184,7 @@ class Experiment(object):
 
         for mod in loaded_mods:
             mod_base = mod.split('/')[0]
-            if not mod_base in core_modules:
+            if mod_base not in core_modules:
                 envmod.module('unload', mod)
 
         # Now load model-dependent modules
@@ -228,8 +218,6 @@ class Experiment(object):
         if self.debug:
             envmod.module('load', 'totalview')
 
-
-    #---
     def set_expt_pathnames(self):
 
         # Local "control" path
@@ -255,8 +243,6 @@ class Experiment(object):
         self.stdout_fname = self.lab.model_type + '.out'
         self.stderr_fname = self.lab.model_type + '.err'
 
-
-    #---
     def set_output_paths(self):
         # Local archive paths
         output_dir = 'output{:03}'.format(self.counter)
@@ -287,7 +273,6 @@ class Experiment(object):
         for model in self.models:
             model.set_model_output_paths()
 
-    #---
     def build_model(self):
 
         self.load_modules()
@@ -298,7 +283,6 @@ class Experiment(object):
         for model in self.models:
             model.build_model()
 
-    #---
     def setup(self, do_stripe=False):
 
         # Confirm that no output path already exists
@@ -343,8 +327,6 @@ class Experiment(object):
             prof = ProfType(self)
             self.profilers.append(prof)
 
-
-    #---
     def run(self, *user_flags):
 
         self.load_modules()
@@ -517,8 +499,6 @@ class Experiment(object):
         if run_script:
             self.run_userscript(run_script)
 
-
-    #---
     def archive(self):
 
         mkdir_p(self.archive_path)
@@ -571,21 +551,15 @@ class Experiment(object):
         if archive_script:
             self.run_userscript(archive_script)
 
-
-    #---
     def collate(self):
 
         for model in self.models:
             model.collate()
 
-
-    #---
     def profile(self):
         for model in self.models:
             model.profile()
 
-
-    #---
     def postprocess(self):
         """Submit a postprocessing script after collation"""
         assert self.postscript
@@ -596,8 +570,6 @@ class Experiment(object):
         rc = sp.call(cmd)
         assert rc == 0, 'Postprocessing script submission failed.'
 
-
-    #---
     def remote_archive(self, config_name, archive_url=None,
                        max_rsync_attempts=1, rsync_protocol=None):
 
@@ -649,8 +621,8 @@ class Experiment(object):
         for input_path in self.input_paths:
             # Using explicit path separators to rename the input directory
             input_cmd = rsync_cmd + '{} {}'.format(
-                            input_path + os.path.sep,
-                            os.path.join(remote_url, 'input') + os.path.sep)
+                input_path + os.path.sep,
+                os.path.join(remote_url, 'input') + os.path.sep)
             rsync_calls.append(input_cmd)
 
         for cmd in rsync_calls:
@@ -668,16 +640,12 @@ class Experiment(object):
         if res_tar_path and os.path.exists(res_tar_path):
             os.remove(res_tar_path)
 
-
-    #---
     def resubmit(self):
         next_run = self.counter + 1
         cmd = 'payu run -i {} -n {}'.format(next_run, self.n_runs)
         cmd = shlex.split(cmd)
         sp.call(cmd)
 
-
-    #---
     def run_userscript(self, script_cmd):
 
         # First try to interpret the argument as a full command:
@@ -721,15 +689,12 @@ class Experiment(object):
             else:
                 raise
 
-
-    #---
     def sweep(self, hard_sweep=False):
         # TODO: Fix the IO race conditions!
 
         if hard_sweep:
             if os.path.isdir(self.archive_path):
                 print('Removing archive path {}'.format(self.archive_path))
-                #sh.rmtree(self.archive_path)
                 cmd = 'rm -rf {}'.format(self.archive_path)
                 cmd = shlex.split(cmd)
                 rc = sp.call(cmd)
@@ -741,7 +706,6 @@ class Experiment(object):
 
         if os.path.isdir(self.work_path):
             print('Removing work path {}'.format(self.work_path))
-            #sh.rmtree(self.work_path)
             cmd = 'rm -rf {}'.format(self.work_path)
             cmd = shlex.split(cmd)
             rc = sp.call(cmd)

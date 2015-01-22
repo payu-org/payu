@@ -24,9 +24,9 @@ from payu.fsops import mkdir_p, make_symlink
 from payu.models.model import Model
 import payu.calendar as cal
 
+
 class UnifiedModel(Model):
 
-    #---
     def __init__(self, expt, name, config):
         super(UnifiedModel, self).__init__(expt, name, config)
 
@@ -44,15 +44,11 @@ class UnifiedModel(Model):
 
         self.restart = 'restart_dump.astart'
 
-
-    #---
     def set_model_pathnames(self):
         super(UnifiedModel, self).set_model_pathnames()
 
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
 
-
-    #---
     def archive(self):
 
         mkdir_p(self.restart_path)
@@ -75,13 +71,9 @@ class UnifiedModel(Model):
         f_dst = os.path.join(self.restart_path, self.restart)
         shutil.copy(restart_dump, f_dst)
 
-
-    #---
     def collate(self):
         pass
 
-
-    #---
     def setup(self):
         super(UnifiedModel, self).setup()
 
@@ -96,7 +88,7 @@ class UnifiedModel(Model):
         # Set up environment variables needed to run UM.
         # Look for a python file in the config directory.
         um_env = imp.load_source('um_env',
-                os.path.join(self.control_path, 'um_env.py'))
+                                 os.path.join(self.control_path, 'um_env.py'))
         um_vars = um_env.vars
 
         assert len(self.input_paths) == 1
@@ -133,7 +125,7 @@ class UnifiedModel(Model):
                                                    runtime,
                                                    cal.GREGORIAN)
 
-            # Write out and save new calendar information. 
+            # Write out and save new calendar information.
             run_start_date_um = date_to_um_date(run_start_date)
             work_nml['NLSTCALL']['MODEL_BASIS_TIME'] = run_start_date_um
             work_nml['NLSTCALL']['ANCIL_REFTIME'] = run_start_date_um
@@ -147,14 +139,13 @@ class UnifiedModel(Model):
         else:
             run_start_date = work_nml['NLSTCALL']['MODEL_BASIS_TIME']
             run_start_date = um_date_to_date(run_start_date)
-            
 
-        # Set the runtime for this run. 
+        # Set the runtime for this run.
         if self.expt.runtime:
-            run_runtime = cal.runtime_from_date(run_start_date, 
+            run_runtime = cal.runtime_from_date(run_start_date,
                                                 self.expt.runtime['years'],
                                                 self.expt.runtime['months'],
-                                                self.expt.runtime['days'], 
+                                                self.expt.runtime['days'],
                                                 cal.GREGORIAN)
             run_runtime = time_to_um_time(run_runtime)
             work_nml['NLSTCALL']['RUN_RESUBMIT_INC'] = run_runtime
@@ -164,7 +155,6 @@ class UnifiedModel(Model):
         work_nml.write(work_nml_path, force=True)
 
 
-#---
 def date_to_um_dump_date(date):
     """
     Convert a time date object to a um dump format date which is yymd0
@@ -181,7 +171,6 @@ def date_to_um_dump_date(date):
     return '{:02}{}{}0'.format(date.year, um_d[date.month], um_d[date.day])
 
 
-#---
 def date_to_um_date(date):
     """
     Convert a date object to 'year, month, day, hour, minute, second.'
@@ -192,7 +181,6 @@ def date_to_um_date(date):
     return [date.year, date.month, date.day, 0, 0, 0]
 
 
-#---
 def um_date_to_date(d):
     """
     Convert a string with format 'year, month, day, hour, minute, second'
@@ -203,7 +191,6 @@ def um_date_to_date(d):
                              hour=d[3], minute=d[4], second=d[5])
 
 
-#---
 def um_time_to_time(d):
     """
     Convert a list with format [year, month, day, hour, minute, second]
@@ -215,6 +202,7 @@ def um_time_to_time(d):
     assert d[0] == 0 and d[1] == 0 and d[3] == 0 and d[4] == 0 and d[5] == 0
 
     return d[2]*86400
+
 
 def time_to_um_time(seconds):
     """

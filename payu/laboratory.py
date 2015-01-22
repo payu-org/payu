@@ -18,7 +18,6 @@ import pwd
 from payu.fsops import mkdir_p, read_config
 
 
-#---
 class Laboratory(object):
     """Interface to the numerical model's laboratory."""
 
@@ -59,8 +58,6 @@ class Laboratory(object):
         self.input_basepath = os.path.join(self.basepath, 'input')
         self.work_path = os.path.join(self.basepath, 'work')
 
-
-    #---
     def get_default_lab_path(self, config):
         """Generate a default laboratory path based on user environment."""
 
@@ -79,8 +76,6 @@ class Laboratory(object):
 
         return lab_path
 
-
-    #---
     def initialize(self):
         """Create the laboratory directories."""
 

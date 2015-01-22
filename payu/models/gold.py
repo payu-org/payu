@@ -18,10 +18,10 @@ import f90nml
 # Local
 from payu.models.fms import Fms
 
+
 class Gold(Fms):
     """Interface to GFDL's GOLD ocean model."""
 
-    #---
     def __init__(self, expt, name, config):
 
         # FMS initalisation
@@ -36,16 +36,12 @@ class Gold(Fms):
                              'fre_input.nml',
                              'input.nml']
 
-
-    #---
     def setup(self):
         # FMS initialisation
         super(Gold, self).setup()
 
         self.init_config()
 
-
-    #---
     def init_config(self):
         """Patch input.nml as a new or restart run."""
 

@@ -9,6 +9,7 @@ parameters = {'description': 'Prints the list of supported climate models'}
 
 arguments = []
 
+
 def runcmd():
     print('Supported models: {}'.format(' '.join(model_index)))
 
