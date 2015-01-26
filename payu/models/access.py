@@ -10,11 +10,9 @@ http://www.apache.org/licenses/LICENSE-2.0
 """
 
 # Standard Library
-import datetime
-import errno
 import os
-import shutil
 import re
+import shutil
 
 # Extensions
 import f90nml
