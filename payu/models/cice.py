@@ -180,7 +180,7 @@ class Cice(Model):
         npt = self.ice_in['setup_nml']['npt']
 
         self.ice_in['setup_nml']['dt'] = t_step
-        self.ice_in['setup_nml']['npt'] = int(dt) * int(npt) // int(t_step)
+        self.ice_in['setup_nml']['npt'] = (int(dt) * int(npt)) // int(t_step)
 
         ice_in_path = os.path.join(self.work_path, self.ice_nml_fname)
         self.ice_in.write(ice_in_path, force=True)

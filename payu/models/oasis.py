@@ -20,6 +20,7 @@ import subprocess
 import f90nml
 
 # Local
+import payu.calendar as cal
 from payu.fsops import mkdir_p, make_symlink
 from payu.models.model import Model
 from payu.namcouple import Namcouple
@@ -41,7 +42,7 @@ class Oasis(Model):
 
         # Copy OASIS data to the other submodels
 
-        # TODO: Parse namecouple to determine filelist
+        # TODO: Parse namcouple to determine filelist
         # TODO: Let users map files to models
         input_files = [f for f in os.listdir(self.work_path)
                        if f not in self.config_files]
@@ -57,6 +58,10 @@ class Oasis(Model):
                 f_path = os.path.join(self.work_path, f_name)
                 f_sympath = os.path.join(model.work_path, f_name)
                 make_symlink(f_path, f_sympath)
+
+        if self.expt.runtime:
+            # TODO: Implement runtime patch to namcouple
+            pass
 
     def set_timestep(self, t_step):
 

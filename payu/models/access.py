@@ -80,7 +80,7 @@ class Access(Model):
                 # interested in:
                 #   1. start date of run
                 #   2. total runtime of all previous runs.
-                if model.prior_output_path:
+                if model.prior_output_path and not self.expt.repeat_run:
 
                     prior_cpl_fpath = os.path.join(model.prior_output_path,
                                                    cpl_fname)
@@ -117,7 +117,10 @@ class Access(Model):
                 cpl_nml[cpl_group]['runtime'] = int(run_runtime)
 
                 if model.model_type == 'cice':
-                    cpl_nml[cpl_group]['jobnum'] = 1 + self.expt.counter
+                    if self.expt.counter and not self.expt.repeat_run:
+                        cpl_nml[cpl_group]['jobnum'] = 1 + self.expt.counter
+                    else:
+                        cpl_nml[cpl_group]['jobnum'] = 1
 
                 nml_work_path = os.path.join(model.work_path, cpl_fname)
                 f90nml.write(cpl_nml, nml_work_path + '~')
