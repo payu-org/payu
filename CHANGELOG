@@ -1,0 +1,18 @@
+v0.4
+    - Initial setup of model and profiler driver framework 
+    - `env` and `mpirun` config.yaml values can now safely be unset
+    - Bugfix of `payu sweep` of collate logs
+    - ACCESS repeat_run bugfix
+    - PEP8 cleanup
+
+v0.3.2
+    - TODO
+
+v0.3
+    - TODO
+
+v0.2
+    - TODO
+
+v0.1
+    - TODO
