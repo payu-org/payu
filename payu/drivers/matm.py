@@ -26,7 +26,7 @@ class Matm(Model):
         self.default_exec = 'matm'
 
         # Default repo details
-        self.repo_url = 'https://github.com/nicholash/matm.git'
+        self.repo_url = 'https://github.com/CWSL/matm.git'
         self.repo_tag = 'master'
 
         self.config_files = ['input_atm.nml',
