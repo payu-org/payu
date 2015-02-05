@@ -39,7 +39,7 @@ class Cice(Model):
         self.default_exec = 'cice'
 
         # Default repo details
-        self.repo_url = 'https://github.com/nicholash/cice.git'
+        self.repo_url = 'https://github.com/CWSL/cice4.git'
         self.repo_tag = 'access'
 
         self.config_files = ['ice_in']
