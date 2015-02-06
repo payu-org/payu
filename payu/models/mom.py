@@ -85,6 +85,7 @@ class Mom(Fms):
             ocean_solo_nml['years'] = self.expt.runtime['years']
             ocean_solo_nml['months'] = self.expt.runtime['months']
             ocean_solo_nml['days'] = self.expt.runtime['days']
+            ocean_solo_nml['seconds'] = self.expt.runtime.get('seconds', 0)
 
             input_nml.write(input_nml_path, force=True)
 

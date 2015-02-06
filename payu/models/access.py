@@ -107,6 +107,7 @@ class Access(Model):
                         self.expt.runtime['years'],
                         self.expt.runtime['months'],
                         self.expt.runtime['days'],
+                        self.expt.runtime.get('seconds', 0),
                         caltype)
                 else:
                     run_runtime = cpl_nml[cpl_group]['runtime']
