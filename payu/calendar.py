@@ -21,7 +21,7 @@ def date_to_int(date):
     return (date.year * 10**4 + date.month * 10**2 + date.day)
 
 
-def runtime_from_date(start_date, years, months, days, caltype):
+def runtime_from_date(start_date, years, months, days, seconds, caltype):
     """
     Get the number of seconds from start date to start date + date_delta.
 
@@ -35,7 +35,7 @@ def runtime_from_date(start_date, years, months, days, caltype):
     if caltype == NOLEAP:
         runtime -= get_leapdays(start_date, end_date)
 
-    return int(runtime.total_seconds())
+    return int(runtime.total_seconds() + seconds)
 
 
 def date_plus_seconds(init_date, seconds, caltype):
