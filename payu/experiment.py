@@ -475,7 +475,8 @@ class Experiment(object):
 
         # TODO: Need a model-specific cleanup method call here
         if rc != 0:
-            sys.exit('payu: error {}; aborting.'.format(rc))
+            sys.exit('payu: Model exited with error code {}; aborting.'
+                     ''.format(rc))
 
         # Decrement run counter on successful run
         stop_file_path = os.path.join(self.control_path, 'stop_run')

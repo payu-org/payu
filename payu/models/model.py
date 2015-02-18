@@ -147,9 +147,6 @@ class Model(object):
         mkdir_p(self.work_restart_path)
         mkdir_p(self.work_output_path)
 
-        # tmp dir often needed for model/debugger/profiler
-        mkdir_p(os.path.join(self.work_path, 'tmp'))
-
         # Copy configuration files from control path
         for f_name in self.config_files:
             f_path = os.path.join(self.control_path, f_name)
@@ -320,7 +317,7 @@ class Model(object):
             cmd = 'scalasca -examine -s {}'.format(scorep_path)
             sp.check_call(shlex.split(cmd))
 
-        if self.expt.config.get('scorep', True):
+        if self.expt.config.get('scorep', False):
 
             envmod.module('load', 'scorep')
 

@@ -107,6 +107,7 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None):
     payu_env_vars = {}
 
     # Pass along the current PYTHONPATH, and append payu's path if necessary
+    # TODO: Check for egg paths
     payu_path, _ = os.path.split(payu.__path__[0])
 
     try:
