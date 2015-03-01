@@ -34,7 +34,7 @@ core_modules = ['python', 'payu']
 # Default payu parameters
 default_archive_url = 'dc.nci.org.au'
 default_restart_freq = 5
-
+default_restart_history = 5
 
 class Experiment(object):
 
@@ -527,18 +527,22 @@ class Experiment(object):
 
         # Remove old restart files
         # TODO: Move to subroutine
-        restart_freq = self.config.get("restart_freq", default_restart_freq)
+        restart_freq = self.config.get('restart_freq', default_restart_freq)
+        restart_history = self.config.get('restart_history',
+                                          default_restart_history)
 
-        if self.counter >= restart_freq and self.counter % restart_freq == 0:
-            i_s = self.counter - restart_freq
-            i_e = self.counter - 1
-            prior_restart_dirs = ('restart{:03}'.format(i)
-                                  for i in range(i_s, i_e))
+        # Remove any outdated restart files
+        prior_restart_dirs = [d for d in os.listdir(self.archive_path)
+                              if d.startswith('restart')]
 
-            for restart_dirname in prior_restart_dirs:
-                restart_path = os.path.join(self.archive_path, restart_dirname)
-                cmd = 'rm -rf {}'.format(restart_path)
-                sp.check_call(shlex.split(cmd))
+        for res_dir in prior_restart_dirs:
+
+            res_idx = int(res_dir.lstrip('restart'))
+            if (not res_idx % restart_freq == 0
+                    and res_idx <= (self.counter - restart_history)):
+
+                res_path = os.path.join(self.archive_path, res_dir)
+                shutil.rmtree(res_path)
 
         if self.config.get('collate', True):
             cmd = 'payu collate -i {}'.format(self.counter)
