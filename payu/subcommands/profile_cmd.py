@@ -17,7 +17,7 @@ parameters = {'description': 'Postprocess any profiling output'}
 arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory]
 
-#---
+
 def runcmd(model_type, config_path, init_run, n_runs, lab_path):
 
     pbs_config = cli.get_config(config_path)
@@ -56,14 +56,13 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
     # Disable hyperthreading
     qsub_flags = []
     for flag in pbs_config.get('qsub_flags', '').split():
-        if not 'hyperthread' in flag:
+        if 'hyperthread' not in flag:
             qsub_flags.append(flag)
     pbs_config['qsub_flags'] = ' '.join(qsub_flags)
 
     cli.submit_job('payu-profile', pbs_config, pbs_vars)
 
 
-#---
 def runscript():
 
     parser = argparse.ArgumentParser()

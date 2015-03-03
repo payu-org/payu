@@ -18,7 +18,7 @@ parameters = {'description': 'Run the model experiment'}
 arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory]
 
-#---
+
 def runcmd(model_type, config_path, init_run, n_runs, lab_path):
 
     # Get job submission configuration
@@ -27,14 +27,28 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
 
     # Set the queue
     # NOTE: Maybe force all jobs on the normal queue
-    if not 'queue' in pbs_config:
+    if 'queue' not in pbs_config:
         pbs_config['queue'] = 'normal'
 
     # TODO: Create drivers for servers
     max_cpus_per_node = 16
 
+    # Adjust the CPUs for any model-specific settings
+    # TODO: Incorporate this into the Model driver
+    mask_table = pbs_config.get('mask_table', False)
+    if mask_table:
+
+        # Check if a mask table exists
+        # TODO: Is control_path defined at this stage?
+        mask_table_fname = None
+        for f in os.listdir(os.curdir):
+            if f.startswith('mask_table'):
+                mask_table_fname = f
+
+        # TODO TODO
+
     # Increase the cpu request to match a complete node
-    if 'submodels' in pbs_config and not 'ncpus' in pbs_config:
+    if 'submodels' in pbs_config and 'ncpus' not in pbs_config:
 
         submodel_config = pbs_config['submodels']
 
@@ -84,7 +98,6 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
     cli.submit_job('payu-run', pbs_config, pbs_vars)
 
 
-#---
 def runscript():
 
     parser = argparse.ArgumentParser()

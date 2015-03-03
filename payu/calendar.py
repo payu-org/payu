@@ -1,8 +1,8 @@
-
 from dateutil.relativedelta import relativedelta
 import datetime
 
 NOLEAP, GREGORIAN = range(2)
+
 
 def int_to_date(date):
     """
@@ -15,32 +15,34 @@ def int_to_date(date):
 
     return datetime.date(year, month, day)
 
+
 def date_to_int(date):
 
     return (date.year * 10**4 + date.month * 10**2 + date.day)
 
 
-def runtime_from_date(start_date, years, months, days, caltype):
+def runtime_from_date(start_date, years, months, days, seconds, caltype):
     """
-    Get the number of seconds from start date to start date + date_delta. 
+    Get the number of seconds from start date to start date + date_delta.
 
     Ignores Feb 29 for caltype == NOLEAP.
     """
 
-    end_date = start_date + relativedelta(years=years, months=months, days=days)
+    end_date = start_date + relativedelta(years=years, months=months,
+                                          days=days)
     runtime = end_date - start_date
 
     if caltype == NOLEAP:
         runtime -= get_leapdays(start_date, end_date)
 
-    return int(runtime.total_seconds())
+    return int(runtime.total_seconds() + seconds)
 
 
 def date_plus_seconds(init_date, seconds, caltype):
     """
     Get a new_date = date + seconds.
 
-    Ignores Feb 29 for no-leap days. 
+    Ignores Feb 29 for no-leap days.
     """
 
     end_date = init_date + datetime.timedelta(seconds=seconds)
@@ -49,11 +51,11 @@ def date_plus_seconds(init_date, seconds, caltype):
         end_date += get_leapdays(init_date, end_date)
 
     return end_date
-    
+
 
 def get_leapdays(init_date, final_date):
     """
-    Find the number of leap days between arbitrary dates. Returns a 
+    Find the number of leap days between arbitrary dates. Returns a
     timedelta object.
 
     FIXME: calculate this instead of iterating.

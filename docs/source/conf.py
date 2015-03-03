@@ -240,3 +240,12 @@ texinfo_documents = [
 
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 #texinfo_show_urls = 'footnote'
+
+# -----------------
+man_pages = [
+        ('index',
+         'payu',
+         'A climate model workflow management tool',
+         None,
+         1)
+]

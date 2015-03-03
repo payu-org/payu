@@ -11,12 +11,13 @@ import subprocess
 
 DEFAULT_VERSION = '3.2.6'
 
+
 def setup():
     """Set the environment modules used by the Environment Module system."""
 
     # Update PATH
     payu_path = os.environ.get('PAYU_PATH')
-    if payu_path and not payu_path in os.environ['PATH'].split(':'):
+    if payu_path and payu_path not in os.environ['PATH'].split(':'):
         os.environ['PATH'] = ':'.join([payu_path, os.environ['PATH']])
 
     module_version = os.environ.get('MODULE_VERSION', DEFAULT_VERSION)
@@ -26,7 +27,7 @@ def setup():
     os.environ['MODULE_VERSION_STACK'] = module_version
     os.environ['MODULESHOME'] = module_basepath
 
-    if not 'MODULEPATH' in os.environ:
+    if 'MODULEPATH' not in os.environ:
         module_initpath = os.path.join(module_basepath, 'init', '.modulespath')
         with open(module_initpath) as initpaths:
             modpaths = [mpath.strip() for mpath in line.partition('#')
@@ -54,6 +55,7 @@ def module(command, *args):
 
 def lib_update(bin_path, lib_name):
     # Local import to avoid reversion interference
+    # TODO: Bad design, fixme!
     from payu import fsops
 
     # TODO: Use objdump instead of ldd
@@ -68,4 +70,4 @@ def lib_update(bin_path, lib_name):
 
             module('unload', mod_name)
             module('load', os.path.join(mod_name, mod_version))
-            break
+            return '{}/{}'.format(mod_name, mod_version)

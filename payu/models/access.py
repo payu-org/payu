@@ -10,49 +10,45 @@ http://www.apache.org/licenses/LICENSE-2.0
 """
 
 # Standard Library
-import datetime
-import errno
 import os
-import shutil
 import re
+import shutil
 
 # Extensions
 import f90nml
 
 # Local
 from payu.fsops import make_symlink
-from payu.modeldriver import Model
+from payu.models.model import Model
 import payu.calendar as cal
+
 
 class Access(Model):
 
-    #---
     def __init__(self, expt, name, config):
         super(Access, self).__init__(expt, name, config)
 
         self.model_type = 'access'
 
-        self.modules = ['pbs',
-                        'openmpi']
-
         for model in self.expt.models:
             if model.model_type == 'cice':
                 model.config_files = ['cice_in.nml',
                                       'input_ice.nml']
-                model.optional_config_files =  ['input_ice_gfdl.nml',
-                                                'input_ice_monin.nml']
+                model.optional_config_files = ['input_ice_gfdl.nml',
+                                               'input_ice_monin.nml']
 
                 model.ice_nml_fname = 'cice_in.nml'
 
                 model.access_restarts = ['u_star.nc', 'sicemass.nc', 'mice.nc']
 
-    #---
+                model.set_timestep = model.set_access_timestep
+
     def setup(self):
 
         cpl_keys = {'cice': ('input_ice.nml', 'coupling_nml', 'runtime0'),
                     'matm': ('input_atm.nml', 'coupling', 'truntime0')}
 
-        # Keep track of this in order to set the oasis runtime. 
+        # Keep track of this in order to set the oasis runtime.
         run_runtime = 0
 
         for model in self.expt.models:
@@ -80,9 +76,11 @@ class Access(Model):
                 caltype = cpl_nml[cpl_group]['caltype']
                 init_date = cal.int_to_date(cpl_nml[cpl_group]['init_date'])
 
-                # Get time info about the beginning of this run. We're interested
-                # in: 1) start date of run, 2) total runtime of all previous runs.
-                if model.prior_output_path:
+                # Get time info about the beginning of this run. We're
+                # interested in:
+                #   1. start date of run
+                #   2. total runtime of all previous runs.
+                if model.prior_output_path and not self.expt.repeat_run:
 
                     prior_cpl_fpath = os.path.join(model.prior_output_path,
                                                    cpl_fname)
@@ -91,9 +89,10 @@ class Access(Model):
 
                     # The total time in seconds since the beginning of
                     # the experiment.
-                    total_runtime = int(cpl_nml_grp[runtime0_key] +
-                                          cpl_nml_grp['runtime'])
-                    run_start_date = cal.date_plus_seconds(init_date, total_runtime,
+                    total_runtime = int(cpl_nml_grp[runtime0_key]
+                                        + cpl_nml_grp['runtime'])
+                    run_start_date = cal.date_plus_seconds(init_date,
+                                                           total_runtime,
                                                            caltype)
 
                 else:
@@ -103,11 +102,13 @@ class Access(Model):
                 # Get new runtime for this run. We get this from either the
                 # 'runtime' part of the payu config, or from the namelist
                 if self.expt.runtime:
-                    run_runtime = cal.runtime_from_date(run_start_date, 
-                                                        self.expt.runtime['years'],
-                                                        self.expt.runtime['months'],
-                                                        self.expt.runtime['days'], 
-                                                        caltype)
+                    run_runtime = cal.runtime_from_date(
+                        run_start_date,
+                        self.expt.runtime['years'],
+                        self.expt.runtime['months'],
+                        self.expt.runtime['days'],
+                        self.expt.runtime.get('seconds', 0),
+                        caltype)
                 else:
                     run_runtime = cpl_nml[cpl_group]['runtime']
 
@@ -117,13 +118,16 @@ class Access(Model):
                 cpl_nml[cpl_group]['runtime'] = int(run_runtime)
 
                 if model.model_type == 'cice':
-                    cpl_nml[cpl_group]['jobnum'] = 1 + self.expt.counter
+                    if self.expt.counter and not self.expt.repeat_run:
+                        cpl_nml[cpl_group]['jobnum'] = 1 + self.expt.counter
+                    else:
+                        cpl_nml[cpl_group]['jobnum'] = 1
 
                 nml_work_path = os.path.join(model.work_path, cpl_fname)
                 f90nml.write(cpl_nml, nml_work_path + '~')
                 shutil.move(nml_work_path + '~', nml_work_path)
 
-        # Now change the oasis runtime. This needs to be done after the others. 
+        # Now change the oasis runtime. This needs to be done after the others.
         for model in self.expt.models:
             if model.model_type == 'oasis':
                 namcouple = os.path.join(model.work_path, 'namcouple')
@@ -139,7 +143,6 @@ class Access(Model):
                 with open(namcouple, 'w') as f:
                     f.write(s)
 
-    #---
     def archive(self):
 
         for model in self.expt.models:
@@ -152,8 +155,3 @@ class Access(Model):
 
                     if os.path.exists(f_src):
                         shutil.move(f_src, f_dst)
-
-    #---
-    def collate(self):
-        raise NotImplementedError
-

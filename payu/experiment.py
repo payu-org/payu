@@ -17,13 +17,15 @@ import os
 import resource
 import sys
 import shlex
-import shutil as sh
+import shutil
 import subprocess as sp
 
 # Local
 from payu import envmod
 from payu.fsops import mkdir_p, make_symlink, read_config
-from payu.modelindex import index as model_index
+from payu.models import index as model_index
+import payu.profilers
+from payu.runlog import Runlog
 
 # Environment module support on vayu
 module_path = '/projects/v45/modules'
@@ -32,13 +34,11 @@ core_modules = ['python', 'payu']
 # Default payu parameters
 default_archive_url = 'dc.nci.org.au'
 default_restart_freq = 5
+default_restart_history = 5
 
-#==============================================================================
 class Experiment(object):
 
-    #---
     def __init__(self, lab):
-
         self.lab = lab
 
         # TODO: replace with dict, check versions via key-value pairs
@@ -47,16 +47,16 @@ class Experiment(object):
         # TODO: __init__ should not be a config dumping ground!
         self.config = read_config()
 
+        # Model run time
         self.runtime = None
-        if (self.config.has_key('calendar') and
-            self.config['calendar'].has_key('runtime')):
+        if ('calendar' in self.config
+                and 'runtime' in self.config['calendar']):
             self.runtime = self.config['calendar']['runtime']
 
-        # Set stacksize
+        # Stacksize
         # NOTE: Possible PBS issue in setting non-unlimited stacksizes
-        stacksize = self.config.get('stacksize')
-        if stacksize:
-            self.set_stacksize(stacksize)
+        stacksize = self.config.get('stacksize', 'unlimited')
+        self.set_stacksize(stacksize)
 
         # Initialize the submodels
         self.init_models()
@@ -74,6 +74,8 @@ class Experiment(object):
         # TODO: Move this stuff somewhere else
         self.userscripts = self.config.get('userscripts', {})
 
+        self.profilers = []
+
         self.debug = self.config.get('debug', False)
         self.postscript = self.config.get('postscript')
         self.repeat_run = self.config.get('repeat', False)
@@ -82,8 +84,12 @@ class Experiment(object):
         if init_script:
             self.run_userscript(init_script)
 
+        # Logging
+        if self.config.get('runlog', False):
+            self.runlog = Runlog(self)
+        else:
+            self.runlog = None
 
-    #---
     def init_models(self):
 
         self.model_name = self.config.get('model')
@@ -94,23 +100,23 @@ class Experiment(object):
         # TODO: Rename this to self.submodels
         self.models = []
 
-        submodels = self.config.get('submodels', {})
+        submodels = self.config.get('submodels', [])
 
-        # --- TODO: Delete this block
         if not submodels:
 
             solo_model = self.config.get('model')
             if not solo_model:
                 sys.exit('payu: error: Unknown model configuration.')
 
-            submodels[solo_model] = {f: self.config[f] for f in model_fields
-                                     if f in self.config}
-        # --- TODO: end delete
+            submodel_config = {f: self.config[f] for f in model_fields
+                               if f in self.config}
+            submodel_config['name'] = solo_model
 
-        for m_name, m_config in submodels.iteritems():
+            submodels = [submodel_config]
 
+        for m_config in submodels:
             ModelType = model_index[m_config['model']]
-            self.models.append(ModelType(self, m_name, m_config))
+            self.models.append(ModelType(self, m_config['name'], m_config))
 
         # Load the top-level model
         if self.model_name:
@@ -121,8 +127,6 @@ class Experiment(object):
         else:
             self.model = None
 
-
-    #---
     def set_counters(self):
         # Assume that ``set_paths`` has already been called
         assert self.archive_path
@@ -154,33 +158,33 @@ class Experiment(object):
             else:
                 self.counter = 0
 
-
-    #---
     def set_stacksize(self, stacksize):
 
         if stacksize == 'unlimited':
             stacksize = resource.RLIM_INFINITY
         else:
-            # TODO: User-friendly explanation
             assert type(stacksize) is int
 
         resource.setrlimit(resource.RLIMIT_STACK,
                            (stacksize, resource.RLIM_INFINITY))
 
-
-    #---
     def load_modules(self):
-        # TODO: ``reversion`` makes a lot of this redundant
 
-        for model in self.models:
-            self.modules.update(model.modules)
+        # Scheduler
+        sched_modname = self.config.get('scheduler', 'pbs')
+        self.modules.add(sched_modname)
+
+        # MPI library
+        mpi_config = self.config.get('mpi', {})
+        mpi_modname = mpi_config.get('module', 'openmpi')
+        self.modules.add(mpi_modname)
 
         # Unload non-essential modules
         loaded_mods = os.environ.get('LOADEDMODULES', '').split(':')
 
         for mod in loaded_mods:
             mod_base = mod.split('/')[0]
-            if not mod_base in core_modules:
+            if mod_base not in core_modules:
                 envmod.module('unload', mod)
 
         # Now load model-dependent modules
@@ -208,11 +212,12 @@ class Experiment(object):
             envmod.module('use', '/home/900/mpc900/my_modules')
             envmod.module('load', 'scalasca')
 
+        if self.config.get('scorep', False):
+            envmod.module('load', 'scorep')
+
         if self.debug:
             envmod.module('load', 'totalview')
 
-
-    #---
     def set_expt_pathnames(self):
 
         # Local "control" path
@@ -238,8 +243,6 @@ class Experiment(object):
         self.stdout_fname = self.lab.model_type + '.out'
         self.stderr_fname = self.lab.model_type + '.err'
 
-
-    #---
     def set_output_paths(self):
         # Local archive paths
         output_dir = 'output{:03}'.format(self.counter)
@@ -270,7 +273,6 @@ class Experiment(object):
         for model in self.models:
             model.set_model_output_paths()
 
-    #---
     def build_model(self):
 
         self.load_modules()
@@ -281,7 +283,6 @@ class Experiment(object):
         for model in self.models:
             model.build_model()
 
-    #---
     def setup(self, do_stripe=False):
 
         # Confirm that no output path already exists
@@ -289,6 +290,13 @@ class Experiment(object):
             sys.exit('payu: error: Output path already exists.')
 
         mkdir_p(self.work_path)
+
+        # Archive the payu config
+        # TODO: This just copies the existing config.yaml file, but we should
+        #       reconstruct a new file including default values
+        config_src = os.path.join(self.control_path, 'config.yaml')
+        config_dst = os.path.join(self.work_path)
+        shutil.copy(config_src, config_dst)
 
         # Stripe directory in Lustre
         # TODO: Make this more configurable
@@ -309,8 +317,16 @@ class Experiment(object):
         if setup_script:
             self.run_userscript(setup_script)
 
+        # Profiler setup
+        expt_profs = self.config.get('profilers', [])
+        if not isinstance(expt_profs, list):
+            expt_profs = [expt_profs]
 
-    #---
+        for prof_name in expt_profs:
+            ProfType = payu.profilers.index[prof_name]
+            prof = ProfType(self)
+            self.profilers.append(prof)
+
     def run(self, *user_flags):
 
         self.load_modules()
@@ -319,7 +335,12 @@ class Experiment(object):
         f_err = open(self.stderr_fname, 'w')
 
         # Set MPI environment variables
-        env = self.config.get('env', {})
+        env = self.config.get('env')
+
+        # Explicitly check for `None`, in case of an empty `env:` entry
+        if env is None:
+            env = {}
+
         for var in env:
 
             if env[var] is None:
@@ -329,12 +350,17 @@ class Experiment(object):
 
             os.environ[var] = env_value
 
-        mpirun_cmd = 'mpirun'
+        mpi_config = self.config.get('mpi', {})
+        mpi_runcmd = mpi_config.get('runcmd', 'mpirun')
 
         if self.config.get('scalasca', False):
-            mpirun_cmd = ' '.join(['scalasca -analyze', mpirun_cmd])
+            mpi_runcmd = ' '.join(['scalasca -analyze', mpi_runcmd])
 
-        mpi_flags = self.config.get('mpirun', [])
+        mpi_flags = self.config.get('mpirun')
+        # Correct an empty mpirun entry
+        if mpi_flags is None:
+            mpi_flags = []
+
         if type(mpi_flags) != list:
             mpi_flags = [mpi_flags]
 
@@ -349,8 +375,6 @@ class Experiment(object):
         if self.debug:
             mpi_flags.append('--debug')
 
-        gprof = self.config.get('gprof', False)
-
         mpi_progs = []
         for model in self.models:
 
@@ -358,21 +382,33 @@ class Experiment(object):
             if not model.exec_path:
                 continue
 
-            # Update MPI library module
+            mpi_config = self.config.get('mpi', {})
+            mpi_module = mpi_config.get('module', None)
+
+            # Update MPI library module (if not explicitly set)
             # TODO: Check for MPI library mismatch across multiple binaries
-            # TODO: Someday use this to update all modules
-            # TODO: Intel MPI check
-            envmod.lib_update(model.exec_path, 'libmpi.so')
+            if mpi_module is None:
+                mpi_module = envmod.lib_update(model.exec_path, 'libmpi.so')
 
             model_prog = []
 
-            model_prog.append('-wdir {}'.format(model.work_path))
+            # Our MPICH wrapper does not support a working directory flag
+            if not mpi_module.startswith('mvapich'):
+                model_prog.append('-wdir {}'.format(model.work_path))
+
+            # Append any model-specific MPI flags
+            model_flags = model.config.get('mpiflags', [])
+            if not isinstance(model_flags, list):
+                model_prog.append(model_flags)
+            else:
+                model_prog.extend(model_flags)
 
             model_ncpus = model.config.get('ncpus')
             if model_ncpus:
                 model_prog.append('-np {}'.format(model_ncpus))
 
             model_npernode = model.config.get('npernode')
+            # TODO: New Open MPI format?
             if model_npernode:
                 if model_npernode % 2 == 0:
                     npernode_flag = '-npersocket {}'.format(model_npernode / 2)
@@ -387,17 +423,25 @@ class Experiment(object):
                 os.environ['HPCRUN_EVENT_LIST'] = 'WALLCLOCK@5000'
                 model_prog.append('hpcrun')
 
-            # TODO: This is too NCI-specific, let's add our own script
-            if gprof:
-                model_prog.append('/apps/pgprof/parallel_gprof')
+            for prof in self.profilers:
+                model_prog.append(prof.wrapper)
 
+            model_prog.append(model.exec_prefix)
             model_prog.append(model.exec_path)
 
             mpi_progs.append(' '.join(model_prog))
 
-        cmd = '{} {} {}'.format(mpirun_cmd,
+        cmd = '{} {} {}'.format(mpi_runcmd,
                                 ' '.join(mpi_flags),
                                 ' : '.join(mpi_progs))
+        print(cmd)
+
+        # Our MVAPICH wrapper does not support working directories
+        if mpi_module.startswith('mvapich'):
+            curdir = os.getcwd()
+            os.chdir(self.work_path)
+        else:
+            curdir = None
 
         if env:
             # TODO: Replace with mpirun -x flag inputs
@@ -408,6 +452,13 @@ class Experiment(object):
         else:
             rc = sp.call(shlex.split(cmd), stdout=f_out, stderr=f_err)
 
+        # Return to control directory
+        if curdir:
+            os.chdir(curdir)
+
+        if self.runlog:
+            self.runlog.commit()
+
         f_out.close()
         f_err.close()
 
@@ -417,22 +468,15 @@ class Experiment(object):
             if os.path.getsize(fpath) == 0:
                 os.remove(fpath)
 
-        # Store any profiling logs
-        if gprof:
-            gmon_dir = os.path.join(model.work_path, 'gmon')
-            mkdir_p(gmon_dir)
-
-            gmon_fnames = [f for f in os.listdir(model.work_path)
-                           if f.startswith('gmon.out')]
-
-            for gmon in gmon_fnames:
-                f_src = os.path.join(model.work_path, gmon)
-                f_dst = os.path.join(gmon_dir, gmon)
-                sh.move(f_src, f_dst)
+        # Clean up any profiling output
+        # TODO: Move after `rc` code check?
+        for prof in self.profilers:
+            prof.postprocess()
 
         # TODO: Need a model-specific cleanup method call here
         if rc != 0:
-            sys.exit('payu: error {}; aborting.'.format(rc))
+            sys.exit('payu: Model exited with error code {}; aborting.'
+                     ''.format(rc))
 
         # Decrement run counter on successful run
         stop_file_path = os.path.join(self.control_path, 'stop_run')
@@ -446,17 +490,16 @@ class Experiment(object):
 
         # Move logs to archive (or delete if empty)
         for f in (self.stdout_fname, self.stderr_fname):
-            if os.path.getsize(f) == 0:
-                os.remove(f)
+            f_path = os.path.join(self.control_path, f)
+            if os.path.getsize(f_path) == 0:
+                os.remove(f_path)
             else:
-                sh.move(f, self.work_path)
+                shutil.move(f_path, self.work_path)
 
         run_script = self.userscripts.get('run')
         if run_script:
             self.run_userscript(run_script)
 
-
-    #---
     def archive(self):
 
         mkdir_p(self.archive_path)
@@ -484,18 +527,22 @@ class Experiment(object):
 
         # Remove old restart files
         # TODO: Move to subroutine
-        restart_freq = self.config.get("restart_freq", default_restart_freq)
+        restart_freq = self.config.get('restart_freq', default_restart_freq)
+        restart_history = self.config.get('restart_history',
+                                          default_restart_history)
 
-        if self.counter >= restart_freq and self.counter % restart_freq == 0:
-            i_s = self.counter - restart_freq
-            i_e = self.counter - 1
-            prior_restart_dirs = ('restart{:03}'.format(i)
-                                  for i in range(i_s, i_e))
+        # Remove any outdated restart files
+        prior_restart_dirs = [d for d in os.listdir(self.archive_path)
+                              if d.startswith('restart')]
 
-            for restart_dirname in prior_restart_dirs:
-                restart_path = os.path.join(self.archive_path, restart_dirname)
-                cmd = 'rm -rf {}'.format(restart_path)
-                sp.check_call(shlex.split(cmd))
+        for res_dir in prior_restart_dirs:
+
+            res_idx = int(res_dir.lstrip('restart'))
+            if (not res_idx % restart_freq == 0
+                    and res_idx <= (self.counter - restart_history)):
+
+                res_path = os.path.join(self.archive_path, res_dir)
+                shutil.rmtree(res_path)
 
         if self.config.get('collate', True):
             cmd = 'payu collate -i {}'.format(self.counter)
@@ -509,21 +556,15 @@ class Experiment(object):
         if archive_script:
             self.run_userscript(archive_script)
 
-
-    #---
     def collate(self):
 
         for model in self.models:
             model.collate()
 
-
-    #---
     def profile(self):
         for model in self.models:
             model.profile()
 
-
-    #---
     def postprocess(self):
         """Submit a postprocessing script after collation"""
         assert self.postscript
@@ -534,8 +575,6 @@ class Experiment(object):
         rc = sp.call(cmd)
         assert rc == 0, 'Postprocessing script submission failed.'
 
-
-    #---
     def remote_archive(self, config_name, archive_url=None,
                        max_rsync_attempts=1, rsync_protocol=None):
 
@@ -587,8 +626,8 @@ class Experiment(object):
         for input_path in self.input_paths:
             # Using explicit path separators to rename the input directory
             input_cmd = rsync_cmd + '{} {}'.format(
-                            input_path + os.path.sep,
-                            os.path.join(remote_url, 'input') + os.path.sep)
+                input_path + os.path.sep,
+                os.path.join(remote_url, 'input') + os.path.sep)
             rsync_calls.append(input_cmd)
 
         for cmd in rsync_calls:
@@ -606,16 +645,12 @@ class Experiment(object):
         if res_tar_path and os.path.exists(res_tar_path):
             os.remove(res_tar_path)
 
-
-    #---
     def resubmit(self):
         next_run = self.counter + 1
         cmd = 'payu run -i {} -n {}'.format(next_run, self.n_runs)
         cmd = shlex.split(cmd)
         sp.call(cmd)
 
-
-    #---
     def run_userscript(self, script_cmd):
 
         # First try to interpret the argument as a full command:
@@ -659,15 +694,12 @@ class Experiment(object):
             else:
                 raise
 
-
-    #---
     def sweep(self, hard_sweep=False):
         # TODO: Fix the IO race conditions!
 
         if hard_sweep:
             if os.path.isdir(self.archive_path):
                 print('Removing archive path {}'.format(self.archive_path))
-                #sh.rmtree(self.archive_path)
                 cmd = 'rm -rf {}'.format(self.archive_path)
                 cmd = shlex.split(cmd)
                 rc = sp.call(cmd)
@@ -679,7 +711,6 @@ class Experiment(object):
 
         if os.path.isdir(self.work_path):
             print('Removing work path {}'.format(self.work_path))
-            #sh.rmtree(self.work_path)
             cmd = 'rm -rf {}'.format(self.work_path)
             cmd = shlex.split(cmd)
             rc = sp.call(cmd)
@@ -698,8 +729,8 @@ class Experiment(object):
                  f == self.stderr_fname or
                  f.startswith(short_job_name + '.o') or
                  f.startswith(short_job_name + '.e') or
-                 f.startswith(short_job_name + '_c.o') or
-                 f.startswith(short_job_name + '_c.e')
+                 f.startswith(short_job_name[:13] + '_c.o') or
+                 f.startswith(short_job_name[:13] + '_c.e')
                  )
                 ]
 

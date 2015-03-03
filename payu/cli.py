@@ -20,11 +20,12 @@ import yaml
 
 import payu
 import payu.envmod as envmod
-from payu.modelindex import index as supported_models
+from payu.models import index as supported_models
 import payu.subcommands
 
 # Default configuration
 DEFAULT_CONFIG = 'config.yaml'
+
 
 def parse():
     """Parse the command line inputs and execute the subcommand."""
@@ -60,7 +61,6 @@ def parse():
         run_cmd(**args)
 
 
-#---
 def get_config(config_path):
     """Open the configuration file and construct the configuration data. """
 
@@ -71,7 +71,7 @@ def get_config(config_path):
         with open(config_path, 'r') as config_file:
             config = yaml.load(config_file)
     except (TypeError, IOError) as exc:
-        if config_path == None:
+        if config_path is None:
             config = {}
         elif type(exc) == IOError and exc.errno == errno.ENOENT:
             print('payu: error: Configuration file {} not found.'
@@ -83,7 +83,6 @@ def get_config(config_path):
     return config
 
 
-#---
 def get_model_type(model_type, config):
     """Determine and validate the active model type."""
 
@@ -97,18 +96,18 @@ def get_model_type(model_type, config):
         print('payu: warning: Assuming model is {} based on parent directory '
               'name.'.format(model_type))
 
-    if not model_type in supported_models:
+    if model_type not in supported_models:
         print('payu: error: Unknown model {}'.format(model_type))
         sys.exit(-1)
 
 
-#---
 def set_env_vars(init_run=None, n_runs=None, lab_path=None):
     """Construct the environment variables used by payu for resubmissions."""
 
     payu_env_vars = {}
 
     # Pass along the current PYTHONPATH, and append payu's path if necessary
+    # TODO: Check for egg paths
     payu_path, _ = os.path.split(payu.__path__[0])
 
     try:
@@ -165,7 +164,6 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None):
     return payu_env_vars
 
 
-#---
 def submit_job(pbs_script, pbs_config, pbs_vars=None):
     """Submit a userscript the scheduler."""
 
@@ -200,7 +198,7 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
     pbs_flags.append('-l wd')
 
     pbs_join = pbs_config.get('join', 'oe')
-    if not pbs_join in ('oe', 'eo', 'n'):
+    if pbs_join not in ('oe', 'eo', 'n'):
         print('payu: error: unknown qsub IO stream join setting.')
         sys.exit(-1)
     else:
@@ -229,5 +227,6 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
 
     # Construct full command
     cmd = 'qsub {} {}'.format(' '.join(pbs_flags), pbs_script)
+    print(cmd)
 
     subprocess.check_call(shlex.split(cmd))

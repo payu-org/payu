@@ -5,7 +5,10 @@
 """
 
 import os
-from distutils.core import setup
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 
 PKG_NAME = 'payu'
 PKG_VERSION = __import__(PKG_NAME).__version__
@@ -28,6 +31,7 @@ setup(
 
     packages=PKG_PKGS,
     requires=['f90nml', 'PyYAML'],
+    install_requires=['f90nml', 'PyYAML'],
     scripts=PKG_SCRIPTS,
 
     classifiers=[

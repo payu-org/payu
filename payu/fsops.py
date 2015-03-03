@@ -12,8 +12,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 # Standard library
 import errno
 import os
-import re
-import shutil
 
 # Extensions
 import yaml
@@ -25,7 +23,6 @@ DEFAULT_CONFIG_FNAME = 'config.yaml'
 CHECK_LUSTRE_PATH_LEN = True
 
 
-#---
 def mkdir_p(path):
     """Create a new directory; ignore if it already exists."""
 
@@ -36,7 +33,6 @@ def mkdir_p(path):
             raise
 
 
-#---
 def read_config(config_fname=None):
     """Parse input configuration file and return a config dict."""
 
@@ -50,12 +46,12 @@ def read_config(config_fname=None):
         if exc.errno == errno.ENOENT:
             config = {}
         else:
+            print('payu: warning: No configuration file found!')
             raise
 
     return config
 
 
-#---
 def make_symlink(src_path, lnk_path):
     """Safely create a symbolic link to an input field."""
 
@@ -80,8 +76,8 @@ def make_symlink(src_path, lnk_path):
                 os.symlink(src_path, lnk_path)
 
 
-#---
 def splitpath(path):
+    """Recursively split a filepath into all directories and files."""
 
     head, tail = os.path.split(path)
     if tail == '':
@@ -90,7 +86,6 @@ def splitpath(path):
     return splitpath(head) + (tail, )
 
 
-#---
 def patch_lustre_path(f_path):
     """Patch any 60-character pathnames, to avoid a current Lustre bug."""
 
@@ -101,29 +96,3 @@ def patch_lustre_path(f_path):
             f_path = './' + f_path
 
     return f_path
-
-
-#---
-def patch_nml(nml_path, pattern, replace):
-    """Replace lines matching ``pattern`` with ``replace`` of the Fortran
-    namelist file located at ``nml_path``. If the file does not exist, then do
-    nothing."""
-    # NOTE: f90nml makes this subroutine redundant.
-
-    temp_path = nml_path + '~'
-
-    try:
-        with open(nml_path) as nml, open(temp_path, 'w') as temp:
-
-            re_pattern = re.compile(pattern, re.IGNORECASE)
-            for line in nml:
-                if re_pattern.match(line):
-                    temp.write(replace)
-                else:
-                    temp.write(line)
-
-        shutil.move(temp_path, nml_path)
-
-    except IOError as exc:
-        if exc.errno != errno.ENOENT:
-            raise

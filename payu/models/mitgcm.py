@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 MITgcm payu interface
 -------------------------------------------------------------------------------
@@ -22,11 +21,11 @@ import f90nml
 
 # Local
 from payu.fsops import mkdir_p
-from payu.modeldriver import Model
+from payu.models.model import Model
+
 
 class Mitgcm(Model):
 
-    #---
     def __init__(self, expt, name, config):
         super(Mitgcm, self).__init__(expt, name, config)
 
@@ -34,15 +33,8 @@ class Mitgcm(Model):
         self.model_type = 'mitgcm'
         self.default_exec = 'mitgcmuv'
 
-        self.modules = ['pbs',
-                        'openmpi',
-                        'netcdf']
-
         # NOTE: We use a subroutine to generate the MITgcm configuration list
-        self.config_files = None
 
-
-    #---
     def setup(self):
 
         # TODO: Find a better place to generate this list
@@ -58,7 +50,7 @@ class Mitgcm(Model):
 
             # Determine total number of timesteps since initialisation
             core_restarts = [f for f in os.listdir(self.prior_restart_path)
-                                if f.startswith('pickup.')]
+                             if f.startswith('pickup.')]
             try:
                 # NOTE: Use the most recent, in case of multiple restarts
                 n_iter0 = max([int(f.split('.')[1]) for f in core_restarts])
@@ -96,20 +88,19 @@ class Mitgcm(Model):
         except IOError as exc:
             if exc.errno == errno.ENOENT:
 
-                mnc_01_grp = {'mnc_use_outdir': True,
-                              'mnc_use_name_ni0': True,
-                              'mnc_outdir_str': mnc_header,
-                              'mnc_outdir_date': True,
-                              'monitor_mnc': True
-                             }
+                mnc_01_grp = {
+                    'mnc_use_outdir':   True,
+                    'mnc_use_name_ni0': True,
+                    'mnc_outdir_str':   mnc_header,
+                    'mnc_outdir_date':  True,
+                    'monitor_mnc':      True
+                }
                 data_mnc_nml = {'mnc_01': mnc_01_grp}
 
                 f90nml.write(data_mnc_nml, data_mnc_path)
             else:
                 raise
 
-
-    #---
     def archive(self):
 
         # Remove symbolic links to input or pickup files:
@@ -139,8 +130,9 @@ class Mitgcm(Model):
         # Tar and compress the output files
         stdout_files = [f for f in os.listdir(self.work_path)
                         if f.startswith('STDOUT.')]
-        cmd = 'tar -C {} -c -j -f {}'.format(self.work_path,
-                    os.path.join(self.work_path, 'STDOUT.tar.bz2'))
+        cmd = 'tar -C {} -c -j -f {}'.format(
+            self.work_path,
+            os.path.join(self.work_path, 'STDOUT.tar.bz2'))
 
         rc = sp.Popen(shlex.split(cmd) + stdout_files).wait()
         assert rc == 0
@@ -152,8 +144,6 @@ class Mitgcm(Model):
             f_src = os.path.join(self.work_path, f)
             sh.move(f_src, self.restart_path)
 
-
-    #---
     def collate(self, clear_tiles=True, partition=None):
         import mnctools as mnc
 

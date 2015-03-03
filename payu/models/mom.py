@@ -1,6 +1,6 @@
 # coding: utf-8
-"""payu.drivers.mom
-   ================
+"""payu.models.mom
+   ===============
 
    Driver interface to the MOM ocean model.
 
@@ -17,7 +17,7 @@ import sys
 
 # Local
 import f90nml
-from payu.drivers.fms import Fms
+from payu.models.fms import Fms
 from payu.fsops import mkdir_p
 
 # Module support (for NCO)
@@ -26,7 +26,6 @@ execfile('/opt/Modules/default/init/python')
 
 class Mom(Fms):
 
-    #---
     def __init__(self, expt, name, config):
 
         # FMS initalisation
@@ -44,9 +43,6 @@ class Mom(Fms):
         self.repo_tag = 'master'
         self.build_command = './MOM_compile.csh --platform nci --type MOM_SIS'
 
-        self.modules = ['pbs',
-                        'openmpi']
-
         self.config_files = ['data_table',
                              'diag_table',
                              'field_table',
@@ -54,8 +50,6 @@ class Mom(Fms):
 
         self.optional_config_files = ['blob_diag_table', 'mask_table']
 
-
-    #---
     def set_model_pathnames(self):
         super(Mom, self).set_model_pathnames()
 
@@ -63,8 +57,6 @@ class Mom(Fms):
                                             'MOM_SIS')
         self.build_path = os.path.join(self.codebase_path, 'exp')
 
-
-    #---
     def build_model(self):
         super(Mom, self).build_model()
 
@@ -75,8 +67,6 @@ class Mom(Fms):
         mppnc_dest = os.path.join(self.expt.lab.bin_path, 'mppnccombine')
         shutil.copy(mppnc_src, mppnc_dest)
 
-
-    #---
     def setup(self):
         # FMS initialisation
         super(Mom, self).setup()
@@ -95,87 +85,104 @@ class Mom(Fms):
             ocean_solo_nml['years'] = self.expt.runtime['years']
             ocean_solo_nml['months'] = self.expt.runtime['months']
             ocean_solo_nml['days'] = self.expt.runtime['days']
+            ocean_solo_nml['seconds'] = self.expt.runtime.get('seconds', 0)
 
-            f90nml.write(input_nml, input_nml_path, force=True)
+            input_nml.write(input_nml_path, force=True)
 
         # Construct the land CPU mask
         if self.expt.config.get('mask_table', False):
-            import netCDF4
+            self.create_mask_table(input_nml)
 
-            # Get the grid spec path
-            grid_spec_fname = 'grid_spec.nc'
-            for input_dir in self.input_paths:
-                if grid_spec_fname in os.listdir(input_dir):
-                    grid_spec_path = os.path.join(input_dir, grid_spec_fname)
-                    break
-            assert grid_spec_path
+    def set_timestep(self, timestep):
 
-            grid_spec_nc = netCDF4.Dataset(grid_spec_path)
-            grid_vars = grid_spec_nc.variables
+        input_nml_path = os.path.join(self.work_path, 'input.nml')
+        input_nml = f90nml.read(input_nml_path)
 
-            # Get the ocean mosaic file
-            # TODO: Do not assume mosaic format
-            ocn_mosaic_fname = ''.join(grid_vars['ocn_mosaic_file'][:].data)
-            for input_dir in self.input_paths:
-                if ocn_mosaic_fname in os.listdir(input_dir):
-                    ocn_mosaic_path = os.path.join(input_dir, ocn_mosaic_fname)
-                    break
+        input_nml['ocean_model_nml']['dt_ocean'] = timestep
 
-            # Get the topography file
-            ocn_topog_fname = ''.join(grid_vars['ocn_topog_file'][:].data)
-            for input_dir in self.input_paths:
-                if ocn_topog_fname in os.listdir(input_dir):
-                    ocn_topog_path = os.path.join(input_dir, ocn_topog_fname)
-                    break
+        input_nml.write(input_nml_path, force=True)
 
-            grid_spec_nc.close()
+    def create_mask_table(self, input_nml):
+        import netCDF4
 
-            check_mask = os.path.join(self.expt.lab.bin_path, 'check_mask')
-            f_null = open(os.devnull, 'w')
+        # Get the grid spec path
+        grid_spec_fname = 'grid_spec.nc'
+        for input_dir in self.input_paths:
+            if grid_spec_fname in os.listdir(input_dir):
+                grid_spec_path = os.path.join(input_dir, grid_spec_fname)
+                break
+        assert grid_spec_path
 
-            # Generate ocean mask_table
-            ocn_layout = input_nml['ocean_model_nml']['layout']
+        grid_spec_nc = netCDF4.Dataset(grid_spec_path)
+        grid_vars = grid_spec_nc.variables
 
+        # Get the ocean mosaic file
+        # TODO: Do not assume mosaic format
+        ocn_mosaic_fname = ''.join(grid_vars['ocn_mosaic_file'][:].data)
+        for input_dir in self.input_paths:
+            if ocn_mosaic_fname in os.listdir(input_dir):
+                ocn_mosaic_path = os.path.join(input_dir, ocn_mosaic_fname)
+                break
+
+        # Get the topography file
+        ocn_topog_fname = ''.join(grid_vars['ocn_topog_file'][:].data)
+        for input_dir in self.input_paths:
+            if ocn_topog_fname in os.listdir(input_dir):
+                ocn_topog_path = os.path.join(input_dir, ocn_topog_fname)
+                break
+
+        grid_spec_nc.close()
+
+        check_mask = os.path.join(self.expt.lab.bin_path, 'check_mask')
+        f_null = open(os.devnull, 'w')
+
+        # Generate ocean mask_table
+        ocn_layout = input_nml['ocean_model_nml']['layout']
+
+        cmd = ('{} --grid_file {} --ocean_topog {} --layout {}'
+               ''.format(check_mask, ocn_mosaic_path, ocn_topog_path,
+                         ','.join([str(s) for s in ocn_layout])))
+        subprocess.call(shlex.split(cmd), stdout=f_null)
+        ocn_mask_fname = [f for f in os.listdir(os.curdir)
+                          if f.startswith('mask_table')][0]
+
+        ocn_mask_path = os.path.join(self.work_input_path,
+                                     'ocean_mask_table')
+        shutil.copy(ocn_mask_fname, ocn_mask_path)
+
+        # Generate the ice mask_table
+        ice_layout = input_nml['ice_model_nml']['layout']
+
+        if ice_layout == ocn_layout:
+            ice_mask_fname = ocn_mask_fname
+        else:
             cmd = ('{} --grid_file {} --ocean_topog {} --layout {}'
                    ''.format(check_mask, ocn_mosaic_path, ocn_topog_path,
-                             ','.join([str(s) for s in ocn_layout])))
+                             ','.join([str(s) for s in ice_layout])))
             subprocess.call(shlex.split(cmd), stdout=f_null)
-            ocn_mask_fname = [f for f in os.listdir(os.curdir)
+            ice_mask_fname = [f for f in os.listdir(os.curdir)
                               if f.startswith('mask_table')][0]
 
-            ocn_mask_path = os.path.join(self.work_input_path,
-                                         'ocean_mask_table')
-            shutil.copy(ocn_mask_fname, ocn_mask_path)
+        ice_mask_path = os.path.join(self.work_input_path,
+                                     'ice_mask_table')
 
-            # Generate the ice mask_table
-            ice_layout = input_nml['ice_model_nml']['layout']
+        shutil.copy(ice_mask_fname, ice_mask_path)
 
-            if ice_layout == ocn_layout:
-                ice_mask_fname = ocn_mask_fname
-            else:
-                cmd = ('{} --grid_file {} --ocean_topog {} --layout {}'
-                       ''.format(check_mask, ocn_mosaic_path, ocn_topog_path,
-                                 ','.join([str(s) for s in ice_layout])))
-                subprocess.call(shlex.split(cmd), stdout=f_null)
-                ice_mask_fname = [f for f in os.listdir(os.curdir)
-                                  if f.startswith('mask_table')][0]
+        try:
+            os.remove(ocn_mask_fname)
+            os.remove(ice_mask_fname)
+        except OSError:
+            # TODO: Check this a little bit better
+            pass
 
-            ice_mask_path = os.path.join(self.work_input_path,
-                                         'ice_mask_table')
+        f_null.close()
 
-            shutil.copy(ice_mask_fname, ice_mask_path)
+        # Read and return the number of land cells
+        with open(ocn_mask_path) as fmask:
+            land_cells = int(fmask.readline())
 
-            try:
-                os.remove(ocn_mask_fname)
-                os.remove(ice_mask_fname)
-            except OSError as exc:
-                # TODO: Check this exception
-                pass
+        return land_cells
 
-            f_null.close()
-
-
-    #---
     def core2iaf_setup(self, core2iaf_path=None, driver_name=None):
         # This is a very long method
         # TODO: Separate into sub-methods
@@ -185,11 +192,11 @@ class Mom(Fms):
 
         # Need to make these input arguments
         default_core2iaf_path = '/g/data1/v45/mom/core2iaf'
-        if core2iaf_path == None:
+        if core2iaf_path is None:
             core2iaf_path = default_core2iaf_path
 
         default_driver_name = 'coupler'
-        if driver_name == None:
+        if driver_name is None:
             driver_name = default_driver_name
 
         # TODO: Extract this from the input files
@@ -201,8 +208,8 @@ class Mom(Fms):
 
         date_vname = {'coupler': 'current_date', 'ocean_solo': 'date_init'}
 
-        #----------
-        # t_start
+        # Calculate t_start
+
         tstamp_fname = driver_name + '.res'
         if self.prior_restart_path:
             prior_tstamp_path = os.path.join(self.prior_restart_path,
@@ -233,11 +240,10 @@ class Mom(Fms):
 
         t_monthdays = sum(month_days[:t_mon-1])
 
-        t_start = 365.*(t_yr - 1) + t_monthdays + (t_day - 1) \
-                 + (t_hr + (t_min + t_sec / 60.) / 60.) / 24.
+        t_start = (365.*(t_yr - 1) + t_monthdays + (t_day - 1)
+                   + (t_hr + (t_min + t_sec / 60.) / 60.) / 24.)
 
-        #--------
-        # t_end
+        # Calculate t_end
 
         cal_dt = {'years': 0, 'months': 0, 'days': 0,
                   'hours': 0, 'minutes': 0, 'seconds': 0}
@@ -252,13 +258,15 @@ class Mom(Fms):
         m1 = cal_start['months'] - 1
         dm = cal_dt['months']
 
-        dt_monthdays = 365. * (dm // 12) \
-                      + sum(month_days[m1:(m1 + (dm % 12))]) \
-                      + sum(month_days[:max(0, m1 + (dm % 12) - 12)])
+        dt_monthdays = (365. * (dm // 12)
+                        + sum(month_days[m1:(m1 + (dm % 12))])
+                        + sum(month_days[:max(0, m1 + (dm % 12) - 12)]))
 
-        dt_days = 365. * cal_dt['years'] + dt_monthdays + cal_dt['days'] \
-                 + (cal_dt['hours']
-                    + (cal_dt['minutes'] + cal_dt['seconds'] / 60.) / 60.) / 24.
+        dt_days = (365. * cal_dt['years']
+                   + dt_monthdays + cal_dt['days']
+                   + (cal_dt['hours']
+                      + (cal_dt['minutes'] + cal_dt['seconds'] / 60.) / 60.)
+                   / 24.)
 
         t_end = t_start + dt_days
 
@@ -272,7 +280,6 @@ class Mom(Fms):
         if t_end > max_days:
             t_end = t_end % max_days
 
-        #---
         # Produce forcing files
 
         # TODO: ncks fails if t_end is less than smallest forcing time
@@ -295,7 +302,7 @@ class Mom(Fms):
             f_nc.close()
             assert t_axis
 
-            cmd = 'ncks -d %s,%.1f,%.1f -o %s %s' \
-                    % (t_axis, t_start, t_end, out_fpath, in_fpath)
+            cmd = ('ncks -d %s,%.1f,%.1f -o %s %s'
+                   % (t_axis, t_start, t_end, out_fpath, in_fpath))
             rc = subprocess.Popen(shlex.split(cmd)).wait()
             assert rc == 0

@@ -13,6 +13,7 @@ import sys
 
 import payu.envmod as envmod
 
+
 def repython(version, script_path):
     """Update the Python environment modules to the specified ``version`` and
     replace the current process with an updated Python execution running the
@@ -36,7 +37,7 @@ def repython(version, script_path):
     python_modules = [m for m in os.environ['LOADEDMODULES'].split(':')
                       if m.startswith('python')]
 
-    if sys.version_info < version_tuple or not module_name in python_modules:
+    if sys.version_info < version_tuple or module_name not in python_modules:
 
         # First unload all python (and supporting) modules
         python_modules = [m for m in os.environ['LOADEDMODULES'].split(':')

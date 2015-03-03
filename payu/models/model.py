@@ -1,6 +1,6 @@
 # coding: utf-8
-"""payu.modeldriver
-   ================
+"""payu.models.model
+   =================
 
    Generic driver to be inherited by other models
 
@@ -20,6 +20,7 @@ import subprocess as sp
 from payu import envmod
 from payu.fsops import make_symlink, mkdir_p
 
+
 class Model(object):
     """Abstract model class"""
 
@@ -29,8 +30,6 @@ class Model(object):
         self.expt = expt
         self.name = model_name
         self.config = model_config
-
-        #---
 
         # Model details
         self.model_type = None
@@ -44,6 +43,9 @@ class Model(object):
         self.work_input_path = None
         self.work_restart_path = None
         self.work_init_path = None
+        # A string to add before the exe name, useful for e.g. gdb, gprof,
+        # valgrind
+        self.exec_prefix = None
         self.exec_path = None
         self.exec_name = None
         self.codebase_path = None
@@ -59,8 +61,6 @@ class Model(object):
         self.repo_tag = None
         self.build_command = None
 
-
-    #---
     def set_model_pathnames(self):
 
         self.control_path = self.expt.control_path
@@ -80,6 +80,7 @@ class Model(object):
         self.work_output_path = self.work_path
         self.work_init_path = self.work_path
 
+        self.exec_prefix = self.config.get('exe_prefix', '')
         self.exec_name = self.config.get('exe', self.default_exec)
         if self.exec_name:
             self.exec_path = os.path.join(self.expt.lab.bin_path,
@@ -87,8 +88,6 @@ class Model(object):
         else:
             self.exec_path = None
 
-
-    #---
     def set_input_paths(self):
 
         if len(self.expt.models) == 1:
@@ -117,8 +116,6 @@ class Model(object):
                     sys.exit('payu: error: Input directory {} not found; '
                              'aborting.'.format(rel_path))
 
-
-    #---
     def set_model_output_paths(self):
 
         self.output_path = self.expt.output_path
@@ -140,22 +137,15 @@ class Model(object):
                 self.prior_restart_path = os.path.join(self.prior_restart_path,
                                                        self.name)
 
-
-    #---
     def get_prior_restart_files(self):
         return os.listdir(self.prior_restart_path)
 
-
-    #---
     def setup(self):
 
         # Create experiment directory structure
         mkdir_p(self.work_input_path)
         mkdir_p(self.work_restart_path)
         mkdir_p(self.work_output_path)
-
-        # mpirun wrapper bug management
-        mkdir_p(os.path.join(self.work_path, 'tmp'))
 
         # Copy configuration files from control path
         for f_name in self.config_files:
@@ -196,18 +186,19 @@ class Model(object):
                     else:
                         make_symlink(f_input, f_work_input)
 
+        t_step = self.config.get('timestep')
+        if t_step:
+            self.set_timestep(t_step)
 
-    #---
+    def set_timestep(self):
+        raise NotImplementedError
+
     def archive(self):
         raise NotImplementedError
 
-
-    #---
     def collate(self):
         raise NotImplementedError
 
-
-    #---
     def build_model(self):
 
         if not self.repo_url:
@@ -261,8 +252,6 @@ class Model(object):
 
         os.chdir(curdir)
 
-
-    #---
     def get_codebase(self):
 
         if not self.repo_url:
@@ -283,10 +272,8 @@ class Model(object):
         sp.check_call(shlex.split('git pull'))
         os.chdir(curdir)
 
-
-    #---
-    # TODO: Replace with call to "profile" drivers
     def profile(self):
+        # TODO: Replace with call to "profile" drivers
 
         if self.expt.config.get('hpctoolkit', False) and self.exec_name:
 
@@ -316,10 +303,10 @@ class Model(object):
             src_path = os.path.join(self.codebase_path, 'src')
 
             cmd = 'hpcprof-mpi -S {} -I {} -o {} {}'.format(
-                    hpcstruct_path, src_path, hpctk_db_dir, hpctk_measure_dir)
+                hpcstruct_path, src_path, hpctk_db_dir, hpctk_measure_dir)
             sp.check_call(shlex.split(cmd))
 
-        elif self.expt.config.get('scalasca', False):
+        if self.expt.config.get('scalasca', False):
 
             envmod.module('use', '/home/900/mpc900/my_modules')
             envmod.module('load', 'scalasca')
@@ -328,4 +315,17 @@ class Model(object):
                            for f in os.listdir(self.output_path)
                            if f.startswith('scorep')][0]
             cmd = 'scalasca -examine -s {}'.format(scorep_path)
+            sp.check_call(shlex.split(cmd))
+
+        if self.expt.config.get('scorep', False):
+
+            envmod.module('load', 'scorep')
+
+            scorep_path = [os.path.join(self.output_path, f)
+                           for f in os.listdir(self.output_path)
+                           if f.startswith('scorep')][0]
+            cube_path = [os.path.join(scorep_path, f)
+                         for f in os.listdir(scorep_path)
+                         if f.endswith('.cubex')][0]
+            cmd = 'scorep-score {}'.format(cube_path)
             sp.check_call(shlex.split(cmd))
