@@ -6,6 +6,7 @@ from payu.models.mitgcm import Mitgcm
 from payu.models.mom import Mom
 from payu.models.oasis import Oasis
 from payu.models.um import UnifiedModel
+from payu.models.mom6 import Mom6
 
 index = {
     'access':   Access,
@@ -16,4 +17,5 @@ index = {
     'mom':      Mom,
     'oasis':    Oasis,
     'um':       UnifiedModel,
+    'mom6':     Mom6,
 }
