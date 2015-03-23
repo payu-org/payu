@@ -170,7 +170,8 @@ def date_to_um_dump_date(date):
     um_d = string.digits + string.letters[:26]
 
     # TODO: Check how Y2K dates are handled
-    return '{:02}{}{}0'.format(date.year % 100, um_d[date.month], um_d[date.day])
+    return '{}{}{}{}0'.format(um_d[date.year / 10], um_d[date.year % 10],
+                              um_d[date.month], um_d[date.day])
 
 
 def date_to_um_date(date):
