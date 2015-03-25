@@ -36,6 +36,7 @@ default_archive_url = 'dc.nci.org.au'
 default_restart_freq = 5
 default_restart_history = 5
 
+
 class Experiment(object):
 
     def __init__(self, lab):
@@ -49,8 +50,8 @@ class Experiment(object):
 
         # Model run time
         self.runtime = None
-        if ('calendar' in self.config
-                and 'runtime' in self.config['calendar']):
+        if ('calendar' in self.config and
+                'runtime' in self.config['calendar']):
             self.runtime = self.config['calendar']['runtime']
 
         # Stacksize
@@ -538,8 +539,8 @@ class Experiment(object):
         for res_dir in prior_restart_dirs:
 
             res_idx = int(res_dir.lstrip('restart'))
-            if (not res_idx % restart_freq == 0
-                    and res_idx <= (self.counter - restart_history)):
+            if (not res_idx % restart_freq == 0 and
+                    res_idx <= (self.counter - restart_history)):
 
                 res_path = os.path.join(self.archive_path, res_dir)
                 shutil.rmtree(res_path)

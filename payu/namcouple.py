@@ -38,8 +38,8 @@ class Namcouple:
                 if m.group(1) == timestep:
                     continue
                 else:
-                    self.str = (self.str[:m.start(1)] + timestep
-                                + self.str[m.end(1):])
+                    self.str = (self.str[:m.start(1)] + timestep +
+                                self.str[m.end(1):])
                     none_updated = False
                     timestep_changed = True
                     break

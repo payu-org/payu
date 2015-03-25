@@ -124,8 +124,8 @@ class Mitgcm(Model):
 
         # Move pickups but don't include intermediate pickupts ('ckpt's)
         restart_files = [f for f in os.listdir(self.work_path)
-                         if f.startswith('pickup')
-                         and not f.split('.')[1].startswith('ckpt')]
+                         if f.startswith('pickup') and
+                         not f.split('.')[1].startswith('ckpt')]
 
         # Tar and compress the output files
         stdout_files = [f for f in os.listdir(self.work_path)
@@ -152,8 +152,8 @@ class Mitgcm(Model):
         # Tiled format: <field>.t###.nc
         output_fnames = [f.replace('.t001.', '.')
                          for f in os.listdir(self.output_path)
-                         if f.endswith('.t001.nc')
-                         and not f.startswith('pickup')]
+                         if f.endswith('.t001.nc') and
+                         not f.startswith('pickup')]
 
         tile_fnames = {}
         for fname in output_fnames:
@@ -161,9 +161,9 @@ class Mitgcm(Model):
 
             tile_fnames[fname] = [os.path.join(self.output_path, f)
                                   for f in os.listdir(self.output_path)
-                                  if f.startswith(f_header + '.')
-                                  and f.split('.')[-2].startswith('t')
-                                  and f.split('.')[-2].lstrip('t').isdigit()]
+                                  if f.startswith(f_header + '.') and
+                                  f.split('.')[-2].startswith('t') and
+                                  f.split('.')[-2].lstrip('t').isdigit()]
 
         for fname in tile_fnames:
             mnc.collate(tile_fnames[fname],
