@@ -1,4 +1,11 @@
-Payu was created and is maintained by Marshall Ward <payu@marshallward.org>.
+Marshall Ward:
+    - Creator and Maintainer
+    - Email: <payu@marshallward.org>
 
-Build automation and drivers for the UM and ACCESS models were written by
-Nicholas Hannah.
+Nicholas Hannah:
+    - Build automation
+    - UM support
+    - ACCESS support
+
+Angus Gibson:
+    - MOM6 support
