@@ -144,7 +144,7 @@ class UnifiedModel(Model):
         if self.expt.runtime:
             run_runtime = cal.runtime_from_date(
                 run_start_date,
-                elf.expt.runtime['years'],
+                self.expt.runtime['years'],
                 self.expt.runtime['months'],
                 self.expt.runtime['days'],
                 self.expt.runtime.get('seconds', 0),
