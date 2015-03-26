@@ -1,8 +1,8 @@
 # coding: utf-8
 
 # Local
-import args
 from payu.laboratory import Laboratory
+import payu.subcommands.args as args
 
 # Configuration
 title = 'init'

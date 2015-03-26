@@ -1,9 +1,8 @@
 # coding: utf-8
 
-import args
-
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
+import payu.subcommands.args as args
 
 title = 'sweep'
 parameters = {'description': 'Delete any temporary files from prior runs'}

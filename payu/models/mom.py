@@ -17,11 +17,9 @@ import sys
 
 # Local
 import f90nml
+import payu.envmod
 from payu.models.fms import Fms
 from payu.fsops import mkdir_p
-
-# Module support (for NCO)
-execfile('/opt/Modules/default/init/python')
 
 
 class Mom(Fms):
@@ -188,7 +186,7 @@ class Mom(Fms):
         # TODO: Separate into sub-methods
 
         import scipy.io.netcdf as nc
-        module('load', 'nco')
+        payu.envmod.module('load', 'nco')
 
         # Need to make these input arguments
         default_core2iaf_path = '/g/data1/v45/mom/core2iaf'

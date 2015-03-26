@@ -1,10 +1,9 @@
 # coding: utf-8
 
 # Local
-import args
-
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
+import payu.subcommands.args as args
 
 # Configuration
 title = 'build'
