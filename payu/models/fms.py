@@ -14,9 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 from collections import defaultdict
 import os
 import resource as res
-import sys
 import shlex
-import shutil as sh
 import subprocess as sp
 
 # Local

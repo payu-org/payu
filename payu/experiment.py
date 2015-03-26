@@ -725,15 +725,16 @@ class Experiment(object):
         default_job_name = os.path.basename(os.getcwd())
         short_job_name = self.config.get('jobname', default_job_name)[:15]
 
-        logs = [f for f in os.listdir(os.curdir) if os.path.isfile(f) and
-                (f == self.stdout_fname or
-                 f == self.stderr_fname or
-                 f.startswith(short_job_name + '.o') or
-                 f.startswith(short_job_name + '.e') or
-                 f.startswith(short_job_name[:13] + '_c.o') or
-                 f.startswith(short_job_name[:13] + '_c.e')
-                 )
-                ]
+        logs = [
+            f for f in os.listdir(os.curdir) if os.path.isfile(f) and (
+                f == self.stdout_fname or
+                f == self.stderr_fname or
+                f.startswith(short_job_name + '.o') or
+                f.startswith(short_job_name + '.e') or
+                f.startswith(short_job_name[:13] + '_c.o') or
+                f.startswith(short_job_name[:13] + '_c.e')
+            )
+        ]
 
         pbs_log_path = os.path.join(os.curdir, 'pbs_logs')
         mkdir_p(pbs_log_path)
