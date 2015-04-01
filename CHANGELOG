@@ -7,15 +7,12 @@ v0.4.1:
     - ACCESS default repository change (CWSL)
     - setuptools default support
     - wheel install support
-    - Absolute payu.subcommands.args import
-    - Updated PEP8 cleanup
 
 v0.4:
     - Initial setup of model and profiler driver framework
     - `env` and `mpirun` config.yaml values can now safely be unset
     - Bugfix of `payu sweep` of collate logs
     - ACCESS repeat_run bugfix
-    - PEP8 cleanup
 
 v0.3.2:
     - TODO
