@@ -23,6 +23,11 @@ def repython(version, script_path):
     # Establish the environment modules
     envmod.setup()
 
+    if not os.environ['MODULESHOME']:
+        print('payu: warning: Environment modules unavailable; aborting '
+              'reversion.')
+        return
+
     # Ensure that payu is loaded
     try:
         envmod.module('use', os.environ['PAYU_MODULEPATH'])

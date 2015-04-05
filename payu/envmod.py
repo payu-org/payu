@@ -9,10 +9,11 @@ import os
 import shlex
 import subprocess
 
+DEFAULT_BASEPATH = '/opt/Modules'
 DEFAULT_VERSION = '3.2.6'
 
 
-def setup():
+def setup(version=DEFAULT_VERSION, basepath=DEFAULT_BASEPATH):
     """Set the environment modules used by the Environment Module system."""
 
     # Update PATH
@@ -21,14 +22,21 @@ def setup():
         os.environ['PATH'] = ':'.join([payu_path, os.environ['PATH']])
 
     module_version = os.environ.get('MODULE_VERSION', DEFAULT_VERSION)
-    module_basepath = os.path.join('/opt/Modules', module_version)
+    moduleshome = os.path.join(basepath, module_version)
+
+    # Abort if MODULESHOME does not exist
+    if not os.path.isdir(moduleshome):
+        print('payu: warning: MODULESHOME does not exist; disabling '
+              'environment modules.')
+        os.environ['MODULESHOME'] = ''
+        return
 
     os.environ['MODULE_VERSION'] = module_version
     os.environ['MODULE_VERSION_STACK'] = module_version
-    os.environ['MODULESHOME'] = module_basepath
+    os.environ['MODULESHOME'] = moduleshome
 
     if 'MODULEPATH' not in os.environ:
-        module_initpath = os.path.join(module_basepath, 'init', '.modulespath')
+        module_initpath = os.path.join(moduleshome, 'init', '.modulespath')
         with open(module_initpath) as initpaths:
             modpaths = [mpath.strip() for mpath in line.partition('#')
                         for line in initpaths.readlines()
@@ -43,8 +51,12 @@ def module(command, *args):
     """Run the modulecmd tool and use its Python-formatted output to set the
     environment variables."""
 
-    modulecmd = ('/opt/Modules/{0}/bin/modulecmd'
-                 ''.format(os.environ['MODULE_VERSION']))
+    if not os.environ['MODULESHOME']:
+        print('payu: warning: No Environment Modules found; skipping {} call.'
+              ''.format(command))
+        return
+
+    modulecmd = ('{}/bin/modulecmd'.format(os.environ['MODULESHOME']))
 
     cmd = '{0} python {1} {2}'.format(modulecmd, command, ' '.join(args))
 
