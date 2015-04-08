@@ -56,7 +56,7 @@ def module(command, *args):
               ''.format(command))
         return
 
-    modulecmd = ('{}/bin/modulecmd'.format(os.environ['MODULESHOME']))
+    modulecmd = ('{0}/bin/modulecmd'.format(os.environ['MODULESHOME']))
 
     cmd = '{0} python {1} {2}'.format(modulecmd, command, ' '.join(args))
 
@@ -71,7 +71,7 @@ def lib_update(bin_path, lib_name):
     from payu import fsops
 
     # TODO: Use objdump instead of ldd
-    cmd = 'ldd {}'.format(bin_path)
+    cmd = 'ldd {0}'.format(bin_path)
     slibs = subprocess.check_output(shlex.split(cmd)).split('\n')
 
     for lib_entry in slibs:
@@ -82,4 +82,4 @@ def lib_update(bin_path, lib_name):
 
             module('unload', mod_name)
             module('load', os.path.join(mod_name, mod_version))
-            return '{}/{}'.format(mod_name, mod_version)
+            return '{0}/{1}'.format(mod_name, mod_version)
