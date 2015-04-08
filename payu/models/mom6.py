@@ -1,10 +1,10 @@
 # coding: utf-8
 """payu.models.mom6
-   ===============
+   ================
 
    Driver interface to the MOM6 ocean model.
 
-   :copyright: Copyright 2011-2014 Marshall Ward, see AUTHORS for details
+   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
    :license: Apache License, Version 2.0, see LICENSE for details
 """
 

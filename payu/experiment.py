@@ -3,7 +3,7 @@
 
    Interface to an individual experiment managed by payu
 
-   :copyright: Copyright 2011-2014 Marshall Ward, see AUTHORS for details.
+   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details.
    :license: Apache License, Version 2.0, see LICENSE for details.
 """
 

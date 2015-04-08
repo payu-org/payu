@@ -3,7 +3,7 @@
 
    The payu interface for the UM atmosphere model
 
-   :copyright: Copyright 2011-2014 Marshall Ward, see AUTHORS for details
+   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
    :license: Apache License, Version 2.0, see LICENSE for details
 """
 from __future__ import print_function

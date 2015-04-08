@@ -4,7 +4,7 @@
 
    Driver interface to the MOM ocean model.
 
-   :copyright: Copyright 2011-2014 Marshall Ward, see AUTHORS for details
+   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
    :license: Apache License, Version 2.0, see LICENSE for details
 """
 
