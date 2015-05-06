@@ -1,12 +1,11 @@
 # coding: utf-8
-"""
-Basic file system operations for Payu
--------------------------------------------------------------------------------
-Contact: Marshall Ward <marshall.ward@anu.edu.au>
--------------------------------------------------------------------------------
-Distributed as part of Payu, Copyright 2011 Marshall Ward
-Licensed under the Apache License, Version 2.0
-http://www.apache.org/licenses/LICENSE-2.0
+"""payu.experiment
+   ===============
+
+   Basic file system operations for Payu
+
+   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details.
+   :license: Apache License, Version 2.0, see LICENSE for details.
 """
 
 # Standard library

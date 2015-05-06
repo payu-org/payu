@@ -1,12 +1,11 @@
 # coding: utf-8
-"""
-The payu interface for GFDL models based on FMS
--------------------------------------------------------------------------------
-Contact: Marshall Ward <marshall.ward@anu.edu.au>
--------------------------------------------------------------------------------
-Distributed as part of Payu, Copyright 2011 Marshall Ward
-Licensed under the Apache License, Version 2.0
-http://www.apache.org/licenses/LICENSE-2.0
+"""payu.models.fms
+   ===============
+
+   Driver interface to the FMS model framework.
+
+   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
+   :license: Apache License, Version 2.0, see LICENSE for details
 """
 
 # Standard Library
@@ -14,9 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 from collections import defaultdict
 import os
 import resource as res
-import sys
 import shlex
-import shutil as sh
 import subprocess as sp
 
 # Local

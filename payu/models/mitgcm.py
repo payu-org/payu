@@ -1,11 +1,10 @@
-"""
-MITgcm payu interface
--------------------------------------------------------------------------------
-Contact: Marshall Ward <marshall.ward@anu.edu.au>
--------------------------------------------------------------------------------
-Distributed as part of Payu, Copyright 2011 Marshall Ward
-Licensed under the Apache License, Version 2.0
-http://www.apache.org/licenses/LICENSE-2.0
+"""payu.models.mitgcm
+   ==================
+
+   Driver interface to the MITgcm ocean model.
+
+   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
+   :license: Apache License, Version 2.0, see LICENSE for details
 """
 
 # Standard Library
@@ -124,8 +123,8 @@ class Mitgcm(Model):
 
         # Move pickups but don't include intermediate pickupts ('ckpt's)
         restart_files = [f for f in os.listdir(self.work_path)
-                         if f.startswith('pickup')
-                         and not f.split('.')[1].startswith('ckpt')]
+                         if f.startswith('pickup') and
+                         not f.split('.')[1].startswith('ckpt')]
 
         # Tar and compress the output files
         stdout_files = [f for f in os.listdir(self.work_path)
@@ -152,8 +151,8 @@ class Mitgcm(Model):
         # Tiled format: <field>.t###.nc
         output_fnames = [f.replace('.t001.', '.')
                          for f in os.listdir(self.output_path)
-                         if f.endswith('.t001.nc')
-                         and not f.startswith('pickup')]
+                         if f.endswith('.t001.nc') and
+                         not f.startswith('pickup')]
 
         tile_fnames = {}
         for fname in output_fnames:
@@ -161,9 +160,9 @@ class Mitgcm(Model):
 
             tile_fnames[fname] = [os.path.join(self.output_path, f)
                                   for f in os.listdir(self.output_path)
-                                  if f.startswith(f_header + '.')
-                                  and f.split('.')[-2].startswith('t')
-                                  and f.split('.')[-2].lstrip('t').isdigit()]
+                                  if f.startswith(f_header + '.') and
+                                  f.split('.')[-2].startswith('t') and
+                                  f.split('.')[-2].lstrip('t').isdigit()]
 
         for fname in tile_fnames:
             mnc.collate(tile_fnames[fname],

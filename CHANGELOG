@@ -1,18 +1,27 @@
-v0.4
-    - Initial setup of model and profiler driver framework 
+v0.4.1:
+    - MOM: mppnccombine bugfix for land masked runs
+    - We now save the last N restarts, rather than every Nth plus any inbetween
+    - MOM6 support (Angus Gibson)
+    - Runtimes for various models can now be set in seconds
+    - Exit code error message clarification
+    - ACCESS default repository change (CWSL)
+    - setuptools default support
+    - wheel install support
+
+v0.4:
+    - Initial setup of model and profiler driver framework
     - `env` and `mpirun` config.yaml values can now safely be unset
     - Bugfix of `payu sweep` of collate logs
     - ACCESS repeat_run bugfix
-    - PEP8 cleanup
 
-v0.3.2
+v0.3.2:
     - TODO
 
-v0.3
+v0.3:
     - TODO
 
-v0.2
+v0.2:
     - TODO
 
-v0.1
+v0.1:
     - TODO

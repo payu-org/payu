@@ -3,7 +3,7 @@
 
    Interface to an individual experiment managed by payu
 
-   :copyright: Copyright 2011-2014 Marshall Ward, see AUTHORS for details.
+   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details.
    :license: Apache License, Version 2.0, see LICENSE for details.
 """
 
@@ -36,6 +36,7 @@ default_archive_url = 'dc.nci.org.au'
 default_restart_freq = 5
 default_restart_history = 5
 
+
 class Experiment(object):
 
     def __init__(self, lab):
@@ -49,8 +50,8 @@ class Experiment(object):
 
         # Model run time
         self.runtime = None
-        if ('calendar' in self.config
-                and 'runtime' in self.config['calendar']):
+        if ('calendar' in self.config and
+                'runtime' in self.config['calendar']):
             self.runtime = self.config['calendar']['runtime']
 
         # Stacksize
@@ -538,8 +539,8 @@ class Experiment(object):
         for res_dir in prior_restart_dirs:
 
             res_idx = int(res_dir.lstrip('restart'))
-            if (not res_idx % restart_freq == 0
-                    and res_idx <= (self.counter - restart_history)):
+            if (not res_idx % restart_freq == 0 and
+                    res_idx <= (self.counter - restart_history)):
 
                 res_path = os.path.join(self.archive_path, res_dir)
                 shutil.rmtree(res_path)
@@ -724,15 +725,16 @@ class Experiment(object):
         default_job_name = os.path.basename(os.getcwd())
         short_job_name = self.config.get('jobname', default_job_name)[:15]
 
-        logs = [f for f in os.listdir(os.curdir) if os.path.isfile(f) and
-                (f == self.stdout_fname or
-                 f == self.stderr_fname or
-                 f.startswith(short_job_name + '.o') or
-                 f.startswith(short_job_name + '.e') or
-                 f.startswith(short_job_name[:13] + '_c.o') or
-                 f.startswith(short_job_name[:13] + '_c.e')
-                 )
-                ]
+        logs = [
+            f for f in os.listdir(os.curdir) if os.path.isfile(f) and (
+                f == self.stdout_fname or
+                f == self.stderr_fname or
+                f.startswith(short_job_name + '.o') or
+                f.startswith(short_job_name + '.e') or
+                f.startswith(short_job_name[:13] + '_c.o') or
+                f.startswith(short_job_name[:13] + '_c.e')
+            )
+        ]
 
         pbs_log_path = os.path.join(os.curdir, 'pbs_logs')
         mkdir_p(pbs_log_path)

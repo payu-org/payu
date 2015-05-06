@@ -4,7 +4,7 @@
 
    Driver interface to the MOM ocean model.
 
-   :copyright: Copyright 2011-2014 Marshall Ward, see AUTHORS for details
+   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
    :license: Apache License, Version 2.0, see LICENSE for details
 """
 
@@ -17,11 +17,9 @@ import sys
 
 # Local
 import f90nml
+import payu.envmod
 from payu.models.fms import Fms
 from payu.fsops import mkdir_p
-
-# Module support (for NCO)
-execfile('/opt/Modules/default/init/python')
 
 
 class Mom(Fms):
@@ -188,7 +186,7 @@ class Mom(Fms):
         # TODO: Separate into sub-methods
 
         import scipy.io.netcdf as nc
-        module('load', 'nco')
+        payu.envmod.module('load', 'nco')
 
         # Need to make these input arguments
         default_core2iaf_path = '/g/data1/v45/mom/core2iaf'
@@ -240,8 +238,8 @@ class Mom(Fms):
 
         t_monthdays = sum(month_days[:t_mon-1])
 
-        t_start = (365.*(t_yr - 1) + t_monthdays + (t_day - 1)
-                   + (t_hr + (t_min + t_sec / 60.) / 60.) / 24.)
+        t_start = (365.*(t_yr - 1) + t_monthdays + (t_day - 1) +
+                   (t_hr + (t_min + t_sec / 60.) / 60.) / 24.)
 
         # Calculate t_end
 
@@ -258,15 +256,14 @@ class Mom(Fms):
         m1 = cal_start['months'] - 1
         dm = cal_dt['months']
 
-        dt_monthdays = (365. * (dm // 12)
-                        + sum(month_days[m1:(m1 + (dm % 12))])
-                        + sum(month_days[:max(0, m1 + (dm % 12) - 12)]))
+        dt_monthdays = (365. * (dm // 12) +
+                        sum(month_days[m1:(m1 + (dm % 12))]) +
+                        sum(month_days[:max(0, m1 + (dm % 12) - 12)]))
 
-        dt_days = (365. * cal_dt['years']
-                   + dt_monthdays + cal_dt['days']
-                   + (cal_dt['hours']
-                      + (cal_dt['minutes'] + cal_dt['seconds'] / 60.) / 60.)
-                   / 24.)
+        dt_days = (365. * cal_dt['years'] +
+                   dt_monthdays + cal_dt['days'] +
+                   (cal_dt['hours'] +
+                    (cal_dt['minutes'] + cal_dt['seconds'] / 60.) / 60.) / 24.)
 
         t_end = t_start + dt_days
 

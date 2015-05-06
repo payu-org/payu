@@ -4,7 +4,7 @@
 
    Update the Python executable of an active process to a more recent version.
 
-   :copyright: Copyright 2011-2014 Marshall Ward
+   :copyright: Copyright 2011 Marshall Ward
    :license: Apache License, Version 2.0, see LICENSE for details
 """
 
@@ -22,6 +22,11 @@ def repython(version, script_path):
 
     # Establish the environment modules
     envmod.setup()
+
+    if not os.environ['MODULESHOME']:
+        print('payu: warning: Environment modules unavailable; aborting '
+              'reversion.')
+        return
 
     # Ensure that payu is loaded
     try:

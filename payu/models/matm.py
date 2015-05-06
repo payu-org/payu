@@ -1,12 +1,11 @@
 # coding: utf-8
-"""
-The payu interface for the MATM model
--------------------------------------------------------------------------------
-Contact: Marshall Ward <marshall.ward@anu.edu.au>
--------------------------------------------------------------------------------
-Distributed as part of Payu, Copyright 2011 Marshall Ward
-Licensed under the Apache License, Version 2.0
-http://www.apache.org/licenses/LICENSE-2.0
+"""payu.models.matm
+   ================
+
+   Driver interface to the MATM model.
+
+   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
+   :license: Apache License, Version 2.0, see LICENSE for details
 """
 
 # Standard Library

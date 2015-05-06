@@ -3,7 +3,7 @@
 
    The payu interface for the UM atmosphere model
 
-   :copyright: Copyright 2011-2014 Marshall Ward, see AUTHORS for details
+   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
    :license: Apache License, Version 2.0, see LICENSE for details
 """
 from __future__ import print_function
@@ -142,12 +142,13 @@ class UnifiedModel(Model):
 
         # Set the runtime for this run.
         if self.expt.runtime:
-            run_runtime = cal.runtime_from_date(run_start_date,
-                                           self.expt.runtime['years'],
-                                           self.expt.runtime['months'],
-                                           self.expt.runtime['days'],
-                                           self.expt.runtime.get('seconds', 0),
-                                           cal.GREGORIAN)
+            run_runtime = cal.runtime_from_date(
+                run_start_date,
+                self.expt.runtime['years'],
+                self.expt.runtime['months'],
+                self.expt.runtime['days'],
+                self.expt.runtime.get('seconds', 0),
+                cal.GREGORIAN)
             run_runtime = time_to_um_time(run_runtime)
             work_nml['NLSTCALL']['RUN_RESUBMIT_INC'] = run_runtime
             work_nml['NLSTCALL']['RUN_TARGET_END'] = run_runtime

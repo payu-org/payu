@@ -62,7 +62,10 @@ class Laboratory(object):
         """Generate a default laboratory path based on user environment."""
 
         # Default path settings
-        default_short_path = os.path.join('/short', os.environ.get('PROJECT'))
+
+        # Append project name if present (NCI-specific)
+        default_project = os.environ.get('PROJECT', '')
+        default_short_path = os.path.join('/short', default_project)
         default_user = pwd.getpwuid(os.getuid()).pw_name
 
         short_path = config.get('shortpath', default_short_path)

@@ -89,8 +89,8 @@ class Access(Model):
 
                     # The total time in seconds since the beginning of
                     # the experiment.
-                    total_runtime = int(cpl_nml_grp[runtime0_key]
-                                        + cpl_nml_grp['runtime'])
+                    total_runtime = int(cpl_nml_grp[runtime0_key] +
+                                        cpl_nml_grp['runtime'])
                     run_start_date = cal.date_plus_seconds(init_date,
                                                            total_runtime,
                                                            caltype)
