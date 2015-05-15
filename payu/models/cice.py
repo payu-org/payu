@@ -99,8 +99,17 @@ class Cice(Model):
                     self.prior_restart_path = init_res_path
 
     def get_prior_restart_files(self):
-        return [f for f in os.listdir(self.prior_restart_path)
-                if f.startswith('iced.')]
+        restart_files = [f for f in os.listdir(self.prior_restart_path)
+                         if f.startswith('iced.')]
+        return [sorted(restart_files)[-1]]
+
+    def get_ptr_restart_dir(self):
+        return self.ice_in['setup_nml']['restart_dir']
+
+    def get_access_ptr_restart_dir(self):
+        # The ACCESS build of CICE assumes that restart_dir is 'RESTART'
+        # TODO: Move to ACCESS driver
+        return '.'
 
     def setup(self):
         super(Cice, self).setup()
@@ -118,7 +127,7 @@ class Cice(Model):
             # Generate ice.restart_file
             # TODO: Check the filenames more aggressively
             try:
-                prior_restart_file = sorted(self.get_prior_restart_files())[-1]
+                prior_restart_file = self.get_prior_restart_files()[0]
             except IndexError:
                 print('payu: error: No restart file available.')
                 sys.exit(errno.ENOENT)
@@ -126,7 +135,8 @@ class Cice(Model):
             res_ptr_path = os.path.join(self.work_init_path,
                                         'ice.restart_file')
             with open(res_ptr_path, 'w') as res_ptr:
-                print(prior_restart_file, file=res_ptr)
+                res_dir = self.get_ptr_restart_dir()
+                print(os.path.join(res_dir, prior_restart_file), file=res_ptr)
 
             # Update input namelist
             setup_nml['runtype'] = 'continue'

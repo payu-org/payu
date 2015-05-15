@@ -42,6 +42,7 @@ class Access(Model):
                 model.access_restarts = ['u_star.nc', 'sicemass.nc', 'mice.nc']
 
                 model.set_timestep = model.set_access_timestep
+                model.get_ptr_restart_dir = model.get_access_ptr_restart_dir
 
     def setup(self):
 
