@@ -63,7 +63,7 @@ class Fms(Model):
         assert mppnc_path
 
         # Check config for collate command line options
-        collate_flags = pbs_config.get('collate_flags');
+        collate_flags = self.expt.config.get('collate_flags');
         if collate_flags is None:
             collate_flags = '-r -64'
 
