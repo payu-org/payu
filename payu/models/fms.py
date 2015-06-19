@@ -62,6 +62,11 @@ class Fms(Model):
                 break
         assert mppnc_path
 
+        # Check config for collate command line options
+        collate_flags = self.expt.config.get('collate_flags');
+        if collate_flags is None:
+            collate_flags = '-r -64'
+
         # Import list of collated files to ignore
         collate_ignore = self.expt.config.get('collate_ignore')
         if collate_ignore is None:
@@ -98,7 +103,7 @@ class Fms(Model):
             prior_wd = os.getcwd()
             os.chdir(self.output_path)
 
-            cmd = '{} -r -64 {} {}'.format(mppnc_path, nc_fname,
+            cmd = '{} {} {} {}'.format(mppnc_path, collate_flags, nc_fname,
                                            ' '.join(mnc_tiles[nc_fname]))
             print(cmd)
             sp.check_call(shlex.split(cmd))
