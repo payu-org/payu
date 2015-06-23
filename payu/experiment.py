@@ -245,9 +245,16 @@ class Experiment(object):
         self.stderr_fname = self.lab.model_type + '.err'
 
     def set_output_paths(self):
+
         # Local archive paths
-        output_dir = 'output{:03}'.format(self.counter)
-        self.output_path = os.path.join(self.archive_path, output_dir)
+
+        # Check to see if we've provided a hard coded path -- valid for collate
+        dir_path = os.environ.get('PAYU_DIR_PATH')
+        if dir_path is not None:
+            self.output_path = dir_path
+        else:
+            output_dir = 'output{:03}'.format(self.counter)
+            self.output_path = os.path.join(self.archive_path, output_dir)
 
         # TODO: check case counter == 0
         prior_output_dir = 'output{:03}'.format(self.counter - 1)

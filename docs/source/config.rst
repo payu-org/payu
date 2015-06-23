@@ -101,6 +101,9 @@ all collation jobs are single CPU jobs and are not parallelised.
    Ignore these files during collation. This can either be a single filename or
    a list of filenames. Only FMS models (MOM, GOLD) support this setting.
 
+``collate_flags``
+   Specify the flags passed to the collation program.
+   Only FMS models (MOM, GOLD) support this setting.
 
 Model
 -----

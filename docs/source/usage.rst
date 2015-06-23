@@ -163,3 +163,11 @@ For most jobs, collation is called automatically. But if you need to manually
 collate the ``K``\ th run, type the following::
 
    payu collate -i K
+
+Alternatively you can directly specify a directory name::
+
+  payu collate -d dir_name
+
+This is useful when the data files have been moved out of the payu
+directory structure, or if you need to collate restart files, which is
+necessary when changing processor layout.
