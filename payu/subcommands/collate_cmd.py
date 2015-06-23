@@ -15,13 +15,13 @@ title = 'collate'
 parameters = {'description': 'Collate tiled output into single output files'}
 
 arguments = [args.model, args.config, args.initial, args.nruns,
-             args.laboratory]
+             args.laboratory, args.dir_path]
 
 
-def runcmd(model_type, config_path, init_run, n_runs, lab_path):
+def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
 
     pbs_config = cli.get_config(config_path)
-    pbs_vars = cli.set_env_vars(init_run, n_runs, lab_path)
+    pbs_vars = cli.set_env_vars(init_run, n_runs, lab_path, dir_path)
 
     collate_queue = pbs_config.get('collate_queue', 'copyq')
     pbs_config['queue'] = collate_queue
@@ -73,7 +73,8 @@ def runscript():
     run_args = parser.parse_args()
 
     pbs_vars = cli.set_env_vars(run_args.init_run, run_args.n_runs,
-                                run_args.lab_path)
+                                run_args.lab_path, run_args.dir_path)
+
     for var in pbs_vars:
         os.environ[var] = str(pbs_vars[var])
 

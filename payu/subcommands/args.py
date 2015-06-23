@@ -69,3 +69,15 @@ hard_sweep = {
         'help':     'Delete archived output',
     }
 }
+
+# Explicitly set output_path
+dir_path = {
+    'flags': ('--directory', '--dir', '-d'),
+    'parameters': {
+        'action':   'store',
+        'dest':     'dir_path',
+        'default':  None,
+        'help':     'The output directory, this will over-ride the \
+                     directory determined from current run number',
+    }
+}
