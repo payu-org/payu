@@ -159,10 +159,10 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None):
         payu_env_vars['PAYU_N_RUNS'] = n_runs
 
     if lab_path:
-        payu_env_vars['PAYU_LAB_PATH'] = lab_path
+        payu_env_vars['PAYU_LAB_PATH'] = os.path.normpath(lab_path)
 
     if dir_path:
-        payu_env_vars['PAYU_DIR_PATH'] = dir_path
+        payu_env_vars['PAYU_DIR_PATH'] = os.path.normpath(dir_path)
 
     return payu_env_vars
 
