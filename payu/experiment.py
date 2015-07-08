@@ -251,7 +251,7 @@ class Experiment(object):
         # Check to see if we've provided a hard coded path -- valid for collate
         dir_path = os.environ.get('PAYU_DIR_PATH')
         if dir_path is not None:
-            self.output_path = dir_path
+            self.output_path = os.path.normpath(dir_path)
         else:
             output_dir = 'output{:03}'.format(self.counter)
             self.output_path = os.path.join(self.archive_path, output_dir)

@@ -26,11 +26,14 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
     collate_queue = pbs_config.get('collate_queue', 'copyq')
     pbs_config['queue'] = collate_queue
 
-    # Collation jobs are (currently) serial
-    pbs_config['ncpus'] = 1
+    n_cpus_request = pbs_config.get('collate_ncpus', 1)
+    pbs_config['ncpus'] = n_cpus_request
 
     # Modify jobname
-    pbs_config['jobname'] = pbs_config['jobname'][:13] + '_c'
+    if 'jobname' in pbs_config:
+        pbs_config['jobname'] = pbs_config.get('jobname', default_job_name)[:13] + '_c'
+    else:
+        pbs_config['jobname'] = os.path.normpath(dir_path[:15])
 
     # Replace (or remove) walltime
     collate_walltime = pbs_config.get('collate_walltime')

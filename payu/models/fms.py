@@ -15,10 +15,14 @@ import os
 import resource as res
 import shlex
 import subprocess as sp
+import multiprocessing
+from multiprocessing.dummy import Pool
+
+def runcmd(cmd, cwd):
+    return sp.call(shlex.split(cmd), cwd=cwd)
 
 # Local
 from payu.models.model import Model
-
 
 class Fms(Model):
 
@@ -63,7 +67,7 @@ class Fms(Model):
         assert mppnc_path
 
         # Check config for collate command line options
-        collate_flags = self.expt.config.get('collate_flags');
+        collate_flags = self.expt.config.get('collate_flags')
         if collate_flags is None:
             collate_flags = '-r -64'
 
@@ -89,6 +93,10 @@ class Fms(Model):
 
             mnc_tiles[t_base].append(t_fname)
 
+        # We use a multiprocessing dummy pool (so just threads) as the collate
+        # jobs are run in their own process
+        pool = Pool(processes=multiprocessing.cpu_count())
+
         # Collate each tileset into a single file
         for nc_fname in mnc_tiles:
             nc_path = os.path.join(self.output_path, nc_fname)
@@ -99,13 +107,10 @@ class Fms(Model):
             if os.path.isfile(nc_path):
                 os.remove(nc_path)
 
-            # Switch to the output directory, to reduce cmd characters
-            prior_wd = os.getcwd()
-            os.chdir(self.output_path)
+            cmd = '{} {} {} {}'.format(mppnc_path, collate_flags, nc_fname, ' '.join(mnc_tiles[nc_fname]))
+            print cmd
+            pool.apply_async(runcmd, args=(cmd,self.output_path))
 
-            cmd = '{} {} {} {}'.format(mppnc_path, collate_flags, nc_fname,
-                                           ' '.join(mnc_tiles[nc_fname]))
-            print(cmd)
-            sp.check_call(shlex.split(cmd))
+        pool.close()
+        pool.join()
 
-            os.chdir(prior_wd)
