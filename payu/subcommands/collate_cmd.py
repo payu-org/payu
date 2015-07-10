@@ -85,7 +85,7 @@ def runscript():
                      run_args.lab_path)
     expt = Experiment(lab)
 
-    if 'PAYU_CURRENT_RUN' not in os.environ:
+    if 'PBS_NCPUS' not in os.environ:
         # Not a PBS batch job: set ncpus in environment
         if 'collate_ncpus' in expt.config:
             os.environ['NCPUS'] = str(expt.config['collate_ncpus'])

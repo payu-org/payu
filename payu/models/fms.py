@@ -21,7 +21,7 @@ import multiprocessing.dummy as multiprocessing
 # Local
 from payu.models.model import Model
 
-def runcmd(cmd, cwd):
+def cmdthread(cmd, cwd):
     # This is run in a thread, so the GIL of python makes it sensible to
     # capture the output from each process and print it out at the end so
     # it doesn't get scrambled when collates are run in parallel
@@ -30,7 +30,7 @@ def runcmd(cmd, cwd):
         output = sp.check_output(shlex.split(cmd), cwd=cwd, stderr=sp.STDOUT)
     except:
         result = False
-    print output
+    print(output)
     return result
 
 class Fms(Model):
@@ -120,7 +120,7 @@ class Fms(Model):
 
             cmd = '{} {} {} {}'.format(mppnc_path, collate_flags, nc_fname, ' '.join(mnc_tiles[nc_fname]))
             print cmd
-            pool.apply_async(runcmd, args=(cmd,self.output_path))
+            pool.apply_async(cmdthread, args=(cmd,self.output_path))
 
         pool.close()
         pool.join()
