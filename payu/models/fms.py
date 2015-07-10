@@ -15,14 +15,23 @@ import os
 import resource as res
 import shlex
 import subprocess as sp
-import multiprocessing
-from multiprocessing.dummy import Pool
-
-def runcmd(cmd, cwd):
-    return sp.call(shlex.split(cmd), cwd=cwd)
+# Use multiprocessing dummy (threads) as collate jobs run in own process
+import multiprocessing.dummy as multiprocessing
 
 # Local
 from payu.models.model import Model
+
+def cmdthread(cmd, cwd):
+    # This is run in a thread, so the GIL of python makes it sensible to
+    # capture the output from each process and print it out at the end so
+    # it doesn't get scrambled when collates are run in parallel
+    result = True
+    try:
+        output = sp.check_output(shlex.split(cmd), cwd=cwd, stderr=sp.STDOUT)
+    except:
+        result = False
+    print(output)
+    return result
 
 class Fms(Model):
 
@@ -93,9 +102,11 @@ class Fms(Model):
 
             mnc_tiles[t_base].append(t_fname)
 
-        # We use a multiprocessing dummy pool (so just threads) as the collate
-        # jobs are run in their own process
-        pool = Pool(processes=multiprocessing.cpu_count())
+
+        # If this is run interactively NCPUS is set in collate_cmd, otherwise
+        # the cpu_count will return the number of CPUs assigned to the PBS job
+        count = int(os.environ.get('NCPUS',multiprocessing.cpu_count()))
+        pool = multiprocessing.Pool(processes=count)
 
         # Collate each tileset into a single file
         for nc_fname in mnc_tiles:
@@ -109,7 +120,7 @@ class Fms(Model):
 
             cmd = '{} {} {} {}'.format(mppnc_path, collate_flags, nc_fname, ' '.join(mnc_tiles[nc_fname]))
             print cmd
-            pool.apply_async(runcmd, args=(cmd,self.output_path))
+            pool.apply_async(cmdthread, args=(cmd,self.output_path))
 
         pool.close()
         pool.join()

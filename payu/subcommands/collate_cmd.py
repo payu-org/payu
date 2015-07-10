@@ -31,7 +31,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
 
     # Modify jobname
     if 'jobname' in pbs_config:
-        pbs_config['jobname'] = pbs_config.get('jobname', default_job_name)[:13] + '_c'
+        pbs_config['jobname'] = pbs_config['jobname'][:13] + '_c'
     else:
         pbs_config['jobname'] = os.path.normpath(dir_path[:15])
 
@@ -84,6 +84,11 @@ def runscript():
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)
     expt = Experiment(lab)
+
+    if 'PBS_NCPUS' not in os.environ:
+        # Not a PBS batch job: set ncpus in environment
+        if 'collate_ncpus' in expt.config:
+            os.environ['NCPUS'] = str(expt.config['collate_ncpus'])
 
     expt.collate()
     if expt.postscript:
