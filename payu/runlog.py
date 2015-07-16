@@ -46,17 +46,20 @@ class Runlog(object):
         # Check if a repository exists
         cmd = 'git rev-parse'
         print(cmd)
-        rc = sp.call(shlex.split(cmd), stdout=f_null, cwd=self.expt.control_path)
+        rc = sp.call(shlex.split(cmd), stdout=f_null,
+                     cwd=self.expt.control_path)
         if rc:
             cmd = 'git init'
             print(cmd)
-            sp.check_call(shlex.split(cmd), stdout=f_null, cwd=self.expt.control_path)
+            sp.check_call(shlex.split(cmd), stdout=f_null,
+                          cwd=self.expt.control_path)
 
         # Add configuration files
         for fname in self.manifest:
             cmd = 'git add {}'.format(fname)
             print(cmd)
-            sp.check_call(shlex.split(cmd), stdout=f_null,cwd=self.expt.control_path)
+            sp.check_call(shlex.split(cmd), stdout=f_null,
+                          cwd=self.expt.control_path)
 
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         commit_msg = '{}: Run {}'.format(timestamp, self.expt.counter)
@@ -64,7 +67,8 @@ class Runlog(object):
         cmd = 'git commit -am "{}"'.format(commit_msg)
         print(cmd)
         try:
-            sp.check_call(shlex.split(cmd), stdout=f_null,cwd=self.expt.control_path)
+            sp.check_call(shlex.split(cmd), stdout=f_null,
+                          cwd=self.expt.control_path)
         except sp.CalledProcessError:
             print('TODO: Check if commit is unchanged')
 
