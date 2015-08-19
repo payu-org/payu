@@ -159,7 +159,7 @@ class UnifiedModel(Model):
 
 def date_to_um_dump_date(date):
     """
-    Convert a time date object to a um dump format date which is yymd0
+    Convert a time date object to a um dump format date which is <decade><year><month><day>0
 
     To accomodate two digit months and days the UM uses letters. e.g. 1st oct
     is writting 01a10.
@@ -167,11 +167,16 @@ def date_to_um_dump_date(date):
 
     assert(date.month <= 12)
 
+    decade = date.year / 10
+    # UM can only handle 36 decades then goes back to the beginning.
+    decade = decade % 36
+    year = date.year % 10
+    month = date.month
+    day = date.day
+
     um_d = string.digits + string.letters[:26]
 
-    # TODO: Check how Y2K dates are handled
-    return '{}{}{}{}0'.format(um_d[date.year / 10], um_d[date.year % 10],
-                              um_d[date.month], um_d[date.day])
+    return '{}{}{}{}0'.format(um_d[decade], um_d[year], um_d[month], um_d[day])
 
 
 def date_to_um_date(date):
