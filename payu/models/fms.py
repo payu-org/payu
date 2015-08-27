@@ -21,6 +21,7 @@ import multiprocessing.dummy as multiprocessing
 # Local
 from payu.models.model import Model
 
+
 def cmdthread(cmd, cwd):
     # This is run in a thread, so the GIL of python makes it sensible to
     # capture the output from each process and print it out at the end so
@@ -32,6 +33,7 @@ def cmdthread(cmd, cwd):
         result = False
     print(output)
     return result
+
 
 class Fms(Model):
 
@@ -102,10 +104,9 @@ class Fms(Model):
 
             mnc_tiles[t_base].append(t_fname)
 
-
         # If this is run interactively NCPUS is set in collate_cmd, otherwise
         # the cpu_count will return the number of CPUs assigned to the PBS job
-        count = int(os.environ.get('NCPUS',multiprocessing.cpu_count()))
+        count = int(os.environ.get('NCPUS', multiprocessing.cpu_count()))
         pool = multiprocessing.Pool(processes=count)
 
         # Collate each tileset into a single file
@@ -118,10 +119,10 @@ class Fms(Model):
             if os.path.isfile(nc_path):
                 os.remove(nc_path)
 
-            cmd = '{} {} {} {}'.format(mppnc_path, collate_flags, nc_fname, ' '.join(mnc_tiles[nc_fname]))
+            cmd = '{} {} {} {}'.format(mppnc_path, collate_flags, nc_fname,
+                                       ' '.join(mnc_tiles[nc_fname]))
             print cmd
-            pool.apply_async(cmdthread, args=(cmd,self.output_path))
+            pool.apply_async(cmdthread, args=(cmd, self.output_path))
 
         pool.close()
         pool.join()
-
