@@ -192,13 +192,20 @@ class Experiment(object):
         for mod in self.modules:
             envmod.module('load', mod)
 
+        # User-defined modules
+        user_modules = self.config.get('modules', [])
+        for mod in user_modules:
+            envmod.module('load', mod)
+
+        envmod.module('list')
+
         # TODO: Consolidate this profiling stuff
         c_ipm = self.config.get('ipm', False)
         if c_ipm:
             if isinstance(c_ipm, str):
                 ipm_mod = os.path.join('ipm', c_ipm)
             else:
-                ipm_mod = 'ipm'
+                ipm_mod = 'ipm/2.0.2'
 
             envmod.module('load', ipm_mod)
             os.environ['IPM_LOGDIR'] = self.work_path
@@ -215,6 +222,9 @@ class Experiment(object):
 
         if self.config.get('scorep', False):
             envmod.module('load', 'scorep')
+
+        if self.config.get('openspeedshop', False):
+            envmod.module('load', 'openspeedshop')
 
         if self.debug:
             envmod.module('load', 'totalview')
@@ -335,6 +345,9 @@ class Experiment(object):
             prof = ProfType(self)
             self.profilers.append(prof)
 
+            # Testing
+            prof.setup()
+
     def run(self, *user_flags):
 
         self.load_modules()
@@ -432,7 +445,8 @@ class Experiment(object):
                 model_prog.append('hpcrun')
 
             for prof in self.profilers:
-                model_prog.append(prof.wrapper)
+                if prof.wrapper:
+                    model_prog.append(prof.wrapper)
 
             model_prog.append(model.exec_prefix)
             model_prog.append(model.exec_path)
@@ -442,6 +456,22 @@ class Experiment(object):
         cmd = '{} {} {}'.format(mpi_runcmd,
                                 ' '.join(mpi_flags),
                                 ' : '.join(mpi_progs))
+
+        oss = self.config.get('openspeedshop')
+        if oss:
+            oss_runcmd = oss.get('runcmd')
+            if not oss_runcmd:
+                print('payu: error: OpenSpeedShop requires an executable.')
+                sys.exit(1)
+
+            oss_hwc = oss.get('hwc')
+            if oss_runcmd.startswith('osshwc') and not oss_hwc:
+                print('payu: error: This OSS command requires hardware '
+                      'counters.')
+                sys.exit(1)
+
+            cmd = '{} "{}" {}'.format(oss_runcmd, cmd, oss_hwc)
+
         print(cmd)
 
         # Our MVAPICH wrapper does not support working directories
@@ -451,6 +481,7 @@ class Experiment(object):
         else:
             curdir = None
 
+        #if env:
         if env:
             # TODO: Replace with mpirun -x flag inputs
             proc = sp.Popen(shlex.split(cmd), stdout=f_out, stderr=f_err,
@@ -739,7 +770,9 @@ class Experiment(object):
                 f.startswith(short_job_name + '.o') or
                 f.startswith(short_job_name + '.e') or
                 f.startswith(short_job_name[:13] + '_c.o') or
-                f.startswith(short_job_name[:13] + '_c.e')
+                f.startswith(short_job_name[:13] + '_c.e') or
+                f.startswith(short_job_name[:13] + '_p.o') or
+                f.startswith(short_job_name[:13] + '_p.e')
             )
         ]
 

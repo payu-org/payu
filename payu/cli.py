@@ -189,7 +189,8 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
         if res_flags:
             pbs_flags.append('-l {}'.format(','.join(res_flags)))
 
-    pbs_jobname = pbs_config.get('jobname')
+    # TODO: Need to pass lab.config_path somehow...
+    pbs_jobname = pbs_config.get('jobname', os.path.basename(os.getcwd()))
     if pbs_jobname:
         # PBSPro has a 15-character jobname limit
         pbs_flags.append('-N {}'.format(pbs_jobname[:15]))
@@ -200,7 +201,7 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
 
     pbs_flags.append('-l wd')
 
-    pbs_join = pbs_config.get('join', 'oe')
+    pbs_join = pbs_config.get('join', 'n')
     if pbs_join not in ('oe', 'eo', 'n'):
         print('payu: error: unknown qsub IO stream join setting.')
         sys.exit(-1)
