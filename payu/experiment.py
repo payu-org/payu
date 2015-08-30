@@ -481,7 +481,6 @@ class Experiment(object):
         else:
             curdir = None
 
-        #if env:
         if env:
             # TODO: Replace with mpirun -x flag inputs
             proc = sp.Popen(shlex.split(cmd), stdout=f_out, stderr=f_err,
