@@ -121,7 +121,7 @@ class Fms(Model):
 
             cmd = '{} {} {} {}'.format(mppnc_path, collate_flags, nc_fname,
                                        ' '.join(mnc_tiles[nc_fname]))
-            print cmd
+            print(cmd)
             pool.apply_async(cmdthread, args=(cmd, self.output_path))
 
         pool.close()
