@@ -152,12 +152,29 @@ class Experiment(object):
                 else:
                     raise
 
+            # First test for restarts
             if restart_dirs:
                 self.counter = 1 + max([int(d.lstrip('restart'))
                                         for d in restart_dirs
                                         if d.startswith('restart')])
             else:
-                self.counter = 0
+                # Repeat runs do not generate restart files, so check outputs
+                try:
+                    output_dirs = [d for d in os.listdir(self.archive_path)
+                                    if d.startswith('output')]
+                except OSError as exc:
+                    if exc.errno == errno.ENOENT:
+                        output_dirs = None
+                    else:
+                        raise
+
+                # First test for restarts
+                if output_dirs:
+                    self.counter = 1 + max([int(d.lstrip('output'))
+                                            for d in output_dirs
+                                            if d.startswith('output')])
+                else:
+                    self.counter = 0
 
     def set_stacksize(self, stacksize):
 
@@ -577,7 +594,7 @@ class Experiment(object):
         for res_dir in prior_restart_dirs:
 
             res_idx = int(res_dir.lstrip('restart'))
-            if (not res_idx % restart_freq == 0 and
+            if self.repeat_run or (not res_idx % restart_freq == 0 and
                     res_idx <= (self.counter - restart_history)):
 
                 res_path = os.path.join(self.archive_path, res_dir)
