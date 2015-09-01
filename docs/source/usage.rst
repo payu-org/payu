@@ -152,6 +152,37 @@ Running jobs are stored in laboratory's ``work`` subdirectory, and completed
 runs are stored in the ``archive`` subdirectory.
 
 
+Cleaning up 
+===========
+
+If you experiment crashes or fails for any reason, then payu will usually abort
+and keep any remaining files in the ``work`` and control directories.
+
+To clean up a failed job and prepare it for resubmission, use the ``sweep``
+command::
+
+   payu sweep
+
+This will delete the contents of ``work`` and move any model and scheduler logs
+into a ``pbs_logs`` directory.  Any model output in ``archive`` will not be
+deleted.
+
+
+Deleting an experiment archive
+------------------------------
+
+If you also want to delete all runs from an experiment in the ``archive``, then
+use the ``--hard`` flag::
+
+   payu sweep --hard
+
+**This will delete your runs** and can potentially erase months of work, so
+use it with caution.
+
+Hard sweeps will only delete the run output for your particular experiment.
+Other experiment runs will not be harmed by this command.
+
+
 Postprocessing
 ==============
 
