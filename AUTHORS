@@ -4,8 +4,11 @@ Marshall Ward:
 
 Nicholas Hannah:
     - Build automation
-    - UM support
-    - ACCESS support
+    - UM
+    - ACCESS
 
 Angus Gibson:
-    - MOM6 support
+    - MOM6
+
+Aidan Heerdegen:
+    - MOM collation (mppnccombine)

@@ -1,3 +1,12 @@
+v0.5:
+    - Multithreaded collation (c/o Aidan Heerdegen)
+    - Improved CICE and ACCESS support (c/o Nicholas Hannah)
+    - Explict output collation path (c/o Aidan Heerdegen)
+    - Default jobname is not set to control path directory name
+    - repeat runs (repeat: True) now delete any restart files
+    - Profiler driver class introduced (not yet adopted for all)
+    - Documentation update (incomplete)
+
 v0.4.1:
     - MOM: mppnccombine bugfix for land masked runs
     - We now save the last N restarts, rather than every Nth plus any inbetween
