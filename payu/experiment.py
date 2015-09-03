@@ -161,7 +161,7 @@ class Experiment(object):
                 # Repeat runs do not generate restart files, so check outputs
                 try:
                     output_dirs = [d for d in os.listdir(self.archive_path)
-                                    if d.startswith('output')]
+                                   if d.startswith('output')]
                 except OSError as exc:
                     if exc.errno == errno.ENOENT:
                         output_dirs = None
@@ -593,8 +593,9 @@ class Experiment(object):
         for res_dir in prior_restart_dirs:
 
             res_idx = int(res_dir.lstrip('restart'))
-            if self.repeat_run or (not res_idx % restart_freq == 0 and
-                    res_idx <= (self.counter - restart_history)):
+            if (self.repeat_run or
+                    (not res_idx % restart_freq == 0 and
+                     res_idx <= (self.counter - restart_history))):
 
                 res_path = os.path.join(self.archive_path, res_dir)
                 shutil.rmtree(res_path)
