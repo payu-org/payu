@@ -598,7 +598,10 @@ class Experiment(object):
                      res_idx <= (self.counter - restart_history))):
 
                 res_path = os.path.join(self.archive_path, res_dir)
-                shutil.rmtree(res_path)
+
+                # Only delete real directories; ignore symbolic restart links
+                if os.path.isdir(res_path):
+                    shutil.rmtree(res_path)
 
         if self.config.get('collate', True):
             cmd = 'payu collate -i {}'.format(self.counter)
