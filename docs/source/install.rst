@@ -12,27 +12,33 @@ of this document.
 NCI Users
 =========
 
-If you are an NCI user and a member of the v45 group, then payu can be loaded
-from its environment module::
+Payu is available for all users on Raijin.
 
-   module use /projects/v45/modules
+To load payu, load the environment module::
+
    module load payu
 
-If you do not have access to v45, then you can install it locally from the
-latest codebase::
+Local installation
+------------------
+
+If you want to use the latest version of payu, then you can install it locally
+from the codebase::
 
    git clone https://github.com/marshallward/payu
    cd payu
    python setup.py install --user
 
-Payu depends on the following modules, which may need to be installed
-separately if you are not using the environment modules:
+Payu depends on the following modules:
 
    * f90nml_
    * PyYAML_
 
 .. _f90nml: https://pypi.python.org/pypi/f90nml
 .. _PyYAML: https://pypi.python.org/pypi/PyYAML
+
+If you have a recent version of ``setuptools`` installed, then these will be
+installed automatically.  But older installations, such as based on
+``distutils``, will require a manual installation.
 
 
 General Use

@@ -205,7 +205,7 @@ class Model(object):
             return
 
         # Check to see if executable already exists.
-        if self.exec_path and os.path.exists(self.exec_path):
+        if self.exec_path and os.path.isfile(self.exec_path):
             print('payu: warning: {} will be overwritten.'
                   ''.format(self.exec_path))
 
@@ -245,8 +245,11 @@ class Model(object):
             else:
                 build_exec_path = self.codebase_path
 
-        # Copy newly build executable to bin dir.
+        # Copy new executable to bin dir
         if self.exec_path:
+            # Create the bin path if it doesn't exist
+            mkdir_p(self.expt.lab.bin_path)
+
             build_exec_path = os.path.join(build_exec_path, self.exec_name)
             shutil.copy(build_exec_path, self.exec_path)
 
@@ -256,6 +259,9 @@ class Model(object):
 
         if not self.repo_url:
             return
+
+        # Disable the user's .gitconfig file
+        os.environ['GIT_CONFIG_NOGLOBAL'] = 'yes'
 
         build_config = self.config.get('build', {})
         self.repo_url = build_config.get('repository', self.repo_url)
