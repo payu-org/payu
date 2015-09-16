@@ -73,13 +73,13 @@ class Cice(Model):
 
         # Determine if there is a work input path
         grid_nml = self.ice_in['grid_nml']
-        input_path, grid_fname = os.path.split(grid_nml['grid_file'])
+        input_path, _ = os.path.split(grid_nml['grid_file'])
         if input_path and not input_path == '.':
             assert not os.path.isabs(input_path)
             self.work_input_path = os.path.join(self.work_path, input_path)
 
         # Assert that kmt uses the same directory
-        kmt_input_path, kmt_fname = os.path.split(grid_nml['kmt_file'])
+        kmt_input_path, _ = os.path.split(grid_nml['kmt_file'])
         assert input_path == kmt_input_path
 
     def set_model_output_paths(self):

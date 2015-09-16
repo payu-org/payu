@@ -1,10 +1,9 @@
-# coding: utf-8
 """payu.reversion
    ==============
 
    Update the Python executable of an active process to a more recent version.
 
-   :copyright: Copyright 2011 Marshall Ward
+   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
    :license: Apache License, Version 2.0, see LICENSE for details
 """
 
