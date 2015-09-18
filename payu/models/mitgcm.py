@@ -129,12 +129,14 @@ class Mitgcm(Model):
         # Tar and compress the output files
         stdout_files = [f for f in os.listdir(self.work_path)
                         if f.startswith('STDOUT.')]
-        cmd = 'tar -C {} -c -j -f {}'.format(
-            self.work_path,
-            os.path.join(self.work_path, 'STDOUT.tar.bz2'))
 
-        rc = sp.Popen(shlex.split(cmd) + stdout_files).wait()
-        assert rc == 0
+        if stdout_files:
+            cmd = 'tar -C {} -c -j -f {}'.format(
+                self.work_path,
+                os.path.join(self.work_path, 'STDOUT.tar.bz2'))
+
+            rc = sp.Popen(shlex.split(cmd) + stdout_files).wait()
+            assert rc == 0
 
         for f in stdout_files:
             os.remove(os.path.join(self.work_path, f))

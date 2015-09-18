@@ -83,3 +83,6 @@ def lib_update(bin_path, lib_name):
             module('unload', mod_name)
             module('load', os.path.join(mod_name, mod_version))
             return '{0}/{1}'.format(mod_name, mod_version)
+
+    # If there are no libraries, return an empty string
+    return ''
