@@ -1,3 +1,8 @@
+v0.5.1:
+    - Non-directories in archive (e.g. symbolic links) are not deleted
+    - Improved single-core MITgcm support
+    - `payu build` now ignores user .gitconfig settings
+
 v0.5:
     - Multithreaded collation (c/o Aidan Heerdegen)
     - Improved CICE and ACCESS support (c/o Nicholas Hannah)
