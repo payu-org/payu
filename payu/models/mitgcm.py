@@ -61,7 +61,12 @@ class Mitgcm(Model):
         # Update configuration file 'data'
 
         data_path = os.path.join(self.work_path, 'data')
-        data_nml = f90nml.read(data_path)
+
+        # MITgcm strips shell-style (#) comments from its namelists
+        nml_parser = f90nml.Parser()
+        nml_parser.comment_tokens += '#'
+
+        data_nml = nml_parser.read(data_path)
 
         # Timesteps are either global (deltat) or divided into momentum
         # (deltatmom) and tracer (deltat).  If deltat is missing, then we just
