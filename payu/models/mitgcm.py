@@ -63,14 +63,32 @@ class Mitgcm(Model):
         data_path = os.path.join(self.work_path, 'data')
         data_nml = f90nml.read(data_path)
 
-        # NOTE: Assumes that these are always present
-        dt = data_nml['parm03']['deltat']
-        n_timesteps = data_nml['parm03']['ntimesteps']
+        # Timesteps are either global (deltat) or divided into momentum
+        # (deltatmom) and tracer (deltat).  If deltat is missing, then we just
+        # try deltatmom.  But I am not sure how to best handle this case.
+
+        # TODO: Sort this out with an MITgcm user
+        try:
+            dt = data_nml['parm03']['deltat']
+        except KeyError:
+            dt = data_nml['parm03']['deltatmom']
+
+        # Runtime seems to be set either by timesteps (ntimesteps) or physical
+        # time (startTime and endTime).
+
+        # TODO: Sort this out with an MITgcm user
+        try:
+            n_timesteps = data_nml['parm03']['ntimesteps']
+            pchkpt_freq = dt * n_timesteps
+        except KeyError:
+            t_start = data_nml['parm03']['starttime']
+            t_end = data_nml['parm03']['endtime']
+            pchkpt_freq = t_end - t_start
 
         # NOTE: Consider permitting pchkpt_freq < dt * n_timesteps
         # NOTE: May re-enable chkpt_freq in the future
         data_nml['parm03']['niter0'] = n_iter0
-        data_nml['parm03']['pchkptfreq'] = dt * n_timesteps
+        data_nml['parm03']['pchkptfreq'] = pchkpt_freq
         data_nml['parm03']['chkptfreq'] = 0
 
         data_nml.write(data_path, force=True)
