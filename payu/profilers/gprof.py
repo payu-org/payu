@@ -9,7 +9,7 @@ class Gprof(Profiler):
 
     def __init__(self, expt):
         super(Gprof, self).__init__(expt)
-        self.wrapper = '/apps/pgprof/parallel_gprof'
+        self.runscript = '/apps/pgprof/parallel_gprof'
 
     def postprocess(self):
         gmon_dir = os.path.join(self.expt.work_path, 'gmon')

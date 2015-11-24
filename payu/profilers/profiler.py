@@ -2,8 +2,11 @@ class Profiler(object):
 
     def __init__(self, expt):
         self.expt = expt
-        self.wrapper = None
         self.flags = None
+        self.runscript = None
+
+    def wrapper(self, cmd):
+        return cmd
 
     def postprocess(self):
         raise NotImplementedError

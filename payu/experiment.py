@@ -216,6 +216,9 @@ class Experiment(object):
 
         envmod.module('list')
 
+        for prof in self.profilers:
+            prof.load_modules()
+
         # TODO: Consolidate this profiling stuff
         c_ipm = self.config.get('ipm', False)
         if c_ipm:
@@ -233,15 +236,8 @@ class Experiment(object):
         if self.config.get('hpctoolkit', False):
             envmod.module('load', 'hpctoolkit')
 
-        if self.config.get('scalasca', False):
-            envmod.module('use', '/home/900/mpc900/my_modules')
-            envmod.module('load', 'scalasca')
-
         if self.config.get('scorep', False):
             envmod.module('load', 'scorep')
-
-        if self.config.get('openspeedshop', False):
-            envmod.module('load', 'openspeedshop')
 
         if self.debug:
             envmod.module('load', 'totalview')
@@ -394,10 +390,11 @@ class Experiment(object):
         if self.config.get('scalasca', False):
             mpi_runcmd = ' '.join(['scalasca -analyze', mpi_runcmd])
 
-        mpi_flags = self.config.get('mpirun')
-        # Correct an empty mpirun entry
-        if mpi_flags is None:
-            mpi_flags = []
+        # MPI runtime flags
+        mpi_flags = mpi_config.get('flags', [])
+        if not mpi_flags:
+            mpi_flags = self.config.get('mpirun', [])
+            # TODO: Legacy config removal warning
 
         if type(mpi_flags) != list:
             mpi_flags = [mpi_flags]
@@ -462,8 +459,8 @@ class Experiment(object):
                 model_prog.append('hpcrun')
 
             for prof in self.profilers:
-                if prof.wrapper:
-                    model_prog.append(prof.wrapper)
+                if prof.runscript:
+                    model_prog = model_prog.append(prof.runscript)
 
             model_prog.append(model.exec_prefix)
             model_prog.append(model.exec_path)
@@ -474,20 +471,8 @@ class Experiment(object):
                                 ' '.join(mpi_flags),
                                 ' : '.join(mpi_progs))
 
-        oss = self.config.get('openspeedshop')
-        if oss:
-            oss_runcmd = oss.get('runcmd')
-            if not oss_runcmd:
-                print('payu: error: OpenSpeedShop requires an executable.')
-                sys.exit(1)
-
-            oss_hwc = oss.get('hwc')
-            if oss_runcmd.startswith('osshwc') and not oss_hwc:
-                print('payu: error: This OSS command requires hardware '
-                      'counters.')
-                sys.exit(1)
-
-            cmd = '{} "{}" {}'.format(oss_runcmd, cmd, oss_hwc)
+        for prof in self.profilers:
+            cmd = prof.wrapper(cmd)
 
         print(cmd)
 
