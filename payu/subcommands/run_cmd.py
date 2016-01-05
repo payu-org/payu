@@ -91,8 +91,13 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
     # Set memory to use the complete node if unspeficied
     # TODO: Move RAM per node as variable
     pbs_mem = pbs_config.get('mem')
-    if not pbs_mem and n_cpus > max_cpus_per_node:
-        pbs_config['mem'] = '{}GB'.format((n_cpus // max_cpus_per_node) * 31)
+    if not pbs_mem:
+        if n_cpus > max_cpus_per_node:
+            pbs_mem = (n_cpus // max_cpus_per_node) * 31
+        else:
+            pbs_mem = 2 * n_cpus
+
+        pbs_config['mem'] = '{}GB'.format(pbs_mem)
 
     cli.submit_job('payu-run', pbs_config, pbs_vars)
 
