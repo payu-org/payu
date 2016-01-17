@@ -45,7 +45,7 @@ def repython(version, script_path):
 
         # First unload all python (and supporting) modules
         python_modules = [m for m in os.environ['LOADEDMODULES'].split(':')
-                          if m.startswith('python')]
+                          if m.startswith('python/')]
 
         for mod in python_modules:
             envmod.module('unload', mod)

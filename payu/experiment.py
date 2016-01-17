@@ -446,9 +446,9 @@ class Experiment(object):
             # TODO: New Open MPI format?
             if model_npernode:
                 if model_npernode % 2 == 0:
-                    npernode_flag = '-npersocket {}'.format(model_npernode / 2)
+                    npernode_flag = '-map-by ppr:{}:socket'.format(model_npernode / 2)
                 else:
-                    npernode_flag = '-npernode {}'.format(model_npernode)
+                    npernode_flag = '-map-by ppr:{}:node'.format(model_npernode)
 
                 if self.config.get('scalasca', False):
                     npernode_flag = '\"{}\"'.format(npernode_flag)
