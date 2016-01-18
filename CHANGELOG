@@ -1,7 +1,12 @@
-v0.5.1:
+v0.6:
+    - Partially committed node flags (`npernode`) updated to new syntax
     - Non-directories in archive (e.g. symbolic links) are not deleted
     - Improved single-core MITgcm support
+    - MITgcm runtimes can now be set in time, rather than just timesteps
     - `payu build` now ignores user .gitconfig settings
+    - Some profiler cleanup (openspeedshop moved to Profiler class)
+    - Minimal WAVEWATCH III support
+    - A non-functional test suite was started, please add to it!
 
 v0.5:
     - Multithreaded collation (c/o Aidan Heerdegen)

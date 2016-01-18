@@ -21,10 +21,14 @@ class WW3(Model):
         self.default_exec = 'ww3_shel'
 
         self.config_files = [
-            'ww3_grid.inp',
             'ww3_shel.inp',
-            'ww3_ounf.inp'
         ]
+
+    def setup(self):
+        super(WW3, self).setup()
+
+        # TODO: Construct grid files
+        pass
 
     def archive(self, **kwargs):
         for f in os.listdir(self.work_input_path):
