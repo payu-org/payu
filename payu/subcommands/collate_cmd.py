@@ -33,7 +33,12 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
     if 'jobname' in pbs_config:
         pbs_config['jobname'] = pbs_config['jobname'][:13] + '_c'
     else:
-        pbs_config['jobname'] = os.path.normpath(dir_path[:15])
+        if not dir_path:
+            dpath = os.path.basename(os.getcwd())
+        else:
+            dpath = dir_path
+
+        pbs_config['jobname'] = os.path.normpath(dpath[:13]) + '_c'
 
     # Replace (or remove) walltime
     collate_walltime = pbs_config.get('collate_walltime')
