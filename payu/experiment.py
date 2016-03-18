@@ -86,7 +86,7 @@ class Experiment(object):
             self.run_userscript(init_script)
 
         # Logging
-        if self.config.get('runlog', False):
+        if self.config.get('runlog', True):
             self.runlog = Runlog(self)
         else:
             self.runlog = None
