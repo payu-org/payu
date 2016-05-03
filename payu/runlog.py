@@ -22,6 +22,9 @@ class Runlog(object):
 
     def __init__(self, expt):
 
+        # Disable user's global git rc file
+        os.environ['GIT_CONFIG_NOGLOBAL'] = 'yes'
+
         self.expt = expt
 
         self.manifest = []

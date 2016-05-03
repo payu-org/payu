@@ -4,6 +4,7 @@ from payu.models.gold import Gold
 from payu.models.matm import Matm
 from payu.models.mitgcm import Mitgcm
 from payu.models.mom import Mom
+from payu.models.nemo import Nemo
 from payu.models.oasis import Oasis
 from payu.models.um import UnifiedModel
 from payu.models.ww3 import WW3
@@ -17,6 +18,7 @@ index = {
     'matm':     Matm,
     'mitgcm':   Mitgcm,
     'mom':      Mom,
+    'nemo':     Nemo,
     'oasis':    Oasis,
     'um':       UnifiedModel,
     'ww3':      WW3,
