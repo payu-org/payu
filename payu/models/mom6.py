@@ -29,10 +29,30 @@ class Mom6(Fms):
         self.model_type = 'mom6'
         self.default_exec = 'MOM6'
 
-        self.config_files = ['MOM_input',
-                             'MOM_override',
-                             'diag_table',
-                             'input.nml']
+        self.config_files = [
+                'input.nml',
+                'MOM_input',
+                'diag_table',
+        ]
+
+        # TODO: Need to figure out what's going on here with MOM6
+        self.optional_config_files = [
+                'data_table',
+                'data_table.MOM6',
+                'data_table.OM4',
+                'data_table.SIS',
+                'data_table.icebergs',
+
+                'field_table',
+
+                'MOM_override',
+                'MOM_layout',
+                'MOM_saltrestore',
+
+                'SIS_input',
+                'SIS_override',
+                'SIS_layout',
+        ]
 
     def setup(self):
         # FMS initialisation
