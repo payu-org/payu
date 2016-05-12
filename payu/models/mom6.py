@@ -67,7 +67,10 @@ class Mom6(Fms):
 
         input_nml = f90nml.read(input_fpath)
 
-        input_type = 'n' if self.expt.counter == 0 else 'r'
+        if self.expt.counter == 0 or self.expt.repeat_run:
+            input_type = 'n'
+        else:
+            input_type = 'r'
         input_nml['MOM_input_nml']['input_filename'] = input_type
 
         f90nml.write(input_nml, input_fpath, force=True)
