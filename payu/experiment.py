@@ -542,6 +542,14 @@ class Experiment(object):
 
     def archive(self):
 
+        if not self.config.get('archive', True):
+            print('payu: not archiving due to config.yaml setting.')
+            return
+
+        # Check there is a work directory, otherwise bail
+        if not os.path.exists(self.work_sym_path):
+            sys.exit('payu: error: No work directory to archive.')
+
         mkdir_p(self.archive_path)
         make_symlink(self.archive_path, self.archive_sym_path)
 
