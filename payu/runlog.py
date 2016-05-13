@@ -14,7 +14,6 @@ import shlex
 import subprocess as sp
 
 # Local
-from payu import envmod
 from payu.fsops import DEFAULT_CONFIG_FNAME
 
 

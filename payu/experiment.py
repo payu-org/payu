@@ -249,12 +249,12 @@ class Experiment(object):
         self.control_path = self.config.get('control', os.getcwd())
 
         # Experiment name
-        expt_name = self.config.get('experiment',
+        self.name = self.config.get('experiment',
                                     os.path.basename(self.control_path))
 
         # Experiment subdirectories
-        self.archive_path = os.path.join(self.lab.archive_path, expt_name)
-        self.work_path = os.path.join(self.lab.work_path, expt_name)
+        self.archive_path = os.path.join(self.lab.archive_path, self.name)
+        self.work_path = os.path.join(self.lab.work_path, self.name)
 
         # Symbolic link paths to output
         self.work_sym_path = os.path.join(self.control_path, 'work')
@@ -680,12 +680,13 @@ class Experiment(object):
         else:
             res_tar_path = None
 
-        for input_path in self.input_paths:
-            # Using explicit path separators to rename the input directory
-            input_cmd = rsync_cmd + '{} {}'.format(
-                input_path + os.path.sep,
-                os.path.join(remote_url, 'input') + os.path.sep)
-            rsync_calls.append(input_cmd)
+        for model in self.models:
+            for input_path in self.model.input_paths:
+                # Using explicit path separators to rename the input directory
+                input_cmd = rsync_cmd + '{} {}'.format(
+                    input_path + os.path.sep,
+                    os.path.join(remote_url, 'input') + os.path.sep)
+                rsync_calls.append(input_cmd)
 
         for cmd in rsync_calls:
             cmd = shlex.split(cmd)

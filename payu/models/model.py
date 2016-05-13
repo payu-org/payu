@@ -186,11 +186,11 @@ class Model(object):
                     else:
                         make_symlink(f_input, f_work_input)
 
-        t_step = self.config.get('timestep')
-        if t_step:
-            self.set_timestep(t_step)
+        timestep = self.config.get('timestep')
+        if timestep:
+            self.set_timestep(timestep)
 
-    def set_timestep(self):
+    def set_timestep(self, timestep):
         raise NotImplementedError
 
     def archive(self):

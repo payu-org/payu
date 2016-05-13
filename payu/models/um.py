@@ -175,7 +175,7 @@ def date_to_um_dump_date(date):
     month = date.month
     day = date.day
 
-    um_d = string.digits + string.letters[:26]
+    um_d = string.digits + string.ascii_letters[:26]
 
     return '{}{}{}{}0'.format(um_d[decade], um_d[year], um_d[month], um_d[day])
 

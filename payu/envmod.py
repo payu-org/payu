@@ -13,7 +13,7 @@ DEFAULT_BASEPATH = '/opt/Modules'
 DEFAULT_VERSION = '3.2.6'
 
 
-def setup(version=DEFAULT_VERSION, basepath=DEFAULT_BASEPATH):
+def setup(basepath=DEFAULT_BASEPATH):
     """Set the environment modules used by the Environment Module system."""
 
     # Update PATH
