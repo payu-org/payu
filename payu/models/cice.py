@@ -166,12 +166,13 @@ class Cice(Model):
         # Set runtime for this run.
         if self.expt.runtime:
             run_runtime = cal.runtime_from_date(
-                                        run_start_date,
-                                        self.expt.runtime['years'],
-                                        self.expt.runtime['months'],
-                                        self.expt.runtime['days'],
-                                        self.expt.runtime.get('seconds', 0),
-                                        caltype)
+                run_start_date,
+                self.expt.runtime['years'],
+                self.expt.runtime['months'],
+                self.expt.runtime['days'],
+                self.expt.runtime.get('seconds', 0),
+                caltype
+            )
         else:
             run_runtime = setup_nml['npt']*setup_nml['dt']
 

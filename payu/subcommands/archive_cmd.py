@@ -9,6 +9,7 @@ parameters = {'description': 'Archive model output after run'}
 
 arguments = [args.model, args.config, args.laboratory]
 
+
 def runcmd(model_type, config_path, lab_path):
 
     lab = Laboratory(model_type, config_path, lab_path)

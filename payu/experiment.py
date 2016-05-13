@@ -48,6 +48,11 @@ class Experiment(object):
         # TODO: __init__ should not be a config dumping ground!
         self.config = read_config()
 
+        # Payu experiment type
+        self.debug = self.config.get('debug', False)
+        self.postscript = self.config.get('postscript')
+        self.repeat_run = self.config.get('repeat', False)
+
         # Model run time
         self.runtime = None
         if ('calendar' in self.config and
@@ -76,10 +81,6 @@ class Experiment(object):
         self.userscripts = self.config.get('userscripts', {})
 
         self.profilers = []
-
-        self.debug = self.config.get('debug', False)
-        self.postscript = self.config.get('postscript')
-        self.repeat_run = self.config.get('repeat', False)
 
         init_script = self.userscripts.get('init')
         if init_script:
@@ -158,7 +159,7 @@ class Experiment(object):
                                         for d in restart_dirs
                                         if d.startswith('restart')])
             else:
-                # Repeat runs do not generate restart files, so check outputs
+                # uepeat runs do not generate restart files, so check outputs
                 try:
                     output_dirs = [d for d in os.listdir(self.archive_path)
                                    if d.startswith('output')]
@@ -297,7 +298,7 @@ class Experiment(object):
             self.prior_restart_path = prior_restart_path
         else:
             self.prior_restart_path = None
-            if self.counter > 0:
+            if self.counter > 0 and not self.repeat_run:
                 # TODO: This warning should be replaced with an abort in setup
                 print('payu: warning: No restart files found.')
 
@@ -448,9 +449,11 @@ class Experiment(object):
             # TODO: New Open MPI format?
             if model_npernode:
                 if model_npernode % 2 == 0:
-                    npernode_flag = '-map-by ppr:{}:socket'.format(model_npernode / 2)
+                    npernode_flag = ('-map-by ppr:{}:socket'
+                                     ''.format(model_npernode / 2))
                 else:
-                    npernode_flag = '-map-by ppr:{}:node'.format(model_npernode)
+                    npernode_flag = ('-map-by ppr:{}:node'
+                                     ''.format(model_npernode))
 
                 if self.config.get('scalasca', False):
                     npernode_flag = '\"{}\"'.format(npernode_flag)
