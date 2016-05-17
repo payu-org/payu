@@ -8,6 +8,10 @@ python:
     - "3.5"
     - "pypy"
     - "pypy3"
+install:
+    - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then
+        pip install ordereddict; fi
+    - pip install .
 before_script:
     - cd test
     - pip install -r requirements_test.txt
