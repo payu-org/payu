@@ -315,15 +315,17 @@ class Experiment(object):
         for model in self.models:
             model.build_model()
 
-    def setup(self, do_stripe=False):
+    def setup(self, do_stripe=False, force_archive=False):
 
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
             sys.exit('payu: error: Output path already exists.')
 
         mkdir_p(self.work_path)
-        mkdir_p(self.archive_path)
-        make_symlink(self.archive_path, self.archive_sym_path)
+
+        if force_archive:
+            mkdir_p(self.archive_path)
+            make_symlink(self.archive_path, self.archive_sym_path)
 
         # Archive the payu config
         # TODO: This just copies the existing config.yaml file, but we should

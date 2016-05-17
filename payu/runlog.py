@@ -38,8 +38,10 @@ class Runlog(object):
             self.manifest.append(config_path)
 
         for model in self.expt.models:
+            config_files = model.config_files + model.optional_config_files
+
             self.manifest.extend(os.path.join(model.control_path, f)
-                                 for f in model.config_files)
+                                 for f in config_files)
 
     def commit(self):
 
@@ -58,10 +60,11 @@ class Runlog(object):
 
         # Add configuration files
         for fname in self.manifest:
-            cmd = 'git add {}'.format(fname)
-            print(cmd)
-            sp.check_call(shlex.split(cmd), stdout=f_null,
-                          cwd=self.expt.control_path)
+            if os.path.isfile(fname):
+                cmd = 'git add {}'.format(fname)
+                print(cmd)
+                sp.check_call(shlex.split(cmd), stdout=f_null,
+                              cwd=self.expt.control_path)
 
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         commit_msg = '{}: Run {}'.format(timestamp, self.expt.counter)
