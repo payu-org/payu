@@ -4,12 +4,13 @@ from payu.models.gold import Gold
 from payu.models.matm import Matm
 from payu.models.mitgcm import Mitgcm
 from payu.models.mom import Mom
+from payu.models.mom6 import Mom6
 from payu.models.nemo import Nemo
 from payu.models.oasis import Oasis
 from payu.models.um import UnifiedModel
 from payu.models.ww3 import WW3
 
-from payu.models.mom6 import Mom6
+from payu.models.model import Model
 
 index = {
     'access':   Access,
@@ -23,4 +24,8 @@ index = {
     'um':       UnifiedModel,
     'ww3':      WW3,
     'mom6':     Mom6,
+
+    # Default
+    'default':  Model,
+    'model':    Model,
 }
