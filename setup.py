@@ -44,5 +44,5 @@ setup(
         'Topic :: Utilities',
     ],
 
-    keywords='{} supercomputer model climate workflow'.format(PKG_NAME)
+    keywords='{0} supercomputer model climate workflow'.format(PKG_NAME)
 )
