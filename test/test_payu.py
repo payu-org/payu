@@ -5,9 +5,11 @@ import sys
 import unittest
 
 try:
-    from io import StringIO
-except ImportError:
+    # Python 2.x (str)
     from cStringIO import StringIO
+except ImportError:
+    # Python 3.x (unicode)
+    from io import StringIO
 
 sys.path.insert(1, '../')
 import payu

@@ -1,0 +1,20 @@
+# PBS flags
+queue: normal
+project: fp0
+walltime: 20:00
+ncpus: 960
+npernode: 12
+jobname: gfdl_nyf
+qsub_flags: -lother=hyperthread
+
+# Model config
+model: mom
+exe: mom51_sis_ompi187_scorep
+input:
+    - core_nyf_forcing
+    - gfdl_nyf_1080
+
+env:
+    SCOREP_TOTAL_MEMORY: 1073741824
+    SCOREP_MPI_ENABLE_GROUPS: all
+    SCOREP_METRIC_RUSAGE: all
