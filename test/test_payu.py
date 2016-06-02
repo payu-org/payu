@@ -44,6 +44,7 @@ class Test(unittest.TestCase):
         config = payu.fsops.read_config(config_path)
 
         # Read a nonexistent file
+        # TODO: validate stdout
         sys.stdout = StringIO()
         config = payu.fsops.read_config('no_such_file.yaml')
         self.assertEqual(config, {})
@@ -65,7 +66,10 @@ class Test(unittest.TestCase):
         pass
 
     def test_lab_new(self):
+        # TODO: validate stdout
+        sys.stdout = StringIO()
         lab = payu.laboratory.Laboratory('model')
+        sys.stdout = sys.__stdout__
 
 if __name__ == '__main__':
     unittest.main()
