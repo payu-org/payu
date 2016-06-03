@@ -99,6 +99,20 @@ class Test(unittest.TestCase):
         os.remove(tmp_path)
         os.remove(tmp_alt_path)
 
+    def test_splitpath(self):
+
+        # Absolute path
+        paths = payu.fsops.splitpath('/a/b/c')
+        self.assertEqual(paths, ('/', 'a', 'b', 'c'))
+
+        # Relative path
+        paths = payu.fsops.splitpath('a/b/c')
+        self.assertEqual(paths, ('a', 'b', 'c'))
+
+        # Single local path
+        paths = payu.fsops.splitpath('a')
+        self.assertEqual(paths, ('a',))
+
     def test_default_lab_path(self):
         # TODO
         pass

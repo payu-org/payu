@@ -82,8 +82,10 @@ def splitpath(path):
     head, tail = os.path.split(path)
     if tail == '':
         return head,
-
-    return splitpath(head) + (tail, )
+    elif head == '':
+        return tail,
+    else:
+        return splitpath(head) + (tail,)
 
 
 def patch_lustre_path(f_path):
