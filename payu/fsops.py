@@ -66,7 +66,7 @@ def make_symlink(src_path, lnk_path):
         if exc.errno != errno.EEXIST:
             raise
         elif not os.path.islink(lnk_path):
-            # Warn the user, but do not interrput the job
+            # Warn the user, but do not interrupt the job
             print("Warning: Cannot create symbolic link to {p}; a file named "
                   "{f} already exists.".format(p=src_path, f=lnk_path))
         else:

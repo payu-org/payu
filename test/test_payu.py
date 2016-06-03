@@ -63,6 +63,42 @@ class Test(unittest.TestCase):
             config_file.close()
             os.remove(config_tmp)
 
+    def test_make_symlink(self):
+        tmp_path = 'tmp_file'
+        tmp_sym = 'tmp_sym'
+        tmp_alt_path = 'tmp_alt'
+        tmp_dir = 'tmp_dir'
+
+        # Simple symlink test
+        tmp = open(tmp_path, 'w')
+        payu.fsops.make_symlink(tmp_path, tmp_sym)
+
+        # Override an existing symlink
+        tmp_alt = open(tmp_alt_path, 'w')
+        payu.fsops.make_symlink(tmp_alt_path, tmp_sym)
+
+        # Try to create symlink when filename already exists
+        # TODO: validate stdout
+        sys.stdout = StringIO()
+        payu.fsops.make_symlink(tmp_path, tmp_alt_path)
+        sys.stdout = sys.__stdout__
+
+        # Raise a non-EEXIST signal (EACCESS)
+        tmp_dir_sym = os.path.join(tmp_dir, tmp_sym)
+        os.mkdir(tmp_dir)
+        os.chmod(tmp_dir, 0)
+        self.assertRaises(OSError, payu.fsops.make_symlink,
+                          tmp_path, tmp_dir_sym)
+
+        # Cleanup
+        tmp.close()
+        tmp_alt.close()
+
+        os.rmdir(tmp_dir)
+        os.remove(tmp_sym)
+        os.remove(tmp_path)
+        os.remove(tmp_alt_path)
+
     def test_default_lab_path(self):
         # TODO
         pass
