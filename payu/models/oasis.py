@@ -118,7 +118,7 @@ class Oasis(Model):
             f_dst = os.path.join(self.restart_path, f)
 
             if os.path.exists(f_src):
-                shutil.move(f_src, f_dst)
+                shutil.copy2(f_src, f_dst)
 
     def collate(self):
         pass

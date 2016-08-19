@@ -149,10 +149,10 @@ class Access(Model):
         for model in self.expt.models:
             if model.model_type == 'cice':
 
-                # Move supplemental restart files to RESTART path
+                # Copy supplemental restart files to RESTART path
                 for f_name in model.access_restarts:
                     f_src = os.path.join(model.work_path, f_name)
                     f_dst = os.path.join(model.restart_path, f_name)
 
                     if os.path.exists(f_src):
-                        shutil.move(f_src, f_dst)
+                        shutil.copy2(f_src, f_dst)
