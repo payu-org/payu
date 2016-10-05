@@ -43,9 +43,10 @@ def read_config(config_fname=None):
             config = yaml.load(config_file)
     except IOError as exc:
         if exc.errno == errno.ENOENT:
+            print('payu: warning: Configuration file {0} not found!'
+                  .format(config_fname))
             config = {}
         else:
-            print('payu: warning: No configuration file found!')
             raise
 
     return config
@@ -65,7 +66,7 @@ def make_symlink(src_path, lnk_path):
         if exc.errno != errno.EEXIST:
             raise
         elif not os.path.islink(lnk_path):
-            # Warn the user, but do not interrput the job
+            # Warn the user, but do not interrupt the job
             print("Warning: Cannot create symbolic link to {p}; a file named "
                   "{f} already exists.".format(p=src_path, f=lnk_path))
         else:
@@ -81,8 +82,10 @@ def splitpath(path):
     head, tail = os.path.split(path)
     if tail == '':
         return head,
-
-    return splitpath(head) + (tail, )
+    elif head == '':
+        return tail,
+    else:
+        return splitpath(head) + (tail,)
 
 
 def patch_lustre_path(f_path):
