@@ -30,7 +30,9 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
         pbs_config['queue'] = 'normal'
 
     # TODO: Create drivers for servers
-    max_cpus_per_node = 16
+    platform = pbs_config.get('platform', {})
+    max_cpus_per_node = platform.get('nodesize', 16)
+    max_ram_per_node = platform.get('nodemem', 32)
 
     # Adjust the CPUs for any model-specific settings
     # TODO: Incorporate this into the Model driver
@@ -46,8 +48,12 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
 
         # TODO TODO
 
-    # Increase the cpu request to match a complete node
-    if 'submodels' in pbs_config and 'ncpus' not in pbs_config:
+    if 'ncpureq' in pbs_config:
+        # Hard override of CPU request
+        n_cpus_request = pbs_config.get('ncpureq')
+
+    elif 'submodels' in pbs_config and 'ncpus' not in pbs_config:
+        # Increase the cpu request to match a complete node
 
         submodel_config = pbs_config['submodels']
 
