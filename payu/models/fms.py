@@ -70,11 +70,17 @@ class Fms(Model):
         res.setrlimit(res.RLIMIT_STACK, (res.RLIM_INFINITY, res.RLIM_INFINITY))
 
         # Locate the FMS collation tool
-        mppnc_path = None
-        for f in os.listdir(self.expt.lab.bin_path):
-            if f.startswith('mppnccombine'):
-                mppnc_path = os.path.join(self.expt.lab.bin_path, f)
-                break
+        # Check config for collate executable
+        mppnc_path = self.expt.config.get('collate_exe')
+        if mppnc_path is None:
+            for f in os.listdir(self.expt.lab.bin_path):
+                if f.startswith('mppnccombine'):
+                    mppnc_path = os.path.join(self.expt.lab.bin_path, f)
+                    break
+        else:
+            if not os.path.isabs(mppnc_path):
+                mppnc_path = os.path.join(self.expt.lab.bin_path, mppnc_path)
+            
         assert mppnc_path
 
         # Check config for collate command line options

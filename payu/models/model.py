@@ -126,7 +126,11 @@ class Model(object):
 
         if len(self.expt.models) > 1:
 
-            self.output_path = os.path.join(self.output_path, self.name)
+            # If '-d' option specified for collate don't want to change the
+            # output path, but respect the absolute path specified
+            if os.environ.get('PAYU_DIR_PATH') is None:
+                self.output_path = os.path.join(self.output_path, self.name)
+
             self.restart_path = os.path.join(self.restart_path, self.name)
 
             if self.prior_output_path:
