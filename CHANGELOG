@@ -1,3 +1,13 @@
+v0.7:
+    - `payu setup` and `payu archive` commands now available
+      (c/o Aidan Heerdegen)
+    - Basic support for NEMO
+    - `platform` configuration now available to set per-node CPU and RAM
+    - Enable Lustre IO striping with `stripedio` config flag
+    - Git-based logging of job submissions is now enabled by default
+    - Basic (and incomplete) testing framework now available
+    - Several bugfixes related to repeatable runs and submodel testing
+
 v0.6:
     - Partially committed node flags (`npernode`) updated to new syntax
     - Non-directories in archive (e.g. symbolic links) are not deleted
