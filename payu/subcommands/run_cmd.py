@@ -42,9 +42,9 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
         # Check if a mask table exists
         # TODO: Is control_path defined at this stage?
         mask_table_fname = None
-        for f in os.listdir(os.curdir):
+        for fname in os.listdir(os.curdir):
             if f.startswith('mask_table'):
-                mask_table_fname = f
+                mask_table_fname = fname
 
         # TODO TODO
 
@@ -95,13 +95,12 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
     pbs_config['ncpus'] = n_cpus
 
     # Set memory to use the complete node if unspeficied
-    # TODO: Move RAM per node as variable
     pbs_mem = pbs_config.get('mem')
     if not pbs_mem:
         if n_cpus > max_cpus_per_node:
-            pbs_mem = (n_cpus // max_cpus_per_node) * 31
+            pbs_mem = (n_cpus // max_cpus_per_node) * max_ram_per_node
         else:
-            pbs_mem = 2 * n_cpus
+            pbs_mem = n_cpus * (max_ram_per_node // max_cpus_per_node)
 
         pbs_config['mem'] = '{}GB'.format(pbs_mem)
 

@@ -315,7 +315,7 @@ class Experiment(object):
         for model in self.models:
             model.build_model()
 
-    def setup(self, do_stripe=False, force_archive=False):
+    def setup(self, force_archive=False):
 
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
@@ -336,6 +336,7 @@ class Experiment(object):
 
         # Stripe directory in Lustre
         # TODO: Make this more configurable
+        do_stripe = self.config.get('stripedio', False)
         if do_stripe:
             cmd = 'lfs setstripe -c 8 -s 8m {}'.format(self.work_path)
             sp.check_call(shlex.split(cmd))
