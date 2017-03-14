@@ -130,7 +130,8 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None):
         payu_modpaths = [mod for mod in os.environ['_LMFILES_'].split(':')
                          if payu_mname in mod]
 
-        payu_mpath = payu_modpaths[0].rstrip(payu_mname)
+        # Remove payu module name and the leading slash
+        payu_mpath = payu_modpaths[0][:-(len(payu_mname)+1)]
 
         payu_env_vars['PAYU_MODULENAME'] = payu_mname
         payu_env_vars['PAYU_MODULEPATH'] = payu_mpath
