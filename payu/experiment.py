@@ -491,6 +491,8 @@ class Experiment(object):
         else:
             curdir = None
 
+        # NOTE: This may not be necessary, since env seems to be getting
+        # correctly updated.  Need to look into this.
         if env:
             # TODO: Replace with mpirun -x flag inputs
             proc = sp.Popen(shlex.split(cmd), stdout=f_out, stderr=f_err,
