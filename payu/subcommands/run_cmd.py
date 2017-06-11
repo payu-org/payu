@@ -94,7 +94,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
     # Update the (possibly unchanged) value of ncpus
     pbs_config['ncpus'] = n_cpus
 
-    # Set memory to use the complete node if unspeficied
+    # Set memory to use the complete node if unspecified
     pbs_mem = pbs_config.get('mem')
     if not pbs_mem:
         if n_cpus > max_cpus_per_node:
@@ -120,6 +120,7 @@ def runscript():
     expt = Experiment(lab)
 
     expt.setup()
+
     expt.run()
     expt.archive()
 

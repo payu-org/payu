@@ -9,6 +9,7 @@ from payu.models.nemo import Nemo
 from payu.models.oasis import Oasis
 from payu.models.um import UnifiedModel
 from payu.models.ww3 import WW3
+from payu.models.qgcm import Qgcm
 
 from payu.models.model import Model
 
@@ -24,6 +25,7 @@ index = {
     'um':       UnifiedModel,
     'ww3':      WW3,
     'mom6':     Mom6,
+    'qgcm':     Qgcm,
 
     # Default
     'default':  Model,
