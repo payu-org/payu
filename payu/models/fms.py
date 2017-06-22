@@ -80,7 +80,7 @@ class Fms(Model):
         else:
             if not os.path.isabs(mppnc_path):
                 mppnc_path = os.path.join(self.expt.lab.bin_path, mppnc_path)
-            
+
         assert mppnc_path
 
         # Check config for collate command line options

@@ -97,7 +97,8 @@ class Experiment(object):
         self.model_name = self.config.get('model')
         assert self.model_name
 
-        model_fields = ['model', 'exe', 'input', 'ncpus', 'npernode', 'build', 'mpthreads']
+        model_fields = ['model', 'exe', 'input', 'ncpus', 'npernode', 'build',
+                        'mpthreads']
 
         # TODO: Rename this to self.submodels
         self.models = []

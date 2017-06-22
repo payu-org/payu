@@ -41,7 +41,7 @@ class Qgcm(Model):
     def setup(self):
         super(Qgcm, self).setup()
 
-        os.environ.update({"OMP_NUM_THREADS" : str(self.mpthreads)} )
+        os.environ.update({"OMP_NUM_THREADS": str(self.mpthreads)})
 
         print("OMP_NUM_THREADS = {}".format(os.environ["OMP_NUM_THREADS"]))
 
