@@ -59,8 +59,10 @@ def setup(basepath=DEFAULT_BASEPATH):
     # the problematic variable here.  But a more general solution would be nice
     # someday.
 
-    bash_func_module = os.environ['BASH_FUNC_module()']
-    os.environ['BASH_FUNC_module()'] = bash_func_module.replace('\n', ' ')
+    # TODO: Currently spams errors from sh, need to investigate
+    #       Disabling for now.
+    #bash_func_module = os.environ['BASH_FUNC_module()']
+    #os.environ['BASH_FUNC_module()'] = bash_func_module.replace('\n', ' ')
 
 
 def module(command, *args):
