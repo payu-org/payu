@@ -17,6 +17,7 @@ import subprocess as sp
 
 # Third party
 import requests
+import yaml
 
 # Local
 from payu.fsops import DEFAULT_CONFIG_FNAME
@@ -95,8 +96,8 @@ class Runlog(object):
         # It would be nice to exclusively use the API, but it is currently not
         # clear how to safely store API tokens.
 
-        #org_url = 'https://github.com/' + github_org
-        org_url = 'ssh://git@github.com/' + github_org
+        org_url = 'https://github.com/' + github_org
+        org_ssh = 'ssh://git@github.com/' + github_org
         repo_api_url = ('https://api.github.com/orgs/{}/repos'
                         ''.format(github_org))
 
@@ -105,7 +106,7 @@ class Runlog(object):
                                       cwd=self.expt.control_path).split()
 
         if not remote_name in git_remotes:
-            remote_url = os.path.join(org_url, self.expt.name + '.git')
+            remote_url = os.path.join(org_ssh, self.expt.name + '.git')
             cmd = 'git remote add {} {}'.format(remote_name, remote_url)
             sp.check_call(shlex.split(cmd), cwd=self.expt.control_path)
 
@@ -124,17 +125,17 @@ class Runlog(object):
             }
 
             # Credentials
-            # A token may be required here, can it be safely stored?
             github_username = runlog_config.get('username')
             if not github_username:
                 github_username = raw_input('Enter github username: ')
 
-            github_password = getpass.getpass(
-                    'Enter github password to create repo {}: '
-                    ''.format(github_username))
+            token_path = os.path.join(self.expt.control_path, '.payu.yaml')
+            with open(token_path) as token_file:
+                token_config = yaml.load(token_file)
+                github_token = token_config['runlog']['token']
 
             resp = requests.post(repo_api_url, json.dumps(req_data),
-                                 auth=(github_username, github_password))
+                                 auth=(github_username, github_token))
 
         # Push to remote
         cmd = 'git push --all {}'.format(remote_name)
