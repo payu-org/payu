@@ -30,8 +30,8 @@ setup(
     url='http://github.com/marshallward/payu',
 
     packages=PKG_PKGS,
-    requires=['f90nml', 'PyYAML'],
-    install_requires=['f90nml', 'PyYAML'],
+    requires=['f90nml', 'PyYAML', 'requests'],
+    install_requires=['f90nml', 'PyYAML', 'requests'],
     scripts=PKG_SCRIPTS,
 
     classifiers=[

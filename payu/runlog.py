@@ -9,9 +9,14 @@
 
 # Standard Library
 import datetime
+import json
 import os
 import shlex
 import subprocess as sp
+import urllib2  # TODO get rid of this
+
+# Third party
+import requests
 
 # Local
 from payu.fsops import DEFAULT_CONFIG_FNAME
@@ -78,3 +83,47 @@ class Runlog(object):
             print('TODO: Check if commit is unchanged')
 
         f_null.close()
+
+    def push(self):
+
+        # Test variables
+        payu_remote_name = 'payu'
+        account_name = 'mxw900-raijin'
+        account_url = 'https://github.com/' + account_name
+
+        github_username = raw_input("Enter github username: ")
+        github_password = raw_input("Enter github password: ")
+
+        # Check if remote is set
+        git_remotes = sp.check_output(shlex.split('git remote'),
+                                      cwd=self.expt.control_path).split()
+
+        if not payu_remote_name in git_remotes:
+            payu_remote_url = account_url + self.expt.name + '.git'
+            cmd = 'git remote add {} {}'.format(
+                    payu_remote_name, payu_remote_url)
+            sp.check_call(shlex.split(cmd))
+
+        # Create the remote repository if needed
+        repo_url = 'https://api.github.com/orgs/{}/repos'.format(account_name)
+
+        # TODO: Use requests
+        repo_response = urllib2.urlopen(repo_url)
+        repos = json.loads(repo_response.read())
+
+        if not self.expt.name in repos:
+            req_data = {
+                    'name': self.expt.name,
+                    'description': 'Generic payu experiment',
+                    'private': False,
+                    'has_issues': True,
+                    'has_downloads': True,
+                    'has_wiki': False
+            }
+
+            resp = requests.post(repo_url, json.dumps(req_data),
+                                 auth=(github_username, github_password))
+
+        # Push to remote
+        cmd = 'git push payu'
+        rc = sp.call(shlex.split(cmd))
