@@ -9,11 +9,11 @@
 
 # Standard Library
 import datetime
+import getpass
 import json
 import os
 import shlex
 import subprocess as sp
-import urllib2  # TODO get rid of this
 
 # Third party
 import requests
@@ -49,7 +49,6 @@ class Runlog(object):
                                  for f in config_files)
 
     def commit(self):
-
         f_null = open(os.devnull, 'w')
 
         # Check if a repository exists
@@ -85,35 +84,38 @@ class Runlog(object):
         f_null.close()
 
     def push(self):
-
         # Test variables
-        payu_remote_name = 'payu'
-        account_name = 'mxw900-raijin'
-        account_url = 'https://github.com/' + account_name
+        runlog_config = self.expt.config.get('runlog', {})
+        remote_name = runlog_config.get('remote', 'payu')
 
-        github_username = raw_input("Enter github username: ")
-        github_password = raw_input("Enter github password: ")
+        github_expt_name = runlog_config.get('name', self.expt.name)
+        github_org = runlog_config.get('organization')
+
+        # The API uses https, git is using ssh
+        # It would be nice to exclusively use the API, but it is currently not
+        # clear how to safely store API tokens.
+
+        #org_url = 'https://github.com/' + github_org
+        org_url = 'ssh://git@github.com/' + github_org
+        repo_api_url = ('https://api.github.com/orgs/{}/repos'
+                        ''.format(github_org))
 
         # Check if remote is set
         git_remotes = sp.check_output(shlex.split('git remote'),
                                       cwd=self.expt.control_path).split()
 
-        if not payu_remote_name in git_remotes:
-            payu_remote_url = account_url + self.expt.name + '.git'
-            cmd = 'git remote add {} {}'.format(
-                    payu_remote_name, payu_remote_url)
-            sp.check_call(shlex.split(cmd))
+        if not remote_name in git_remotes:
+            remote_url = os.path.join(org_url, self.expt.name + '.git')
+            cmd = 'git remote add {} {}'.format(remote_name, remote_url)
+            sp.check_call(shlex.split(cmd), cwd=self.expt.control_path)
 
         # Create the remote repository if needed
-        repo_url = 'https://api.github.com/orgs/{}/repos'.format(account_name)
+        resp = requests.get(repo_api_url)
 
-        # TODO: Use requests
-        repo_response = urllib2.urlopen(repo_url)
-        repos = json.loads(repo_response.read())
-
-        if not self.expt.name in repos:
+        if not any(r['name'] == github_expt_name for r in resp.json()):
+            # TODO: Set this with config.yaml
             req_data = {
-                    'name': self.expt.name,
+                    'name': github_expt_name,
                     'description': 'Generic payu experiment',
                     'private': False,
                     'has_issues': True,
@@ -121,9 +123,19 @@ class Runlog(object):
                     'has_wiki': False
             }
 
-            resp = requests.post(repo_url, json.dumps(req_data),
+            # Credentials
+            # A token may be required here, can it be safely stored?
+            github_username = runlog_config.get('username')
+            if not github_username:
+                github_username = raw_input('Enter github username: ')
+
+            github_password = getpass.getpass(
+                    'Enter github password to create repo {}: '
+                    ''.format(github_username))
+
+            resp = requests.post(repo_api_url, json.dumps(req_data),
                                  auth=(github_username, github_password))
 
         # Push to remote
-        cmd = 'git push payu'
-        rc = sp.call(shlex.split(cmd))
+        cmd = 'git push --all {}'.format(remote_name)
+        rc = sp.call(shlex.split(cmd), cwd=self.expt.control_path)
