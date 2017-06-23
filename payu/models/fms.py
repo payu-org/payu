@@ -30,7 +30,7 @@ def cmdthread(cmd, cwd):
     try:
         output = sp.check_output(shlex.split(cmd), cwd=cwd, stderr=sp.STDOUT)
     except CalledProcessError as e:
-        print("{} failed, returned errorcode {}".format(e.cmd,e.returncode)
+        print('{} failed, returned errorcode {}'.format(e.cmd, e.returncode))
         result = False
     print(output)
     return result
