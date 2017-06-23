@@ -1,7 +1,7 @@
 """payu.models.qgcm
    ================
 
-   Driver interface to qgcm
+   Driver interface to Q-GCM
 
    :copyright: Copyright 2016 Marshall Ward, see AUTHORS for details
    :license: Apache License, Version 2.0, see LICENSE for details
@@ -28,7 +28,11 @@ class Qgcm(Model):
             'outdata.dat',
         ]
 
-        self.mpthreads = config.get('mpthreads')
+        if 'mpthreads' in config:
+            self.ompthreads = config.get('mpthreads')
+            print('payu: warning: mpthreads is deprecated; use ompthreads.')
+        else:
+            self.ompthreads.get('ompthreads', 1)
 
     def set_model_pathnames(self):
 
@@ -41,7 +45,7 @@ class Qgcm(Model):
     def setup(self):
         super(Qgcm, self).setup()
 
-        os.environ.update({"OMP_NUM_THREADS": str(self.mpthreads)})
+        os.environ['OMP_NUM_THREADS'] = str(self.ompthreads)
 
         print("OMP_NUM_THREADS = {}".format(os.environ["OMP_NUM_THREADS"]))
 
