@@ -129,10 +129,11 @@ class Runlog(object):
             if not github_username:
                 github_username = raw_input('Enter github username: ')
 
-            token_path = os.path.join(self.expt.control_path, '.payu.yaml')
+            token_path = os.path.join(os.path.expanduser('~'),
+                                      '.payu', 'tokens.yaml')
             with open(token_path) as token_file:
                 token_config = yaml.load(token_file)
-                github_token = token_config['runlog']['token']
+                github_token = token_config['github']
 
             resp = requests.post(repo_api_url, json.dumps(req_data),
                                  auth=(github_username, github_token))
