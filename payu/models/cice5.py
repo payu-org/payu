@@ -42,7 +42,12 @@ class Cice5(Cice):
         self.repo_url = 'https://github.com/OceansAus/cice5.git'
         self.repo_tag = 'master'
 
-        self.config_files = ['cice_in.nml', 'input_ice.nml', 'input_ice_gfdl.nml', 'input_ice_monin.nml']
+        self.config_files = [
+                'cice_in.nml',
+                'input_ice.nml',
+                'input_ice_gfdl.nml',
+                'input_ice_monin.nml'
+        ]
 
         self.ice_nml_fname = 'cice_in.nml'
 

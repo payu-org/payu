@@ -105,7 +105,7 @@ class Runlog(object):
         git_remotes = sp.check_output(shlex.split('git remote'),
                                       cwd=self.expt.control_path).split()
 
-        if not remote_name in git_remotes:
+        if remote_name not in git_remotes:
             remote_url = os.path.join(org_ssh, self.expt.name + '.git')
             cmd = 'git remote add {} {}'.format(remote_name, remote_url)
             sp.check_call(shlex.split(cmd), cwd=self.expt.control_path)
