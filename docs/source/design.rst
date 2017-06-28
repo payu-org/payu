@@ -61,6 +61,9 @@ adopted where possible.
 2. Docstrings should similarly adhere to PEP257, as reported by ``pydocstyle``.
    (Currently conformance to this rule is admittedly very poor.)
 
+   In particular, ``help()`` should be readable and well-formatted for every
+   module and function.
+
 3. Modules should not be renamed.  This is bad::
 
       ``import numpy as np``
