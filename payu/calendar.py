@@ -49,6 +49,8 @@ def date_plus_seconds(init_date, seconds, caltype):
 
     if caltype == NOLEAP:
         end_date += get_leapdays(init_date, end_date)
+        if end_date.month == 2 and end_date.day == 29:
+            end_date += datetime.timedelta(days=1)
 
     return end_date
 
