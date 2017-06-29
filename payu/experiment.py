@@ -97,7 +97,8 @@ class Experiment(object):
         self.model_name = self.config.get('model')
         assert self.model_name
 
-        model_fields = ['model', 'exe', 'input', 'ncpus', 'npernode', 'build', 'mpthreads']
+        model_fields = ['model', 'exe', 'input', 'ncpus', 'npernode', 'build',
+                        'mpthreads']
 
         # TODO: Rename this to self.submodels
         self.models = []
@@ -491,6 +492,8 @@ class Experiment(object):
         else:
             curdir = None
 
+        # NOTE: This may not be necessary, since env seems to be getting
+        # correctly updated.  Need to look into this.
         if env:
             # TODO: Replace with mpirun -x flag inputs
             proc = sp.Popen(shlex.split(cmd), stdout=f_out, stderr=f_err,

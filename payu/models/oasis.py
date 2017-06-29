@@ -71,7 +71,7 @@ class Oasis(Model):
 
         for model in self.expt.models:
 
-            if model.model_type == 'cice':
+            if model.model_type in ('cice', 'cice5'):
 
                 # Set namcouple timesteps
 

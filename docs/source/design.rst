@@ -46,3 +46,45 @@ Archive Path
 Work Path
    Experiments that are actively running are stored in the work path. For an
    experiment named ``myrun``, the default directory is ``${LAB}/work/myrun``.
+
+
+Style Guide
+===========
+
+These are various unorganised notes on preferred coding style for payu.  While
+it's unlikely that every file adheres to this style, it should generally be
+adopted where possible.
+
+1. All files should adhere to PEP8 rules.  In particular, no warnings should be
+   reported by ``pycodestyle`` using default settings.
+
+2. Docstrings should similarly adhere to PEP257, as reported by ``pydocstyle``.
+   (Currently conformance to this rule is admittedly very poor.)
+
+   In particular, ``help()`` should be readable and well-formatted for every
+   module and function.
+
+3. Modules should not be renamed.  This is bad::
+
+      ``import numpy as np``
+
+   This is good::
+
+      ``import numpy``
+
+   The reason here is to preserve shorter names for other uses in the code.
+   But, as usual, the `HHGP's section on modules`_ explains this better than I
+   can within a bullet point list.
+
+   (Also note that this is another rule with poor conformance.)
+
+4. Multiple equivalence checks should use tuples.  This is bad::
+
+      if x == 'a' or x == 'b'
+
+   This is good::
+
+      if x in ('a', 'b')
+
+.. _`HHGP's section on modules`:
+   http://docs.python-guide.org/en/latest/writing/structure/#modules
