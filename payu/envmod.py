@@ -61,8 +61,8 @@ def setup(basepath=DEFAULT_BASEPATH):
 
     # TODO: Currently spams errors from sh, need to investigate
     #       Disabling for now.
-    #bash_func_module = os.environ['BASH_FUNC_module()']
-    #os.environ['BASH_FUNC_module()'] = bash_func_module.replace('\n', ' ')
+    bash_func_module = os.environ['BASH_FUNC_module()']
+    os.environ['BASH_FUNC_module()'] = bash_func_module.replace('\n', ';')
 
 
 def module(command, *args):
