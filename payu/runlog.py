@@ -13,6 +13,7 @@ import getpass
 import json
 import os
 import shlex
+import stat
 import subprocess as sp
 
 # Third party
@@ -22,6 +23,11 @@ import yaml
 # Local
 from payu.fsops import DEFAULT_CONFIG_FNAME
 
+# Fingerprints (unique identifiers for API tokens)
+TOKEN_FINGERPRINT = 'Kv5qbBj096cdAkltffQS/vAxUQxRD0VH+N5qVG8QMWw='
+
+# Miscellaneous
+PAYU_URL = 'https://github.com/marshallward/payu'
 
 class Runlog(object):
 
@@ -34,6 +40,9 @@ class Runlog(object):
 
         self.manifest = []
         self.create_manifest()
+
+        self.payu_config_dir = os.path.join(os.path.expanduser('~'), '.payu')
+        self.token_path = os.path.join(self.payu_config_dir, 'tokens.yaml')
 
     def create_manifest(self):
 
@@ -94,9 +103,9 @@ class Runlog(object):
 
         # The API uses https, git is using ssh
         # It would be nice to exclusively use the API, but it is currently not
-        # clear how to safely store API tokens.
+        # clear how to push without exposing the token in the remote
 
-        org_url = 'https://github.com/' + github_org
+        #org_url = 'https://github.com/' + github_org
         org_ssh = 'ssh://git@github.com/' + github_org
         repo_api_url = ('https://api.github.com/orgs/{}/repos'
                         ''.format(github_org))
@@ -126,12 +135,11 @@ class Runlog(object):
 
             # Credentials
             github_username = runlog_config.get('username')
+            # TODO: Check for interactive session
             if not github_username:
                 github_username = raw_input('Enter github username: ')
 
-            token_path = os.path.join(os.path.expanduser('~'),
-                                      '.payu', 'tokens.yaml')
-            with open(token_path) as token_file:
+            with open(self.token_path) as token_file:
                 token_config = yaml.load(token_file)
                 github_token = token_config['github']
 
@@ -141,3 +149,57 @@ class Runlog(object):
         # Push to remote
         cmd = 'git push --all {}'.format(remote_name)
         rc = sp.call(shlex.split(cmd), cwd=self.expt.control_path)
+
+    def keygen(self):
+        """Set up authentication keys and API tokens."""
+        runlog_config = self.expt.config.get('runlog', {})
+
+        # Get username and password
+        github_username = runlog_config.get('username')
+        if not github_username:
+            github_username = raw_input('Enter github username: ')
+
+        github_password = getpass.getpass('Enter {}@github password: '
+                                          ''.format(github_username))
+
+        github_auth = (github_username, github_password)
+
+        # Check if token API exists
+        auth_url = 'https://api.github.com/authorizations'
+        req = requests.get(auth_url, auth=github_auth)
+        assert req.status_code == 200
+
+        if any(t for t in req.json() if t['fingerprint'] == TOKEN_FINGERPRINT):
+            # TODO: Validate the existing token; if broken, make a new one
+            print('payu: github API token already exists.')
+
+        else:
+            # Generate a new API token
+            auth_param = {
+                'scopes': ['repo', 'admin:org_hook'],
+                'note': 'Payu runlog synchronization',
+                'note_url': PAYU_URL,
+                'fingerprint': TOKEN_FINGERPRINT,
+            }
+
+            req = requests.post(auth_url, json=auth_param, auth=github_auth)
+            assert req.status_code == 201
+            token = req.json()['token']
+
+            # Setup the config directory
+            if not os.path.isdir(self.payu_config_dir):
+                os.makedirs(self.payu_config_dir)
+                os.chmod(self.payu_config_dir, stat.S_IRWXU)
+
+            # Save token to secret file
+            if os.path.isfile(self.token_path):
+                print('payu: Replacing old github API token')
+                os.remove(self.token_path)
+
+            token_data = {'tokens': {'github': token}}
+            with open(self.token_path, 'w') as token_file:
+                yaml.dump(token_data, token_file, default_flow_style=True)
+
+            os.chmod(self.token_path, stat.S_IRUSR | stat.S_IWUSR)
+
+        # TODO: Now generate an ssh key
