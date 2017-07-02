@@ -15,6 +15,7 @@ import os
 import shlex
 import stat
 import subprocess as sp
+import sys
 
 # Third party
 import requests
@@ -94,67 +95,19 @@ class Runlog(object):
         f_null.close()
 
     def push(self):
-        # Test variables
         runlog_config = self.expt.config.get('runlog', {})
         remote_name = runlog_config.get('remote', 'payu')
 
-        github_expt_name = runlog_config.get('name', self.expt.name)
-        github_org = runlog_config.get('organization')
-
-        # The API uses https, git is using ssh
-        # It would be nice to exclusively use the API, but it is currently not
-        # clear how to push without exposing the token in the remote
-
-        #org_url = 'https://github.com/' + github_org
-        org_ssh = 'ssh://git@github.com/' + github_org
-        repo_api_url = ('https://api.github.com/orgs/{}/repos'
-                        ''.format(github_org))
-
-        # Check if remote is set
-        git_remotes = sp.check_output(shlex.split('git remote'),
-                                      cwd=self.expt.control_path).split()
-
-        if remote_name not in git_remotes:
-            remote_url = os.path.join(org_ssh, self.expt.name + '.git')
-            cmd = 'git remote add {} {}'.format(remote_name, remote_url)
-            sp.check_call(shlex.split(cmd), cwd=self.expt.control_path)
-
-        # Create the remote repository if needed
-        resp = requests.get(repo_api_url)
-
-        if not any(r['name'] == github_expt_name for r in resp.json()):
-            # TODO: Set this with config.yaml
-            req_data = {
-                    'name': github_expt_name,
-                    'description': 'Generic payu experiment',
-                    'private': False,
-                    'has_issues': True,
-                    'has_downloads': True,
-                    'has_wiki': False
-            }
-
-            # Credentials
-            github_username = runlog_config.get('username')
-            # TODO: Check for interactive session
-            if not github_username:
-                github_username = raw_input('Enter github username: ')
-
-            with open(self.token_path) as token_file:
-                token_config = yaml.load(token_file)
-                github_token = token_config['github']
-
-            resp = requests.post(repo_api_url, json.dumps(req_data),
-                                 auth=(github_username, github_token))
-
-        # Push to remote
-        cmd = 'git push --all {}'.format(remote_name)
+        cmd = 'ssh-agent bash -c "ssh-add ~/.ssh/id_rsa_payu; git push --all payu"'
         rc = sp.call(shlex.split(cmd), cwd=self.expt.control_path)
 
+    # TODO: Rename this, don't pretend to be ssh-keygen
     def keygen(self):
         """Set up authentication keys and API tokens."""
         runlog_config = self.expt.config.get('runlog', {})
 
-        # Get username and password
+        # 0. Authentication details
+
         github_username = runlog_config.get('username')
         if not github_username:
             github_username = raw_input('Enter github username: ')
@@ -164,42 +117,105 @@ class Runlog(object):
 
         github_auth = (github_username, github_password)
 
-        # Check if token API exists
-        auth_url = 'https://api.github.com/authorizations'
-        req = requests.get(auth_url, auth=github_auth)
-        assert req.status_code == 200
+        # 1. Create the organisation if needed
 
-        if any(t for t in req.json() if t['fingerprint'] == TOKEN_FINGERPRINT):
-            # TODO: Validate the existing token; if broken, make a new one
-            print('payu: github API token already exists.')
+        github_api_url = 'https://api.github.com'
+        org_name = runlog_config.get('organization')
+        if org_name:
+            repo_target = org_name
 
+            # Check if org exists
+            org_query_url = os.path.join(github_api_url, 'orgs', org_name)
+            org_req = requests.get(org_query_url)
+
+            if org_req.status_code == 404:
+                # NOTE: Orgs cannot be created via the API
+                print('payu: github organization {} does not exist.')
+                print('      You must first create this on the website.')
+
+            elif org_req.status_code == 200:
+                # TODO: Confirm that the user can interact with the repo
+                pass
+
+            else:
+                # TODO: Exit with grace
+                print('payu: abort!')
+                sys.exit(-1)
+
+            repo_api_url = os.path.join(github_api_url, 'orgs', org_name,
+                                        'repos')
         else:
-            # Generate a new API token
-            auth_param = {
-                'scopes': ['repo', 'admin:org_hook'],
-                'note': 'Payu runlog synchronization',
-                'note_url': PAYU_URL,
-                'fingerprint': TOKEN_FINGERPRINT,
+            repo_target = github_username
+
+            # Create repo in user account
+            repo_api_url = os.path.join(github_api_url, 'user', 'repos')
+
+        # 2. Create the remote repository
+        expt_name = runlog_config.get('name', self.expt.name)
+        expt_description = self.expt.config.get('description',
+                                                'An amazing payu experiment!')
+
+        user_repos = []
+        page = 1
+        while True:
+            repo_params = {'page': page, 'per_page': 100}
+            repo_query = requests.get(repo_api_url, auth=github_auth,
+                                      params=repo_params)
+            assert repo_query.status_code == 200
+            if repo_query.json():
+                user_repos.extend(list(r['name'] for r in repo_query.json()))
+                page += 1
+            else:
+                break
+
+        if expt_name not in user_repos:
+            repo_config = {
+                    'name': expt_name,
+                    'description': expt_description,
+                    'private': False,
+                    'has_issues': True,
+                    'has_downloads': True,
+                    'has_wiki': False
             }
 
-            req = requests.post(auth_url, json=auth_param, auth=github_auth)
-            assert req.status_code == 201
-            token = req.json()['token']
+            repo_gen = requests.post(repo_api_url, json.dumps(repo_config),
+                                     auth=github_auth)
 
-            # Setup the config directory
-            if not os.path.isdir(self.payu_config_dir):
-                os.makedirs(self.payu_config_dir)
-                os.chmod(self.payu_config_dir, stat.S_IRWXU)
+            assert repo_gen.status_code == 201
 
-            # Save token to secret file
-            if os.path.isfile(self.token_path):
-                print('payu: Replacing old github API token')
-                os.remove(self.token_path)
+        # 3. Check if remote is set
+        git_remotes = sp.check_output(shlex.split('git remote'),
+                                      cwd=self.expt.control_path).split()
 
-            token_data = {'tokens': {'github': token}}
-            with open(self.token_path, 'w') as token_file:
-                yaml.dump(token_data, token_file, default_flow_style=True)
+        remote_name = runlog_config.get('remote', 'payu')
 
-            os.chmod(self.token_path, stat.S_IRUSR | stat.S_IWUSR)
+        if remote_name not in git_remotes:
+            remote_url = os.path.join('ssh://git@github.com', repo_target,
+                                      self.expt.name + '.git')
+            cmd = 'git remote add {} {}'.format(remote_name, remote_url)
+            sp.check_call(shlex.split(cmd), cwd=self.expt.control_path)
 
-        # TODO: Now generate an ssh key
+        # 4. Generate a payu-specific SSH key
+        ssh_key = runlog_config.get('sshid', 'id_rsa_payu')
+        ssh_path = os.path.join(os.path.expanduser('~'), '.ssh')
+
+        ssh_keypath = os.path.join(ssh_path, ssh_key)
+        if not os.path.isfile(ssh_keypath):
+            cmd = 'ssh-keygen -t rsa -f id_rsa_payu -q -P ""'
+            sp.check_call(shlex.split(cmd), cwd=ssh_path)
+
+        # 5. Deploy key to repo
+        with open(ssh_keypath + '.pub') as keyfile:
+            pubkey = ' '.join(keyfile.read().split()[:-1])
+
+        repo_keys_url = os.path.join(github_api_url, 'repos', github_username,
+                                     expt_name, 'keys')
+        keys_req = requests.get(repo_keys_url, auth=github_auth)
+        assert keys_req.status_code == 200
+
+        if not any(k['key'] == pubkey for k in keys_req.json()):
+            add_key_param = {'title': 'payu', 'key': pubkey}
+            add_key_req = requests.post(repo_keys_url, auth=github_auth,
+                                        json=add_key_param)
+            print(add_key_req.json())
+            assert add_key_req.status_code == 201
