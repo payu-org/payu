@@ -1,10 +1,7 @@
-"""payu.runlog
-   ===========
+"""Experiment run logging manager.
 
-   Experiment run logging manager
-
-   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details.
-   :license: Apache License, Version 2.0, see LICENSE for details.
+:copyright: Copyright 2011 Marshall Ward, see AUTHORS for details.
+:license: Apache License, Version 2.0, see LICENSE for details.
 """
 
 # Standard Library
@@ -23,12 +20,6 @@ import yaml
 
 # Local
 from payu.fsops import DEFAULT_CONFIG_FNAME
-
-# Fingerprints (unique identifiers for API tokens)
-TOKEN_FINGERPRINT = 'Kv5qbBj096cdAkltffQS/vAxUQxRD0VH+N5qVG8QMWw='
-
-# Miscellaneous
-PAYU_URL = 'https://github.com/marshallward/payu'
 
 class Runlog(object):
 
@@ -105,9 +96,11 @@ class Runlog(object):
     def keygen(self):
         """Set up authentication keys and API tokens."""
         runlog_config = self.expt.config.get('runlog', {})
+        expt_name = runlog_config.get('name', self.expt.name)
+        expt_description = self.expt.config.get('description',
+                                                'An amazing payu experiment!')
 
         # 0. Authentication details
-
         github_username = runlog_config.get('username')
         if not github_username:
             github_username = raw_input('Enter github username: ')
@@ -118,7 +111,6 @@ class Runlog(object):
         github_auth = (github_username, github_password)
 
         # 1. Create the organisation if needed
-
         github_api_url = 'https://api.github.com'
         org_name = runlog_config.get('organization')
         if org_name:
@@ -142,24 +134,24 @@ class Runlog(object):
                 print('payu: abort!')
                 sys.exit(-1)
 
-            repo_api_url = os.path.join(github_api_url, 'orgs', org_name,
-                                        'repos')
+            repo_query_url = os.path.join(github_api_url, 'orgs', org_name,
+                                          'repos')
+            repo_api_url = os.path.join(github_api_url, 'repos', org_name,
+                                        expt_name)
         else:
             repo_target = github_username
 
             # Create repo in user account
-            repo_api_url = os.path.join(github_api_url, 'user', 'repos')
+            repo_query_url = os.path.join(github_api_url, 'user', 'repos')
+            repo_api_url = os.path.join(github_api_url, 'repos',
+                                        github_username, expt_name)
 
         # 2. Create the remote repository
-        expt_name = runlog_config.get('name', self.expt.name)
-        expt_description = self.expt.config.get('description',
-                                                'An amazing payu experiment!')
-
         user_repos = []
         page = 1
         while True:
             repo_params = {'page': page, 'per_page': 100}
-            repo_query = requests.get(repo_api_url, auth=github_auth,
+            repo_query = requests.get(repo_query_url, auth=github_auth,
                                       params=repo_params)
             assert repo_query.status_code == 200
             if repo_query.json():
@@ -178,7 +170,7 @@ class Runlog(object):
                     'has_wiki': False
             }
 
-            repo_gen = requests.post(repo_api_url, json.dumps(repo_config),
+            repo_gen = requests.post(repo_query_url, json.dumps(repo_config),
                                      auth=github_auth)
 
             assert repo_gen.status_code == 201
@@ -208,8 +200,8 @@ class Runlog(object):
         with open(ssh_keypath + '.pub') as keyfile:
             pubkey = ' '.join(keyfile.read().split()[:-1])
 
-        repo_keys_url = os.path.join(github_api_url, 'repos', github_username,
-                                     expt_name, 'keys')
+        # TODO: Get this from github?
+        repo_keys_url = os.path.join(repo_api_url, 'keys')
         keys_req = requests.get(repo_keys_url, auth=github_auth)
         assert keys_req.status_code == 200
 
@@ -217,5 +209,4 @@ class Runlog(object):
             add_key_param = {'title': 'payu', 'key': pubkey}
             add_key_req = requests.post(repo_keys_url, auth=github_auth,
                                         json=add_key_param)
-            print(add_key_req.json())
             assert add_key_req.status_code == 201
