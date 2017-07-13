@@ -20,6 +20,7 @@ import yaml
 
 # Local
 from payu.fsops import DEFAULT_CONFIG_FNAME
+from payu.fsops import mkdir_p
 
 class Runlog(object):
 
@@ -87,28 +88,26 @@ class Runlog(object):
 
     def push(self):
         runlog_config = self.expt.config.get('runlog', {})
-        remote_name = runlog_config.get('remote', 'payu')
+        expt_name = runlog_config.get('name', self.expt.name)
 
-        cmd = 'ssh-agent bash -c "ssh-add ~/.ssh/id_rsa_payu; git push --all payu"'
+        default_ssh_key = 'id_rsa_payu_' + expt_name
+        ssh_key = runlog_config.get('sshid', default_ssh_key)
+        ssh_key_path = os.path.join(os.path.expanduser('~'), '.ssh', 'payu',
+                                    ssh_key)
+
+        cmd = ('ssh-agent bash -c "ssh-add {}; git push --all payu"'
+               ''.format(ssh_key_path))
         rc = sp.call(shlex.split(cmd), cwd=self.expt.control_path)
 
-    # TODO: Rename this, don't pretend to be ssh-keygen
-    def keygen(self):
+    def github_setup(self):
         """Set up authentication keys and API tokens."""
         runlog_config = self.expt.config.get('runlog', {})
         expt_name = runlog_config.get('name', self.expt.name)
         expt_description = self.expt.config.get('description',
                                                 'An amazing payu experiment!')
 
-        # 0. Authentication details
-        github_username = runlog_config.get('username')
-        if not github_username:
-            github_username = raw_input('Enter github username: ')
-
-        github_password = getpass.getpass('Enter {}@github password: '
-                                          ''.format(github_username))
-
-        github_auth = (github_username, github_password)
+        github_auth = self.authenticate()
+        github_username = github_auth[0]
 
         # 1. Create the organisation if needed
         github_api_url = 'https://api.github.com'
@@ -188,13 +187,15 @@ class Runlog(object):
             sp.check_call(shlex.split(cmd), cwd=self.expt.control_path)
 
         # 4. Generate a payu-specific SSH key
-        ssh_key = runlog_config.get('sshid', 'id_rsa_payu')
-        ssh_path = os.path.join(os.path.expanduser('~'), '.ssh')
+        default_ssh_key = 'id_rsa_payu_' + expt_name
+        ssh_key = runlog_config.get('sshid', default_ssh_key)
+        ssh_dir = os.path.join(os.path.expanduser('~'), '.ssh', 'payu')
+        mkdir_p(ssh_dir)
 
-        ssh_keypath = os.path.join(ssh_path, ssh_key)
+        ssh_keypath = os.path.join(ssh_dir, ssh_key)
         if not os.path.isfile(ssh_keypath):
-            cmd = 'ssh-keygen -t rsa -f id_rsa_payu -q -P ""'
-            sp.check_call(shlex.split(cmd), cwd=ssh_path)
+            cmd = 'ssh-keygen -t rsa -f {} -q -P ""'.format(ssh_key)
+            sp.check_call(shlex.split(cmd), cwd=ssh_dir)
 
         # 5. Deploy key to repo
         with open(ssh_keypath + '.pub') as keyfile:
@@ -210,3 +211,16 @@ class Runlog(object):
             add_key_req = requests.post(repo_keys_url, auth=github_auth,
                                         json=add_key_param)
             assert add_key_req.status_code == 201
+
+    def authenticate(self):
+        runlog_config = self.expt.config.get('runlog', {})
+
+        github_username = runlog_config.get('username')
+        if not github_username:
+            github_username = raw_input('Enter github username: ')
+
+        github_password = getpass.getpass('Enter {}@github password: '
+                                          ''.format(github_username))
+
+        github_auth = (github_username, github_password)
+        return github_auth
