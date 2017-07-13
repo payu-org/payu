@@ -95,9 +95,15 @@ class Runlog(object):
         ssh_key_path = os.path.join(os.path.expanduser('~'), '.ssh', 'payu',
                                     ssh_key)
 
+        if not os.path.isfile(ssh_key_path):
+            print('payu: error: Github SSH key {} not found.'
+                  ''.format(ssh_key_path))
+            print('payu: error: Run `payu ghsetup` to generate a new key.')
+            sys.exit(-1)
+
         cmd = ('ssh-agent bash -c "ssh-add {}; git push --all payu"'
                ''.format(ssh_key_path))
-        rc = sp.call(shlex.split(cmd), cwd=self.expt.control_path)
+        sp.check_call(shlex.split(cmd), cwd=self.expt.control_path)
 
     def github_setup(self):
         """Set up authentication keys and API tokens."""
@@ -105,6 +111,7 @@ class Runlog(object):
         expt_name = runlog_config.get('name', self.expt.name)
         expt_description = self.expt.config.get('description',
                                                 'An amazing payu experiment!')
+        expt_private = runlog_config.get('private', False)
 
         github_auth = self.authenticate()
         github_username = github_auth[0]
@@ -163,7 +170,7 @@ class Runlog(object):
             repo_config = {
                     'name': expt_name,
                     'description': expt_description,
-                    'private': False,
+                    'private': expt_private,
                     'has_issues': True,
                     'has_downloads': True,
                     'has_wiki': False
@@ -175,16 +182,25 @@ class Runlog(object):
             assert repo_gen.status_code == 201
 
         # 3. Check if remote is set
-        git_remotes = sp.check_output(shlex.split('git remote'),
-                                      cwd=self.expt.control_path).split()
+        git_remote_out = sp.check_output(shlex.split('git remote -v'),
+                                         cwd=self.expt.control_path)
+
+        git_remotes = dict([(r.split()[0], r.split()[1])
+                            for r in git_remote_out.split('\n') if r])
 
         remote_name = runlog_config.get('remote', 'payu')
+        remote_url = os.path.join('ssh://git@github.com', repo_target,
+                                  self.expt.name + '.git')
 
         if remote_name not in git_remotes:
-            remote_url = os.path.join('ssh://git@github.com', repo_target,
-                                      self.expt.name + '.git')
             cmd = 'git remote add {} {}'.format(remote_name, remote_url)
             sp.check_call(shlex.split(cmd), cwd=self.expt.control_path)
+        elif git_remotes[remote_name] != remote_url:
+            print('payu: error: Existing remote URL does not match '
+                  'the proposed URL.')
+            print('payu: error: To delete the old remote, type '
+                  '`git remote rm {}`.'.format(remote_name))
+            sys.exit(-1)
 
         # 4. Generate a payu-specific SSH key
         default_ssh_key = 'id_rsa_payu_' + expt_name
@@ -213,6 +229,9 @@ class Runlog(object):
             assert add_key_req.status_code == 201
 
     def authenticate(self):
+        # TODO: Password authentication will not work if one is using
+        # two-factor authentication.  In this case, an API token is needed.
+
         runlog_config = self.expt.config.get('runlog', {})
 
         github_username = runlog_config.get('username')
