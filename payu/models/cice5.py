@@ -53,6 +53,9 @@ class Cice5(Cice):
 
         self.set_timestep = self.set_local_timestep
 
+        self.copy_restarts = True
+        self.copy_inputs = True
+
     def set_local_timestep(self, t_step):
         dt = self.ice_in['setup_nml']['dt']
         npt = self.ice_in['setup_nml']['npt']
@@ -62,6 +65,15 @@ class Cice5(Cice):
 
         ice_in_path = os.path.join(self.work_path, self.ice_nml_fname)
         self.ice_in.write(ice_in_path, force=True)
+
+    def set_model_pathnames(self):
+        super(Cice5, self).set_model_pathnames()
+
+        # Change the INPUT path, we want everything to go into RESTART
+        self.work_input_path = self.work_restart_path
+
+    def get_prior_restart_files(self):
+        return sorted(os.listdir(self.prior_restart_path))
 
     def set_access_timestep(self, t_step):
         # TODO: Figure out some way to move this to the ACCESS driver
