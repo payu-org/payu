@@ -48,6 +48,7 @@ class Cice(Model):
 
         self.set_timestep = self.set_local_timestep
 
+
     def set_model_pathnames(self):
         super(Cice, self).set_model_pathnames()
 
@@ -125,10 +126,13 @@ class Cice(Model):
         if self.prior_output_path and not self.expt.repeat_run:
 
             # Generate ice.restart_file
-            # TODO: Check the filenames more aggressively
-            try:
-                prior_restart_file = self.get_prior_restart_files()[0]
-            except IndexError:
+            # TODO: better check of restart filename
+            iced_restart_file = None
+            for f in self.get_prior_restart_files():
+               if 'iced.' in f:
+                 iced_restart_file = f
+
+            if iced_restart_file is None:
                 print('payu: error: No restart file available.')
                 sys.exit(errno.ENOENT)
 
@@ -136,7 +140,7 @@ class Cice(Model):
                                         'ice.restart_file')
             with open(res_ptr_path, 'w') as res_ptr:
                 res_dir = self.get_ptr_restart_dir()
-                print(os.path.join(res_dir, prior_restart_file), file=res_ptr)
+                print(os.path.join(res_dir, iced_restart_file), file=res_ptr)
 
             # Update input namelist
             setup_nml['runtype'] = 'continue'

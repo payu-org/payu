@@ -60,7 +60,7 @@ class Namcouple:
 
     def set_ice_timestep(self, timestep):
 
-        self.substitute_timestep(r" \w{4} \w{4} LAG=\+(\d+)", timestep)
+        self.substitute_timestep(r"\w{4} \w{4} LAG=\+(\d+)", timestep)
 
     def set_ice_ocean_coupling_timestep(self, timestep):
 
