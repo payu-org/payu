@@ -87,7 +87,7 @@ class Fms(Model):
         # Check config for collate command line options
         collate_flags = self.expt.config.get('collate_flags')
         if collate_flags is None:
-            collate_flags = '-r -64'
+            collate_flags = '-n4 -z -m -r'
 
         # Import list of collated files to ignore
         collate_ignore = self.expt.config.get('collate_ignore')
