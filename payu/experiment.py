@@ -526,6 +526,27 @@ class Experiment(object):
 
         # TODO: Need a model-specific cleanup method call here
         if rc != 0:
+            # Backup logs for failed runs
+            error_log_dir = os.path.join(self.archive_path, 'error_logs')
+            mkdir_p(error_log_dir)
+
+            # NOTE: This is PBS-specific
+            job_id = os.environ.get('PBS_JOBID', '')
+
+            for fname in (self.stdout_fname, self.stderr_fname):
+                src = os.path.join(self.control_path, fname)
+
+                # NOTE: This assumes standard .out/.err extensions
+                dest = os.path.join(error_log_dir,
+                                    fname[:-4] + '.' + job_id + fname[-4:])
+                print(src, dest)
+
+                shutil.copyfile(src, dest)
+
+            # Create the symlink to the logs if it does not exist
+            make_symlink(self.archive_path, self.archive_sym_path)
+
+            # Terminate payu
             sys.exit('payu: Model exited with error code {}; aborting.'
                      ''.format(rc))
 
@@ -790,8 +811,6 @@ class Experiment(object):
 
         logs = [
             f for f in os.listdir(os.curdir) if os.path.isfile(f) and (
-                f == self.stdout_fname or
-                f == self.stderr_fname or
                 f.startswith(short_job_name + '.o') or
                 f.startswith(short_job_name + '.e') or
                 f.startswith(short_job_name[:13] + '_c.o') or
@@ -801,9 +820,22 @@ class Experiment(object):
             )
         ]
 
-        pbs_log_path = os.path.join(os.curdir, 'pbs_logs')
-        mkdir_p(pbs_log_path)
+        pbs_log_path = os.path.join(self.archive_path, 'pbs_logs')
+        legacy_pbs_log_path = os.path.join(self.control_path, 'pbs_logs')
+
+        if os.path.isdir(legacy_pbs_log_path):
+            # TODO: New path may still exist!
+            assert not os.path.isdir(pbs_log_path)
+            print('payu: Moving pbs_logs to {}'.format(pbs_log_path))
+            shutil.move(legacy_pbs_log_path, pbs_log_path)
+        else:
+            mkdir_p(pbs_log_path)
 
         for f in logs:
             print('Moving log {}'.format(f))
-            os.rename(f, os.path.join(pbs_log_path, f))
+            shutil.move(f, os.path.join(pbs_log_path, f))
+
+        # Remove stdout/err
+        for f in (self.stdout_fname, self.stderr_fname):
+            if os.path.isfile(f):
+                os.remove(f)
