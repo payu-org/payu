@@ -72,6 +72,23 @@ class Cice5(Cice):
         # Change the INPUT path, we want everything to go into RESTART
         self.work_input_path = self.work_restart_path
 
+
+    def archive(self):
+        super(Cice5, self).archive()
+
+        res_ptr_path = os.path.join(self.restart_path, 'ice.restart_file')
+        with open(res_ptr_path) as f:
+            res_name = os.path.basename(f.read()).strip()
+
+        assert os.path.exists(os.path.join(self.restart_path, res_name))
+
+        # Delete the old restart file (keep the one in ice.restart_file)
+        for f in self.get_prior_restart_files():
+            if 'iced.' in f:
+                assert f != res_name
+                os.remove(os.path.join(self.restart_path, f))
+                break
+
     def get_prior_restart_files(self):
         return sorted(os.listdir(self.prior_restart_path))
 
