@@ -90,7 +90,10 @@ class Cice5(Cice):
                 break
 
     def get_prior_restart_files(self):
-        return sorted(os.listdir(self.prior_restart_path))
+        if self.prior_restart_path is not None:
+            return sorted(os.listdir(self.prior_restart_path))
+        else:
+            return []
 
     def set_access_timestep(self, t_step):
         # TODO: Figure out some way to move this to the ACCESS driver

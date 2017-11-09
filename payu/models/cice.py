@@ -123,7 +123,7 @@ class Cice(Model):
         else:
             caltype = cal.GREGORIAN
 
-        if self.prior_output_path and not self.expt.repeat_run:
+        if self.prior_restart_path and not self.expt.repeat_run:
 
             # Generate ice.restart_file
             # TODO: better check of restart filename
@@ -146,7 +146,7 @@ class Cice(Model):
             setup_nml['runtype'] = 'continue'
             setup_nml['restart'] = True
 
-            prior_nml_path = os.path.join(self.prior_output_path,
+            prior_nml_path = os.path.join(self.prior_restart_path,
                                           self.ice_nml_fname)
             prior_setup_nml = f90nml.read(prior_nml_path)['setup_nml']
 
