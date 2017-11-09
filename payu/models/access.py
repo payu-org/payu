@@ -81,9 +81,9 @@ class Access(Model):
                 # interested in:
                 #   1. start date of run
                 #   2. total runtime of all previous runs.
-                if model.prior_output_path and not self.expt.repeat_run:
+                if model.prior_restart_path and not self.expt.repeat_run:
 
-                    prior_cpl_fpath = os.path.join(model.prior_output_path,
+                    prior_cpl_fpath = os.path.join(model.prior_restart_path,
                                                    cpl_fname)
                     prior_cpl_nml = f90nml.read(prior_cpl_fpath)
                     cpl_nml_grp = prior_cpl_nml[cpl_group]
@@ -156,6 +156,14 @@ class Access(Model):
 
                     if os.path.exists(f_src):
                         shutil.copy2(f_src, f_dst)
+
+            # Copy configs from work path to restart
+            for f_name in model.config_files:
+                f_src = os.path.join(model.work_path, f_name)
+                f_dst = os.path.join(model.restart_path, f_name)
+
+                if os.path.exists(f_src):
+                    shutil.copy2(f_src, f_dst)
 
         cice5 = None
         mom = None
