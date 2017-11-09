@@ -238,9 +238,6 @@ class Experiment(object):
         if self.config.get('hpctoolkit', False):
             envmod.module('load', 'hpctoolkit')
 
-        if self.config.get('scorep', False):
-            envmod.module('load', 'scorep')
-
         if self.debug:
             envmod.module('load', 'totalview')
 

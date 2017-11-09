@@ -1,3 +1,25 @@
+v0.8:
+    - Remote synchronization of run experiment with github repository
+    - Error logs are now captured and archived separately from successful runs
+    - PBS and error logs are now saved in the archive directory
+    - Basic OpenMP support
+    - FMS collation default flag update (netCDF4)
+    - Error code reporting from FMS collation
+    - OASIS namcouple cleanup (Nic Hannah)
+
+    New dependencies:
+        - requests[security] (for github sync support)
+
+    New model support:
+        - Q-GCM
+        - CICE 5
+
+    Bug fixes:
+        - Calendar leap year support (Nic Hannah)
+        - Payu module pathname
+        - Protect environment variables with '\n' from corruption by PBS Pro
+        - CICE restart cleanup (Nic Hannah)
+
 v0.7:
     - `payu setup` and `payu archive` commands now available
       (c/o Aidan Heerdegen)
