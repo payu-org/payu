@@ -119,25 +119,26 @@ def runscript():
                      run_args.lab_path)
     expt = Experiment(lab)
 
-    n_runs_per_submit = expt.config.get('runspersub',1)
-
     expt.setup()
 
-    while n_runs_per_submit > 0:
+    n_runs_per_submit = expt.config.get('runspersub',1)
+
+    subrun = 1
+
+    while subrun <= n_runs_per_submit and expt.n_runs > 0:
  
-        print("nruns: {} nruns_per_submit: {}".format(expt.n_runs, n_runs_per_submit))
-        n_runs_per_submit -= 1
+        print("nruns: {} nruns_per_submit: {} subrun: {}".format(expt.n_runs, n_runs_per_submit, subrun))
 
         expt.setup()
         expt.run()
         expt.archive()
 
-        if expt.n_runs <= 0:
-            break
-        else:
-            # Need to manually increment the run counter
+        # Need to manually increment the run counter if still looping
+        if n_runs_per_submit > 1 and subrun < n_runs_per_submit:
             expt.counter += 1
             expt.set_output_paths()
+
+        subrun += 1
 
     if expt.n_runs > 0:
         expt.resubmit()
