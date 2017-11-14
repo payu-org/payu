@@ -119,10 +119,25 @@ def runscript():
                      run_args.lab_path)
     expt = Experiment(lab)
 
+    n_runs_per_submit = expt.config.get('runspersub',1)
+
     expt.setup()
 
-    expt.run()
-    expt.archive()
+    while n_runs_per_submit > 0:
+ 
+        print("nruns: {} nruns_per_submit: {}".format(expt.n_runs, n_runs_per_submit))
+        n_runs_per_submit -= 1
+
+        expt.setup()
+        expt.run()
+        expt.archive()
+
+        if expt.n_runs <= 0:
+            break
+        else:
+            # Need to manually increment the run counter
+            expt.counter += 1
+            expt.set_output_paths()
 
     if expt.n_runs > 0:
         expt.resubmit()
