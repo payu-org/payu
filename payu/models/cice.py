@@ -148,6 +148,14 @@ class Cice(Model):
 
             prior_nml_path = os.path.join(self.prior_restart_path,
                                           self.ice_nml_fname)
+
+            # With later versions this file exists in the prior restart path,
+            # but this was not always the case, so check, and if not there use
+            # prior output path
+            if not os.path.exists(prior_nml_path):
+                prior_nml_path = os.path.join(self.prior_output_path,
+                                            self.ice_nml_fname)
+
             prior_setup_nml = f90nml.read(prior_nml_path)['setup_nml']
 
             # The total time in seconds since the beginning of the experiment
