@@ -90,7 +90,7 @@ class Cice5(Cice):
                 break
 
     def get_prior_restart_files(self):
-        if self.prior_restart_path:
+        if self.prior_restart_path is not None:
             return sorted(os.listdir(self.prior_restart_path))
         else:
             return []
