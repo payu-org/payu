@@ -31,7 +31,7 @@ setup(
 
     packages=PKG_PKGS,
     requires=['f90nml', 'PyYAML', 'requests'],
-    install_requires=['f90nml', 'PyYAML', 'requests[security]'],
+    install_requires=['f90nml >= 0.16', 'PyYAML', 'requests[security]'],
     scripts=PKG_SCRIPTS,
 
     classifiers=[
