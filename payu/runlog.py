@@ -22,6 +22,7 @@ import yaml
 from payu.fsops import DEFAULT_CONFIG_FNAME
 from payu.fsops import mkdir_p
 
+
 class Runlog(object):
 
     def __init__(self, expt):

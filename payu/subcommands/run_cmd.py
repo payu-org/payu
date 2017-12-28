@@ -121,13 +121,14 @@ def runscript():
 
     expt.setup()
 
-    n_runs_per_submit = expt.config.get('runspersub',1)
+    n_runs_per_submit = expt.config.get('runspersub', 1)
 
     subrun = 1
 
     while subrun <= n_runs_per_submit and expt.n_runs > 0:
- 
-        print("nruns: {} nruns_per_submit: {} subrun: {}".format(expt.n_runs, n_runs_per_submit, subrun))
+
+        print('nruns: {} nruns_per_submit: {} subrun: {}'
+              ''.format(expt.n_runs, n_runs_per_submit, subrun))
 
         expt.setup()
         expt.run()

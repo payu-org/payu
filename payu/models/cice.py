@@ -48,7 +48,6 @@ class Cice(Model):
 
         self.set_timestep = self.set_local_timestep
 
-
     def set_model_pathnames(self):
         super(Cice, self).set_model_pathnames()
 
@@ -129,8 +128,8 @@ class Cice(Model):
             # TODO: better check of restart filename
             iced_restart_file = None
             for f in self.get_prior_restart_files():
-               if 'iced.' in f:
-                 iced_restart_file = f
+                if 'iced.' in f:
+                    iced_restart_file = f
 
             if iced_restart_file is None:
                 print('payu: error: No restart file available.')
@@ -154,7 +153,7 @@ class Cice(Model):
             # prior output path
             if not os.path.exists(prior_nml_path):
                 prior_nml_path = os.path.join(self.prior_output_path,
-                                            self.ice_nml_fname)
+                                              self.ice_nml_fname)
 
             prior_setup_nml = f90nml.read(prior_nml_path)['setup_nml']
 

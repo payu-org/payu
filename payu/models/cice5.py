@@ -72,7 +72,6 @@ class Cice5(Cice):
         # Change the INPUT path, we want everything to go into RESTART
         self.work_input_path = self.work_restart_path
 
-
     def archive(self):
         super(Cice5, self).archive()
 

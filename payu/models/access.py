@@ -85,11 +85,12 @@ class Access(Model):
 
                     prior_cpl_fpath = os.path.join(model.prior_restart_path,
                                                    cpl_fname)
-                    # With later versions this file exists in the prior restart path,
-                    # but this was not always the case, so check, and if not there use
-                    # prior output path
+                    # With later versions this file exists in the prior restart
+                    # path, but this was not always the case, so check, and if
+                    # not there use prior output path
                     if not os.path.exists(prior_cpl_fpath):
-                        prior_cpl_fpath = os.path.join(model.prior_output_path, cpl_fname)
+                        prior_cpl_fpath = os.path.join(model.prior_output_path,
+                                                       cpl_fname)
 
                     prior_cpl_nml = f90nml.read(prior_cpl_fpath)
                     cpl_nml_grp = prior_cpl_nml[cpl_group]
