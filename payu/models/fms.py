@@ -117,6 +117,7 @@ class Fms(Model):
         pool = multiprocessing.Pool(processes=count)
 
         # Collate each tileset into a single file
+        results = []
         for nc_fname in mnc_tiles:
             nc_path = os.path.join(self.output_path, nc_fname)
 
@@ -129,7 +130,16 @@ class Fms(Model):
             cmd = '{} {} {} {}'.format(mppnc_path, collate_flags, nc_fname,
                                        ' '.join(mnc_tiles[nc_fname]))
             print(cmd)
-            pool.apply_async(cmdthread, args=(cmd, self.output_path))
+            result = pool.apply_async(cmdthread, args=(cmd, self.output_path))
+            results.append(result.get())
 
         pool.close()
         pool.join()
+
+        # TODO: Categorise the return codes
+        if any(rc for rc in results):
+            for p, rc in enumerate(results):
+                if rc:
+                    print('payu: error: Thread {} crased with error code {}.'
+                          ''.format(i, rc))
+            sys.exit(-1)
