@@ -8,6 +8,8 @@
    :license: Apache License, Version 2.0, see LICENSE for details
 """
 
+from __future__ import print_function
+
 # Standard Library
 
 from collections import defaultdict
@@ -17,6 +19,7 @@ import shlex
 import subprocess as sp
 # Use multiprocessing dummy (threads) as collate jobs run in own process
 import multiprocessing.dummy as multiprocessing
+import sys
 
 # Local
 from payu.models.model import Model
@@ -26,14 +29,15 @@ def cmdthread(cmd, cwd):
     # This is run in a thread, so the GIL of python makes it sensible to
     # capture the output from each process and print it out at the end so
     # it doesn't get scrambled when collates are run in parallel
-    result = True
+    output = ''
+    returncode = None
     try:
         output = sp.check_output(shlex.split(cmd), cwd=cwd, stderr=sp.STDOUT)
-    except CalledProcessError as e:
-        print('{} failed, returned errorcode {}'.format(e.cmd, e.returncode))
-        result = False
+    except sp.CalledProcessError as e:
+        output = '{} failed, returned errorcode {}'.format(e.cmd, e.returncode)
+        returncode = e.returncode
     print(output)
-    return result
+    return returncode
 
 
 class Fms(Model):
@@ -117,6 +121,7 @@ class Fms(Model):
         pool = multiprocessing.Pool(processes=count)
 
         # Collate each tileset into a single file
+        results = []
         for nc_fname in mnc_tiles:
             nc_path = os.path.join(self.output_path, nc_fname)
 
@@ -129,7 +134,16 @@ class Fms(Model):
             cmd = '{} {} {} {}'.format(mppnc_path, collate_flags, nc_fname,
                                        ' '.join(mnc_tiles[nc_fname]))
             print(cmd)
-            pool.apply_async(cmdthread, args=(cmd, self.output_path))
+            result = pool.apply_async(cmdthread, args=(cmd, self.output_path))
+            results.append(result.get())
 
         pool.close()
         pool.join()
+
+        # TODO: Categorise the return codes
+        if any(rc is not None for rc in results):
+            for p, rc in enumerate(results):
+                if rc is not None:
+                    print('payu: error: Thread {} crased with error code {}.'
+                          ''.format(p, rc),file=sys.stderr)
+            sys.exit(-1)
