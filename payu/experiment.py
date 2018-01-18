@@ -53,6 +53,9 @@ class Experiment(object):
         self.postscript = self.config.get('postscript')
         self.repeat_run = self.config.get('repeat', False)
 
+        # Configuration
+        self.expand_shell_vars = True   # TODO: configurable
+
         # Model run time
         self.runtime = None
         if ('calendar' in self.config and
@@ -479,6 +482,10 @@ class Experiment(object):
 
         for prof in self.profilers:
             cmd = prof.wrapper(cmd)
+
+        # Expand shell variables inside flags
+        if self.expand_shell_vars:
+            cmd = os.path.expandvars(cmd)
 
         print(cmd)
 
