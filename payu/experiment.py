@@ -529,6 +529,7 @@ class Experiment(object):
             prof.postprocess()
 
         # TODO: Need a model-specific cleanup method call here
+        # NOTE: This does not appear to catch hanging jobs killed by PBS
         if rc != 0:
             # Backup logs for failed runs
             error_log_dir = os.path.join(self.archive_path, 'error_logs')
@@ -811,7 +812,7 @@ class Experiment(object):
 
         # TODO: model outstreams and pbs logs need to be handled separately
         default_job_name = os.path.basename(os.getcwd())
-        short_job_name = self.config.get('jobname', default_job_name)[:15]
+        short_job_name = str(self.config.get('jobname', default_job_name))[:15]
 
         logs = [
             f for f in os.listdir(os.curdir) if os.path.isfile(f) and (
