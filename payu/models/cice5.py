@@ -83,10 +83,11 @@ class Cice5(Cice):
 
         # Delete the old restart file (keep the one in ice.restart_file)
         for f in self.get_prior_restart_files():
-            if 'iced.' in f:
-                assert f != res_name
+            if f.startswith('iced.'):
+                if f == res_name:
+                    continue
                 os.remove(os.path.join(self.restart_path, f))
-                break
+
 
     def get_prior_restart_files(self):
         if self.prior_restart_path is not None:
