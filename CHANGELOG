@@ -1,3 +1,22 @@
+v0.8.1:
+    - Environment variable corruption of bash functions by PBS is now only
+      applied if the `BASH_FUNC_module()` variable is present.  This prevents
+      failing under tcsh.
+    - Numerical job names should now work correctly
+    - Bash-like environment variable substitution can now be used in MPI flags.
+      This feature may be extended to other components if necessary.
+    - Multiple runs per PBS submission now supported (`runspersub`)
+    - Safer import of f90nml
+    - ACCESS-OM2:
+        - Necessary configuration files are now copied to the restart
+          directory.
+        - CICE namelists now search in the prior output path if absent from the
+          prior restart path
+        - Safer CICE restart cleanup
+    - FMS:
+        - Collation by mppnccombine will now report a nonzero error code if any
+          of its pool threads fails, which will halt resubmission.
+
 v0.8:
     - Remote synchronization of run experiment with github repository
     - Error logs are now captured and archived separately from successful runs
