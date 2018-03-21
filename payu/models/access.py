@@ -8,11 +8,14 @@ Distributed as part of Payu, Copyright 2011 Marshall Ward
 Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
+from __future__ import print_function
 
 # Standard Library
+import errno
 import os
 import re
 import shutil
+import sys
 
 # Extensions
 import f90nml
@@ -85,14 +88,32 @@ class Access(Model):
 
                     prior_cpl_fpath = os.path.join(model.prior_restart_path,
                                                    cpl_fname)
+
                     # With later versions this file exists in the prior restart
                     # path, but this was not always the case, so check, and if
                     # not there use prior output path
                     if not os.path.exists(prior_cpl_fpath):
+                        print('payu: warning: {0} missing from prior restart '
+                              'path; checking prior output.'.format(cpl_fname),
+                              file=sys.stderr)
+                        if not os.path.isdir(model.prior_output_path):
+                            print('payu: error: No prior output path; '
+                                  'aborting run.')
+                            sys.exit(errno.ENOENT)
+
                         prior_cpl_fpath = os.path.join(model.prior_output_path,
                                                        cpl_fname)
 
-                    prior_cpl_nml = f90nml.read(prior_cpl_fpath)
+                    try:
+                        prior_cpl_nml = f90nml.read(prior_cpl_fpath)
+                    except IOError as exc:
+                        if exc.errno == errno.ENOENT:
+                            print('payu: error: {0} does not exist; aborting.'
+                                  ''.format(prior_cpl_fpath), file=sys.stderr)
+                            sys.exit(exc.errno)
+                        else:
+                            raise
+
                     cpl_nml_grp = prior_cpl_nml[cpl_group]
 
                     # The total time in seconds since the beginning of
