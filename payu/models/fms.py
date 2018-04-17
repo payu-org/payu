@@ -145,5 +145,5 @@ class Fms(Model):
             for p, rc in enumerate(results):
                 if rc is not None:
                     print('payu: error: Thread {} crased with error code {}.'
-                          ''.format(p, rc),file=sys.stderr)
+                          ''.format(p, rc), file=sys.stderr)
             sys.exit(-1)

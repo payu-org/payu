@@ -88,7 +88,6 @@ class Cice5(Cice):
                     continue
                 os.remove(os.path.join(self.restart_path, f))
 
-
     def get_prior_restart_files(self):
         if self.prior_restart_path is not None:
             return sorted(os.listdir(self.prior_restart_path))
