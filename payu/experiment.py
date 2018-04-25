@@ -108,17 +108,15 @@ class Experiment(object):
 
         submodels = self.config.get('submodels', [])
 
-        if not submodels:
+        solo_model = self.config.get('model')
+        if not solo_model:
+            sys.exit('payu: error: Unknown model configuration.')
 
-            solo_model = self.config.get('model')
-            if not solo_model:
-                sys.exit('payu: error: Unknown model configuration.')
+        submodel_config = {f: self.config[f] for f in model_fields \
+                           if f in self.config}
+        submodel_config['name'] = solo_model
 
-            submodel_config = {f: self.config[f] for f in model_fields
-                               if f in self.config}
-            submodel_config['name'] = solo_model
-
-            submodels = [submodel_config]
+        submodels.append(submodel_config)
 
         for m_config in submodels:
             ModelType = model_index[m_config['model']]
@@ -130,6 +128,7 @@ class Experiment(object):
             model_config = {f: self.config[f] for f in model_fields
                             if f in self.config}
             self.model = ModelType(self, self.model_name, model_config)
+            self.model.top_level_model = True
         else:
             self.model = None
 
@@ -342,6 +341,7 @@ class Experiment(object):
             cmd = 'lfs setstripe -c 8 -s 8m {}'.format(self.work_path)
             sp.check_call(shlex.split(cmd))
 
+        # FIXME: Why does this cause warnings for ACCESS-OM2?
         make_symlink(self.work_path, self.work_sym_path)
 
         for model in self.models:

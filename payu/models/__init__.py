@@ -1,4 +1,5 @@
 from payu.models.access import Access
+from payu.models.accessom2 import AccessOm2
 from payu.models.cice import Cice
 from payu.models.cice5 import Cice5
 from payu.models.gold import Gold
@@ -11,16 +12,18 @@ from payu.models.oasis import Oasis
 from payu.models.um import UnifiedModel
 from payu.models.ww3 import WW3
 from payu.models.qgcm import Qgcm
+from payu.models.yatm import Yatm
 
 from payu.models.model import Model
 
 index = {
     'access':     Access,
-    'access-om2': Access,
+    'access-om2': AccessOm2,
     'cice':     Cice,
     'cice5':    Cice5,
     'gold':     Gold,
     'matm':     Matm,
+    'yatm':     Yatm,
     'mitgcm':   Mitgcm,
     'mom':      Mom,
     'nemo':     Nemo,
