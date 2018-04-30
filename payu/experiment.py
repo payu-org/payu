@@ -341,7 +341,6 @@ class Experiment(object):
             cmd = 'lfs setstripe -c 8 -s 8m {}'.format(self.work_path)
             sp.check_call(shlex.split(cmd))
 
-        # FIXME: Why does this cause warnings for ACCESS-OM2?
         make_symlink(self.work_path, self.work_sym_path)
 
         for model in self.models:
