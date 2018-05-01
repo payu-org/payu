@@ -48,6 +48,8 @@ class Access(Model):
                 model.get_ptr_restart_dir = model.get_access_ptr_restart_dir
 
     def setup(self):
+        if not self.top_level_model:
+            return
 
         cpl_keys = {'cice': ('input_ice.nml', 'coupling_nml', 'runtime0'),
                     'matm': ('input_atm.nml', 'coupling', 'truntime0')}
@@ -173,6 +175,8 @@ class Access(Model):
                     f.write(s)
 
     def archive(self):
+        if not self.top_level_model:
+            return
 
         for model in self.expt.models:
             if model.model_type == 'cice':
@@ -206,3 +210,12 @@ class Access(Model):
             o2i_src = os.path.join(mom.work_path, 'o2i.nc')
             o2i_dst = os.path.join(cice5.restart_path, 'o2i.nc')
             shutil.copy2(o2i_src, o2i_dst)
+
+    def set_model_pathnames(self):
+        pass
+
+    def set_input_paths(self):
+        pass
+
+    def set_model_output_paths(self):
+        pass
