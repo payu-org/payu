@@ -30,6 +30,7 @@ class Model(object):
         self.expt = expt
         self.name = model_name
         self.config = model_config
+        self.top_level_model = False
 
         # Model details
         self.model_type = None
