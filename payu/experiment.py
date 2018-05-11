@@ -101,7 +101,7 @@ class Experiment(object):
         assert self.model_name
 
         model_fields = ['model', 'exe', 'input', 'ncpus', 'npernode', 'build',
-                        'mpthreads']
+                        'mpthreads', 'exe_prefix']
 
         # TODO: Rename this to self.submodels
         self.models = []
