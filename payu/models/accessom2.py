@@ -15,6 +15,7 @@ import shutil
 
 from payu.models.model import Model
 
+
 class AccessOm2(Model):
 
     def __init__(self, expt, name, config):
@@ -66,5 +67,6 @@ class AccessOm2(Model):
         if not self.top_level_model:
             shutil.rmtree(self.work_input_path)
             for f in os.listdir(self.work_restart_path):
-                shutil.move(os.path.join(self.work_restart_path, f), self.restart_path)
+                shutil.move(os.path.join(self.work_restart_path, f),
+                            self.restart_path)
             os.rmdir(self.work_restart_path)

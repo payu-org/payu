@@ -16,6 +16,7 @@ import shutil
 from payu.models.model import Model
 from payu.fsops import mkdir_p
 
+
 class Yatm(Model):
 
     def __init__(self, expt, name, config):

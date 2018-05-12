@@ -112,7 +112,7 @@ class Experiment(object):
         if not solo_model:
             sys.exit('payu: error: Unknown model configuration.')
 
-        submodel_config = {f: self.config[f] for f in model_fields \
+        submodel_config = {f: self.config[f] for f in model_fields
                            if f in self.config}
         submodel_config['name'] = solo_model
 

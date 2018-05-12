@@ -41,12 +41,18 @@ class Mom(Fms):
         self.repo_tag = 'master'
         self.build_command = './MOM_compile.csh --platform nci --type MOM_SIS'
 
-        self.config_files = ['data_table',
-                             'diag_table',
-                             'field_table',
-                             'input.nml']
+        self.config_files = [
+           'data_table',
+           'diag_table',
+           'field_table',
+           'input.nml'
+        ]
 
-        self.optional_config_files = ['blob_diag_table', 'mask_table']
+        self.optional_config_files = [
+           'blob_diag_table',
+           'mask_table',
+           'ocean_mask_table'
+        ]
 
     def set_model_pathnames(self):
         super(Mom, self).set_model_pathnames()

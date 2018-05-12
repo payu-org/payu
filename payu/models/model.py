@@ -160,7 +160,7 @@ class Model(object):
         for f_name in self.optional_config_files:
             f_path = os.path.join(self.control_path, f_name)
             try:
-                shutil.copy(f_path, self.work_path)
+                shutil.copy(f_path, self.work_input_path)
             except IOError as exc:
                 if exc.errno == errno.ENOENT:
                     pass
