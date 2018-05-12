@@ -1,21 +1,14 @@
-# coding: utf-8
-"""payu.models.mom
-   ===============
+"""Driver interface to the MOM ocean model.
 
-   Driver interface to the MOM ocean model.
-
-   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
-   :license: Apache License, Version 2.0, see LICENSE for details
+:copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
+:license: Apache License, Version 2.0, see LICENSE for details
 """
-
-# Standard Library
 import os
 import shlex
 import shutil
 import subprocess
 import sys
 
-# Local
 import f90nml
 import payu.envmod
 from payu.models.fms import Fms

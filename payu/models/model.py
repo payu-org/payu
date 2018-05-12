@@ -1,14 +1,8 @@
-# coding: utf-8
-"""payu.models.model
-   =================
+"""Generic model interface, primarily to be inherited by other models.
 
-   Generic driver to be inherited by other models
-
-   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
-   :license: Apache License, Version 2.0, see LICENSE for details
+:copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
+:license: Apache License, Version 2.0, see LICENSE for details
 """
-
-# Standard Library
 import errno
 import os
 import shutil
@@ -16,16 +10,15 @@ import shlex
 import sys
 import subprocess as sp
 
-# Local
 from payu import envmod
 from payu.fsops import make_symlink, mkdir_p
 
 
 class Model(object):
-    """Abstract model class"""
+    """Abstract model class."""
 
     def __init__(self, expt, model_name, model_config):
-
+        """Create the model interface."""
         # Inherit experiment configuration
         self.expt = expt
         self.name = model_name
@@ -63,7 +56,7 @@ class Model(object):
         self.build_command = None
 
     def set_model_pathnames(self):
-
+        """Define the paths associated with this model."""
         self.control_path = self.expt.control_path
         self.input_basepath = self.expt.lab.input_basepath
         self.work_path = self.expt.work_path
@@ -196,12 +189,15 @@ class Model(object):
             self.set_timestep(timestep)
 
     def set_timestep(self, timestep):
+        """Set the model timestep."""
         raise NotImplementedError
 
     def archive(self):
+        """Store model output to laboratory archive."""
         raise NotImplementedError
 
     def collate(self):
+        """Collate any tiled output into a single file."""
         raise NotImplementedError
 
     def build_model(self):

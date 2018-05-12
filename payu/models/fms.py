@@ -1,27 +1,18 @@
-# coding: utf-8
-"""payu.models.fms
-   ===============
+"""Driver interface to the FMS model framework.
 
-   Driver interface to the FMS model framework.
-
-   :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
-   :license: Apache License, Version 2.0, see LICENSE for details
+:copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
+:license: Apache License, Version 2.0, see LICENSE for details
 """
-
 from __future__ import print_function
 
-# Standard Library
-
 from collections import defaultdict
+import multiprocessing.dummy as multiprocessing
 import os
 import resource as res
 import shlex
 import subprocess as sp
-# Use multiprocessing dummy (threads) as collate jobs run in own process
-import multiprocessing.dummy as multiprocessing
 import sys
 
-# Local
 from payu.models.model import Model
 
 

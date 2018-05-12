@@ -1,20 +1,13 @@
-"""payu.laboratory
-   ===============
+"""Payu interface to the numerical model laboratory.
 
-   Interface to the numerical model laboratory
-
-   :copyright: Copyright 2011-2014 Marshall Ward, see AUTHORS for details.
-   :license: Apache License, Version 2.0, see LICENSE for details.
+:copyright: Copyright 2011-2014 Marshall Ward, see AUTHORS for details.
+:license: Apache License, Version 2.0, see LICENSE for details.
 """
-
-# Python3 preparation
 from __future__ import print_function
 
-# Standard Library
 import os
 import pwd
 
-# Local
 from payu.fsops import mkdir_p, read_config
 
 
@@ -22,8 +15,7 @@ class Laboratory(object):
     """Interface to the numerical model's laboratory."""
 
     def __init__(self, model_type=None, config_path=None, lab_path=None):
-
-        # Attach inputs
+        """Create the Payu laboratory interface."""
         config = read_config(config_path)
 
         # Set the file permission mask
@@ -60,7 +52,6 @@ class Laboratory(object):
 
     def get_default_lab_path(self, config):
         """Generate a default laboratory path based on user environment."""
-
         # Default path settings
 
         # Append project name if present (NCI-specific)
@@ -81,8 +72,6 @@ class Laboratory(object):
 
     def initialize(self):
         """Create the laboratory directories."""
-
-        # Create laboratory directories
         mkdir_p(self.archive_path)
         mkdir_p(self.bin_path)
         mkdir_p(self.codebase_path)
