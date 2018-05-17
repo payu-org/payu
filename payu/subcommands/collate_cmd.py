@@ -64,9 +64,18 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
 
     # Disable hyperthreading
     qsub_flags = []
-    for flag in pbs_config.get('qsub_flags', '').split():
+    iflags = iter(pbs_config.get('qsub_flags', '').split())
+    for flag in iflags:
+        if flag == '-l':
+            try:
+                flag += ' ' + next(iflags)
+            except StopIteration:
+                break
+
+        # TODO: Test the sequence, not just existence of characters in string
         if 'hyperthread' not in flag:
             qsub_flags.append(flag)
+
     pbs_config['qsub_flags'] = ' '.join(qsub_flags)
 
     cli.submit_job('payu-collate', pbs_config, pbs_vars)
