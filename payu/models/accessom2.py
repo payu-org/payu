@@ -23,7 +23,6 @@ class AccessOm2(Model):
 
         self.model_type = 'access-om2'
         self.config_files = ['accessom2.nml', 'namcouple']
-        self.top_level_model = True
 
     def setup(self):
         # HACK: only call setup if this is called as a submodule
