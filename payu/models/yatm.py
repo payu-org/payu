@@ -42,3 +42,6 @@ class Yatm(Model):
         mkdir_p(self.restart_path)
 
         shutil.rmtree(self.work_input_path)
+
+    def collate(self):
+        pass
