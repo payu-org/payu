@@ -14,6 +14,7 @@ from __future__ import print_function
 # Standard Library
 import errno
 import os
+import stat
 import sys
 import shlex
 import shutil
@@ -113,6 +114,12 @@ class Cice(Model):
 
     def setup(self):
         super(Cice, self).setup()
+
+        # Change perms of o2i.nc and i2o.nc, these get overwritten so much be
+        # writable.
+        for fname in ['o2i.nc', 'i2o.nc', 'u_star.nc']:
+            path = os.path.join(self.work_input_path, fname)
+            os.chmod(path, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IWUSR)
 
         setup_nml = self.ice_in['setup_nml']
         init_date = datetime.date(year=setup_nml['year_init'], month=1, day=1)
