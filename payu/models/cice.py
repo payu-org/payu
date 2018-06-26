@@ -117,7 +117,8 @@ class Cice(Model):
 
         # Change perms of o2i.nc and i2o.nc, these get overwritten so much be
         # writable.
-        for fname in ['o2i.nc', 'i2o.nc', 'u_star.nc']:
+        for fname in ['o2i.nc', 'i2o.nc', 'u_star.nc', 'grid.nc', 'kmt.nc',
+                      'monthly_sstsss.nc']:
             path = os.path.join(self.work_input_path, fname)
             os.chmod(path, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IWUSR)
 
