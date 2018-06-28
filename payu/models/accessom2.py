@@ -69,3 +69,6 @@ class AccessOm2(Model):
                 shutil.move(os.path.join(self.work_restart_path, f),
                             self.restart_path)
             os.rmdir(self.work_restart_path)
+
+    def collate(self):
+        pass
