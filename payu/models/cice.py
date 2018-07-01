@@ -115,13 +115,14 @@ class Cice(Model):
     def setup(self):
         super(Cice, self).setup()
 
-        # Change perms of o2i.nc and i2o.nc, these get overwritten so much be
+        # Change perms of restart files, these get overwritten so much be
         # writable.
         for fname in ['o2i.nc', 'i2o.nc', 'u_star.nc', 'grid.nc', 'kmt.nc',
-                      'monthly_sstsss.nc']:
+                      'monthly_sstsss.nc', 'mice.nc']:
             path = os.path.join(self.work_input_path, fname)
-            perm = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IWUSR
-            os.chmod(path, perm)
+            if os.path.exists(path):
+                perm = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IWUSR
+                os.chmod(path, perm)
 
         setup_nml = self.ice_in['setup_nml']
         init_date = datetime.date(year=setup_nml['year_init'], month=1, day=1)
