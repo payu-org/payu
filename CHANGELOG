@@ -1,3 +1,40 @@
+v0.9:
+    - Top-level models (i.e. models with submodels) are now handled as
+      independent models, with their own configuration elements (e.g. input
+      directory, etc.)  This allows configuration files to be shared more easily
+      across submodels.
+
+      Much of this work is ongoing, and this should be seen as a progressive
+      step, rather than the final product.
+
+    - `ocean_mask_table` has been added to the MOM driver as an optional config
+      file.
+
+    - Optional configuration files are now (perhaps temporarily) copied to the
+      `work_input_path` rather than `work_path`.  This is solely to accommodate
+      the `ocean_mask_table` in ACCESS-OM2.  This probably needs to be
+      restructured better in the future.
+
+    - Missing restart files in the old ACCESS are now handled more safely.  If
+      a restart file is missing, it will conditionally check the prior output.
+
+    - CICE output file permissions are correctly set to be user-writeable.
+
+    - Hyperthreading is now correctly removed from collation jobs.  There was
+      some poor handling of the optional space betweel `-l` and the flag
+      contents which has been fixed.
+
+    New model support:
+      - YATM
+      - ACCESS-OM2
+
+        NOTE: The ACCESS-OM2 driver currently overrides most of the intrinsic
+        Payu driver structure, and will probably be rewritten at some stage.
+
+    - The largely unused `exe_prefix` config setting was basically unusable
+      since it was not passed to the model object.  This change now passes it
+      to the model object, which handles the executable command.
+
 v0.8.1:
     - Environment variable corruption of bash functions by PBS is now only
       applied if the `BASH_FUNC_module()` variable is present.  This prevents
