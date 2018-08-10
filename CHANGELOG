@@ -1,3 +1,7 @@
+v0.9.1:
+    - Reverting the optional_config_files directory chance back to work_input,
+      since it was breaking MOM6.
+
 v0.9:
     - Top-level models (i.e. models with submodels) are now handled as
       independent models, with their own configuration elements (e.g. input
