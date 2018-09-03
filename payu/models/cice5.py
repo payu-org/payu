@@ -28,6 +28,7 @@ import payu.calendar as cal
 from payu.fsops import make_symlink
 from payu.models.cice import Cice
 from payu.namcouple import Namcouple
+from payu.fsops import mkdir_p
 
 
 class Cice5(Cice):
@@ -65,6 +66,12 @@ class Cice5(Cice):
 
         ice_in_path = os.path.join(self.work_path, self.ice_nml_fname)
         self.ice_in.write(ice_in_path, force=True)
+
+    def setup(self):
+        super(Cice5, self).setup()
+
+        # Make log dir
+        mkdir_p(os.path.join(self.work_path, 'log'))
 
     def set_model_pathnames(self):
         super(Cice5, self).set_model_pathnames()
