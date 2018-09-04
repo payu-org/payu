@@ -23,6 +23,13 @@ from payu.fsops import DEFAULT_CONFIG_FNAME
 from payu.fsops import mkdir_p
 
 
+# Compatibility
+try:
+    input = raw_input
+except NameError:
+    pass
+
+
 class Runlog(object):
 
     def __init__(self, expt):
@@ -108,14 +115,16 @@ class Runlog(object):
 
     def github_setup(self):
         """Set up authentication keys and API tokens."""
-        runlog_config = self.expt.config.get('runlog', {})
-        expt_name = runlog_config.get('name', self.expt.name)
-        expt_description = self.expt.config.get('description',
-                                                'An amazing payu experiment!')
-        expt_private = runlog_config.get('private', False)
-
         github_auth = self.authenticate()
         github_username = github_auth[0]
+
+        runlog_config = self.expt.config.get('runlog', {})
+        expt_name = runlog_config.get('name', self.expt.name)
+        expt_description = self.expt.config.get('description')
+        if not expt_description:
+            expt_description = input('Briefly describe the experiment: ')
+            assert(isinstance(expt_description, str))
+        expt_private = runlog_config.get('private', False)
 
         # 1. Create the organisation if needed
         github_api_url = 'https://api.github.com'
@@ -237,7 +246,7 @@ class Runlog(object):
 
         github_username = runlog_config.get('username')
         if not github_username:
-            github_username = raw_input('Enter github username: ')
+            github_username = input('Enter github username: ')
 
         github_password = getpass.getpass('Enter {}@github password: '
                                           ''.format(github_username))
