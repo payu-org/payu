@@ -12,9 +12,10 @@ import resource as res
 import shlex
 import subprocess as sp
 import sys
+from itertools import count
 
 from payu.models.model import Model
-
+from payu import envmod
 
 def cmdthread(cmd, cwd):
     # This is run in a thread, so the GIL of python makes it sensible to
@@ -25,10 +26,10 @@ def cmdthread(cmd, cwd):
     try:
         output = sp.check_output(shlex.split(cmd), cwd=cwd, stderr=sp.STDOUT)
     except sp.CalledProcessError as e:
-        output = '{} failed, returned errorcode {}'.format(e.cmd, e.returncode)
+        # output = '{} failed, returned errorcode {}'.format(e.cmd, e.returncode)
+        output = e.output
         returncode = e.returncode
-    print(output)
-    return returncode
+    return returncode, output
 
 
 class Fms(Model):
@@ -65,9 +66,20 @@ class Fms(Model):
         # Set the stacksize to be unlimited
         res.setrlimit(res.RLIMIT_STACK, (res.RLIM_INFINITY, res.RLIM_INFINITY))
 
+        collate_conf = self.expt.config.get('collate',{})
+
+        if type(collate_conf) is bool:
+            # Cycle through old collate config and convert to newer dict format
+            collate_conf = {'enable' : collate_conf}
+            for key in ['exe','flags','ignore']:
+                oldkey = "collate_{}".format(key)
+                print("Use of this key is deprecated: {}. Use collate dictionary and subkey {}".format(oldkey,key))
+                if oldkey in self.expt.config:
+                    collate_conf[key] = self.expt.config[oldkey]
+
         # Locate the FMS collation tool
         # Check config for collate executable
-        mppnc_path = self.expt.config.get('collate_exe')
+        mppnc_path = collate_conf.get('exe')
         if mppnc_path is None:
             for f in os.listdir(self.expt.lab.bin_path):
                 if f.startswith('mppnccombine'):
@@ -79,13 +91,26 @@ class Fms(Model):
 
         assert mppnc_path
 
+        # The mpi flag implies using mppnccombine-fast
+        mpi = collate_conf.get('mpi',False)
+
         # Check config for collate command line options
-        collate_flags = self.expt.config.get('collate_flags')
+        collate_flags = collate_conf.get('flags')
         if collate_flags is None:
-            collate_flags = '-n4 -z -m -r'
+            if mpi:
+                collate_flags = '-r'
+            else:
+                collate_flags = '-n4 -z -m -r'
+
+        if mpi:
+            # The output file is the first argument after the flags
+            # and mppnccombine-fast uses an explicit -o flag to specify
+            # the output
+            collate_flags = " ".join([collate_flags,'-o'])
+            mpi_module = envmod.lib_update(mppnc_path, 'libmpi.so')
 
         # Import list of collated files to ignore
-        collate_ignore = self.expt.config.get('collate_ignore')
+        collate_ignore = collate_conf.get('ignore')
         if collate_ignore is None:
             collate_ignore = []
         elif type(collate_ignore) != list:
@@ -94,6 +119,8 @@ class Fms(Model):
         # Generate collated file list and identify the first tile
         tile_fnames = [f for f in os.listdir(self.output_path)
                        if f[-4:].isdigit() and f[-8:-4] == '.nc.']
+
+        tile_fnames.sort()
 
         mnc_tiles = defaultdict(list)
         for t_fname in tile_fnames:
@@ -106,13 +133,25 @@ class Fms(Model):
 
             mnc_tiles[t_base].append(t_fname)
 
-        # If this is run interactively NCPUS is set in collate_cmd, otherwise
-        # the cpu_count will return the number of CPUs assigned to the PBS job
-        count = int(os.environ.get('NCPUS', multiprocessing.cpu_count()))
-        pool = multiprocessing.Pool(processes=count)
+        cpucount = int(collate_conf.get('ncpus', multiprocessing.cpu_count()))
+
+        if mpi:
+            # Default to one for mpi
+            nprocesses = int(collate_conf.get('threads', 1))
+        else:
+            nprocesses = int(collate_conf.get('threads', cpucount))
+
+        ncpusperprocess = int(cpucount/nprocesses)
+
+        if ncpusperprocess == 1 and mpi:
+            print("Warning: running collate with mpirun with a single processor")
+
+        pool = multiprocessing.Pool(processes=nprocesses)
 
         # Collate each tileset into a single file
         results = []
+        codes = []
+        outputs = []
         for nc_fname in mnc_tiles:
             nc_path = os.path.join(self.output_path, nc_fname)
 
@@ -122,19 +161,26 @@ class Fms(Model):
             if os.path.isfile(nc_path):
                 os.remove(nc_path)
 
-            cmd = '{} {} {} {}'.format(mppnc_path, collate_flags, nc_fname,
-                                       ' '.join(mnc_tiles[nc_fname]))
+            cmd = ' '.join([mppnc_path, collate_flags, nc_fname,
+                                       ' '.join(mnc_tiles[nc_fname])])
+            if mpi:
+                cmd = "mpirun -n {} {}".format(ncpusperprocess,cmd)
+
             print(cmd)
-            result = pool.apply_async(cmdthread, args=(cmd, self.output_path))
-            results.append(result.get())
+            results.append(pool.apply_async(cmdthread, args=(cmd, self.output_path)))
 
         pool.close()
         pool.join()
 
+        for result in results:
+            rc, op = result.get()
+            codes.append(rc)
+            outputs.append(op)
+
         # TODO: Categorise the return codes
-        if any(rc is not None for rc in results):
-            for p, rc in enumerate(results):
+        if any(rc is not None for rc in codes):
+            for p, rc, op in zip(count(),codes,outputs):
                 if rc is not None:
-                    print('payu: error: Thread {} crased with error code {}.'
-                          ''.format(p, rc), file=sys.stderr)
+                    print('payu: error: Thread {} crased with error code {}.\n   Error message:\n{}'
+                          ''.format(p, rc, op), file=sys.stderr)
             sys.exit(-1)

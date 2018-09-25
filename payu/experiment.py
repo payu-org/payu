@@ -638,7 +638,13 @@ class Experiment(object):
                 if os.path.isdir(res_path):
                     shutil.rmtree(res_path)
 
-        if self.config.get('collate', True):
+        do_collate = self.config.get('collate',{})
+
+        # Support legacy config
+        if type(do_collate) is bool:
+            do_collate = {'enable' : do_collate}
+
+        if do_collate.get('enable', True):
             cmd = 'payu collate -i {}'.format(self.counter)
             sp.check_call(shlex.split(cmd))
 

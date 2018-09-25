@@ -23,10 +23,30 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
     pbs_config = cli.get_config(config_path)
     pbs_vars = cli.set_env_vars(init_run, n_runs, lab_path, dir_path)
 
-    collate_queue = pbs_config.get('collate_queue', 'copyq')
+    collate_conf = pbs_config.get('collate',{})
+
+    # Cycle through old collate config and convert to newer dict format
+    if type(collate_conf) is bool:
+        collate_conf = {'run' : collate_conf}
+        for key in ['queue','ncpus','walltime','mem']:
+            oldkey = "collate_{}".format(key)
+            print("Use of this key is deprecated: {}. Use collate dictionary and subkey {}".format(oldkey,key))
+            if oldkey in pbs_config:
+                collate_conf[key] = pbs_config[oldkey]
+
+    # The mpi flag implies using mppnccombine-fast
+    mpi = collate_conf.get('mpi',False)
+
+    default_ncpus = 1
+    default_queue = 'copyq'
+    if mpi:
+        default_ncpus = 2
+        default_queue = 'express'
+
+    collate_queue = collate_conf.get('queue', default_queue)
     pbs_config['queue'] = collate_queue
 
-    n_cpus_request = pbs_config.get('collate_ncpus', 1)
+    n_cpus_request = collate_conf.get('ncpus', default_ncpus)
     pbs_config['ncpus'] = n_cpus_request
 
     # Modify jobname
@@ -41,7 +61,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
         pbs_config['jobname'] = os.path.normpath(dpath[:13]) + '_c'
 
     # Replace (or remove) walltime
-    collate_walltime = pbs_config.get('collate_walltime')
+    collate_walltime = collate_conf.get('walltime')
     if collate_walltime:
         pbs_config['walltime'] = collate_walltime
     else:
@@ -51,16 +71,8 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
         except KeyError:
             pass
 
-    # Replace (or remove) memory request
-    collate_mem = pbs_config.get('collate_mem')
-    if collate_mem:
-        pbs_config['mem'] = collate_mem
-    else:
-        # Remove the model memory request if set
-        try:
-            pbs_config.pop('mem')
-        except KeyError:
-            pass
+    # TODO: calcualte default memory request based on ncpus and platform
+    pbs_config['mem'] = collate_conf.get('mem','2GB')
 
     # Disable hyperthreading
     qsub_flags = []
@@ -98,12 +110,6 @@ def runscript():
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)
     expt = Experiment(lab)
-
-    if 'PBS_NCPUS' not in os.environ:
-        # Not a PBS batch job: set ncpus in environment
-        if 'collate_ncpus' in expt.config:
-            os.environ['NCPUS'] = str(expt.config['collate_ncpus'])
-
     expt.collate()
     if expt.postscript:
         expt.postprocess()
