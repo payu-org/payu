@@ -60,29 +60,6 @@ def parse():
         run_cmd = args.pop('run_cmd')
         run_cmd(**args)
 
-
-def get_config(config_path):
-    """Open the configuration file and construct the configuration data. """
-
-    if not config_path and os.path.isfile(DEFAULT_CONFIG):
-        config_path = DEFAULT_CONFIG
-
-    try:
-        with open(config_path, 'r') as config_file:
-            config = yaml.load(config_file)
-    except (TypeError, IOError) as exc:
-        if config_path is None:
-            config = {}
-        elif type(exc) == IOError and exc.errno == errno.ENOENT:
-            print('payu: error: Configuration file {} not found.'
-                  ''.format(config_path))
-            sys.exit(errno.ENOENT)
-        else:
-            raise
-
-    return config
-
-
 def get_model_type(model_type, config):
     """Determine and validate the active model type."""
 

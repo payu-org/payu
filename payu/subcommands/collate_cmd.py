@@ -10,6 +10,7 @@ from payu import cli
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
+from payu import fsops
 
 title = 'collate'
 parameters = {'description': 'Collate tiled output into single output files'}
@@ -20,22 +21,13 @@ arguments = [args.model, args.config, args.initial, args.nruns,
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
 
-    pbs_config = cli.get_config(config_path)
+    pbs_config = fsops.read_config(config_path)
     pbs_vars = cli.set_env_vars(init_run, n_runs, lab_path, dir_path)
 
-    collate_conf = pbs_config.get('collate',{})
-
-    # Cycle through old collate config and convert to newer dict format
-    if type(collate_conf) is bool:
-        collate_conf = {'run' : collate_conf}
-        for key in ['queue','ncpus','walltime','mem']:
-            oldkey = "collate_{}".format(key)
-            print("Use of this key is deprecated: {}. Use collate dictionary and subkey {}".format(oldkey,key))
-            if oldkey in pbs_config:
-                collate_conf[key] = pbs_config[oldkey]
+    collate_config = pbs_config.get('collate',{})
 
     # The mpi flag implies using mppnccombine-fast
-    mpi = collate_conf.get('mpi',False)
+    mpi = collate_config.get('mpi',False)
 
     default_ncpus = 1
     default_queue = 'copyq'
@@ -43,10 +35,10 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
         default_ncpus = 2
         default_queue = 'express'
 
-    collate_queue = collate_conf.get('queue', default_queue)
+    collate_queue = collate_config.get('queue', default_queue)
     pbs_config['queue'] = collate_queue
 
-    n_cpus_request = collate_conf.get('ncpus', default_ncpus)
+    n_cpus_request = collate_config.get('ncpus', default_ncpus)
     pbs_config['ncpus'] = n_cpus_request
 
     # Modify jobname
@@ -61,7 +53,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
         pbs_config['jobname'] = os.path.normpath(dpath[:13]) + '_c'
 
     # Replace (or remove) walltime
-    collate_walltime = collate_conf.get('walltime')
+    collate_walltime = collate_config.get('walltime')
     if collate_walltime:
         pbs_config['walltime'] = collate_walltime
     else:
@@ -72,7 +64,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
             pass
 
     # TODO: calcualte default memory request based on ncpus and platform
-    pbs_config['mem'] = collate_conf.get('mem','2GB')
+    pbs_config['mem'] = collate_config.get('mem','2GB')
 
     # Disable hyperthreading
     qsub_flags = []

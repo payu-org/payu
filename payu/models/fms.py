@@ -66,20 +66,11 @@ class Fms(Model):
         # Set the stacksize to be unlimited
         res.setrlimit(res.RLIMIT_STACK, (res.RLIM_INFINITY, res.RLIM_INFINITY))
 
-        collate_conf = self.expt.config.get('collate',{})
-
-        if type(collate_conf) is bool:
-            # Cycle through old collate config and convert to newer dict format
-            collate_conf = {'enable' : collate_conf}
-            for key in ['exe','flags','ignore']:
-                oldkey = "collate_{}".format(key)
-                print("Use of this key is deprecated: {}. Use collate dictionary and subkey {}".format(oldkey,key))
-                if oldkey in self.expt.config:
-                    collate_conf[key] = self.expt.config[oldkey]
+        collate_config = self.expt.config.get('collate',{})
 
         # Locate the FMS collation tool
         # Check config for collate executable
-        mppnc_path = collate_conf.get('exe')
+        mppnc_path = collate_config.get('exe')
         if mppnc_path is None:
             for f in os.listdir(self.expt.lab.bin_path):
                 if f.startswith('mppnccombine'):
@@ -92,10 +83,10 @@ class Fms(Model):
         assert mppnc_path
 
         # The mpi flag implies using mppnccombine-fast
-        mpi = collate_conf.get('mpi',False)
+        mpi = collate_config.get('mpi',False)
 
         # Check config for collate command line options
-        collate_flags = collate_conf.get('flags')
+        collate_flags = collate_config.get('flags')
         if collate_flags is None:
             if mpi:
                 collate_flags = '-r'
@@ -110,7 +101,7 @@ class Fms(Model):
             mpi_module = envmod.lib_update(mppnc_path, 'libmpi.so')
 
         # Import list of collated files to ignore
-        collate_ignore = collate_conf.get('ignore')
+        collate_ignore = collate_config.get('ignore')
         if collate_ignore is None:
             collate_ignore = []
         elif type(collate_ignore) != list:
@@ -133,13 +124,13 @@ class Fms(Model):
 
             mnc_tiles[t_base].append(t_fname)
 
-        cpucount = int(collate_conf.get('ncpus', multiprocessing.cpu_count()))
+        cpucount = int(collate_config.get('ncpus', multiprocessing.cpu_count()))
 
         if mpi:
             # Default to one for mpi
-            nprocesses = int(collate_conf.get('threads', 1))
+            nprocesses = int(collate_config.get('threads', 1))
         else:
-            nprocesses = int(collate_conf.get('threads', cpucount))
+            nprocesses = int(collate_config.get('threads', cpucount))
 
         ncpusperprocess = int(cpucount/nprocesses)
 
