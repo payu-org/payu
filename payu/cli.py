@@ -60,6 +60,7 @@ def parse():
         run_cmd = args.pop('run_cmd')
         run_cmd(**args)
 
+
 def get_model_type(model_type, config):
     """Determine and validate the active model type."""
 

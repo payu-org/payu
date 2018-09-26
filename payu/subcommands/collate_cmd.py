@@ -24,10 +24,10 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
     pbs_config = fsops.read_config(config_path)
     pbs_vars = cli.set_env_vars(init_run, n_runs, lab_path, dir_path)
 
-    collate_config = pbs_config.get('collate',{})
+    collate_config = pbs_config.get('collate', {})
 
     # The mpi flag implies using mppnccombine-fast
-    mpi = collate_config.get('mpi',False)
+    mpi = collate_config.get('mpi', False)
 
     default_ncpus = 1
     default_queue = 'copyq'
@@ -64,7 +64,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
             pass
 
     # TODO: calcualte default memory request based on ncpus and platform
-    pbs_config['mem'] = collate_config.get('mem','2GB')
+    pbs_config['mem'] = collate_config.get('mem', '2GB')
 
     # Disable hyperthreading
     qsub_flags = []
