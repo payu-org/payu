@@ -175,7 +175,7 @@ class Fms(Model):
             for p, rc, op in zip(count(), codes, outputs):
                 if rc is not None:
                     print(
-                        'payu: error: Thread {p} crased with error code {rc}.'
-                        '\n  Error message:\n{op}'
+                        'payu: error: Thread {} crased with error code {}.'
+                        '\n  Error message:\n{}'
                         ''.format(p, rc, op), file=sys.stderr)
             sys.exit(-1)
