@@ -52,7 +52,7 @@ def read_config(config_fname=None):
     collate_config = config.pop('collate', {})
 
     # Transform legacy collate config options
-    if type(collate_conf) is bool:
+    if type(collate_config) is bool:
         # Cycle through old collate config and convert to newer dict format
         collate_config = {'enable': collate_config}
         collatestr = 'collate_'
