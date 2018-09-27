@@ -64,7 +64,7 @@ def read_config(config_fname=None):
         if foundkeys:
             print("Use of these keys is deprecated: {}.".format(
                   ", ".join(foundkeys)))
-            print("Instead use collate dictionary and subkey"
+            print("Instead use collate dictionary and subkey "
                   "without 'collate_' prefix")
 
     config['collate'] = collate_config

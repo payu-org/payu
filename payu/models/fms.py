@@ -68,22 +68,27 @@ class Fms(Model):
 
         collate_config = self.expt.config.get('collate', {})
 
+        # The mpi flag implies using mppnccombine-fast
+        mpi = collate_config.get('mpi', False)
+
+        if mpi:
+            default_exe = 'mppnccombine-fast'
+        else:
+            default_exe = 'mppnccombine'
+
         # Locate the FMS collation tool
         # Check config for collate executable
         mppnc_path = collate_config.get('exe')
         if mppnc_path is None:
             for f in os.listdir(self.expt.lab.bin_path):
-                if f.startswith('mppnccombine'):
+                if f == default_exe:
                     mppnc_path = os.path.join(self.expt.lab.bin_path, f)
                     break
         else:
             if not os.path.isabs(mppnc_path):
                 mppnc_path = os.path.join(self.expt.lab.bin_path, mppnc_path)
 
-        assert mppnc_path
-
-        # The mpi flag implies using mppnccombine-fast
-        mpi = collate_config.get('mpi', False)
+        assert mppnc_path, 'No mppnccombine program found'
 
         # Check config for collate command line options
         collate_flags = collate_config.get('flags')
