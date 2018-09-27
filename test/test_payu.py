@@ -45,13 +45,6 @@ class Test(unittest.TestCase):
         config_path = 'config_mom5.yaml'
         config = payu.fsops.read_config(config_path)
 
-        # Read a nonexistent file
-        # TODO: validate stdout
-        sys.stdout = StringIO()
-        config = payu.fsops.read_config('no_such_file.yaml')
-        self.assertEqual(config, {})
-        sys.stdout = sys.__stdout__
-
         # Raise a non-ENOENT error (e.g. EACCES)
         config_tmp = 'config_tmp.yaml'
         try:
