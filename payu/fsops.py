@@ -57,10 +57,10 @@ def read_config(config_fname=None):
         collate_config = {'enable': collate_config}
         collatestr = 'collate_'
         foundkeys = []
-        for key in config:
+        for key in list(config.keys()):
             if key.startswith(collatestr):
                 foundkeys.append(key)
-                collate_config[key[len(collatestr):]] = config.pop[key]
+                collate_config[key[len(collatestr):]] = config.pop(key)
         if foundkeys:
             print("Use of these keys is deprecated: {}.".format(
                   ", ".join(foundkeys)))
