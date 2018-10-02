@@ -66,11 +66,11 @@ adopted where possible.
 
 3. Modules should not be renamed.  This is bad::
 
-      ``import numpy as np``
+      import numpy as np
 
    This is good::
 
-      ``import numpy``
+      import numpy
 
    The reason here is to preserve shorter names for other uses in the code.
    But, as usual, the `HHGP's section on modules`_ explains this better than I

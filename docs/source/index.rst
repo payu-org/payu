@@ -4,7 +4,7 @@ Payu
 
 Current release: |version|
 
-Payu is a workflow manangement tool for running numerical models in
+Payu is a workflow management tool for running numerical models in
 supercomputing environments.
 
 Payu was designed to allow users to start running climate models immediately,
