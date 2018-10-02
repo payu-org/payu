@@ -6,6 +6,7 @@ from payu import cli
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
+from payu import fsops
 
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
@@ -17,7 +18,7 @@ arguments = [args.model, args.config, args.initial, args.nruns,
 def runcmd(model_type, config_path, init_run, n_runs, lab_path):
 
     # Get job submission configuration
-    pbs_config = cli.get_config(config_path)
+    pbs_config = fsops.read_config(config_path)
     pbs_vars = cli.set_env_vars(init_run, n_runs, lab_path)
 
     # Set the queue

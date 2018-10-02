@@ -198,6 +198,12 @@ class Experiment(object):
 
         # MPI library
         mpi_config = self.config.get('mpi', {})
+
+        # Assign MPI module paths
+        mpi_modpath = mpi_config.get('modulepath', None)
+        if mpi_modpath:
+            envmod.module('use', mpi_modpath)
+
         mpi_modname = mpi_config.get('module', 'openmpi')
         self.modules.add(mpi_modname)
 
@@ -632,7 +638,8 @@ class Experiment(object):
                 if os.path.isdir(res_path):
                     shutil.rmtree(res_path)
 
-        if self.config.get('collate', True):
+        collate_config = self.config.get('collate', {})
+        if collate_config.get('enable', True):
             cmd = 'payu collate -i {}'.format(self.counter)
             sp.check_call(shlex.split(cmd))
 

@@ -68,6 +68,10 @@ class Mom(Fms):
         # FMS initialisation
         super(Mom, self).setup()
 
+        if not self.top_level_model:
+            # Make log dir
+            mkdir_p(os.path.join(self.work_path, 'log'))
+
         input_nml_path = os.path.join(self.work_path, 'input.nml')
         input_nml = f90nml.read(input_nml_path)
 
