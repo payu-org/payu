@@ -1,10 +1,6 @@
-# coding: utf-8
-
-# Standard Library
 import os
 import argparse
 
-# Local
 import payu
 from payu import cli
 from payu.experiment import Experiment
