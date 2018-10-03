@@ -2,7 +2,7 @@
 # coding: utf-8
 
 from payu import reversion
-reversion.repython('2.7.6', __file__)
+reversion.repython('2.7.11', __file__)
 
 from payu import cli
 cli.parse()
