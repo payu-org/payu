@@ -121,7 +121,8 @@ class Cice(Model):
                       'monthly_sstsss.nc', 'mice.nc']:
             path = os.path.join(self.work_input_path, fname)
             if os.path.exists(path):
-                perm = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IWUSR
+                perm = (stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
+                        | stat.S_IWUSR)
                 os.chmod(path, perm)
 
         setup_nml = self.ice_in['setup_nml']

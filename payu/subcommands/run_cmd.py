@@ -77,16 +77,16 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
         n_cpu_request = max_cpus_per_node * n_nodes
         n_inert_cpus = n_cpu_request - n_cpus
 
-        print('payu: warning: Job request includes {} unused CPUs.'
-              ''.format(n_inert_cpus))
+        print('payu: warning: Job request includes {n} unused CPUs.'
+              ''.format(n=n_inert_cpus))
 
         # Increase CPU request to match the effective node request
         n_cpus = max_cpus_per_node * n_nodes
 
         # Update the ncpus field in the config
         if n_cpus != n_cpus_request:
-            print('payu: warning: CPU request increased from {} to {}'
-                  ''.format(n_cpus_request, n_cpus))
+            print('payu: warning: CPU request increased from {n_req} to {n}'
+                  ''.format(n_req=n_cpus_request, n=n_cpus))
 
     # Update the (possibly unchanged) value of ncpus
     pbs_config['ncpus'] = n_cpus
@@ -99,7 +99,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
         else:
             pbs_mem = n_cpus * (max_ram_per_node // max_cpus_per_node)
 
-        pbs_config['mem'] = '{}GB'.format(pbs_mem)
+        pbs_config['mem'] = '{0}GB'.format(pbs_mem)
 
     cli.submit_job('payu-run', pbs_config, pbs_vars)
 
@@ -124,7 +124,7 @@ def runscript():
 
     while subrun <= n_runs_per_submit and expt.n_runs > 0:
 
-        print('nruns: {} nruns_per_submit: {} subrun: {}'
+        print('nruns: {0} nruns_per_submit: {1} subrun: {2}'
               ''.format(expt.n_runs, n_runs_per_submit, subrun))
 
         expt.setup()

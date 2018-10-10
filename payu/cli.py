@@ -8,6 +8,7 @@
 """
 
 import argparse
+from distutils import sysconfig
 import errno
 import importlib
 import os
@@ -41,7 +42,7 @@ def parse():
     # Construct the subcommand parser
     parser = argparse.ArgumentParser()
     parser.add_argument('--version', action='version',
-                        version='payu {}'.format(payu.__version__))
+                        version='payu {0}'.format(payu.__version__))
 
     subparsers = parser.add_subparsers()
 
@@ -149,13 +150,17 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None):
 def submit_job(pbs_script, pbs_config, pbs_vars=None):
     """Submit a userscript the scheduler."""
 
+    # Initialisation
+    if pbs_vars is None:
+        pbs_vars = {}
+
     pbs_flags = []
 
     pbs_queue = pbs_config.get('queue', 'normal')
-    pbs_flags.append('-q {}'.format(pbs_queue))
+    pbs_flags.append('-q {queue}'.format(queue=pbs_queue))
 
     pbs_project = pbs_config.get('project', os.environ['PROJECT'])
-    pbs_flags.append('-P {}'.format(pbs_project))
+    pbs_flags.append('-P {project}'.format(project=pbs_project))
 
     pbs_resources = ['walltime', 'ncpus', 'mem', 'jobfs']
 
@@ -163,20 +168,20 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
         res_flags = []
         res_val = pbs_config.get(res_key)
         if res_val:
-            res_flags.append('{}={}'.format(res_key, res_val))
+            res_flags.append('{key}={val}'.format(key=res_key, val=res_val))
 
         if res_flags:
-            pbs_flags.append('-l {}'.format(','.join(res_flags)))
+            pbs_flags.append('-l {res}'.format(res=','.join(res_flags)))
 
     # TODO: Need to pass lab.config_path somehow...
     pbs_jobname = pbs_config.get('jobname', os.path.basename(os.getcwd()))
     if pbs_jobname:
         # PBSPro has a 15-character jobname limit
-        pbs_flags.append('-N {}'.format(pbs_jobname[:15]))
+        pbs_flags.append('-N {name}'.format(name=pbs_jobname[:15]))
 
     pbs_priority = pbs_config.get('priority')
     if pbs_priority:
-        pbs_flags.append('-p {}'.format(pbs_priority))
+        pbs_flags.append('-p {priority}'.format(priority=pbs_priority))
 
     pbs_flags.append('-l wd')
 
@@ -185,12 +190,26 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
         print('payu: error: unknown qsub IO stream join setting.')
         sys.exit(-1)
     else:
-        pbs_flags.append('-j {}'.format(pbs_join))
+        pbs_flags.append('-j {join}'.format(join=pbs_join))
 
-    if pbs_vars:
-        pbs_vstring = ','.join('{}={}'.format(k, v)
-                               for k, v in pbs_vars.iteritems())
-        pbs_flags.append('-v ' + pbs_vstring)
+    # Set up Python environment variables
+    lib_paths = sysconfig.get_config_vars('LIBDIR')
+    local_pythonpath = os.path.join(os.path.expanduser('~'), '.local')
+    python_paths = [
+            path
+            for libdir in lib_paths
+            for path in sys.path
+            if not path.startswith(libdir)
+            and not path.startswith(local_pythonpath)
+    ]
+    pbs_vars['LD_LIBRARY_PATH'] = ':'.join(lib_paths)
+    pbs_vars['PYTHONPATH'] = os.environ['PYTHONPATH']
+
+    # Append environment variables to qsub command
+    # TODO: Support full export of environment variables: `qsub -V`
+    pbs_vstring = ','.join('{0}={1}'.format(k, v)
+                           for k, v in pbs_vars.items())
+    pbs_flags.append('-v ' + pbs_vstring)
 
     # Append any additional qsub flags here
     pbs_flags_extend = pbs_config.get('qsub_flags')
@@ -208,8 +227,12 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
                 pbs_script = os.path.join(path, pbs_script)
                 break
 
-    # Construct full command
-    cmd = 'qsub {} {}'.format(' '.join(pbs_flags), pbs_script)
+    # Construct job submission command
+    cmd = 'qsub {flags} -- {python} {script}'.format(
+              flags=' '.join(pbs_flags),
+              python=sys.executable,
+              script=pbs_script
+    )
     print(cmd)
 
     subprocess.check_call(shlex.split(cmd))
