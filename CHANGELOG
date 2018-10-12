@@ -1,3 +1,16 @@
+v0.10:
+    Aidan Heerdegen:
+        - collate config in `config.yaml` replaces `collate_*` config with
+          subkeys under `collate:`
+        - Support for Scott Wales' `mppnccombine-fast` collation
+        - Multithreaded collate errors are gathered and reported more
+          thoroughly
+        - `cli.get_config` was removed and calls replaced with
+          `fsops.read_config`
+    Marshall Ward:
+        - Minor usability improvements to GitHub experiment sync
+        - MOM (temporarily) produces `log` directories to support OM2 logging
+
 v0.9.1:
     - Reverting the optional_config_files directory chance back to work_input,
       since it was breaking MOM6.
