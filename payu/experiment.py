@@ -7,7 +7,6 @@
    :license: Apache License, Version 2.0, see LICENSE for details.
 """
 
-# Python3 preparation
 from __future__ import print_function
 
 # Standard Library
@@ -28,7 +27,7 @@ import payu.profilers
 from payu.runlog import Runlog
 
 # Environment module support on vayu
-module_path = '/projects/v45/modules'
+# TODO: To be removed
 core_modules = ['python', 'payu']
 
 # Default payu parameters
@@ -94,6 +93,14 @@ class Experiment(object):
             self.runlog = Runlog(self)
         else:
             self.runlog = None
+
+        # XXX: Temporary spot for the payu path
+        #      This is horrible; payu/cli.py does this much more safely!
+        #      But also does not even store it in os.environ!
+        default_payu_bin = os.path.dirname(sys.argv[0])
+        payu_bin = os.environ.get('PAYU_PATH', default_payu_bin)
+
+        self.payu_path = os.path.join(payu_bin, 'payu')
 
     def init_models(self):
 
@@ -191,6 +198,7 @@ class Experiment(object):
                            (stacksize, resource.RLIM_INFINITY))
 
     def load_modules(self):
+        # NOTE: This function is increasingly irrelevant, and may be removable.
 
         # Scheduler
         sched_modname = self.config.get('scheduler', 'pbs')
@@ -588,7 +596,6 @@ class Experiment(object):
             self.run_userscript(run_script)
 
     def archive(self):
-
         if not self.config.get('archive', True):
             print('payu: not archiving due to config.yaml setting.')
             return
@@ -648,11 +655,19 @@ class Experiment(object):
 
         collate_config = self.config.get('collate', {})
         if collate_config.get('enable', True):
-            cmd = 'payu collate -i {0}'.format(self.counter)
+            cmd = '{python} {payu} collate -i {expt}'.format(
+                        python=sys.executable,
+                        payu=self.payu_path,
+                        expt=self.counter
+            )
             sp.check_call(shlex.split(cmd))
 
         if self.config.get('hpctoolkit', False):
-            cmd = 'payu profile -i {0}'.format(self.counter)
+            cmd = '{python} {payu} profile -i {expt}'.format(
+                        python=sys.executable,
+                        payu=self.payu_path,
+                        expt=self.counter
+            )
             sp.check_call(shlex.split(cmd))
 
         archive_script = self.userscripts.get('archive')
@@ -660,7 +675,6 @@ class Experiment(object):
             self.run_userscript(archive_script)
 
     def collate(self):
-
         for model in self.models:
             model.collate()
 
@@ -751,7 +765,12 @@ class Experiment(object):
 
     def resubmit(self):
         next_run = self.counter + 1
-        cmd = 'payu run -i {0} -n {1}'.format(next_run, self.n_runs)
+        cmd = '{python} {payu} run -i {start} -n {n}'.format(
+                    python=sys.executable,
+                    payu=self.payu_path,
+                    start=next_run,
+                    n=self.n_runs
+        )
         cmd = shlex.split(cmd)
         sp.call(cmd)
 

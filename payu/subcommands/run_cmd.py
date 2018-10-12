@@ -58,6 +58,9 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
         for model in submodel_config:
             n_cpus_request += submodel_config[model].get('ncpus', 0)
 
+        # TODO: Read `ncpus` anyway and check for consistency
+        #       (Also remove from the conditional of this block!)
+
     else:
         n_cpus_request = pbs_config.get('ncpus', 1)
 

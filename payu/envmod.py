@@ -9,6 +9,7 @@ import os
 import shlex
 import subprocess
 
+# Python 2.6 subprocess.check_output support
 if not hasattr(subprocess, 'check_output'):
     from backports import check_output
     subprocess.check_output = check_output
@@ -19,11 +20,6 @@ DEFAULT_VERSION = '3.2.6'
 
 def setup(basepath=DEFAULT_BASEPATH):
     """Set the environment modules used by the Environment Module system."""
-
-    # Update PATH
-    payu_path = os.environ.get('PAYU_PATH')
-    if payu_path and payu_path not in os.environ['PATH'].split(':'):
-        os.environ['PATH'] = ':'.join([payu_path, os.environ['PATH']])
 
     module_version = os.environ.get('MODULE_VERSION', DEFAULT_VERSION)
     moduleshome = os.path.join(basepath, module_version)
