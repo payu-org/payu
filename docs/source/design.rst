@@ -86,5 +86,22 @@ adopted where possible.
 
       if x in ('a', 'b')
 
+5. Multiline lists and dicts are double-indented when in per-line format::
+
+      pbs_vars = {
+              'LD_LIBRARY_PATH': ':'.join(lib_paths),
+              'PYTHONPATH': os.environ['PYTHONPATH'],
+      }
+
+   Also true for multiline list comprehensions::
+
+      python_paths = [
+              path
+              for libdir in lib_paths
+              for path in sys.path
+              if not path.startswith(libdir)
+              and not path.startswith(local_pythonpath)
+      ]
+
 .. _`HHGP's section on modules`:
    http://docs.python-guide.org/en/latest/writing/structure/#modules

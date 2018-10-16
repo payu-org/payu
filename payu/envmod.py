@@ -9,17 +9,17 @@ import os
 import shlex
 import subprocess
 
+# Python 2.6 subprocess.check_output support
+if not hasattr(subprocess, 'check_output'):
+    from backports import check_output
+    subprocess.check_output = check_output
+
 DEFAULT_BASEPATH = '/opt/Modules'
 DEFAULT_VERSION = '3.2.6'
 
 
 def setup(basepath=DEFAULT_BASEPATH):
     """Set the environment modules used by the Environment Module system."""
-
-    # Update PATH
-    payu_path = os.environ.get('PAYU_PATH')
-    if payu_path and payu_path not in os.environ['PATH'].split(':'):
-        os.environ['PATH'] = ':'.join([payu_path, os.environ['PATH']])
 
     module_version = os.environ.get('MODULE_VERSION', DEFAULT_VERSION)
     moduleshome = os.path.join(basepath, module_version)
@@ -38,9 +38,10 @@ def setup(basepath=DEFAULT_BASEPATH):
     if 'MODULEPATH' not in os.environ:
         module_initpath = os.path.join(moduleshome, 'init', '.modulespath')
         with open(module_initpath) as initpaths:
-            modpaths = [mpath.strip() for mpath in line.partition('#')
-                        for line in initpaths.readlines()
-                        if not line.startswith('#')]
+            modpaths = [
+                line.partition('#')[0].strip()
+                for line in initpaths.readlines() if not line.startswith('#')
+            ]
 
         os.environ['MODULEPATH'] = ':'.join(modpaths)
 
@@ -68,7 +69,7 @@ def module(command, *args):
     """Run the modulecmd tool and use its Python-formatted output to set the
     environment variables."""
 
-    if not os.environ['MODULESHOME']:
+    if 'MODULESHOME' not in os.environ:
         print('payu: warning: No Environment Modules found; skipping {} call.'
               ''.format(command))
         return
@@ -85,11 +86,13 @@ def module(command, *args):
 def lib_update(bin_path, lib_name):
     # Local import to avoid reversion interference
     # TODO: Bad design, fixme!
+    # NOTE: We may be able to move this now that reversion is going away
     from payu import fsops
 
     # TODO: Use objdump instead of ldd
     cmd = 'ldd {0}'.format(bin_path)
-    slibs = subprocess.check_output(shlex.split(cmd)).split('\n')
+    ldd_output = subprocess.check_output(shlex.split(cmd)).decode('ascii')
+    slibs = ldd_output.split('\n')
 
     for lib_entry in slibs:
         if lib_name in lib_entry:

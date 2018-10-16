@@ -76,15 +76,15 @@ class Runlog(object):
         # Add configuration files
         for fname in self.manifest:
             if os.path.isfile(fname):
-                cmd = 'git add {}'.format(fname)
+                cmd = 'git add {0}'.format(fname)
                 print(cmd)
                 sp.check_call(shlex.split(cmd), stdout=f_null,
                               cwd=self.expt.control_path)
 
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        commit_msg = '{}: Run {}'.format(timestamp, self.expt.counter)
+        commit_msg = '{0}: Run {1}'.format(timestamp, self.expt.counter)
 
-        cmd = 'git commit -am "{}"'.format(commit_msg)
+        cmd = 'git commit -am "{0}"'.format(commit_msg)
         print(cmd)
         try:
             sp.check_call(shlex.split(cmd), stdout=f_null,
@@ -104,13 +104,13 @@ class Runlog(object):
                                     ssh_key)
 
         if not os.path.isfile(ssh_key_path):
-            print('payu: error: Github SSH key {} not found.'
-                  ''.format(ssh_key_path))
+            print('payu: error: Github SSH key {key} not found.'
+                  ''.format(key=ssh_key_path))
             print('payu: error: Run `payu ghsetup` to generate a new key.')
             sys.exit(-1)
 
-        cmd = ('ssh-agent bash -c "ssh-add {}; git push --all payu"'
-               ''.format(ssh_key_path))
+        cmd = ('ssh-agent bash -c "ssh-add {key}; git push --all payu"'
+               ''.format(key=ssh_key_path))
         sp.check_call(shlex.split(cmd), cwd=self.expt.control_path)
 
     def github_setup(self):
@@ -138,7 +138,8 @@ class Runlog(object):
 
             if org_req.status_code == 404:
                 # NOTE: Orgs cannot be created via the API
-                print('payu: github organization {} does not exist.')
+                print('payu: github organization {org} does not exist.'
+                      ''.format(org=org_name))
                 print('      You must first create this on the website.')
 
             elif org_req.status_code == 200:
@@ -203,13 +204,14 @@ class Runlog(object):
                                   self.expt.name + '.git')
 
         if remote_name not in git_remotes:
-            cmd = 'git remote add {} {}'.format(remote_name, remote_url)
+            cmd = ('git remote add {name} {url}'
+                   ''.format(name=remote_name, url=remote_url))
             sp.check_call(shlex.split(cmd), cwd=self.expt.control_path)
         elif git_remotes[remote_name] != remote_url:
             print('payu: error: Existing remote URL does not match '
                   'the proposed URL.')
             print('payu: error: To delete the old remote, type '
-                  '`git remote rm {}`.'.format(remote_name))
+                  '`git remote rm {name}`.'.format(name=remote_name))
             sys.exit(-1)
 
         # 4. Generate a payu-specific SSH key
@@ -220,7 +222,7 @@ class Runlog(object):
 
         ssh_keypath = os.path.join(ssh_dir, ssh_key)
         if not os.path.isfile(ssh_keypath):
-            cmd = 'ssh-keygen -t rsa -f {} -q -P ""'.format(ssh_key)
+            cmd = 'ssh-keygen -t rsa -f {key} -q -P ""'.format(key=ssh_key)
             sp.check_call(shlex.split(cmd), cwd=ssh_dir)
 
         # 5. Deploy key to repo
@@ -248,8 +250,8 @@ class Runlog(object):
         if not github_username:
             github_username = input('Enter github username: ')
 
-        github_password = getpass.getpass('Enter {}@github password: '
-                                          ''.format(github_username))
+        github_password = getpass.getpass('Enter {username}@github password: '
+                                          ''.format(username=github_username))
 
         github_auth = (github_username, github_password)
         return github_auth

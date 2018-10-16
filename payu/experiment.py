@@ -7,7 +7,6 @@
    :license: Apache License, Version 2.0, see LICENSE for details.
 """
 
-# Python3 preparation
 from __future__ import print_function
 
 # Standard Library
@@ -28,7 +27,7 @@ import payu.profilers
 from payu.runlog import Runlog
 
 # Environment module support on vayu
-module_path = '/projects/v45/modules'
+# TODO: To be removed
 core_modules = ['python', 'payu']
 
 # Default payu parameters
@@ -95,6 +94,14 @@ class Experiment(object):
         else:
             self.runlog = None
 
+        # XXX: Temporary spot for the payu path
+        #      This is horrible; payu/cli.py does this much more safely!
+        #      But also does not even store it in os.environ!
+        default_payu_bin = os.path.dirname(sys.argv[0])
+        payu_bin = os.environ.get('PAYU_PATH', default_payu_bin)
+
+        self.payu_path = os.path.join(payu_bin, 'payu')
+
     def init_models(self):
 
         self.model_name = self.config.get('model')
@@ -112,8 +119,8 @@ class Experiment(object):
         if not solo_model:
             sys.exit('payu: error: Unknown model configuration.')
 
-        submodel_config = {f: self.config[f] for f in model_fields
-                           if f in self.config}
+        submodel_config = dict((f, self.config[f]) for f in model_fields
+                               if f in self.config)
         submodel_config['name'] = solo_model
 
         submodels.append(submodel_config)
@@ -125,8 +132,8 @@ class Experiment(object):
         # Load the top-level model
         if self.model_name:
             ModelType = model_index[self.model_name]
-            model_config = {f: self.config[f] for f in model_fields
-                            if f in self.config}
+            model_config = dict((f, self.config[f]) for f in model_fields
+                                if f in self.config)
             self.model = ModelType(self, self.model_name, model_config)
             self.model.top_level_model = True
         else:
@@ -191,6 +198,7 @@ class Experiment(object):
                            (stacksize, resource.RLIM_INFINITY))
 
     def load_modules(self):
+        # NOTE: This function is increasingly irrelevant, and may be removable.
 
         # Scheduler
         sched_modname = self.config.get('scheduler', 'pbs')
@@ -283,11 +291,11 @@ class Experiment(object):
         if dir_path is not None:
             self.output_path = os.path.normpath(dir_path)
         else:
-            output_dir = 'output{:03}'.format(self.counter)
+            output_dir = 'output{0:03}'.format(self.counter)
             self.output_path = os.path.join(self.archive_path, output_dir)
 
         # TODO: check case counter == 0
-        prior_output_dir = 'output{:03}'.format(self.counter - 1)
+        prior_output_dir = 'output{0:03}'.format(self.counter - 1)
         prior_output_path = os.path.join(self.archive_path, prior_output_dir)
         if os.path.exists(prior_output_path):
             self.prior_output_path = prior_output_path
@@ -295,10 +303,10 @@ class Experiment(object):
             self.prior_output_path = None
 
         # Local restart paths
-        restart_dir = 'restart{:03}'.format(self.counter)
+        restart_dir = 'restart{0:03}'.format(self.counter)
         self.restart_path = os.path.join(self.archive_path, restart_dir)
 
-        prior_restart_dir = 'restart{:03}'.format(self.counter - 1)
+        prior_restart_dir = 'restart{0:03}'.format(self.counter - 1)
         prior_restart_path = os.path.join(self.archive_path, prior_restart_dir)
         if os.path.exists(prior_restart_path):
             self.prior_restart_path = prior_restart_path
@@ -375,6 +383,9 @@ class Experiment(object):
 
     def run(self, *user_flags):
 
+        # XXX: This was previously done in reversion
+        envmod.setup()
+
         self.load_modules()
 
         f_out = open(self.stdout_fname, 'w')
@@ -441,7 +452,7 @@ class Experiment(object):
 
             # Our MPICH wrapper does not support a working directory flag
             if not mpi_module.startswith('mvapich'):
-                model_prog.append('-wdir {}'.format(model.work_path))
+                model_prog.append('-wdir {0}'.format(model.work_path))
 
             # Append any model-specific MPI flags
             model_flags = model.config.get('mpiflags', [])
@@ -452,20 +463,20 @@ class Experiment(object):
 
             model_ncpus = model.config.get('ncpus')
             if model_ncpus:
-                model_prog.append('-np {}'.format(model_ncpus))
+                model_prog.append('-np {0}'.format(model_ncpus))
 
             model_npernode = model.config.get('npernode')
             # TODO: New Open MPI format?
             if model_npernode:
                 if model_npernode % 2 == 0:
-                    npernode_flag = ('-map-by ppr:{}:socket'
+                    npernode_flag = ('-map-by ppr:{0}:socket'
                                      ''.format(model_npernode / 2))
                 else:
-                    npernode_flag = ('-map-by ppr:{}:node'
+                    npernode_flag = ('-map-by ppr:{0}:node'
                                      ''.format(model_npernode))
 
                 if self.config.get('scalasca', False):
-                    npernode_flag = '\"{}\"'.format(npernode_flag)
+                    npernode_flag = '\"{0}\"'.format(npernode_flag)
                 model_prog.append(npernode_flag)
 
             if self.config.get('hpctoolkit', False):
@@ -481,9 +492,11 @@ class Experiment(object):
 
             mpi_progs.append(' '.join(model_prog))
 
-        cmd = '{} {} {}'.format(mpi_runcmd,
-                                ' '.join(mpi_flags),
-                                ' : '.join(mpi_progs))
+        cmd = '{runcmd} {flags} {exes}'.format(
+                    runcmd=mpi_runcmd,
+                    flags=' '.join(mpi_flags),
+                    exes=' : '.join(mpi_progs)
+              )
 
         for prof in self.profilers:
             cmd = prof.wrapper(cmd)
@@ -557,7 +570,7 @@ class Experiment(object):
             make_symlink(self.archive_path, self.archive_sym_path)
 
             # Terminate payu
-            sys.exit('payu: Model exited with error code {}; aborting.'
+            sys.exit('payu: Model exited with error code {0}; aborting.'
                      ''.format(rc))
 
         # Decrement run counter on successful run
@@ -583,7 +596,6 @@ class Experiment(object):
             self.run_userscript(run_script)
 
     def archive(self):
-
         if not self.config.get('archive', True):
             print('payu: not archiving due to config.yaml setting.')
             return
@@ -612,7 +624,10 @@ class Experiment(object):
         if os.path.exists(self.output_path):
             sys.exit('payu: error: Output path already exists.')
 
-        cmd = 'mv {} {}'.format(self.work_path, self.output_path)
+        cmd = 'mv {work} {output}'.format(
+                  work=self.work_path,
+                  output=self.output_path
+              )
         sp.check_call(shlex.split(cmd))
 
         # Remove old restart files
@@ -640,11 +655,19 @@ class Experiment(object):
 
         collate_config = self.config.get('collate', {})
         if collate_config.get('enable', True):
-            cmd = 'payu collate -i {}'.format(self.counter)
+            cmd = '{python} {payu} collate -i {expt}'.format(
+                        python=sys.executable,
+                        payu=self.payu_path,
+                        expt=self.counter
+            )
             sp.check_call(shlex.split(cmd))
 
         if self.config.get('hpctoolkit', False):
-            cmd = 'payu profile -i {}'.format(self.counter)
+            cmd = '{python} {payu} profile -i {expt}'.format(
+                        python=sys.executable,
+                        payu=self.payu_path,
+                        expt=self.counter
+            )
             sp.check_call(shlex.split(cmd))
 
         archive_script = self.userscripts.get('archive')
@@ -652,7 +675,6 @@ class Experiment(object):
             self.run_userscript(archive_script)
 
     def collate(self):
-
         for model in self.models:
             model.collate()
 
@@ -664,7 +686,7 @@ class Experiment(object):
         """Submit a postprocessing script after collation"""
         assert self.postscript
 
-        cmd = 'qsub {}'.format(self.postscript)
+        cmd = 'qsub {script}'.format(script=self.postscript)
 
         cmd = shlex.split(cmd)
         rc = sp.call(cmd)
@@ -693,11 +715,11 @@ class Experiment(object):
                                             path=remote_path)
 
         # Rsync ouput and restart files
-        rsync_cmd = ('rsync -a --safe-links -e "ssh -i {}" '
-                     ''.format(ssh_key_path))
+        rsync_cmd = ('rsync -a --safe-links -e "ssh -i {key}" '
+                     ''.format(key=ssh_key_path))
 
         if rsync_protocol:
-            rsync_cmd += '--protocol={} '.format(rsync_protocol)
+            rsync_cmd += '--protocol={0} '.format(rsync_protocol)
 
         run_cmd = rsync_cmd + '{src} {dst}'.format(src=self.output_path,
                                                    dst=remote_url)
@@ -707,12 +729,12 @@ class Experiment(object):
             # Tar restart files before rsyncing
             restart_tar_path = self.restart_path + '.tar.gz'
 
-            cmd = ('tar -C {} -czf {} {}'
+            cmd = ('tar -C {} -czf {0} {1}'
                    ''.format(self.archive_path, restart_tar_path,
                              os.path.basename(self.restart_path)))
             sp.check_call(shlex.split(cmd))
 
-            restart_cmd = ('{} {} {}'
+            restart_cmd = ('{0} {1} {2}'
                            ''.format(rsync_cmd, restart_tar_path, remote_url))
             rsync_calls.append(restart_cmd)
         else:
@@ -721,7 +743,7 @@ class Experiment(object):
         for model in self.models:
             for input_path in self.model.input_paths:
                 # Using explicit path separators to rename the input directory
-                input_cmd = rsync_cmd + '{} {}'.format(
+                input_cmd = rsync_cmd + '{0} {1}'.format(
                     input_path + os.path.sep,
                     os.path.join(remote_url, 'input') + os.path.sep)
                 rsync_calls.append(input_cmd)
@@ -743,7 +765,12 @@ class Experiment(object):
 
     def resubmit(self):
         next_run = self.counter + 1
-        cmd = 'payu run -i {} -n {}'.format(next_run, self.n_runs)
+        cmd = '{python} {payu} run -i {start} -n {n}'.format(
+                    python=sys.executable,
+                    payu=self.payu_path,
+                    start=next_run,
+                    n=self.n_runs
+        )
         cmd = shlex.split(cmd)
         sp.call(cmd)
 
@@ -771,7 +798,7 @@ class Experiment(object):
                 _, f_ext = os.path.splitext(script_cmd)
                 shell_name = ext_cmd.get(f_ext)
                 if shell_name:
-                    print('payu: warning: Assuming that {} is a {} script '
+                    print('payu: warning: Assuming that {0} is a {1} script '
                           'based on the filename extension.'
                           ''.format(os.path.basename(script_cmd),
                                     os.path.basename(shell_name)))
@@ -783,7 +810,7 @@ class Experiment(object):
 
             # If the script runs but the output is bad, then warn the user
             elif type(exc) == sp.CalledProcessError:
-                print('payu: warning: user script \'{}\' failed (error {}).'
+                print('payu: warning: user script \'{0}\' failed (error {1}).'
                       ''.format(script_cmd, exc.returncode))
 
             # If all else fails, raise an error
@@ -795,25 +822,25 @@ class Experiment(object):
 
         if hard_sweep:
             if os.path.isdir(self.archive_path):
-                print('Removing archive path {}'.format(self.archive_path))
-                cmd = 'rm -rf {}'.format(self.archive_path)
+                print('Removing archive path {0}'.format(self.archive_path))
+                cmd = 'rm -rf {0}'.format(self.archive_path)
                 cmd = shlex.split(cmd)
                 rc = sp.call(cmd)
                 assert rc == 0
 
             if os.path.islink(self.archive_sym_path):
-                print('Removing symlink {}'.format(self.archive_sym_path))
+                print('Removing symlink {0}'.format(self.archive_sym_path))
                 os.remove(self.archive_sym_path)
 
         if os.path.isdir(self.work_path):
-            print('Removing work path {}'.format(self.work_path))
-            cmd = 'rm -rf {}'.format(self.work_path)
+            print('Removing work path {0}'.format(self.work_path))
+            cmd = 'rm -rf {0}'.format(self.work_path)
             cmd = shlex.split(cmd)
             rc = sp.call(cmd)
             assert rc == 0
 
         if os.path.islink(self.work_sym_path):
-            print('Removing symlink {}'.format(self.work_sym_path))
+            print('Removing symlink {0}'.format(self.work_sym_path))
             os.remove(self.work_sym_path)
 
         # TODO: model outstreams and pbs logs need to be handled separately
@@ -837,13 +864,13 @@ class Experiment(object):
         if os.path.isdir(legacy_pbs_log_path):
             # TODO: New path may still exist!
             assert not os.path.isdir(pbs_log_path)
-            print('payu: Moving pbs_logs to {}'.format(pbs_log_path))
+            print('payu: Moving pbs_logs to {0}'.format(pbs_log_path))
             shutil.move(legacy_pbs_log_path, pbs_log_path)
         else:
             mkdir_p(pbs_log_path)
 
         for f in logs:
-            print('Moving log {}'.format(f))
+            print('Moving log {0}'.format(f))
             shutil.move(f, os.path.join(pbs_log_path, f))
 
         # Remove stdout/err
