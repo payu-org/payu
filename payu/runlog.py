@@ -39,6 +39,17 @@ class Runlog(object):
 
         self.expt = expt
 
+        # Fetch and update the runlog config
+        runlog_config = self.expt.config.get('runlog', {})
+        if isinstance(runlog_config, bool):
+            self.enabled = runlog_config
+            runlog_config = {}
+        else:
+            assert isinstance(runlog_config, dict)
+            print(runlog_config)
+            self.enabled = runlog_config.pop('enable', True)
+        self.config = runlog_config
+
         self.manifest = []
         self.create_manifest()
 
@@ -95,11 +106,10 @@ class Runlog(object):
         f_null.close()
 
     def push(self):
-        runlog_config = self.expt.config.get('runlog', {})
-        expt_name = runlog_config.get('name', self.expt.name)
+        expt_name = self.config.get('name', self.expt.name)
 
         default_ssh_key = 'id_rsa_payu_' + expt_name
-        ssh_key = runlog_config.get('sshid', default_ssh_key)
+        ssh_key = self.config.get('sshid', default_ssh_key)
         ssh_key_path = os.path.join(os.path.expanduser('~'), '.ssh', 'payu',
                                     ssh_key)
 
@@ -118,17 +128,16 @@ class Runlog(object):
         github_auth = self.authenticate()
         github_username = github_auth[0]
 
-        runlog_config = self.expt.config.get('runlog', {})
-        expt_name = runlog_config.get('name', self.expt.name)
+        expt_name = self.config.get('name', self.expt.name)
         expt_description = self.expt.config.get('description')
         if not expt_description:
             expt_description = input('Briefly describe the experiment: ')
             assert(isinstance(expt_description, str))
-        expt_private = runlog_config.get('private', False)
+        expt_private = self.config.get('private', False)
 
         # 1. Create the organisation if needed
         github_api_url = 'https://api.github.com'
-        org_name = runlog_config.get('organization')
+        org_name = self.config.get('organization')
         if org_name:
             repo_target = org_name
 
@@ -199,7 +208,7 @@ class Runlog(object):
         git_remotes = dict([(r.split()[0], r.split()[1])
                             for r in git_remote_out.split('\n') if r])
 
-        remote_name = runlog_config.get('remote', 'payu')
+        remote_name = self.config.get('remote', 'payu')
         remote_url = os.path.join('ssh://git@github.com', repo_target,
                                   self.expt.name + '.git')
 
@@ -216,7 +225,7 @@ class Runlog(object):
 
         # 4. Generate a payu-specific SSH key
         default_ssh_key = 'id_rsa_payu_' + expt_name
-        ssh_key = runlog_config.get('sshid', default_ssh_key)
+        ssh_key = self.config.get('sshid', default_ssh_key)
         ssh_dir = os.path.join(os.path.expanduser('~'), '.ssh', 'payu')
         mkdir_p(ssh_dir)
 
@@ -244,11 +253,9 @@ class Runlog(object):
         # TODO: Password authentication will not work if one is using
         # two-factor authentication.  In this case, an API token is needed.
 
-        runlog_config = self.expt.config.get('runlog', {})
-
-        github_username = runlog_config.get('username')
+        github_username = self.config.get('username')
         if not github_username:
-            github_username = input('Enter github username: ')
+            github_username = input('Enter GitHub username: ')
 
         github_password = getpass.getpass('Enter {username}@github password: '
                                           ''.format(username=github_username))

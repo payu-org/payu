@@ -10,7 +10,7 @@ from payu.runlog import Runlog
 import payu.subcommands.args as args
 
 title = 'ghsetup'
-parameters = {'description': 'Create authentication keys for github'}
+parameters = {'description': 'Create authentication keys for GitHub'}
 
 arguments = [args.model, args.config, args.laboratory]
 
@@ -19,9 +19,11 @@ def runcmd(model_type, config_path, lab_path):
     """Execute the command."""
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab)
-    runlog = Runlog(expt)
 
-    runlog.github_setup()
+    if expt.runlog.enabled:
+        expt.runlog.github_setup()
+    else:
+        print('payu: Runlog must be enabled to configure GitHub sync.')
 
 
 runscript = runcmd

@@ -88,11 +88,7 @@ class Experiment(object):
         if init_script:
             self.run_userscript(init_script)
 
-        # Logging
-        if self.config.get('runlog', True):
-            self.runlog = Runlog(self)
-        else:
-            self.runlog = None
+        self.runlog = Runlog(self)
 
         # XXX: Temporary spot for the payu path
         #      This is horrible; payu/cli.py does this much more safely!
