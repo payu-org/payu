@@ -46,7 +46,6 @@ class Runlog(object):
             runlog_config = {}
         else:
             assert isinstance(runlog_config, dict)
-            print(runlog_config)
             self.enabled = runlog_config.pop('enable', True)
         self.config = runlog_config
 
