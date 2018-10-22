@@ -59,9 +59,9 @@ class Fms(Model):
             os.rmdir(self.restart_path)
 
         cmd = 'mv {work} {restart}'.format(
-                  work=self.work_restart_path,
-                  restart=self.restart_path
-              )
+            work=self.work_restart_path,
+            restart=self.restart_path
+        )
         sp.check_call(shlex.split(cmd))
 
     def collate(self):

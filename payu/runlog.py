@@ -10,13 +10,11 @@ import getpass
 import json
 import os
 import shlex
-import stat
 import subprocess as sp
 import sys
 
 # Third party
 import requests
-import yaml
 
 # Local
 from payu.fsops import DEFAULT_CONFIG_FNAME
@@ -131,7 +129,7 @@ class Runlog(object):
         expt_description = self.expt.config.get('description')
         if not expt_description:
             expt_description = input('Briefly describe the experiment: ')
-            assert(isinstance(expt_description, str))
+            assert isinstance(expt_description, str)
         expt_private = self.config.get('private', False)
 
         # 1. Create the organisation if needed
@@ -187,12 +185,12 @@ class Runlog(object):
 
         if expt_name not in user_repos:
             repo_config = {
-                    'name': expt_name,
-                    'description': expt_description,
-                    'private': expt_private,
-                    'has_issues': True,
-                    'has_downloads': True,
-                    'has_wiki': False
+                'name': expt_name,
+                'description': expt_description,
+                'private': expt_private,
+                'has_issues': True,
+                'has_downloads': True,
+                'has_wiki': False
             }
 
             repo_gen = requests.post(repo_query_url, json.dumps(repo_config),

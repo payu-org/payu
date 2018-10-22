@@ -9,15 +9,12 @@
 
 import argparse
 from distutils import sysconfig
-import errno
 import importlib
 import os
 import pkgutil
 import shlex
 import subprocess
 import sys
-
-import yaml
 
 import payu
 import payu.envmod as envmod
@@ -88,11 +85,11 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None):
     lib_paths = sysconfig.get_config_vars('LIBDIR')
     local_pythonpath = os.path.join(os.path.expanduser('~'), '.local')
     python_paths = [
-            path
-            for libdir in lib_paths
-            for path in sys.path                        # Add lib paths
-            if not path.startswith(libdir)              # Omit default libs
-            and not path.startswith(local_pythonpath)   # Omit ~/.local/lib
+        path
+        for libdir in lib_paths
+        for path in sys.path                        # Add library paths
+        if not path.startswith(libdir)              # Omit default libraries
+        and not path.startswith(local_pythonpath)   # Omit ~/.local/lib
     ]
     payu_env_vars['LD_LIBRARY_PATH'] = ':'.join(lib_paths)
 
@@ -208,9 +205,9 @@ def submit_job(pbs_script, pbs_config, pbs_vars=None):
 
     # Construct job submission command
     cmd = 'qsub {flags} -- {python} {script}'.format(
-              flags=' '.join(pbs_flags),
-              python=sys.executable,
-              script=pbs_script
+        flags=' '.join(pbs_flags),
+        python=sys.executable,
+        script=pbs_script
     )
     print(cmd)
 

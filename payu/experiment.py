@@ -489,10 +489,10 @@ class Experiment(object):
             mpi_progs.append(' '.join(model_prog))
 
         cmd = '{runcmd} {flags} {exes}'.format(
-                    runcmd=mpi_runcmd,
-                    flags=' '.join(mpi_flags),
-                    exes=' : '.join(mpi_progs)
-              )
+            runcmd=mpi_runcmd,
+            flags=' '.join(mpi_flags),
+            exes=' : '.join(mpi_progs)
+        )
 
         for prof in self.profilers:
             cmd = prof.wrapper(cmd)
@@ -621,9 +621,9 @@ class Experiment(object):
             sys.exit('payu: error: Output path already exists.')
 
         cmd = 'mv {work} {output}'.format(
-                  work=self.work_path,
-                  output=self.output_path
-              )
+            work=self.work_path,
+            output=self.output_path
+        )
         sp.check_call(shlex.split(cmd))
 
         # Remove old restart files
@@ -652,17 +652,17 @@ class Experiment(object):
         collate_config = self.config.get('collate', {})
         if collate_config.get('enable', True):
             cmd = '{python} {payu} collate -i {expt}'.format(
-                        python=sys.executable,
-                        payu=self.payu_path,
-                        expt=self.counter
+                python=sys.executable,
+                payu=self.payu_path,
+                expt=self.counter
             )
             sp.check_call(shlex.split(cmd))
 
         if self.config.get('hpctoolkit', False):
             cmd = '{python} {payu} profile -i {expt}'.format(
-                        python=sys.executable,
-                        payu=self.payu_path,
-                        expt=self.counter
+                python=sys.executable,
+                payu=self.payu_path,
+                expt=self.counter
             )
             sp.check_call(shlex.split(cmd))
 
@@ -762,10 +762,10 @@ class Experiment(object):
     def resubmit(self):
         next_run = self.counter + 1
         cmd = '{python} {payu} run -i {start} -n {n}'.format(
-                    python=sys.executable,
-                    payu=self.payu_path,
-                    start=next_run,
-                    n=self.n_runs
+            python=sys.executable,
+            payu=self.payu_path,
+            start=next_run,
+            n=self.n_runs
         )
         cmd = shlex.split(cmd)
         sp.call(cmd)
