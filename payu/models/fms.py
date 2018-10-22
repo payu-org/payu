@@ -6,7 +6,7 @@
 from __future__ import print_function
 
 from collections import defaultdict
-import multiprocessing.dummy as multiprocessing
+import multiprocessing
 import os
 import resource as res
 import shlex
