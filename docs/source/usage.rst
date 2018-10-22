@@ -113,7 +113,7 @@ Automatic setup
 
 To initialise the model laboratory, type::
 
-   payu init model
+   payu init -m model
 
 where ``model`` is the model name from ``payu list``. This will create the
 laboratory directory tree, get the source code, and build the model under its

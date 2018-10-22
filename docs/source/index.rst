@@ -13,7 +13,7 @@ models. Running a model like the MOM ocean model should only require a few
 commands::
 
    mkdir new_expt; cd new_expt
-   payu init mom
+   payu init -m mom
    payu build
    payu run
 
