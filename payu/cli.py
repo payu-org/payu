@@ -83,30 +83,23 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None):
 
     # Python dynamic library link
     lib_paths = sysconfig.get_config_vars('LIBDIR')
+    payu_env_vars['LD_LIBRARY_PATH'] = ':'.join(lib_paths)
+
+    # Determine PYTHONPATH for remote job
+    # NOTE: We omit any paths that are searched on default.
+    #       We also omit the path of the executing string.
     local_pythonpath = os.path.join(os.path.expanduser('~'), '.local')
     python_paths = [
         path
         for libdir in lib_paths
-        for path in sys.path                        # Add library paths
+        for path in sys.path[1:]                    # Search non-script paths
         if not path.startswith(libdir)              # Omit default libraries
         and not path.startswith(local_pythonpath)   # Omit ~/.local/lib
     ]
-    payu_env_vars['LD_LIBRARY_PATH'] = ':'.join(lib_paths)
-
-    # Add Payu to the PYTHONPATH
-    payu_path, _ = os.path.split(payu.__path__[0])
-    try:
-        py_paths = os.environ['PYTHONPATH'].split(':')
-        py_abspaths = [os.path.abspath(p) for p in py_paths]
-
-        if not os.path.abspath(payu_path) in py_abspaths:
-            py_paths.insert(0, payu_path)
-
-        payu_env_vars['PYTHONPATH'] = ':'.join(py_paths)
-    except KeyError:
-        payu_env_vars['PYTHONPATH'] = payu_path
+    payu_env_vars['PYTHONPATH'] = ':'.join(python_paths)
 
     # Set (or import) the path to the PAYU scripts (PAYU_PATH)
+    # NOTE: We may be able to use sys.path[0] here.
     payu_binpath = os.environ.get('PAYU_PATH')
 
     if not payu_binpath or not os.path.isdir(payu_binpath):
