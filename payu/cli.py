@@ -96,7 +96,8 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None):
         if not path.startswith(libdir)              # Omit default libraries
         and not path.startswith(local_pythonpath)   # Omit ~/.local/lib
     ]
-    payu_env_vars['PYTHONPATH'] = ':'.join(python_paths)
+    if python_paths:
+        payu_env_vars['PYTHONPATH'] = ':'.join(python_paths)
 
     # Set (or import) the path to the PAYU scripts (PAYU_PATH)
     # NOTE: We may be able to use sys.path[0] here.

@@ -41,16 +41,19 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, dir_path):
     n_cpus_request = collate_config.get('ncpus', default_ncpus)
     pbs_config['ncpus'] = n_cpus_request
 
-    # Modify jobname
-    if 'jobname' in pbs_config:
-        pbs_config['jobname'] = pbs_config['jobname'][:13] + '_c'
-    else:
-        if not dir_path:
-            dpath = os.path.basename(os.getcwd())
-        else:
-            dpath = dir_path
+    collate_jobname = collate_config.get('jobname')
+    if not collate_jobname:
+        pbs_jobname = pbs_config.get('jobname')
+        if not pbs_jobname:
+            if dir_path and os.path.isdir(dir_path):
+                pbs_jobname = os.path.basename(dir_path)
+            else:
+                pbs_jobname = os.path.basename(os.getcwd())
 
-        pbs_config['jobname'] = os.path.normpath(dpath[:13]) + '_c'
+        collate_jobname = pbs_jobname[:13] + '_c'
+
+    # NOTE: Better to construct `collate_config` to pass to `submit_job`
+    pbs_config['jobname'] = collate_jobname[:15]
 
     # Replace (or remove) walltime
     collate_walltime = collate_config.get('walltime')
