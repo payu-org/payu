@@ -12,7 +12,7 @@ before_script:
     - pip install -r test/requirements_test.txt
 script:
     #- coverage run --source payu test_payu.py
-    - coverage run --source payu ../bin/payu
+    - coverage run --source payu bin/payu
 after_success:
     - coverage report -m
     - coveralls
