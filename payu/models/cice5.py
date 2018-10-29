@@ -8,26 +8,11 @@ Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
 
-# Python 3 preparation
 from __future__ import print_function
 
-# Standard Library
-import errno
 import os
-import sys
-import shlex
-import shutil
-import subprocess as sp
-import datetime
 
-# Extensions
-import f90nml
-
-# Local
-import payu.calendar as cal
-from payu.fsops import make_symlink
 from payu.models.cice import Cice
-from payu.namcouple import Namcouple
 from payu.fsops import mkdir_p
 
 
@@ -44,10 +29,10 @@ class Cice5(Cice):
         self.repo_tag = 'master'
 
         self.config_files = [
-                'cice_in.nml',
-                'input_ice.nml',
-                'input_ice_gfdl.nml',
-                'input_ice_monin.nml'
+            'cice_in.nml',
+            'input_ice.nml',
+            'input_ice_gfdl.nml',
+            'input_ice_monin.nml'
         ]
 
         self.ice_nml_fname = 'cice_in.nml'

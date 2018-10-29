@@ -6,7 +6,7 @@
 from __future__ import print_function
 
 from collections import defaultdict
-import multiprocessing.dummy as multiprocessing
+import multiprocessing
 import os
 import resource as res
 import shlex
@@ -51,14 +51,17 @@ class Fms(Model):
     def archive(self, **kwargs):
 
         # Remove the 'INPUT' path
-        cmd = 'rm -rf {}'.format(self.work_input_path)
+        cmd = 'rm -rf {work}'.format(work=self.work_input_path)
         sp.check_call(shlex.split(cmd))
 
         # Archive restart files before processing model output
         if os.path.isdir(self.restart_path):
             os.rmdir(self.restart_path)
 
-        cmd = 'mv {} {}'.format(self.work_restart_path, self.restart_path)
+        cmd = 'mv {work} {restart}'.format(
+            work=self.work_restart_path,
+            restart=self.restart_path
+        )
         sp.check_call(shlex.split(cmd))
 
     def collate(self):

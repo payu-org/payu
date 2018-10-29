@@ -10,13 +10,11 @@ import getpass
 import json
 import os
 import shlex
-import stat
 import subprocess as sp
 import sys
 
 # Third party
 import requests
-import yaml
 
 # Local
 from payu.fsops import DEFAULT_CONFIG_FNAME
@@ -38,6 +36,16 @@ class Runlog(object):
         os.environ['GIT_CONFIG_NOGLOBAL'] = 'yes'
 
         self.expt = expt
+
+        # Fetch and update the runlog config
+        runlog_config = self.expt.config.get('runlog', {})
+        if isinstance(runlog_config, bool):
+            self.enabled = runlog_config
+            runlog_config = {}
+        else:
+            assert isinstance(runlog_config, dict)
+            self.enabled = runlog_config.pop('enable', True)
+        self.config = runlog_config
 
         self.manifest = []
         self.create_manifest()
@@ -76,15 +84,15 @@ class Runlog(object):
         # Add configuration files
         for fname in self.manifest:
             if os.path.isfile(fname):
-                cmd = 'git add {}'.format(fname)
+                cmd = 'git add {0}'.format(fname)
                 print(cmd)
                 sp.check_call(shlex.split(cmd), stdout=f_null,
                               cwd=self.expt.control_path)
 
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        commit_msg = '{}: Run {}'.format(timestamp, self.expt.counter)
+        commit_msg = '{0}: Run {1}'.format(timestamp, self.expt.counter)
 
-        cmd = 'git commit -am "{}"'.format(commit_msg)
+        cmd = 'git commit -am "{0}"'.format(commit_msg)
         print(cmd)
         try:
             sp.check_call(shlex.split(cmd), stdout=f_null,
@@ -95,22 +103,21 @@ class Runlog(object):
         f_null.close()
 
     def push(self):
-        runlog_config = self.expt.config.get('runlog', {})
-        expt_name = runlog_config.get('name', self.expt.name)
+        expt_name = self.config.get('name', self.expt.name)
 
         default_ssh_key = 'id_rsa_payu_' + expt_name
-        ssh_key = runlog_config.get('sshid', default_ssh_key)
+        ssh_key = self.config.get('sshid', default_ssh_key)
         ssh_key_path = os.path.join(os.path.expanduser('~'), '.ssh', 'payu',
                                     ssh_key)
 
         if not os.path.isfile(ssh_key_path):
-            print('payu: error: Github SSH key {} not found.'
-                  ''.format(ssh_key_path))
+            print('payu: error: Github SSH key {key} not found.'
+                  ''.format(key=ssh_key_path))
             print('payu: error: Run `payu ghsetup` to generate a new key.')
             sys.exit(-1)
 
-        cmd = ('ssh-agent bash -c "ssh-add {}; git push --all payu"'
-               ''.format(ssh_key_path))
+        cmd = ('ssh-agent bash -c "ssh-add {key}; git push --all payu"'
+               ''.format(key=ssh_key_path))
         sp.check_call(shlex.split(cmd), cwd=self.expt.control_path)
 
     def github_setup(self):
@@ -118,17 +125,16 @@ class Runlog(object):
         github_auth = self.authenticate()
         github_username = github_auth[0]
 
-        runlog_config = self.expt.config.get('runlog', {})
-        expt_name = runlog_config.get('name', self.expt.name)
+        expt_name = self.config.get('name', self.expt.name)
         expt_description = self.expt.config.get('description')
         if not expt_description:
             expt_description = input('Briefly describe the experiment: ')
-            assert(isinstance(expt_description, str))
-        expt_private = runlog_config.get('private', False)
+            assert isinstance(expt_description, str)
+        expt_private = self.config.get('private', False)
 
         # 1. Create the organisation if needed
         github_api_url = 'https://api.github.com'
-        org_name = runlog_config.get('organization')
+        org_name = self.config.get('organization')
         if org_name:
             repo_target = org_name
 
@@ -138,7 +144,8 @@ class Runlog(object):
 
             if org_req.status_code == 404:
                 # NOTE: Orgs cannot be created via the API
-                print('payu: github organization {} does not exist.')
+                print('payu: github organization {org} does not exist.'
+                      ''.format(org=org_name))
                 print('      You must first create this on the website.')
 
             elif org_req.status_code == 200:
@@ -178,12 +185,12 @@ class Runlog(object):
 
         if expt_name not in user_repos:
             repo_config = {
-                    'name': expt_name,
-                    'description': expt_description,
-                    'private': expt_private,
-                    'has_issues': True,
-                    'has_downloads': True,
-                    'has_wiki': False
+                'name': expt_name,
+                'description': expt_description,
+                'private': expt_private,
+                'has_issues': True,
+                'has_downloads': True,
+                'has_wiki': False
             }
 
             repo_gen = requests.post(repo_query_url, json.dumps(repo_config),
@@ -198,29 +205,30 @@ class Runlog(object):
         git_remotes = dict([(r.split()[0], r.split()[1])
                             for r in git_remote_out.split('\n') if r])
 
-        remote_name = runlog_config.get('remote', 'payu')
+        remote_name = self.config.get('remote', 'payu')
         remote_url = os.path.join('ssh://git@github.com', repo_target,
                                   self.expt.name + '.git')
 
         if remote_name not in git_remotes:
-            cmd = 'git remote add {} {}'.format(remote_name, remote_url)
+            cmd = ('git remote add {name} {url}'
+                   ''.format(name=remote_name, url=remote_url))
             sp.check_call(shlex.split(cmd), cwd=self.expt.control_path)
         elif git_remotes[remote_name] != remote_url:
             print('payu: error: Existing remote URL does not match '
                   'the proposed URL.')
             print('payu: error: To delete the old remote, type '
-                  '`git remote rm {}`.'.format(remote_name))
+                  '`git remote rm {name}`.'.format(name=remote_name))
             sys.exit(-1)
 
         # 4. Generate a payu-specific SSH key
         default_ssh_key = 'id_rsa_payu_' + expt_name
-        ssh_key = runlog_config.get('sshid', default_ssh_key)
+        ssh_key = self.config.get('sshid', default_ssh_key)
         ssh_dir = os.path.join(os.path.expanduser('~'), '.ssh', 'payu')
         mkdir_p(ssh_dir)
 
         ssh_keypath = os.path.join(ssh_dir, ssh_key)
         if not os.path.isfile(ssh_keypath):
-            cmd = 'ssh-keygen -t rsa -f {} -q -P ""'.format(ssh_key)
+            cmd = 'ssh-keygen -t rsa -f {key} -q -P ""'.format(key=ssh_key)
             sp.check_call(shlex.split(cmd), cwd=ssh_dir)
 
         # 5. Deploy key to repo
@@ -242,14 +250,12 @@ class Runlog(object):
         # TODO: Password authentication will not work if one is using
         # two-factor authentication.  In this case, an API token is needed.
 
-        runlog_config = self.expt.config.get('runlog', {})
-
-        github_username = runlog_config.get('username')
+        github_username = self.config.get('username')
         if not github_username:
-            github_username = input('Enter github username: ')
+            github_username = input('Enter GitHub username: ')
 
-        github_password = getpass.getpass('Enter {}@github password: '
-                                          ''.format(github_username))
+        github_password = getpass.getpass('Enter {username}@github password: '
+                                          ''.format(username=github_username))
 
         github_auth = (github_username, github_password)
         return github_auth
