@@ -11,7 +11,7 @@ arguments = []
 
 
 def runcmd():
-    print('Supported models: {}'.format(' '.join(model_index)))
+    print('Supported models: {0}'.format(' '.join(model_index)))
 
 
 runscript = runcmd

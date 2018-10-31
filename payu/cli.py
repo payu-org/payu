@@ -69,11 +69,11 @@ def get_model_type(model_type, config):
     # If there is still no model type, try the parent directory
     if not model_type:
         model_type = os.path.basename(os.path.abspath(os.pardir))
-        print('payu: warning: Assuming model is {} based on parent directory '
+        print('payu: warning: Assuming model is {0} based on parent directory '
               'name.'.format(model_type))
 
     if model_type not in supported_models:
-        print('payu: error: Unknown model {}'.format(model_type))
+        print('payu: error: Unknown model {0}'.format(model_type))
         sys.exit(-1)
 
 
