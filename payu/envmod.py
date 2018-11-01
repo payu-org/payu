@@ -70,7 +70,7 @@ def module(command, *args):
     environment variables."""
 
     if 'MODULESHOME' not in os.environ:
-        print('payu: warning: No Environment Modules found; skipping {} call.'
+        print('payu: warning: No Environment Modules found; skipping {0} call.'
               ''.format(command))
         return
 

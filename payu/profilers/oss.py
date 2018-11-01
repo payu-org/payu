@@ -24,7 +24,7 @@ class OpenSpeedShop(Profiler):
                 print('payu: error: OpenSpeedShop requires an executable.')
                 sys.exit(1)
 
-            cmd = '{} "{}"'.format(oss_runcmd, cmd)
+            cmd = '{0} "{1}"'.format(oss_runcmd, cmd)
 
             if oss_runcmd.startswith('osshwc'):
                 oss_hwc = oss.get('hwc')

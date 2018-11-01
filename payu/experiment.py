@@ -348,7 +348,7 @@ class Experiment(object):
         # TODO: Make this more configurable
         do_stripe = self.config.get('stripedio', False)
         if do_stripe:
-            cmd = 'lfs setstripe -c 8 -s 8m {}'.format(self.work_path)
+            cmd = 'lfs setstripe -c 8 -s 8m {0}'.format(self.work_path)
             sp.check_call(shlex.split(cmd))
 
         make_symlink(self.work_path, self.work_sym_path)
@@ -420,7 +420,7 @@ class Experiment(object):
 
         # TODO: More uniform support needed here
         if self.config.get('scalasca', False):
-            mpi_flags = ['\"{}\"'.format(f) for f in mpi_flags]
+            mpi_flags = ['\"{0}\"'.format(f) for f in mpi_flags]
 
         # XXX: I think this may be broken
         if user_flags:
@@ -725,7 +725,7 @@ class Experiment(object):
             # Tar restart files before rsyncing
             restart_tar_path = self.restart_path + '.tar.gz'
 
-            cmd = ('tar -C {} -czf {0} {1}'
+            cmd = ('tar -C {0} -czf {1} {2}'
                    ''.format(self.archive_path, restart_tar_path,
                              os.path.basename(self.restart_path)))
             sp.check_call(shlex.split(cmd))

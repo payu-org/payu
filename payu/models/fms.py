@@ -164,7 +164,10 @@ class Fms(Model):
             cmd = ' '.join([mppnc_path, collate_flags, nc_fname,
                             ' '.join(mnc_tiles[nc_fname])])
             if mpi:
-                cmd = "mpirun -n {} {}".format(ncpusperprocess, cmd)
+                cmd = "mpirun -n {n} {cmd}".format(
+                    n=ncpusperprocess,
+                    cmd=cmd
+                )
 
             print(cmd)
             results.append(
@@ -182,8 +185,8 @@ class Fms(Model):
         if any(rc is not None for rc in codes):
             for p, rc, op in zip(count(), codes, outputs):
                 if rc is not None:
-                    print(
-                        'payu: error: Thread {} crased with error code {}.'
-                        '\n  Error message:\n{}'
-                        ''.format(p, rc, op), file=sys.stderr)
+                    print('payu: error: Thread {p} crashed with error code '
+                          '{rc}.'.format(p, rc), file=sys.stderr)
+                    print(' Error message:', file=sys.stderr)
+                    print(msg, file=sys.stderr)
             sys.exit(-1)

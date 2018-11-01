@@ -67,7 +67,7 @@ class UnifiedModel(Model):
         end_date = date_to_um_dump_date(init_date + runtime)
 
         restart_dump = os.path.join(self.work_path,
-                                    'aiihca.da{}'.format(end_date))
+                                    'aiihca.da{0}'.format(end_date))
         f_dst = os.path.join(self.restart_path, self.restart)
         shutil.copy(restart_dump, f_dst)
 
@@ -177,7 +177,15 @@ def date_to_um_dump_date(date):
 
     um_d = string.digits + string.ascii_letters[:26]
 
-    return '{}{}{}{}0'.format(um_d[decade], um_d[year], um_d[month], um_d[day])
+    um_dump_date = (
+        '{decade}{year}{month}{day}0'.format(
+            decade=um_d[decade],
+            year=um_d[year],
+            month=um_d[month],
+            day=um_d[day]
+        )
+    )
+    return um_dump_date
 
 
 def date_to_um_date(date):

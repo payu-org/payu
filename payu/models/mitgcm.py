@@ -154,7 +154,7 @@ class Mitgcm(Model):
                         if f.startswith('STDOUT.')]
 
         if stdout_files:
-            cmd = 'tar -C {} -c -j -f {}'.format(
+            cmd = 'tar -C {0} -c -j -f {1}'.format(
                 self.work_path,
                 os.path.join(self.work_path, 'STDOUT.tar.bz2'))
 

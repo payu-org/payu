@@ -107,7 +107,7 @@ class Model(object):
                 if os.path.exists(rel_path):
                     self.input_paths.append(rel_path)
                 else:
-                    sys.exit('payu: error: Input directory {} not found; '
+                    sys.exit('payu: error: Input directory {0} not found; '
                              'aborting.'.format(rel_path))
 
     def set_model_output_paths(self):
@@ -207,7 +207,7 @@ class Model(object):
 
         # Check to see if executable already exists.
         if self.exec_path and os.path.isfile(self.exec_path):
-            print('payu: warning: {} will be overwritten.'
+            print('payu: warning: {0} will be overwritten.'
                   ''.format(self.exec_path))
 
         # First step is always to go to the codebase.
@@ -234,7 +234,7 @@ class Model(object):
             else:
                 cmd = 'make'
 
-        print('Running command {}'.format(cmd))
+        print('Running command {0}'.format(cmd))
         sp.check_call(shlex.split(cmd))
 
         try:
@@ -270,12 +270,12 @@ class Model(object):
 
         git_path = os.path.join(self.codebase_path, '.git')
         if not os.path.exists(git_path):
-            cmd = 'git clone {} {}'.format(self.repo_url, self.codebase_path)
+            cmd = 'git clone {0} {1}'.format(self.repo_url, self.codebase_path)
             sp.check_call(shlex.split(cmd))
 
         curdir = os.getcwd()
         os.chdir(self.codebase_path)
-        sp.check_call(shlex.split('git checkout {}'.format(self.repo_tag)))
+        sp.check_call(shlex.split('git checkout {0}'.format(self.repo_tag)))
         sp.check_call(shlex.split('git pull'))
         os.chdir(curdir)
 
@@ -287,18 +287,18 @@ class Model(object):
             envmod.module('load', 'hpctoolkit')
 
             # Create the code structure file
-            hpcstruct_fname = '{}.hpcstruct'.format(self.exec_name)
+            hpcstruct_fname = '{0}.hpcstruct'.format(self.exec_name)
             hpcstruct_path = os.path.join(self.expt.lab.bin_path,
                                           hpcstruct_fname)
 
             # TODO: Validate struct file
             if not os.path.isfile(hpcstruct_path):
-                cmd = 'hpcstruct -o {} {}'.format(hpcstruct_path,
-                                                  self.exec_path)
+                cmd = 'hpcstruct -o {0} {1}'.format(hpcstruct_path,
+                                                    self.exec_path)
                 sp.check_call(shlex.split(cmd))
 
             # Parse the profile output
-            hpctk_header = 'hpctoolkit-{}-measurements'.format(self.exec_name)
+            hpctk_header = 'hpctoolkit-{0}-measurements'.format(self.exec_name)
             hpctk_measure_dir = [os.path.join(self.output_path, f)
                                  for f in os.listdir(self.output_path)
                                  if f.startswith(hpctk_header)][0]
@@ -309,7 +309,7 @@ class Model(object):
             # TODO: This needs to be model-specifc
             src_path = os.path.join(self.codebase_path, 'src')
 
-            cmd = 'hpcprof-mpi -S {} -I {} -o {} {}'.format(
+            cmd = 'hpcprof-mpi -S {0} -I {1} -o {2} {3}'.format(
                 hpcstruct_path, src_path, hpctk_db_dir, hpctk_measure_dir)
             sp.check_call(shlex.split(cmd))
 
@@ -321,7 +321,7 @@ class Model(object):
             scorep_path = [os.path.join(self.output_path, f)
                            for f in os.listdir(self.output_path)
                            if f.startswith('scorep')][0]
-            cmd = 'scalasca -examine -s {}'.format(scorep_path)
+            cmd = 'scalasca -examine -s {0}'.format(scorep_path)
             sp.check_call(shlex.split(cmd))
 
         if self.expt.config.get('scorep', False):
@@ -334,5 +334,5 @@ class Model(object):
             cube_path = [os.path.join(scorep_path, f)
                          for f in os.listdir(scorep_path)
                          if f.endswith('.cubex')][0]
-            cmd = 'scorep-score {}'.format(cube_path)
+            cmd = 'scorep-score {0}'.format(cube_path)
             sp.check_call(shlex.split(cmd))

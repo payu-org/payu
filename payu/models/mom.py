@@ -140,9 +140,15 @@ class Mom(Fms):
         # Generate ocean mask_table
         ocn_layout = input_nml['ocean_model_nml']['layout']
 
-        cmd = ('{} --grid_file {} --ocean_topog {} --layout {}'
-               ''.format(check_mask, ocn_mosaic_path, ocn_topog_path,
-                         ','.join([str(s) for s in ocn_layout])))
+        cmd = (
+            '{check_mask} --grid_file {grid_file} '
+            '--ocean_topog {ocean_topog} --layout {layout}'.format(
+                check_mask=check_mask,
+                grid_file=ocn_mosaic_path,
+                ocean_topog=ocn_topog_path,
+                layout=','.join([str(s) for s in ocn_layout])
+            )
+        )
         subprocess.call(shlex.split(cmd), stdout=f_null)
         ocn_mask_fname = [f for f in os.listdir(os.curdir)
                           if f.startswith('mask_table')][0]
@@ -157,9 +163,15 @@ class Mom(Fms):
         if ice_layout == ocn_layout:
             ice_mask_fname = ocn_mask_fname
         else:
-            cmd = ('{} --grid_file {} --ocean_topog {} --layout {}'
-                   ''.format(check_mask, ocn_mosaic_path, ocn_topog_path,
-                             ','.join([str(s) for s in ice_layout])))
+            cmd = (
+                '{check_mask} --grid_file {grid_file} '
+                '--ocean_topog {ocean_topog} --layout {layout}'.format(
+                    check_mask=check_mask,
+                    grid_file=ocn_mosaic_path,
+                    ocean_topog=ocn_topog_path,
+                    layout=','.join([str(s) for s in ice_layout])
+                )
+            )
             subprocess.call(shlex.split(cmd), stdout=f_null)
             ice_mask_fname = [f for f in os.listdir(os.curdir)
                               if f.startswith('mask_table')][0]
@@ -270,7 +282,10 @@ class Mom(Fms):
 
         t_end = t_start + dt_days
 
-        print('t_start: {}, t_end: {}'.format(t_start, t_end))
+        print('t_start: {start}, t_end: {end}'.format(
+            start=t_start,
+            end=t_end
+        ))
 
         # TODO: Periodic forcing cycle
         # Non-integer ratios will be complicated. This is a temporary solution

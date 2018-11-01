@@ -47,7 +47,7 @@ class Qgcm(Model):
 
         os.environ['OMP_NUM_THREADS'] = str(self.ompthreads)
 
-        print("OMP_NUM_THREADS = {}".format(os.environ["OMP_NUM_THREADS"]))
+        print("OMP_NUM_THREADS = {0}".format(os.environ["OMP_NUM_THREADS"]))
 
     def archive(self, **kwargs):
 

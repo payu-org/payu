@@ -56,7 +56,7 @@ class Namcouple:
                 break
 
         if not timestep_changed:
-            sys.stderr.write('WARNING: no update with {}.\n'.format(regex))
+            sys.stderr.write('WARNING: no update with {0}.\n'.format(regex))
 
     def set_ice_timestep(self, timestep):
 
