@@ -11,9 +11,7 @@ install:
 before_script:
     - pip install -r test/requirements_test.txt
 script:
-    #- coverage run --source payu bin/payu
     - PYTHONPATH=$(pwd) coverage run --source payu bin/payu
 after_success:
     - coverage report -m
     - coveralls
-#sudo: False

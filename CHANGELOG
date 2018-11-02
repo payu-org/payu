@@ -1,3 +1,55 @@
+v.011:
+   - The "reversion" technique of relaunching payu to a fixed version has been
+     removed, and we now use the version specified at execution.
+
+   - Payu is now nominally compatible with Python 2.6, 2.7, and most newer 3.x
+     releases.  Minor issues are expected, and to be fixed in later versions.
+     2.6 support:
+      - Implicit string arguments replaced with explicit parameters
+      - backport of `subprocess.check_output` (public code by Eduardo Felipe)
+      - Dictionary comprehensions have been removed
+     3.x support:
+      - `multiprocessing.dummy` is now replaced with `multiprocessing` in FMS
+        collation support
+
+     Note: Much of the 2.6 support can be reversed when we've officially
+     stopped using it.
+
+   - Payu runtime environment is now strictly defined at execution, and no
+     longer relies on environment modules for setup. Includes the following:
+      - Explicit paths to the python executable, rather than relying on `PATH`
+      - Safer generation of PYTHONPATH to include active version of Payu when
+        installed outside of default `sys.path`.
+      - Explicit tracking of payu command line tools
+         (Note: For now, this assumes a common directory for all tools)
+      - Python and Payu modules are no longer loaded within payu
+         (Note: PBS is still loaded for queuing support)
+      - `LD_LIBRARY_PATH` is constructed and explicitly set for Python runtime
+      - The `PAYU_MODULENAME` and `PAYU_MODULEPATH` environment variables have
+        been removed
+
+   - Simple test automation using Travis CI.  The environment is still
+     incomplete and only a few command line tests are included, but it includes
+     a functional Torque (PBS) server for future job submission tests.
+
+   - Minor documentation update (thanks to Navid Constantinou for reporting)
+
+   Bugfixes
+
+   - `runlog: True` no longer causes a runtime crash, due to conflicts with
+     the complete `runlog` config dictionary tree.
+     (Thanks to Paul Spence for reporting)
+
+   - `payu collate -d $DIR` no longer uses $DIR as `jobname` when this entry is
+     absent from `config.yaml`.  We now default to the directory name itself,
+     rather than the full path.
+
+     We have also added support for a `jobname` record inside the full
+     `collate:` config dictionary tree.
+
+   - `dateutil` is now identified as a Payu dependency
+
+
 v0.10:
     Aidan Heerdegen:
         - collate config in `config.yaml` replaces `collate_*` config with
