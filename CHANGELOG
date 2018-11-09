@@ -1,4 +1,14 @@
-v.011:
+v0.11.1:
+    - PYTHONPATH is now passed directly to the next job.
+      Previously, we tried to derive this variable from `sys.path` after
+      removing all the default paths, but the remainder was virtually identical
+      to PYTHONPATH.
+    - Runscripts are now constructed by setuptools via `entry_point` rather
+      than the explicit scripts in the `bin` directory.  This was done in part
+      to accommodate conda environments on NCI.
+      Thanks to Scott Wales for outlining this method.
+
+v0.11:
    - The "reversion" technique of relaunching payu to a fixed version has been
      removed, and we now use the version specified at execution.
 
