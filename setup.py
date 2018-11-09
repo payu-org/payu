@@ -14,7 +14,7 @@ PKG_NAME = 'payu'
 PKG_VERSION = __import__(PKG_NAME).__version__
 PKG_SCRIPTS = [os.path.join('bin', f) for f in os.listdir('bin')]
 PKG_PKGS = [path for (path, dirs, files) in os.walk(PKG_NAME)
-             if '__init__.py' in files]
+            if '__init__.py' in files]
 
 with open('README.rst') as f:
     README_RST = f.read()
@@ -40,17 +40,19 @@ setup(
         'f90nml >= 0.16',
         'PyYAML',
         'requests[security]',
-        'python-dateutil'
+        'python-dateutil',
     ],
     scripts=PKG_SCRIPTS,
-
     classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
         'Topic :: Utilities',
     ],
 

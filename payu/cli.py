@@ -81,23 +81,11 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None):
     """Construct the environment variables used by payu for resubmissions."""
     payu_env_vars = {}
 
-    # Python dynamic library link
+    # Setup Python dynamic library link
     lib_paths = sysconfig.get_config_vars('LIBDIR')
     payu_env_vars['LD_LIBRARY_PATH'] = ':'.join(lib_paths)
-
-    # Determine PYTHONPATH for remote job
-    # NOTE: We omit any paths that are searched on default.
-    #       We also omit the path of the executing string.
-    local_pythonpath = os.path.join(os.path.expanduser('~'), '.local')
-    python_paths = [
-        path
-        for libdir in lib_paths
-        for path in sys.path[1:]                    # Search non-script paths
-        if not path.startswith(libdir)              # Omit default libraries
-        and not path.startswith(local_pythonpath)   # Omit ~/.local/lib
-    ]
-    if python_paths:
-        payu_env_vars['PYTHONPATH'] = ':'.join(python_paths)
+    if 'PYTHONPATH' in os.environ:
+        payu_env_vars['PYTHONPATH'] = os.environ['PYTHONPATH']
 
     # Set (or import) the path to the PAYU scripts (PAYU_PATH)
     # NOTE: We may be able to use sys.path[0] here.
