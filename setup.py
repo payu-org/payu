@@ -12,7 +12,6 @@ except ImportError:
 
 PKG_NAME = 'payu'
 PKG_VERSION = __import__(PKG_NAME).__version__
-PKG_SCRIPTS = [os.path.join('bin', f) for f in os.listdir('bin')]
 PKG_PKGS = [path for (path, dirs, files) in os.walk(PKG_NAME)
             if '__init__.py' in files]
 
@@ -42,7 +41,14 @@ setup(
         'requests[security]',
         'python-dateutil',
     ],
-    scripts=PKG_SCRIPTS,
+    entry_points={
+        'console_scripts': [
+            'payu = payu.cli:parse',
+            'payu-run = payu.subcommands.run_cmd:runscript',
+            'payu-collate = payu.subcommands.collate_cmd:runscript',
+            'payu-profile = payu.subcommands.profile_cmd:runscript',
+        ]
+    },
     classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: Apache Software License',
