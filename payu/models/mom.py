@@ -184,7 +184,7 @@ class Mom(Fms):
         try:
             os.remove(ocn_mask_fname)
             os.remove(ice_mask_fname)
-        except OSError:
+        except EnvironmentError:
             # TODO: Check this a little bit better
             pass
 

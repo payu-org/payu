@@ -27,7 +27,7 @@ def mkdir_p(path):
 
     try:
         os.makedirs(path)
-    except OSError as exc:
+    except EnvironmentError as exc:
         if exc.errno != errno.EEXIST:
             raise
 
@@ -82,7 +82,7 @@ def make_symlink(src_path, lnk_path):
 
     try:
         os.symlink(src_path, lnk_path)
-    except OSError as exc:
+    except EnvironmentError as exc:
         if exc.errno != errno.EEXIST:
             raise
         elif not os.path.islink(lnk_path):
