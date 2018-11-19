@@ -153,7 +153,7 @@ class Experiment(object):
             try:
                 restart_dirs = [d for d in os.listdir(self.archive_path)
                                 if d.startswith('restart')]
-            except OSError as exc:
+            except EnvironmentError as exc:
                 if exc.errno == errno.ENOENT:
                     restart_dirs = None
                 else:
@@ -169,7 +169,7 @@ class Experiment(object):
                 try:
                     output_dirs = [d for d in os.listdir(self.archive_path)
                                    if d.startswith('output')]
-                except OSError as exc:
+                except EnvironmentError as exc:
                     if exc.errno == errno.ENOENT:
                         output_dirs = None
                     else:
@@ -771,23 +771,22 @@ class Experiment(object):
         sp.call(cmd)
 
     def run_userscript(self, script_cmd):
-
         # First try to interpret the argument as a full command:
         try:
             sp.check_call(shlex.split(script_cmd))
-        except (OSError, sp.CalledProcessError) as exc:
+        except (EnvironmentError, sp.CalledProcessError) as exc:
             # Now try to run the script explicitly
-            if type(exc) == OSError and exc.errno == errno.ENOENT:
+            if isinstance(exc, EnvironmentError) and exc.errno == errno.ENOENT:
                 cmd = os.path.join(self.control_path, script_cmd)
                 # Simplistic recursion check
                 assert os.path.isfile(cmd)
                 self.run_userscript(cmd)
 
             # If we get a "non-executable" error, then guess the type
-            elif type(exc) == OSError and exc.errno == errno.EACCES:
-
+            elif (isinstance(exc, EnvironmentError)
+                    and exc.errno == errno.EACCES):
                 # TODO: Move outside
-                ext_cmd = {'.py': 'python',
+                ext_cmd = {'.py': sys.executable,
                            '.sh': '/bin/bash',
                            '.csh': '/bin/tcsh'}
 
