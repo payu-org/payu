@@ -103,7 +103,7 @@ class Mitgcm(Model):
 
         data_mnc_path = os.path.join(self.work_path, 'data.mnc')
         try:
-            data_mnc_nml = f90nml.read(data_mnc_path)
+            data_mnc_nml = nml_parser.read(data_mnc_path)
             data_mnc_nml['mnc_01']['mnc_outdir_str'] = mnc_header
             data_mnc_nml.write(data_mnc_path, force=True)
 
@@ -119,7 +119,7 @@ class Mitgcm(Model):
                 }
                 data_mnc_nml = {'mnc_01': mnc_01_grp}
 
-                f90nml.write(data_mnc_nml, data_mnc_path)
+                nml_parser.write(data_mnc_nml, data_mnc_path)
             else:
                 raise
 
