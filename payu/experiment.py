@@ -653,7 +653,7 @@ class Experiment(object):
         # Ensure dynamic library support for subsequent python calls
         ld_libpaths = os.environ['LD_LIBRARY_PATH']
         py_libpath = sysconfig.get_config_var('LIBDIR')
-        if not py_libpath in ld_libpaths.split(':'):
+        if py_libpath not in ld_libpaths.split(':'):
             os.environ['LD_LIBRARY_PATH'] = ':'.join([py_libpath, ld_libpaths])
 
         collate_config = self.config.get('collate', {})
