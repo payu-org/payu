@@ -29,9 +29,7 @@ except NameError:
 
 
 class Runlog(object):
-
     def __init__(self, expt):
-
         # Disable user's global git rc file
         os.environ['GIT_CONFIG_NOGLOBAL'] = 'yes'
 
@@ -54,7 +52,7 @@ class Runlog(object):
         self.token_path = os.path.join(self.payu_config_dir, 'tokens.yaml')
 
     def create_manifest(self):
-
+        """Construct the list of files to be tracked by the runlog."""
         config_path = os.path.join(self.expt.control_path,
                                    DEFAULT_CONFIG_FNAME)
 
@@ -103,6 +101,21 @@ class Runlog(object):
         f_null.close()
 
     def push(self):
+        """Push the changes to the remote repository.
+
+        Usage: payu push
+
+        This command pushes local runlog changes to the remote runlog
+        repository, currently named `payu`, using the SSH key associated with
+        this experiment.
+
+        For an experiment `test`, it is equivalent to the following command::
+
+            ssh-agent bash -c "
+                ssh-add $HOME/.ssh/payu/id_rsa_payu_test
+                git push --all payu
+            "
+        """
         expt_name = self.config.get('name', self.expt.name)
 
         default_ssh_key = 'id_rsa_payu_' + expt_name
