@@ -1,12 +1,37 @@
+v0.11.2:
+   - Payu collation jobs launched by an initial payu job would sometimes fail
+     if the LD_LIBRARY_PATH was not set correctly (usually in a `payu-run`
+     job).  We now prepend the executable's LD_LIBRARY_PATH before collation.
+
+   - `runlog: False` was not correctly handled due to changes in the Runlog
+     object, and has been fixed.  Thanks to Nic Hannah for reporting
+
+   - Several OSError checks throughout the module were not being handled
+     correctly in Python 3, where most of these have been replaced by various
+     more specific exceptions.  We now check for the more generic
+     EnvironmentError and handle the error code as before.  Thanks to Navid
+     Constantinou for reporting.
+
+   - The f90nml parser used by MITgcm was not correctly removing comments from 
+     `data.mnc` config files.  We now use the MITgcm-configured parser.
+
+   - Userscripts that were not executable but required python may have failed
+     due to a generic `python` execution.  We now use the same executable as
+     the one used to launch Payu.
+
+   - mnctools is now an optional dependency to be installed when MITgcm
+     collation support is needed.  This will also install numpy and netCDF4,
+     which can be a significant burden if unneeded, and why this is optional.
+
 v0.11.1:
-    - PYTHONPATH is now passed directly to the next job.
-      Previously, we tried to derive this variable from `sys.path` after
-      removing all the default paths, but the remainder was virtually identical
-      to PYTHONPATH.
-    - Runscripts are now constructed by setuptools via `entry_point` rather
-      than the explicit scripts in the `bin` directory.  This was done in part
-      to accommodate conda environments on NCI.
-      Thanks to Scott Wales for outlining this method.
+   - PYTHONPATH is now passed directly to the next job.  Previously, we tried
+     to derive this variable from `sys.path` after removing all the default
+     paths, but the remainder was virtually identical to PYTHONPATH.
+
+   - Runscripts are now constructed by setuptools via `entry_point` rather than
+     the explicit scripts in the `bin` directory.  This was done in part to
+     accommodate conda environments on NCI.  Thanks to Scott Wales for
+     outlining this method.
 
 v0.11:
    - The "reversion" technique of relaunching payu to a fixed version has been

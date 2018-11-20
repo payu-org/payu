@@ -34,14 +34,12 @@ setup(
         'PyYAML',
         'requests',
         'dateutil'
-        'mnctools',
     ],
     install_requires=[
         'f90nml >= 0.16',
         'PyYAML',
         'requests[security]',
         'python-dateutil',
-        'mnctools',
     ],
     entry_points={
         'console_scripts': [
@@ -63,6 +61,8 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Topic :: Utilities',
     ],
-
+    extras_require={
+        'mitgcm': ['mnctools>=0.2']
+    },
     keywords='{0} supercomputer model climate workflow'.format(PKG_NAME)
 )
