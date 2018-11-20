@@ -18,6 +18,7 @@ import sys
 import shlex
 import shutil
 import subprocess as sp
+import sysconfig
 
 # Local
 from payu import envmod
@@ -525,7 +526,7 @@ class Experiment(object):
         if curdir:
             os.chdir(curdir)
 
-        if self.runlog:
+        if self.runlog.enabled:
             self.runlog.commit()
 
         f_out.close()
@@ -648,6 +649,12 @@ class Experiment(object):
                 # Only delete real directories; ignore symbolic restart links
                 if os.path.isdir(res_path):
                     shutil.rmtree(res_path)
+
+        # Ensure dynamic library support for subsequent python calls
+        ld_libpaths = os.environ['LD_LIBRARY_PATH']
+        py_libpath = sysconfig.get_config_var('LIBDIR')
+        if not py_libpath in ld_libpaths.split(':'):
+            os.environ['LD_LIBRARY_PATH'] = ':'.join([py_libpath, ld_libpaths])
 
         collate_config = self.config.get('collate', {})
         if collate_config.get('enable', True):

@@ -169,7 +169,7 @@ class Mitgcm(Model):
             sh.move(f_src, self.restart_path)
 
     def collate(self, clear_tiles=True, partition=None):
-        import mnctools as mnc
+        from mnctools import mnctools as mnc
 
         # Use leading tiles to construct a tile manifest
         # Don't collate the pickup files

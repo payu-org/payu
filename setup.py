@@ -34,12 +34,14 @@ setup(
         'PyYAML',
         'requests',
         'dateutil'
+        'mnctools',
     ],
     install_requires=[
         'f90nml >= 0.16',
         'PyYAML',
         'requests[security]',
         'python-dateutil',
+        'mnctools',
     ],
     entry_points={
         'console_scripts': [
