@@ -69,6 +69,20 @@ class AccessOm2(Model):
                 shutil.move(os.path.join(self.work_restart_path, f),
                             self.restart_path)
             os.rmdir(self.work_restart_path)
+        else:
+            cice5 = None
+            mom = None
+            for model in self.expt.models:
+                if model.model_type == 'cice5':
+                    cice5 = model
+                elif model.model_type == 'mom':
+                    mom = model
+
+            # Copy restart from ocean into ice area.
+            if cice5 is not None and mom is not None:
+                o2i_src = os.path.join(mom.work_path, 'o2i.nc')
+                o2i_dst = os.path.join(cice5.restart_path, 'o2i.nc')
+                shutil.copy2(o2i_src, o2i_dst)
 
     def collate(self):
         pass
