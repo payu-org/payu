@@ -161,7 +161,7 @@ class Model(object):
                     raise
 
         # Link restart files from prior run
-        if self.prior_restart_path and not self.expt.repeat_run:
+        if self.prior_restart_path:
             restart_files = self.get_prior_restart_files()
             for f_name in restart_files:
                 f_restart = os.path.join(self.prior_restart_path, f_name)

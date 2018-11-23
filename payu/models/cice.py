@@ -133,8 +133,7 @@ class Cice(Model):
         else:
             caltype = cal.GREGORIAN
 
-        if self.prior_restart_path and not self.expt.repeat_run:
-
+        if self.prior_restart_path:
             # Generate ice.restart_file
             # TODO: better check of restart filename
             iced_restart_file = None
@@ -162,9 +161,16 @@ class Cice(Model):
             # With later versions this file exists in the prior restart path,
             # but this was not always the case, so check, and if not there use
             # prior output path
-            if not os.path.exists(prior_nml_path):
+            if not os.path.exists(prior_nml_path) and self.prior_output_path:
                 prior_nml_path = os.path.join(self.prior_output_path,
                                               self.ice_nml_fname)
+
+            # If we cannot find a prior namelist, then we cannot determine
+            # the start time and must abort the run.
+            if not os.path.exists(prior_nml_path):
+                print('payu: error: Cannot find prior namelist {nml}'.format(
+                    nml=self.ice_nml_fname))
+                sys.exit(errno.ENOENT)
 
             prior_setup_nml = f90nml.read(prior_nml_path)['setup_nml']
 
