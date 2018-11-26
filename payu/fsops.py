@@ -53,19 +53,20 @@ def read_config(config_fname=None):
 
     # Transform legacy collate config options
     if type(collate_config) is bool:
-        # Cycle through old collate config and convert to newer dict format
         collate_config = {'enable': collate_config}
-        collatestr = 'collate_'
-        foundkeys = []
-        for key in list(config.keys()):
-            if key.startswith(collatestr):
-                foundkeys.append(key)
-                collate_config[key[len(collatestr):]] = config.pop(key)
-        if foundkeys:
-            print("Use of these keys is deprecated: {}.".format(
-                  ", ".join(foundkeys)))
-            print("Instead use collate dictionary and subkey "
-                  "without 'collate_' prefix")
+
+    collatestr = 'collate_'
+    foundkeys = []
+    # Cycle through old collate config and convert to newer dict format
+    for key in list(config.keys()):
+        if key.startswith(collatestr):
+            foundkeys.append(key)
+            collate_config[key[len(collatestr):]] = config.pop(key)
+    if foundkeys:
+        print("Use of these keys is deprecated: {}.".format(
+                ", ".join(foundkeys)))
+        print("Instead use collate dictionary and subkey "
+                "without 'collate_' prefix")
 
     config['collate'] = collate_config
 
