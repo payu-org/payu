@@ -52,14 +52,10 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
     elif 'submodels' in pbs_config and 'ncpus' not in pbs_config:
         # Increase the cpu request to match a complete node
 
-        submodel_config = pbs_config['submodels']
-
         n_cpus_request = 0
-        for model in submodel_config:
-            n_cpus_request += submodel_config[model].get('ncpus', 0)
-
-        # TODO: Read `ncpus` anyway and check for consistency
-        #       (Also remove from the conditional of this block!)
+        submodel_configs = pbs_config['submodels']
+        for model_config in submodel_configs:
+            n_cpus_request += model_config.get('ncpus', 0)
 
     else:
         n_cpus_request = pbs_config.get('ncpus', 1)
