@@ -13,9 +13,20 @@ import shlex
 import subprocess as sp
 import sys
 from itertools import count
+import glob
+
+try:
+    from shlex import quote
+except ImportError:
+    from pipes import quote
 
 from payu.models.model import Model
 from payu import envmod
+
+# There is a limit on the number of command line arguments in a forked
+# MPI process. This applies only to mppnccombine-fast. The limit is higher
+# than this, but mppnccombine-fast is very slow with large numbers of files
+MPI_FORK_MAX_FILE_LIMIT = 1000
 
 
 def cmdthread(cmd, cwd):
@@ -132,6 +143,22 @@ class Fms(Model):
 
             mnc_tiles[t_base].append(t_fname)
 
+        if mpi:
+            for t_base in mnc_tiles:
+                # Try an equivalent glob and check the same files are returned
+                globpath = "{}.*".format(t_base)
+                if mnc_tiles[t_base] == sorted(glob.glob(globpath)):
+                    mnc_tiles[t_base] = [quote(globpath)]
+                    print("Note: using globpath for collated {}"
+                          .format(t_base))
+                else:
+                    if len(mnc_tiles[t_base]) > MPI_FORK_MAX_FILE_LIMIT:
+                        print("Warning: cannot use globpath to collate {}"
+                              .format(t_base))
+                        print("Warning: large number of tiles: {} "
+                              .format(len(mnc_tiles[t_base])))
+                        print("Warning: collation will be slow and may fail")
+
         cpucount = int(collate_config.get('ncpus',
                        multiprocessing.cpu_count()))
 
@@ -164,6 +191,7 @@ class Fms(Model):
             cmd = ' '.join([mppnc_path, collate_flags, nc_fname,
                             ' '.join(mnc_tiles[nc_fname])])
             if mpi:
+
                 cmd = "mpirun -n {n} {cmd}".format(
                     n=ncpusperprocess,
                     cmd=cmd
