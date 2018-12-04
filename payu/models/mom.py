@@ -12,7 +12,7 @@ import sys
 import f90nml
 import payu.envmod
 from payu.models.fms import Fms
-from payu.fsops import mkdir_p
+from payu.fsops import mkdir_p, make_symlink
 
 
 class Mom(Fms):
@@ -92,7 +92,39 @@ class Mom(Fms):
 
         # Construct the land CPU mask
         if self.expt.config.get('mask_table', False):
+            # NOTE: This function actually creates a mask table using the
+            #       `check_mask` command line tool.  But it is not very usable
+            #       since you need to know the number of masked CPUs to submit
+            #       the job.  It needs a rethink of the submission process.
             self.create_mask_table(input_nml)
+
+        # NOTE: Don't expect this to be here forever...
+        # Attempt to set a mask table from the input
+        if self.config.get('mask', False):
+            mask_path = os.path.join(self.work_input_path, 'ocean_mask_table')
+
+            # Remove any existing mask
+            # (If no reference mask is available, then we will not use one)
+            if os.path.isfile(mask_path):
+                os.remove(mask_path)
+
+            # Reference mask table
+            assert('layout' in input_nml['ocean_model_nml'])
+            nx, ny = input_nml['ocean_model_nml'].get('layout')
+            n_masked_cpus = nx * ny - self.config.get('ncpus')
+
+            mask_table_fname = 'mask_table.{nmask}.{nx}x{ny}'.format(
+                nmask=n_masked_cpus,
+                nx=nx,
+                ny=ny
+            )
+
+            ref_mask_path = os.path.join(self.work_input_path,
+                                         mask_table_fname)
+
+            # Set (or replace) mask table if reference is available
+            if os.path.isfile(ref_mask_path):
+                make_symlink(ref_mask_path, mask_path)
 
     def set_timestep(self, timestep):
 
