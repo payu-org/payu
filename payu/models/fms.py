@@ -13,12 +13,7 @@ import shlex
 import subprocess as sp
 import sys
 from itertools import count
-import glob
-
-try:
-    from shlex import quote
-except ImportError:
-    from pipes import quote
+import fnmatch
 
 from payu.models.model import Model
 from payu import envmod
@@ -86,6 +81,9 @@ class Fms(Model):
         mpi = collate_config.get('mpi', False)
 
         if mpi:
+            # Must use envmod to be able to load mpi modules for collation
+            envmod.setup()
+            self.expt.load_modules()
             default_exe = 'mppnccombine-fast'
         else:
             default_exe = 'mppnccombine'
@@ -143,18 +141,19 @@ class Fms(Model):
 
             mnc_tiles[t_base].append(t_fname)
 
-        if mpi:
+        
+        if mpi and collate_config.get('glob',True):
             for t_base in mnc_tiles:
+                globstr = "{}.*".format(t_base)
                 # Try an equivalent glob and check the same files are returned
-                globpath = "{}.*".format(t_base)
-                if mnc_tiles[t_base] == sorted(glob.glob(globpath)):
-                    mnc_tiles[t_base] = [quote(globpath)]
-                    print("Note: using globpath for collated {}"
-                          .format(t_base))
+                if mnc_tiles[t_base] == sorted(fnmatch.filter(os.listdir(self.output_path),globstr)):
+                    mnc_tiles[t_base] = [globstr,]
+                    print("Note: using globstr ({}) for collating {}"
+                          .format(globstr, t_base))
                 else:
+                    print("Warning: cannot use globstr {} to collate {}"
+                          .format(globstr,t_base))
                     if len(mnc_tiles[t_base]) > MPI_FORK_MAX_FILE_LIMIT:
-                        print("Warning: cannot use globpath to collate {}"
-                              .format(t_base))
                         print("Warning: large number of tiles: {} "
                               .format(len(mnc_tiles[t_base])))
                         print("Warning: collation will be slow and may fail")
@@ -214,7 +213,7 @@ class Fms(Model):
             for p, rc, op in zip(count(), codes, outputs):
                 if rc is not None:
                     print('payu: error: Thread {p} crashed with error code '
-                          '{rc}.'.format(p, rc), file=sys.stderr)
+                          '{rc}.'.format(p=p, rc=rc), file=sys.stderr)
                     print(' Error message:', file=sys.stderr)
-                    print(msg, file=sys.stderr)
+                    print(op.decode(), file=sys.stderr)
             sys.exit(-1)
