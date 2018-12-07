@@ -134,7 +134,8 @@ class Manifest(object):
         self.restart_manifest = PayuManifest(self.manifest_config.get('restart', 'mf_restart.yaml'))
         self.exe_manifest = PayuManifest(self.manifest_config.get('exe', 'mf_exe.yaml'))
 
-    def setup(self):
+    # Does it make sense to split this off into a different setup routine when other stuff is defined?
+    # def setup(self):
 
         # Check if manifest files exist
         self.have_input_manifest = os.path.exists(self.input_manifest.path) and not self.manifest_config.get('overwrite',False)
