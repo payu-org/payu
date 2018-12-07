@@ -134,6 +134,7 @@ def runscript():
         if n_runs_per_submit > 1 and subrun < n_runs_per_submit:
             expt.counter += 1
             expt.set_output_paths()
+            expt.manifest.init_manifests()
 
         subrun += 1
 

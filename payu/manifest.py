@@ -1,7 +1,8 @@
 """payu.manifest
    ===============
 
-   Interface to a manifest file
+   Provides an manifest class to store manifest data, which uses a 
+   subclassed yamanifest PayuManifest class
 
    :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details.
    :license: Apache License, Version 2.0, see LICENSE for details.
@@ -19,7 +20,7 @@ from yamanifest.manifest import Manifest as YaManifest
 import yamanifest as ym
 from copy import deepcopy
 
-import os,sys
+import os, sys
 
 
 # fast_hashes = ['nchash','binhash']
@@ -104,11 +105,16 @@ class PayuManifest(YaManifest):
                 make_symlink(self.fullpath(filepath), filepath)
 
 class Manifest(object):
+    """
+    A Manifest class which stores all manifests for file tracking and 
+    methods to operate on them 
+    """
 
-    def __init__(self, expt):
+    def __init__(self, expt, reproduce):
 
         # Inherit experiment configuration
         self.expt = expt
+        self.reproduce = reproduce
 
         # Manifest control configuration
         self.manifest_config = self.expt.config.get('manifest', {})
@@ -127,6 +133,8 @@ class Manifest(object):
         self.input_manifest = PayuManifest(self.manifest_config.get('input', 'mf_input.yaml'))
         self.restart_manifest = PayuManifest(self.manifest_config.get('restart', 'mf_restart.yaml'))
         self.exe_manifest = PayuManifest(self.manifest_config.get('exe', 'mf_exe.yaml'))
+
+    def setup(self):
 
         # Check if manifest files exist
         self.have_input_manifest = os.path.exists(self.input_manifest.path) and not self.manifest_config.get('overwrite',False)

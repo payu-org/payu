@@ -82,6 +82,25 @@ class Model(object):
         else:
             self.exec_path = None
 
+    def set_local_pathnames(self):
+
+        # This is the path relative to the control directory, required for manifests
+        # and must be called after set_model_pathnames to ensure it captures changes
+        # made in model subclasses which override set_model_pathnames
+        self.work_path_local = os.path.normpath(os.path.join('work',
+                os.path.relpath(self.work_path,self.expt.work_path)))
+        self.work_input_path_local = os.path.normpath(os.path.join('work',
+                 os.path.relpath(self.work_input_path,self.expt.work_path)))
+        self.work_restart_path_local = os.path.normpath(os.path.join('work',
+                  os.path.relpath(self.work_restart_path,self.expt.work_path)))
+        self.work_init_path_local = os.path.normpath(os.path.join('work',
+                 os.path.relpath(self.work_init_path,self.expt.work_path)))
+        if self.exec_name:
+            # Local path in work directory (symlinked to full path and
+            # added to manifest)
+            self.local_exec_path = os.path.join(self.work_path_local,
+                                          self.exec_name)
+
     def set_input_paths(self):
 
         if len(self.expt.models) == 1:

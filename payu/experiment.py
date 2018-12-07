@@ -26,6 +26,7 @@ from payu.fsops import mkdir_p, make_symlink, read_config
 from payu.models import index as model_index
 import payu.profilers
 from payu.runlog import Runlog
+from payu import Manifest
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -39,7 +40,7 @@ default_restart_history = 5
 
 class Experiment(object):
 
-    def __init__(self, lab):
+    def __init__(self, lab, reproduce=False):
         self.lab = lab
 
         # TODO: replace with dict, check versions via key-value pairs
@@ -78,6 +79,9 @@ class Experiment(object):
             model.set_input_paths()
 
         self.set_output_paths()
+
+        # Initialize manifest
+        self.manifest = Manifest(self, reproduce=reproduce)
 
         # Miscellaneous configurations
         # TODO: Move this stuff somewhere else
@@ -166,7 +170,7 @@ class Experiment(object):
                                         for d in restart_dirs
                                         if d.startswith('restart')])
             else:
-                # uepeat runs do not generate restart files, so check outputs
+                # repeat runs do not generate restart files, so check outputs
                 try:
                     output_dirs = [d for d in os.listdir(self.archive_path)
                                    if d.startswith('output')]
@@ -177,6 +181,7 @@ class Experiment(object):
                         raise
 
                 # First test for restarts
+                # Now look for output directories
                 if output_dirs:
                     self.counter = 1 + max([int(d.lstrip('output'))
                                             for d in output_dirs
@@ -273,6 +278,7 @@ class Experiment(object):
 
         for model in self.models:
             model.set_model_pathnames()
+            model.set_local_pathnames()
 
         # Stream output filenames
         # TODO: per-model output streams?
@@ -368,6 +374,46 @@ class Experiment(object):
         for model in self.models:
             model.setup()
 
+        # Use manifest to make symbolic links to executables in the work directory
+        if self.have_exe_manifest:
+            self.input_manifest.make_links()
+
+        # Use manifest to make symbolic links to inputs in the work directory
+        if self.have_input_manifest:
+            self.input_manifest.make_links()
+
+        # Use manifest to make symbolic links to restarts in the work directory
+        if self.have_restart_manifest:
+            self.restart_manifest.make_links()
+
+        if not self.reproduce:
+            # Add full hash to all existing files. Don't force, will only add if they don't already exist
+            print("Add full hashes to input manifest")
+            self.input_manifest.add(hashfn=full_hashes)
+            print("Writing input manifest")
+            self.input_manifest.dump()
+            # Add full hash to all existing files. Don't force, will only add if they don't already exist
+            print("Add full hashes to restart manifest")
+            self.restart_manifest.add(hashfn=full_hashes)
+            print("Writing restart manifest")
+            self.restart_manifest.dump()
+
+        if not self.reproduce_exe:
+            # Add full hash to all existing files. Don't force, will only add if they don't already exist
+            print("Add full hashes to exe manifest")
+            self.exe_manifest.add(hashfn=full_hashes)
+            print("Writing exe manifest")
+            self.exe_manifest.dump()
+
+        print("Checking input manifest")
+        self.input_manifest.check_fast(reproduce=self.reproduce)
+
+        print("Checking restart manifest")
+        self.restart_manifest.check_fast(reproduce=self.reproduce)
+
+        print("Checking exe manifest")
+        self.exe_manifest.check_fast(reproduce=self.reproduce_exe)
+
         # Call the macro-model setup
         if len(self.models) > 1:
             self.model.setup()
@@ -445,7 +491,7 @@ class Experiment(object):
         for model in self.models:
 
             # Skip models without executables (e.g. couplers)
-            if not model.exec_path:
+            if not model.local_exec_path:
                 continue
 
             mpi_config = self.config.get('mpi', {})
@@ -454,7 +500,7 @@ class Experiment(object):
             # Update MPI library module (if not explicitly set)
             # TODO: Check for MPI library mismatch across multiple binaries
             if mpi_module is None:
-                mpi_module = envmod.lib_update(model.exec_path, 'libmpi.so')
+                mpi_module = envmod.lib_update(model.local_exec_path, 'libmpi.so')
 
             model_prog = []
 
@@ -495,8 +541,11 @@ class Experiment(object):
                 if prof.runscript:
                     model_prog = model_prog.append(prof.runscript)
 
+ 
             model_prog.append(model.exec_prefix)
-            model_prog.append(model.exec_path)
+
+            # Use the exec_name (without path) as this is now linked in work
+            model_prog.append(model.exec_name)
 
             mpi_progs.append(' '.join(model_prog))
 
