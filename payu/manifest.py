@@ -67,6 +67,21 @@ class PayuManifest(YaManifest):
             # Write updates to version on disk
             self.dump()
             
+    def add_filepath(self, filepath, fullpath, copy=False):
+        """
+        Bespoke function to add filepath & fullpath to manifest
+        object without hashing. Can defer hashing until all files are
+        added. Hashing all at once is much faster as overhead for
+        threading is spread over all files
+        """
+        if filepath not in self.data:
+            self.data[filepath] = {}
+
+        self.data[filepath]['fullpath'] = fullpath
+        self.data[filepath]['hashes'] = {}
+
+        if copy:
+            self.data[filepath]['copy'] = copy
 
     def add_fast(self, filepath, hashfn=fast_hashes, force=False):
         """
@@ -119,6 +134,8 @@ class Manifest(object):
         # Manifest control configuration
         self.manifest_config = self.expt.config.get('manifest', {})
         
+        self.have_exe_manifest = False
+        self.have_input_manifest = False
         self.have_restart_manifest = False
 
         # If the run sets reproduce, default to reproduce executables. Allow user
@@ -134,55 +151,42 @@ class Manifest(object):
         self.restart_manifest = PayuManifest(self.manifest_config.get('restart', 'mf_restart.yaml'))
         self.exe_manifest = PayuManifest(self.manifest_config.get('exe', 'mf_exe.yaml'))
 
-    # Does it make sense to split this off into a different setup routine when other stuff is defined?
-    # def setup(self):
+    def setup(self):
 
         # Check if manifest files exist
-        self.have_input_manifest = os.path.exists(self.input_manifest.path) and not self.manifest_config.get('overwrite',False)
         self.have_restart_manifest = os.path.exists(self.restart_manifest.path)
-        self.have_exe_manifest = os.path.exists(self.exe_manifest.path)
 
-        if self.reproduce:
-            # MUST have input and restart manifests to be able to reproduce a run
-            assert(self.have_input_manifest)
-            assert(self.have_restart_manifest)
-            if self.reproduce_exe:
-                assert(self.have_exe_manifest)
-        else:
-            # Only use a restart manifest when reproducing a run, otherwise always generare a new one
-            self.have_restart_manifest = False
-
-        if self.have_input_manifest:
+        if os.path.exists(self.input_manifest.path) and not self.manifest_config.get('overwrite',False):
             # Read manifest
             print("Loading input manifest: {}".format(self.input_manifest.path))
             self.input_manifest.load()
 
-            if len(self.input_manifest) == 0:
-                if self.reproduce:
-                    raise ValueError('Input manifest is empty, but reproduce is true')
-                # if manifest is empty revert flag to ensure input directories are used
-                self.have_input_manifest = False
+            if len(self.input_manifest) > 0:
+                self.have_input_manifest = True
 
-        if self.have_exe_manifest and self.reproduce_exe:
+        if os.path.exists(self.exe_manifest.path):
             # Read manifest
             print("Loading exe manifest: {}".format(self.exe_manifest.path))
             self.exe_manifest.load()
 
-            if len(self.exe_manifest) == 0:
-                if self.reproduce:
-                    raise ValueError('Exe manifest is empty, but reproduce and reproduce_exe is true')
-                # if manifest is empty revert flag to ensure input directories are used
-                self.have_exe_manifest = False
-        else:
-            self.have_exe_manifest = False
+            if len(self.exe_manifest) > 0:
+                self.have_exe_manifest = True
 
         if self.reproduce:
+
             # Read restart manifest
             print("Loading restart manifest: {}".format(self.restart_manifest.path))
             self.restart_manifest.load()
 
-            # Restart manifest must be populated for a reproducible run
-            assert(len(self.input_manifest) > 0)
+            # MUST have input and restart manifests to be able to reproduce a run
+            if len(self.restart_manifest) > 0:
+                self.have_restart_manifest = True
+            else:
+                raise ValueError("Reproduce is True but restart manifest is empty")
+            if not self.have_input_manifest:
+                raise ValueError("Reproduce is True but input manifest is empty")
+            if self.reproduce_exe and not self.have_exe_manifest:
+                raise ValueError("Reproduce is True but executable manifest is empty and reproduce_exe not set to False")
 
             for model in self.expt.models:
                 model.have_restart_manifest = True
@@ -209,15 +213,51 @@ class Manifest(object):
                             
         else:
 
-            # Generate a restart manifest
-            for model in self.expt.models:
-                if model.prior_restart_path is not None:
-                    # Try and find a manifest file in the restart dir
-                    restart_mf = PayuManifest.find_manifest(model.prior_restart_path)
-                    if restart_mf is not None:
-                        print("Loading restart manifest: {}".format(os.path.join(model.prior_restart_path,restart_mf.path)))
-                        self.restart_manifest.update(restart_mf,newpath=os.path.join(model.work_init_path_local))
-                        # Have two flags, one per model, the other controls if there is a call
-                        # to make_links in setup()
-                        model.have_restart_manifest = True
-                        # self.have_restart_manifest = True
+            self.have_restart_manifest = False
+
+            # # Generate a restart manifest
+            # for model in self.expt.models:
+            #     if model.prior_restart_path is not None:
+            #         # Try and find a manifest file in the restart dir
+            #         restart_mf = PayuManifest.find_manifest(model.prior_restart_path)
+            #         if restart_mf is not None:
+            #             print("Loading restart manifest: {}".format(os.path.join(model.prior_restart_path,restart_mf.path)))
+            #             self.restart_manifest.update(restart_mf,newpath=os.path.join(model.work_init_path_local))
+            #             # Have two flags, one per model, the other controls if there is a call
+            #             # to make_links in setup()
+            #             model.have_restart_manifest = True
+            #             # self.have_restart_manifest = True
+
+    def make_links(self):
+
+        self.exe_manifest.make_links()
+        self.input_manifest.make_links()
+        self.restart_manifest.make_links()
+
+        if not self.reproduce:
+            # Add full hash to all existing files. Don't force, will only add if they don't already exist
+            print("Add full hashes to input manifest")
+            self.input_manifest.add(hashfn=full_hashes)
+            print("Writing input manifest")
+            self.input_manifest.dump()
+            # Add full hash to all existing files. Don't force, will only add if they don't already exist
+            print("Add full hashes to restart manifest")
+            self.restart_manifest.add(hashfn=full_hashes)
+            print("Writing restart manifest")
+            self.restart_manifest.dump()
+
+        if not self.reproduce_exe:
+            # Add full hash to all existing files. Don't force, will only add if they don't already exist
+            print("Add full hashes to exe manifest")
+            self.exe_manifest.add(hashfn=full_hashes)
+            print("Writing exe manifest")
+            self.exe_manifest.dump()
+
+        print("Checking input manifest")
+        self.input_manifest.check_fast(reproduce=self.reproduce)
+
+        print("Checking restart manifest")
+        self.restart_manifest.check_fast(reproduce=self.reproduce)
+
+        print("Checking exe manifest")
+        self.exe_manifest.check_fast(reproduce=self.reproduce_exe)
