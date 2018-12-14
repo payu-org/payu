@@ -134,7 +134,10 @@ def runscript():
         if n_runs_per_submit > 1 and subrun < n_runs_per_submit:
             expt.counter += 1
             expt.set_output_paths()
-            expt.manifest.init_manifests()
+            # Does not make sense to reproduce a multiple run. Take care of
+            # this with argument processing?
+            expt.reproduce = False
+            expt.manifest.setup()
 
         subrun += 1
 
