@@ -179,29 +179,31 @@ class Model(object):
                 else:
                     raise
 
-        # Link restart files from prior run
-        if self.prior_restart_path:
+        # Add restart files from prior run to restart manifest
+        if not self.expt.manifest.have_restart_manifest and self.prior_restart_path:
             restart_files = self.get_prior_restart_files()
             for f_name in restart_files:
                 f_restart = os.path.join(self.prior_restart_path, f_name)
-                f_input = os.path.join(self.work_init_path, f_name)
-                if self.copy_restarts:
-                    shutil.copy(f_restart, f_input)
-                else:
-                    make_symlink(f_restart, f_input)
+                f_input = os.path.join(self.work_init_path_local, f_name)
+                self.expt.manifest.restart_manifest.add_filepath(f_input,f_restart,self.copy_inputs)
 
-        # Link input data
-        for input_path in self.input_paths:
-            input_files = os.listdir(input_path)
-            for f_name in input_files:
-                f_input = os.path.join(input_path, f_name)
-                f_work_input = os.path.join(self.work_input_path, f_name)
-                # Do not use input file if it is in RESTART
-                if not os.path.exists(f_work_input):
-                    if self.copy_inputs:
-                        shutil.copy(f_input, f_work_input)
-                    else:
-                        make_symlink(f_input, f_work_input)
+        # Don't add input files to manifest if we already have a populated
+        # input manifest
+        if not self.expt.manifest.have_input_manifest:
+            # Add files to manifest
+            for input_path in self.input_paths:
+                input_files = os.listdir(input_path)
+                for f_name in input_files:
+                    f_input = os.path.join(input_path, f_name)
+                    f_work_input = os.path.join(self.work_init_path_local,f_name)
+                    # Do not use input file if it is in RESTART
+                    if not os.path.exists(f_work_input):
+                        self.expt.manifest.input_manifest.add_filepath(f_work_input,f_input,self.copy_inputs)
+
+        # Make symlink to executable in work directory
+        if self.exec_path: 
+            # Add to exe manifest 
+            self.expt.manifest.exe_manifest.add_filepath(self.local_exec_path,self.exec_path)
 
         timestep = self.config.get('timestep')
         if timestep:
