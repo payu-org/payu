@@ -26,7 +26,7 @@ from payu.fsops import mkdir_p, make_symlink, read_config
 from payu.models import index as model_index
 import payu.profilers
 from payu.runlog import Runlog
-from payu import Manifest
+from payu.manifest import Manifest
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -371,48 +371,14 @@ class Experiment(object):
 
         make_symlink(self.work_path, self.work_sym_path)
 
+        # Set up all file manifests
+        self.manifest.setup()
+
         for model in self.models:
             model.setup()
 
-        # Use manifest to make symbolic links to executables in the work directory
-        if self.have_exe_manifest:
-            self.input_manifest.make_links()
-
-        # Use manifest to make symbolic links to inputs in the work directory
-        if self.have_input_manifest:
-            self.input_manifest.make_links()
-
-        # Use manifest to make symbolic links to restarts in the work directory
-        if self.have_restart_manifest:
-            self.restart_manifest.make_links()
-
-        if not self.reproduce:
-            # Add full hash to all existing files. Don't force, will only add if they don't already exist
-            print("Add full hashes to input manifest")
-            self.input_manifest.add(hashfn=full_hashes)
-            print("Writing input manifest")
-            self.input_manifest.dump()
-            # Add full hash to all existing files. Don't force, will only add if they don't already exist
-            print("Add full hashes to restart manifest")
-            self.restart_manifest.add(hashfn=full_hashes)
-            print("Writing restart manifest")
-            self.restart_manifest.dump()
-
-        if not self.reproduce_exe:
-            # Add full hash to all existing files. Don't force, will only add if they don't already exist
-            print("Add full hashes to exe manifest")
-            self.exe_manifest.add(hashfn=full_hashes)
-            print("Writing exe manifest")
-            self.exe_manifest.dump()
-
-        print("Checking input manifest")
-        self.input_manifest.check_fast(reproduce=self.reproduce)
-
-        print("Checking restart manifest")
-        self.restart_manifest.check_fast(reproduce=self.reproduce)
-
-        print("Checking exe manifest")
-        self.exe_manifest.check_fast(reproduce=self.reproduce_exe)
+        # Use manifest to populate work directory
+        self.manifest.make_links()
 
         # Call the macro-model setup
         if len(self.models) > 1:
