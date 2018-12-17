@@ -697,6 +697,8 @@ class Experiment(object):
     def postprocess(self):
         """Submit a postprocessing script after collation"""
         assert self.postscript
+        envmod.setup()
+        envmod.module('load', 'pbs')
 
         cmd = 'qsub {script}'.format(script=self.postscript)
 
