@@ -21,6 +21,7 @@ import yamanifest as ym
 from copy import deepcopy
 
 import os, sys
+import shutil
 
 
 # fast_hashes = ['nchash','binhash']
