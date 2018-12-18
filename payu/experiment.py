@@ -457,7 +457,7 @@ class Experiment(object):
         for model in self.models:
 
             # Skip models without executables (e.g. couplers)
-            if not model.local_exec_path:
+            if not model.exec_path_local:
                 continue
 
             mpi_config = self.config.get('mpi', {})
@@ -466,7 +466,7 @@ class Experiment(object):
             # Update MPI library module (if not explicitly set)
             # TODO: Check for MPI library mismatch across multiple binaries
             if mpi_module is None:
-                mpi_module = envmod.lib_update(model.local_exec_path, 'libmpi.so')
+                mpi_module = envmod.lib_update(model.exec_path_local, 'libmpi.so')
 
             model_prog = []
 
