@@ -64,6 +64,11 @@ class Runlog(object):
             self.manifest.extend(os.path.join(model.control_path, f)
                                  for f in config_files)
 
+        # Add file manifests
+        self.manifest.append(self.expt.manifest.exe_manifest.path)
+        self.manifest.append(self.expt.manifest.input_manifest.path)
+        self.manifest.append(self.expt.manifest.restart_manifest.path)
+
     def commit(self):
         f_null = open(os.devnull, 'w')
 
