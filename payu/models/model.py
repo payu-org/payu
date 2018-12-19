@@ -207,7 +207,7 @@ class Model(object):
                 input_files = os.listdir(input_path)
                 for f_name in input_files:
                     f_input = os.path.join(input_path, f_name)
-                    f_work_input = os.path.join(self.work_init_path_local,f_name)
+                    f_work_input = os.path.join(self.work_input_path_local,f_name)
                     # Do not use input file if it is in RESTART
                     if not os.path.exists(f_work_input):
                         self.expt.manifest.input_manifest.add_filepath(f_work_input,f_input,self.copy_inputs)
