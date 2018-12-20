@@ -120,6 +120,18 @@ class PayuManifest(YaManifest):
                 shutil.copy(self.fullpath(filepath), filepath)
             else:
                 make_symlink(self.fullpath(filepath), filepath)
+    
+    def check_correct(self):
+        hashvals = {}
+        if not self.check(hashvals=hashvals):
+            print("Manifest {} is not correct, run cannot reproduce, aborting ...".format(self.path))
+            print("Incorrect hashes:")
+            for path, hashdict in hashvals.items():
+                print("    {}:".format(path))
+                for hash, val in hashdict.items():
+                    print("        {}: {} != {}".format(hash,val,self.data[path]['hashes'].get(hash,None)))
+            exit(1)
+
 
 class Manifest(object):
     """
@@ -238,12 +250,8 @@ class Manifest(object):
 
         if self.reproduce:
             print("Checking input and restart manifests")
-            if not self.input_manifest.check():
-                print("Input manifest is not correct, run cannot reproduce, aborting ...")
-                exit(1)
-            if not self.restart_manifest.check():
-                print("Restart manifest is not correct, run cannot reproduce, aborting ...")
-                exit(1)
+            self.input_manifest.check_correct()
+            self.restart_manifest.check_correct():
         else:
             # Add full hash to all existing files. Don't force, will only add if they don't already exist
             print("Adding hashes to input and restart manifests")
@@ -255,9 +263,7 @@ class Manifest(object):
 
         if self.reproduce_exe:
             print("Checking exe manifest")
-            if not self.exe_manifest.check():
-                print("Exe manifest is not correct, reproduce_exe is True, run cannot reproduce, aborting ...")
-                exit(1)
+            self.exe_manifest.check_correct()
         else:
             # Add full hash to all existing files. Don't force, will only add if they don't already exist
             print("Add full hashes to exe manifest")
