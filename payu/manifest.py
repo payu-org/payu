@@ -196,34 +196,41 @@ class Manifest(object):
             if len(self.restart_manifest) > 0:
                 self.have_restart_manifest = True
             else:
-                raise ValueError("Reproduce is True but restart manifest is empty")
+                print("Restart manifest cannot be empty if reproduce is True")
+                exit(1)
+
             if not self.have_input_manifest:
-                raise ValueError("Reproduce is True but input manifest is empty")
+                print("Input manifest cannot be empty if reproduce is True")
+                exit(1)
+
             if self.reproduce_exe and not self.have_exe_manifest:
-                raise ValueError("Reproduce is True but executable manifest is empty and reproduce_exe not set to False")
+                print("Executable manifest cannot empty if reproduce and reproduce_exe are True")
+                exit(1)
 
             for model in self.expt.models:
                 model.have_restart_manifest = True
 
-            # If the run counter is zero inspect the restart manifest for an appropriate
-            # value
-            for filepath in self.restart_manifest:
-                head = os.path.dirname(self.restart_manifest.fullpath(filepath))
-                # Inspect each element of the fullpath looking for restartxxx style
-                # directories. Exit 
-                while True:
-                    head, tail = os.path.split(head)
-                    if tail.startswith('restart'):
-                        try:
-                            n = int(tail.lstrip('restart'))
-                        except ValueError:
-                            pass
-                        else:
-                            self.counter = n + 1
-                            break
-                            
-                # Short circuit as soon as restart dir found
-                if self.expt.counter == 0: break
+
+            # Inspect the restart manifest for an appropriate value of # experiment 
+            # counter if not specified on the command line (and this env var set)
+            if not os.environ.get('PAYU_CURRENT_RUN'):
+                for filepath in self.restart_manifest:
+                    head = os.path.dirname(self.restart_manifest.fullpath(filepath))
+                    # Inspect each element of the fullpath looking for restartxxx style
+                    # directories. Exit 
+                    while True:
+                        head, tail = os.path.split(head)
+                        if tail.startswith('restart'):
+                            try:
+                                n = int(tail.lstrip('restart'))
+                            except ValueError:
+                                pass
+                            else:
+                                self.expt.counter = n + 1
+                                break
+                                
+                    # Short circuit as soon as restart dir found
+                    if self.expt.counter == 0: break 
                             
         else:
 
