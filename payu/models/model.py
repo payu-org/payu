@@ -214,7 +214,7 @@ class Model(object):
 
         # Make symlink to executable in work directory
         if self.exec_path: 
-            # Add to exe manifest 
+            # Add to exe manifest (this is always done so any change in exe path will be picked up)
             self.expt.manifest.exe_manifest.add_filepath(self.exec_path_local,self.exec_path)
 
         timestep = self.config.get('timestep')
