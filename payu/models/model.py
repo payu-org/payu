@@ -167,7 +167,8 @@ class Model(object):
                                                        self.name)
 
     def get_prior_restart_files(self):
-        return os.listdir(self.prior_restart_path)
+        return [f for f in os.listdir(self.prior_restart_path) 
+                if os.path.isfile(os.path.join(self.prior_restart_path, f))]
 
     def setup(self):
 
