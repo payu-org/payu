@@ -251,7 +251,7 @@ class Manifest(object):
         if self.reproduce:
             print("Checking input and restart manifests")
             self.input_manifest.check_correct()
-            self.restart_manifest.check_correct():
+            self.restart_manifest.check_correct()
         else:
             # Add full hash to all existing files. Don't force, will only add if they don't already exist
             print("Adding hashes to input and restart manifests")
