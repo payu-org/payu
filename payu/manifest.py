@@ -79,7 +79,8 @@ class PayuManifest(YaManifest):
             self.data[filepath] = {}
 
         self.data[filepath]['fullpath'] = fullpath
-        self.data[filepath]['hashes'] = {}
+        if 'hashes' not in self.data[filepath]:
+            self.data[filepath]['hashes'] = {}
 
         if copy:
             self.data[filepath]['copy'] = copy
@@ -198,7 +199,7 @@ class Manifest(object):
                 head = os.path.dirname(self.restart_manifest.fullpath(filepath))
                 # Inspect each element of the fullpath looking for restartxxx style
                 # directories. Exit 
-                while true:
+                while True:
                     head, tail = os.path.split(head)
                     if tail.startswith('restart'):
                         try:
@@ -235,30 +236,31 @@ class Manifest(object):
         self.input_manifest.make_links()
         self.restart_manifest.make_links()
 
-        if not self.reproduce:
+        if self.reproduce:
+            print("Checking input and restart manifests")
+            if not self.input_manifest.check():
+                print("Input manifest is not correct, run cannot reproduce, aborting ...")
+                exit(1)
+            if not self.restart_manifest.check():
+                print("Restart manifest is not correct, run cannot reproduce, aborting ...")
+                exit(1)
+        else:
             # Add full hash to all existing files. Don't force, will only add if they don't already exist
-            print("Add full hashes to input manifest")
+            print("Adding hashes to input and restart manifests")
             self.input_manifest.add(hashfn=full_hashes)
-            print("Writing input manifest")
-            self.input_manifest.dump()
-            # Add full hash to all existing files. Don't force, will only add if they don't already exist
-            print("Add full hashes to restart manifest")
             self.restart_manifest.add(hashfn=full_hashes)
-            print("Writing restart manifest")
+            print("Writing input and restart manifests")
+            self.input_manifest.dump()
             self.restart_manifest.dump()
 
-        if not self.reproduce_exe:
+        if self.reproduce_exe:
+            print("Checking exe manifest")
+            if not self.exe_manifest.check():
+                print("Exe manifest is not correct, reproduce_exe is True, run cannot reproduce, aborting ...")
+                exit(1)
+        else:
             # Add full hash to all existing files. Don't force, will only add if they don't already exist
             print("Add full hashes to exe manifest")
             self.exe_manifest.add(hashfn=full_hashes)
             print("Writing exe manifest")
             self.exe_manifest.dump()
-
-        print("Checking input manifest")
-        self.input_manifest.check_fast(reproduce=self.reproduce)
-
-        print("Checking restart manifest")
-        self.restart_manifest.check_fast(reproduce=self.reproduce)
-
-        print("Checking exe manifest")
-        self.exe_manifest.check_fast(reproduce=self.reproduce_exe)
