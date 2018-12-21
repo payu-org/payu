@@ -380,6 +380,9 @@ class Experiment(object):
         # Use manifest to populate work directory
         self.manifest.make_links()
 
+        # Copy manifests to work directory so they archived on completion
+        self.manifest.copy_manifests(self.work_path)
+
         # Call the macro-model setup
         if len(self.models) > 1:
             self.model.setup()

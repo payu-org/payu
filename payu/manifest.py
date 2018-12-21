@@ -136,6 +136,12 @@ class PayuManifest(YaManifest):
             else:
                 make_symlink(self.fullpath(filepath), filepath)
 
+    def copy(self, path):
+        """
+        Copy myself to another location
+        """
+        shutil.copy(self.path, path)
+
 class Manifest(object):
     """
     A Manifest class which stores all manifests for file tracking and 
@@ -267,3 +273,9 @@ class Manifest(object):
         else:
             print("Creating restart manifest")
         self.restart_manifest.check_fast(reproduce=self.reproduce)
+
+    def copy_manifests(self, path):
+
+        self.exe_manifest.copy(path)
+        self.input_manifest.copy(path)
+        self.restart_manifest.copy(path)
