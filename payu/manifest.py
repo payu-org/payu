@@ -27,6 +27,7 @@ import shutil
 # fast_hashes = ['nchash','binhash']
 fast_hashes = ['binhash']
 full_hashes = ['md5']
+all_hashes = fast_hashes + full_hashes
 
 class PayuManifest(YaManifest):
     """
@@ -43,30 +44,45 @@ class PayuManifest(YaManifest):
         full hash functions if fast hashes fail to agree
         """
         hashvals = {}
+        # Run a fast check
         if not self.check_file(filepaths=self.data.keys(),hashvals=hashvals,hashfn=fast_hashes,shortcircuit=True,**args):
-            # Run a fast check, if we have failures, deal with them here
+
+            # Save all the fast hashes for failed files that we've already calculated
             for filepath in hashvals:
-                print("Check failed for {} {}".format(filepath,hashvals[filepath]))
-                tmphash = {}
-                if self.check_file(filepaths=filepath,hashfn=full_hashes,hashvals=tmphash,shortcircuit=False,**args):
-                    # File is still ok, so replace fast hashes
-                    print("Full hashes ({}) checked ok".format(full_hashes))
-                    print("Updating fast hashes for {} in {}".format(filepath,self.path))
-                    self.add_fast(filepath,force=True)
-                else:
-                    # File has changed, update hashes unless reproducing run
-                    if not reproduce:
-                        print("Updating entry for {} in {}".format(filepath,self.path))
+                for hash, val in hashvals[filepath].items():
+                    self.data[filepath]["hashes"][hash] = val
+
+            if reproduce:
+                for filepath in hashvals:
+                    print("Check failed for {} {}".format(filepath,hashvals[filepath]))
+                    tmphash = {}
+                    if self.check_file(filepaths=filepath,hashfn=full_hashes,hashvals=tmphash,shortcircuit=False,**args):
+                        # File is still ok, so replace fast hashes
+                        print("Full hashes ({}) checked ok".format(full_hashes))
+                        print("Updating fast hashes for {} in {}".format(filepath,self.path))
                         self.add_fast(filepath,force=True)
-                        self.add(filepath,hashfn=full_hashes,force=True)
+                        print("Saving updated manifest")
+                        self.dump()
                     else:
                         sys.stderr.write("Run cannot reproduce: manifest {} is not correct\n".format(self.path))
-                        for fn in full_hashes:
-                            sys.stderr.write("Hash {}: manifest: {} file: {}\n".format(fn,self.data[filepath]['hashes'][fn],tmphash[fn]))
+                        for path, hashdict in tmphash.items():
+                            print("    {}:".format(path))
+                            for hash, val in hashdict.items():
+                                print("        {}: {} != {}".format(hash,val,self.data[path]['hashes'].get(hash,None)))
                         sys.exit(1)
+            else:
+                # Not relevant if full hashes are correct. Regenerate full hashes for all 
+                # filepaths that failed fast check
+                print("Updating full hashes for {} files in {}".format(len(hashvals),self.path))
 
-            # Write updates to version on disk
-            self.dump()
+                # Add all full hashes at once -- much faster. Definitely want to force
+                # the full hash to be updated. In the specific case of an empty hash the 
+                # value will be None, without force it will be written as null
+                self.add(filepaths=list(hashvals.keys()),hashfn=full_hashes,force=True)
+
+                # Write updates to version on disk
+                print("Writing {}".format(self.path))
+                self.dump()
             
     def add_filepath(self, filepath, fullpath, copy=False):
         """
@@ -80,7 +96,7 @@ class PayuManifest(YaManifest):
 
         self.data[filepath]['fullpath'] = fullpath
         if 'hashes' not in self.data[filepath]:
-            self.data[filepath]['hashes'] = {}
+            self.data[filepath]['hashes'] = {hash: None for hash in all_hashes}
 
         if copy:
             self.data[filepath]['copy'] = copy
@@ -109,7 +125,6 @@ class PayuManifest(YaManifest):
         Payu integration function for creating symlinks in work directories which point
         back to the original file
         """
-        print("Making links from manifest: {}".format(self.path))
         for filepath in self:
             # print("Linking {}".format(filepath))
             # Don't try and link to itself, which happens when there is a real
@@ -120,18 +135,6 @@ class PayuManifest(YaManifest):
                 shutil.copy(self.fullpath(filepath), filepath)
             else:
                 make_symlink(self.fullpath(filepath), filepath)
-    
-    def check_correct(self):
-        hashvals = {}
-        if not self.check(hashvals=hashvals):
-            print("Manifest {} is not correct, run cannot reproduce, aborting ...".format(self.path))
-            print("Incorrect hashes:")
-            for path, hashdict in hashvals.items():
-                print("    {}:".format(path))
-                for hash, val in hashdict.items():
-                    print("        {}: {} != {}".format(hash,val,self.data[path]['hashes'].get(hash,None)))
-            exit(1)
-
 
 class Manifest(object):
     """
@@ -251,29 +254,16 @@ class Manifest(object):
 
     def make_links(self):
 
+        print("Making links from manifests")
         self.exe_manifest.make_links()
         self.input_manifest.make_links()
         self.restart_manifest.make_links()
 
+        print("Checking exe and input manifests")
+        self.exe_manifest.check_fast(reproduce=self.reproduce_exe)
+        self.input_manifest.check_fast(reproduce=self.reproduce)
         if self.reproduce:
-            print("Checking input and restart manifests")
-            self.input_manifest.check_correct()
-            self.restart_manifest.check_correct()
+            print("Checking restart manifest")
         else:
-            # Add full hash to all existing files. Don't force, will only add if they don't already exist
-            print("Adding hashes to input and restart manifests")
-            self.input_manifest.add(hashfn=full_hashes)
-            self.restart_manifest.add(hashfn=full_hashes)
-            print("Writing input and restart manifests")
-            self.input_manifest.dump()
-            self.restart_manifest.dump()
-
-        if self.reproduce_exe:
-            print("Checking exe manifest")
-            self.exe_manifest.check_correct()
-        else:
-            # Add full hash to all existing files. Don't force, will only add if they don't already exist
-            print("Add full hashes to exe manifest")
-            self.exe_manifest.add(hashfn=full_hashes)
-            print("Writing exe manifest")
-            self.exe_manifest.dump()
+            print("Creating restart manifest")
+        self.restart_manifest.check_fast(reproduce=self.reproduce)
