@@ -13,7 +13,7 @@ from __future__ import print_function, absolute_import
 
 # Local
 from payu import envmod
-from payu.fsops import make_symlink
+from payu.fsops import make_symlink, get_git_revision_hash
 
 # External
 from yamanifest.manifest import Manifest as YaManifest
@@ -84,6 +84,13 @@ class PayuManifest(YaManifest):
                 print("Writing {}".format(self.path))
                 self.dump()
             
+    def dump(self):
+        """
+        Add git hash to header before dumping the file
+        """
+        self.header['githash'] = get_git_revision_hash()
+        super(PayuManifest, self).dump()
+
     def add_filepath(self, filepath, fullpath, copy=False):
         """
         Bespoke function to add filepath & fullpath to manifest
