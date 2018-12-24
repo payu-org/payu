@@ -46,7 +46,6 @@ class Runlog(object):
         self.config = runlog_config
 
         self.manifest = []
-        self.create_manifest()
 
         self.payu_config_dir = os.path.join(os.path.expanduser('~'), '.payu')
         self.token_path = os.path.join(self.payu_config_dir, 'tokens.yaml')

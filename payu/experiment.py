@@ -535,6 +535,7 @@ class Experiment(object):
         if curdir:
             os.chdir(curdir)
 
+        self.runlog.create_manifest()
         if self.runlog.enabled:
             self.runlog.commit()
 
