@@ -141,17 +141,19 @@ class Fms(Model):
 
             mnc_tiles[t_base].append(t_fname)
 
-        if mpi and collate_config.get('glob',True):
+        if mpi and collate_config.get('glob', True):
             for t_base in mnc_tiles:
                 globstr = "{}.*".format(t_base)
                 # Try an equivalent glob and check the same files are returned
-                if mnc_tiles[t_base] == sorted(fnmatch.filter(os.listdir(self.output_path),globstr)):
-                    mnc_tiles[t_base] = [globstr,]
+                mnc_glob = fnmatch.filter(os.listdir(self.output_path,
+                                                     globstr))
+                if mnc_tiles[t_base] == sorted(mnc_glob):
+                    mnc_tiles[t_base] = [globstr, ]
                     print("Note: using globstr ({}) for collating {}"
                           .format(globstr, t_base))
                 else:
                     print("Warning: cannot use globstr {} to collate {}"
-                          .format(globstr,t_base))
+                          .format(globstr, t_base))
                     if len(mnc_tiles[t_base]) > MPI_FORK_MAX_FILE_LIMIT:
                         print("Warning: large number of tiles: {} "
                               .format(len(mnc_tiles[t_base])))

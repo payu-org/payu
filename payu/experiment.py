@@ -313,13 +313,15 @@ class Experiment(object):
             self.prior_restart_path = user_restart_dir
         else:
             prior_restart_dir = 'restart{0:03}'.format(self.counter - 1)
-            prior_restart_path = os.path.join(self.archive_path, prior_restart_dir)
+            prior_restart_path = os.path.join(self.archive_path,
+                                              prior_restart_dir)
             if os.path.exists(prior_restart_path) and not self.repeat_run:
                 self.prior_restart_path = prior_restart_path
             else:
                 self.prior_restart_path = None
                 if self.counter > 0 and not self.repeat_run:
-                    # TODO: This warning should be replaced with an abort in setup
+                    # TODO: This warning should be replaced with an abort in
+                    #       setup
                     print('payu: warning: No restart files found.')
 
         for model in self.models:
