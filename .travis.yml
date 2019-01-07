@@ -3,9 +3,10 @@ python:
     - "2.7"
     - "3.4"
     - "3.5"
-before_install:
-    - sudo apt-get install torque-server torque-client torque-mom torque-pam
-    - sudo ./test/setup_torque.sh
+# Disabling Torque setup until we can get this working on Travis
+#before_install:
+#    - sudo apt-get install torque-server torque-client torque-mom torque-pam
+#    - sudo ./test/setup_torque.sh
 install:
     - pip install .
 before_script:
