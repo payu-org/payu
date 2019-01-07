@@ -12,7 +12,7 @@ v0.11.2:
      EnvironmentError and handle the error code as before.  Thanks to Navid
      Constantinou for reporting.
 
-   - The f90nml parser used by MITgcm was not correctly removing comments from 
+   - The f90nml parser used by MITgcm was not correctly removing comments from
      `data.mnc` config files.  We now use the MITgcm-configured parser.
 
    - Userscripts that were not executable but required python may have failed

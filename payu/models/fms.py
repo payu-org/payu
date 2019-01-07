@@ -141,7 +141,6 @@ class Fms(Model):
 
             mnc_tiles[t_base].append(t_fname)
 
-        
         if mpi and collate_config.get('glob',True):
             for t_base in mnc_tiles:
                 globstr = "{}.*".format(t_base)
