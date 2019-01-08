@@ -20,8 +20,9 @@ from yamanifest.manifest import Manifest as YaManifest
 import yamanifest as ym
 from copy import deepcopy
 
-import os, sys
+import os, sys, fnmatch
 import shutil
+from distutils.dir_util import mkpath
 
 
 # fast_hashes = ['nchash','binhash']
@@ -35,8 +36,11 @@ class PayuManifest(YaManifest):
     additions and enhancements
     """
 
-    def __init__(self, path, hashes=None, **kwargs):
+    def __init__(self, path, hashes=None, ignore=None, **kwargs):
         super(PayuManifest, self).__init__(path, hashes, **kwargs)
+
+        if ignore is not None:
+            self.ignore = ignore
 
     def check_fast(self, reproduce=False, **args):
         """
@@ -98,6 +102,16 @@ class PayuManifest(YaManifest):
         added. Hashing all at once is much faster as overhead for
         threading is spread over all files
         """
+
+        # Ignore directories
+        if os.path.isdir(fullpath):
+            return
+        
+        # Ignore anything matching the ignore patterns
+        for pattern in self.ignore:
+            if fnmatch.fnmatch(os.path.basename(fullpath), pattern):
+                return
+
         if filepath not in self.data:
             self.data[filepath] = {}
 
@@ -176,10 +190,16 @@ class Manifest(object):
         # Not currently supporting specifying hash functions
         # self.hash_functions = manifest_config.get('hashfns', ['nchash','binhash','md5'])
 
-        # Intialise manifests. Can specify the path in config
-        self.input_manifest = PayuManifest(self.manifest_config.get('input', 'mf_input.yaml'))
-        self.restart_manifest = PayuManifest(self.manifest_config.get('restart', 'mf_restart.yaml'))
-        self.exe_manifest = PayuManifest(self.manifest_config.get('exe', 'mf_exe.yaml'))
+        self.ignore = self.manifest_config.get('ignore',['.*'])
+        self.ignore = [self.ignore] if isinstance(self.ignore, str) else self.ignore
+
+        # Intialise manifests
+        self.input_manifest = PayuManifest('manifests/input.yaml', ignore=self.ignore)
+        self.restart_manifest = PayuManifest('manifests/restart.yaml', ignore=self.ignore)
+        self.exe_manifest = PayuManifest('manifests/exe.yaml', ignore=self.ignore)
+
+        # Make sure the manifests directory exists
+        mkpath(os.path.dirname(self.exe_manifest.path))
 
     def setup(self):
 
@@ -283,6 +303,10 @@ class Manifest(object):
 
     def copy_manifests(self, path):
 
-        self.exe_manifest.copy(path)
-        self.input_manifest.copy(path)
-        self.restart_manifest.copy(path)
+        mkpath(path)
+        try:
+            self.exe_manifest.copy(path)
+            self.input_manifest.copy(path)
+            self.restart_manifest.copy(path)
+        except IOError:
+            pass
