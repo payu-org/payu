@@ -10,7 +10,7 @@
 
 # Standard library
 import errno
-import os
+import sys, os
 import subprocess
 
 # Extensions
@@ -122,7 +122,20 @@ def patch_lustre_path(f_path):
     return f_path
 
 def get_git_revision_hash():
-    return subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
+    try:
+        hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+        import pdb; pdb.set_trace()
+        if sys.version_info.major==3:
+          hash.decode('ascii')
+        return hash.strip() 
+    except subprocess.CalledProcessError:
+        return None
 
 def get_git_revision_short_hash():
-    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
+    try:
+        hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
+        if sys.version_info.major==3:
+          hash.decode('ascii')
+        return hash.strip() 
+    except subprocess.CalledProcessError:
+        return None
