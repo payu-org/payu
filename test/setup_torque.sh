@@ -16,13 +16,14 @@ killall pbs_server
 server=localhost
 
 # Do I need these?
-echo ${server} > /etc/torque/server_name
+#echo ${server} > /etc/torque/server_name
+echo ${server} > ${TORQUE}/server_name
 echo ${server} > ${TORQUE}/server_priv/acl_svr/acl_hosts
 echo root@${server} > ${TORQUE}/server_priv/acl_svr/operators
 echo root@${server} > ${TORQUE}/server_priv/acl_svr/managers
 
 # Update hosts
-echo "127.0.0.1 ${server}" >> /etc/hosts
+#echo "127.0.0.1 ${server}" >> /etc/hosts
 
 # Add host as a compute node
 echo "${server}" > ${TORQUE}/server_priv/nodes
