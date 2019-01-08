@@ -196,9 +196,9 @@ class Model(object):
         if not self.expt.manifest.have_restart_manifest and self.prior_restart_path:
             restart_files = self.get_prior_restart_files()
             for f_name in restart_files:
-                f_restart = os.path.join(self.prior_restart_path, f_name)
-                f_input = os.path.join(self.work_init_path_local, f_name)
-                self.expt.manifest.restart_manifest.add_filepath(f_input,f_restart,self.copy_inputs)
+                f_orig = os.path.join(self.prior_restart_path, f_name)
+                f_link = os.path.join(self.work_init_path_local, f_name)
+                self.expt.manifest.restart_manifest.add_filepath(f_link,f_orig,self.copy_inputs)
 
         # Don't add input files to manifest if we already have a populated
         # input manifest
@@ -207,11 +207,11 @@ class Model(object):
             for input_path in self.input_paths:
                 input_files = os.listdir(input_path)
                 for f_name in input_files:
-                    f_input = os.path.join(input_path, f_name)
-                    f_work_input = os.path.join(self.work_input_path_local,f_name)
+                    f_orig = os.path.join(input_path, f_name)
+                    f_link = os.path.join(self.work_input_path_local,f_name)
                     # Do not use input file if it is in RESTART
-                    if not os.path.exists(f_work_input):
-                        self.expt.manifest.input_manifest.add_filepath(f_work_input,f_input,self.copy_inputs)
+                    if not os.path.exists(f_link):
+                        self.expt.manifest.input_manifest.add_filepath(f_link,f_orig,self.copy_inputs)
 
         # Make symlink to executable in work directory
         if self.exec_path: 
