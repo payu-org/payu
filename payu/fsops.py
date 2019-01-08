@@ -124,7 +124,6 @@ def patch_lustre_path(f_path):
 def get_git_revision_hash():
     try:
         hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-        import pdb; pdb.set_trace()
         if sys.version_info.major==3:
           hash.decode('ascii')
         return hash.strip() 
