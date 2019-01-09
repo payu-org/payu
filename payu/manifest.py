@@ -13,7 +13,7 @@ from __future__ import print_function, absolute_import
 
 # Local
 from payu import envmod
-from payu.fsops import make_symlink, get_git_revision_hash
+from payu.fsops import make_symlink, get_git_revision_hash, is_ancestor
 
 # External
 from yamanifest.manifest import Manifest as YaManifest
@@ -88,12 +88,19 @@ class PayuManifest(YaManifest):
 
                 # Flag need to update version on disk
                 self.needsync = True
+    def git_id(self, id=None):
+        """
+        Return and optionally set the git commit id (hash) in the header of the manifest file
+        """
+        if id is not None:
+            self.header['git_commit_id'] = id
+        return self.header['git_commit_id']
             
     def dump(self):
         """
         Add git hash to header before dumping the file
         """
-        self.header['githash'] = get_git_revision_hash()
+        self.git_id(id=get_git_revision_hash())
         super(PayuManifest, self).dump()
 
     def add_filepath(self, filepath, fullpath, copy=False):
@@ -220,6 +227,13 @@ class Manifest(object):
 
             if len(self.input_manifest) > 0:
                 self.have_input_manifest = True
+
+            if self.have_input_manifest:
+                # Warn if config has changed since input manifest was created.
+                # TODO: check input field in the YaML file has changed since
+                if not is_ancestor(self.expt.config['_git_commit_id'], self.input_manifest.git_id()):
+                    print("WARNING! Config file has been altered since input manifest was generated.") 
+                    print("If input paths have changed delete manifests/input.yaml to rescan input directories") 
 
         if os.path.exists(self.exe_manifest.path):
             # Read manifest

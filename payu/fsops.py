@@ -12,6 +12,7 @@
 import errno
 import sys, os
 import subprocess
+import shlex
 
 # Extensions
 import yaml
@@ -49,7 +50,10 @@ def read_config(config_fname=None):
             config = {}
         else:
             raise
-
+    else:
+        # Store the git commit id for later use
+        config['_git_commit_id'] = get_commit_id(config_fname)
+  
     collate_config = config.pop('collate', {})
 
     # Transform legacy collate config options
@@ -81,6 +85,11 @@ def make_symlink(src_path, lnk_path):
     if CHECK_LUSTRE_PATH_LEN:
         src_path = patch_lustre_path(src_path)
         lnk_path = patch_lustre_path(lnk_path)
+
+    # os.symlink will happily make a symlink to a non-existent
+    # file, but we don't want that behaviour
+    if not os.path.exists(src_path):
+        return
 
     try:
         os.symlink(src_path, lnk_path)
@@ -121,7 +130,29 @@ def patch_lustre_path(f_path):
 
     return f_path
 
-def get_git_revision_hash():
+
+def get_commit_id(filepath):
+    """
+    Return git commit hash for filepath
+    """
+    cmd = shlex.split("git log -n 1 --pretty=format:%H -- ")
+    cmd.append(filepath)
+    try:
+        hash = subprocess.check_output(cmd)
+        if sys.version_info.major==3:
+          hash.decode('ascii')
+        return hash.strip() 
+    except subprocess.CalledProcessError:
+        return None
+
+def get_git_revision_hash(short=False):
+    """
+    Return git commit hash for repository
+    """
+    cmd = ['git', 'rev-parse', 'HEAD']
+    if short:
+        cmd.insert(-1,'--short')
+
     try:
         hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
         if sys.version_info.major==3:
@@ -130,11 +161,9 @@ def get_git_revision_hash():
     except subprocess.CalledProcessError:
         return None
 
-def get_git_revision_short_hash():
-    try:
-        hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
-        if sys.version_info.major==3:
-          hash.decode('ascii')
-        return hash.strip() 
-    except subprocess.CalledProcessError:
-        return None
+def is_ancestor(id1, id2):
+    """
+    Return True if git commit id1 is a ancestor of git commit id2
+    """
+    revs = subprocess.check_output(['git', 'rev-list', id2])
+    return id1 in revs
