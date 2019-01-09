@@ -42,6 +42,8 @@ class PayuManifest(YaManifest):
         if ignore is not None:
             self.ignore = ignore
 
+        self.needsync = False
+
     def check_fast(self, reproduce=False, **args):
         """
         Check hash value for all filepaths using a fast hash function and fall back to slower
@@ -66,7 +68,7 @@ class PayuManifest(YaManifest):
                         print("Updating fast hashes for {} in {}".format(filepath,self.path))
                         self.add_fast(filepath,force=True)
                         print("Saving updated manifest")
-                        self.dump()
+                        self.needsync = True
                     else:
                         sys.stderr.write("Run cannot reproduce: manifest {} is not correct\n".format(self.path))
                         for path, hashdict in tmphash.items():
@@ -84,9 +86,8 @@ class PayuManifest(YaManifest):
                 # value will be None, without force it will be written as null
                 self.add(filepaths=list(hashvals.keys()),hashfn=full_hashes,force=True)
 
-                # Write updates to version on disk
-                print("Writing {}".format(self.path))
-                self.dump()
+                # Flag need to update version on disk
+                self.needsync = True
             
     def dump(self):
         """
@@ -146,16 +147,22 @@ class PayuManifest(YaManifest):
         Payu integration function for creating symlinks in work directories which point
         back to the original file
         """
+        delete_list = []
         for filepath in self:
-            # print("Linking {}".format(filepath))
-            # Don't try and link to itself, which happens when there is a real
-            # file in the work directory, and not a symbolic link
-            # if not os.path.realpath(filepath) == self.fullpath(filepath):
-            #     make_symlink(self.fullpath(filepath), filepath)
+            # Check file exists. It may have been deleted but still in manifest
+            if not os.path.exists(self.fullpath(filepath)):
+                delete_list.append(filepath)
+                continue
+
             if self.copy_file(filepath):
                 shutil.copy(self.fullpath(filepath), filepath)
             else:
                 make_symlink(self.fullpath(filepath), filepath)
+
+        for filepath in delete_list:
+            print("File not found: {} removing from manifest".format(self.fullpath(filepath)))
+            self.delete(filepath)
+            self.needsync = True
 
     def copy(self, path):
         """
@@ -295,11 +302,23 @@ class Manifest(object):
         print("Checking exe and input manifests")
         self.exe_manifest.check_fast(reproduce=self.reproduce_exe)
         self.input_manifest.check_fast(reproduce=self.reproduce)
+
         if self.reproduce:
             print("Checking restart manifest")
         else:
             print("Creating restart manifest")
         self.restart_manifest.check_fast(reproduce=self.reproduce)
+
+        # Write updates to version on disk
+        if self.exe_manifest.needsync:
+            print("Writing {}".format(self.exe_manifest.path))
+            self.exe_manifest.dump()
+        if self.input_manifest.needsync:
+            print("Writing {}".format(self.input_manifest.path))
+            self.input_manifest.dump()
+        if self.restart_manifest.needsync:
+            print("Writing {}".format(self.restart_manifest.path))
+            self.restart_manifest.dump()
 
     def copy_manifests(self, path):
 
