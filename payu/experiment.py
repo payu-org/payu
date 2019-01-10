@@ -377,15 +377,15 @@ class Experiment(object):
         for model in self.models:
             model.setup()
 
+        # Call the macro-model setup
+        if len(self.models) > 1:
+            self.model.setup()
+
         # Use manifest to populate work directory
         self.manifest.make_links()
 
         # Copy manifests to work directory so they archived on completion
         self.manifest.copy_manifests(os.path.join(self.work_path,'manifests'))
-
-        # Call the macro-model setup
-        if len(self.models) > 1:
-            self.model.setup()
 
         setup_script = self.userscripts.get('setup')
         if setup_script:
