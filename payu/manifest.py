@@ -42,6 +42,7 @@ class PayuManifest(YaManifest):
         if ignore is not None:
             self.ignore = ignore
 
+        self.header['git_commit_id'] = None
         self.needsync = False
 
     def check_fast(self, reproduce=False, **args):
@@ -192,10 +193,6 @@ class Manifest(object):
         # Manifest control configuration
         self.manifest_config = self.expt.config.get('manifest', {})
         
-        self.have_exe_manifest = False
-        self.have_input_manifest = False
-        self.have_restart_manifest = False
-
         # If the run sets reproduce, default to reproduce executables. Allow user
         # to specify not to reproduce executables (might not be feasible if
         # executables don't match platform, or desirable if bugs existed in old exe)
@@ -208,71 +205,87 @@ class Manifest(object):
         self.ignore = [self.ignore] if isinstance(self.ignore, str) else self.ignore
 
         # Intialise manifests
-        self.input_manifest = PayuManifest('manifests/input.yaml', ignore=self.ignore)
-        self.restart_manifest = PayuManifest('manifests/restart.yaml', ignore=self.ignore)
-        self.exe_manifest = PayuManifest('manifests/exe.yaml', ignore=self.ignore)
+        self.manifests = {}
+        for mf in ['input', 'restart', 'exe']:
+            self.manifests[mf] = PayuManifest(os.path.join('manifests','{}.yaml'.format(mf)), ignore=self.ignore)
+
+        self.have_manifest = {}
+        for mf in self.manifests:
+            self.have_manifest[mf] = False
 
         # Make sure the manifests directory exists
-        mkpath(os.path.dirname(self.exe_manifest.path))
+        mkpath(os.path.dirname(self.manifests['exe'].path))
+
+    def __iter__(self):
+        """
+        Iterator method
+        """
+        for mf in self.manifests:
+            yield self.manifests[mf]
+
+    def __len__(self):
+        """
+        Return the number of manifests in the manifest class
+        """
+        return len(self.manifests)
 
     def setup(self):
 
         # Check if manifest files exist
-        self.have_restart_manifest = os.path.exists(self.restart_manifest.path)
+        self.have_manifest['restart'] = os.path.exists(self.manifests['restart'].path)
 
-        if os.path.exists(self.input_manifest.path) and not self.manifest_config.get('overwrite',False):
+        if os.path.exists(self.manifests['input'].path) and not self.manifest_config.get('overwrite',False):
             # Read manifest
-            print("Loading input manifest: {}".format(self.input_manifest.path))
-            self.input_manifest.load()
+            print("Loading input manifest: {}".format(self.manifests['input'].path))
+            self.manifests['input'].load()
 
-            if len(self.input_manifest) > 0:
-                self.have_input_manifest = True
+            if len(self.manifests['input']) > 0:
+                self.have_manifest['input'] = True
 
-            if self.have_input_manifest:
+            if self.have_manifest['input']:
                 # Warn if config has changed since input manifest was created.
                 # TODO: check input field in the YaML file has changed since
-                if not is_ancestor(self.expt.config['_git_commit_id'], self.input_manifest.git_id()):
-                    print("WARNING! Config file has been altered since input manifest was generated.") 
-                    print("If input paths have changed delete manifests/input.yaml to rescan input directories") 
+                ret = is_ancestor(self.expt.config['git_commit_id'], self.manifests['input'].git_id())
+                # is_ancestor will return None if there is no git repo, so allow for this case
+                if ret is not None and not ret:
+                    print("\nWARNING! Config file has been altered since input manifest was generated.") 
+                    print("If input paths have changed delete manifests/input.yaml to rescan input directories\n") 
 
-        if os.path.exists(self.exe_manifest.path):
+        if os.path.exists(self.manifests['exe'].path):
             # Read manifest
-            print("Loading exe manifest: {}".format(self.exe_manifest.path))
-            self.exe_manifest.load()
+            print("Loading exe manifest: {}".format(self.manifests['exe'].path))
+            self.manifests['exe'].load()
 
-            if len(self.exe_manifest) > 0:
-                self.have_exe_manifest = True
+            if len(self.manifests['exe']) > 0:
+                self.have_manifest['exe'] = True
 
         if self.reproduce:
 
             # Read restart manifest
-            print("Loading restart manifest: {}".format(self.restart_manifest.path))
-            self.restart_manifest.load()
+            print("Loading restart manifest: {}".format(self.have_manifest['restart']))
+            self.manifests['restart'].load()
+
+            if len(self.manifests['restart']) > 0:
+                self.have_manifest['restart'] = True
 
             # MUST have input and restart manifests to be able to reproduce a run
-            if len(self.restart_manifest) > 0:
-                self.have_restart_manifest = True
-            else:
-                print("Restart manifest cannot be empty if reproduce is True")
-                exit(1)
+            for mf in ['restart', 'input']:
+                if not self.have_manifest[mf]:
+                    print("{} manifest cannot be empty if reproduce is True".format(mf.capitalize()))
+                    exit(1)
 
-            if not self.have_input_manifest:
-                print("Input manifest cannot be empty if reproduce is True")
-                exit(1)
-
-            if self.reproduce_exe and not self.have_exe_manifest:
+            if self.reproduce_exe and not self.have_manifest['exe']:
                 print("Executable manifest cannot empty if reproduce and reproduce_exe are True")
                 exit(1)
 
             for model in self.expt.models:
                 model.have_restart_manifest = True
 
-
             # Inspect the restart manifest for an appropriate value of # experiment 
             # counter if not specified on the command line (and this env var set)
             if not os.environ.get('PAYU_CURRENT_RUN'):
-                for filepath in self.restart_manifest:
-                    head = os.path.dirname(self.restart_manifest.fullpath(filepath))
+                for filepath in self.manifests['restart']:
+                    head = os.path.dirname(self.manifests['restart'].fullpath(filepath))
                     # Inspect each element of the fullpath looking for restartxxx style
                     # directories. Exit 
                     while True:
@@ -291,7 +304,7 @@ class Manifest(object):
                             
         else:
 
-            self.have_restart_manifest = False
+            self.have_manifest['restart'] = False
 
             # # Generate a restart manifest
             # for model in self.expt.models:
@@ -309,37 +322,38 @@ class Manifest(object):
     def make_links(self):
 
         print("Making links from manifests")
-        self.exe_manifest.make_links()
-        self.input_manifest.make_links()
-        self.restart_manifest.make_links()
+
+        for mf in self.manifests:
+            self.manifests[mf].make_links()
 
         print("Checking exe and input manifests")
-        self.exe_manifest.check_fast(reproduce=self.reproduce_exe)
-        self.input_manifest.check_fast(reproduce=self.reproduce)
+        self.manifests['exe'].check_fast(reproduce=self.reproduce_exe)
+        self.manifests['input'].check_fast(reproduce=self.reproduce)
 
         if self.reproduce:
             print("Checking restart manifest")
         else:
             print("Creating restart manifest")
-        self.restart_manifest.check_fast(reproduce=self.reproduce)
+        self.manifests['restart'].check_fast(reproduce=self.reproduce)
 
         # Write updates to version on disk
-        if self.exe_manifest.needsync:
-            print("Writing {}".format(self.exe_manifest.path))
-            self.exe_manifest.dump()
-        if self.input_manifest.needsync:
-            print("Writing {}".format(self.input_manifest.path))
-            self.input_manifest.dump()
-        if self.restart_manifest.needsync:
-            print("Writing {}".format(self.restart_manifest.path))
-            self.restart_manifest.dump()
+        for mf in self.manifests:
+            if self.manifests[mf].needsync:
+                print("Writing {}".format(self.manifests[mf].path))
+                self.manifests[mf].dump()
 
     def copy_manifests(self, path):
 
         mkpath(path)
         try:
-            self.exe_manifest.copy(path)
-            self.input_manifest.copy(path)
-            self.restart_manifest.copy(path)
+            for mf in self.manifests:
+                self.manifests[mf].copy(path)
         except IOError:
             pass
+
+    def add_filepath(self, manifest, filepath, fullpath, copy=False):
+        """
+        Wrapper to the add_filepath function in PayuManifest. Prevents outside
+        code from directly calling anything in PayuManifest.
+        """
+        self.manifests[manifest].add_filepath(filepath, fullpath, copy)
