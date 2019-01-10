@@ -138,7 +138,8 @@ def get_commit_id(filepath):
     cmd = shlex.split("git log -n 1 --pretty=format:%H -- ")
     cmd.append(filepath)
     try:
-        hash = subprocess.check_output(cmd)
+        with open(os.devnull, 'w') as devnull:
+            hash = subprocess.check_output(cmd, stderr=devnull)
         if sys.version_info.major==3:
           hash.decode('ascii')
         return hash.strip() 
@@ -154,7 +155,8 @@ def get_git_revision_hash(short=False):
         cmd.insert(-1,'--short')
 
     try:
-        hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+        with open(os.devnull, 'w') as devnull:
+            hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], stderr=devnull)
         if sys.version_info.major==3:
           hash.decode('ascii')
         return hash.strip() 
@@ -165,5 +167,10 @@ def is_ancestor(id1, id2):
     """
     Return True if git commit id1 is a ancestor of git commit id2
     """
-    revs = subprocess.check_output(['git', 'rev-list', id2])
-    return id1 in revs
+    try:
+        with open(os.devnull, 'w') as devnull:
+            revs = subprocess.check_output(['git', 'rev-list', id2], stderr=devnull)
+    except:
+        return None
+    else:
+        return id1 in revs
