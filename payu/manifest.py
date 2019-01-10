@@ -42,7 +42,6 @@ class PayuManifest(YaManifest):
         if ignore is not None:
             self.ignore = ignore
 
-        self.header['git_commit_id'] = None
         self.needsync = False
 
     def check_fast(self, reproduce=False, **args):
@@ -89,13 +88,6 @@ class PayuManifest(YaManifest):
 
                 # Flag need to update version on disk
                 self.needsync = True
-    def git_id(self, id=None):
-        """
-        Return and optionally set the git commit id (hash) in the header of the manifest file
-        """
-        if id is not None:
-            self.header['git_commit_id'] = id
-        return self.header['git_commit_id']
             
     def dump(self):
         """
@@ -241,15 +233,6 @@ class Manifest(object):
 
             if len(self.manifests['input']) > 0:
                 self.have_manifest['input'] = True
-
-            if self.have_manifest['input']:
-                # Warn if config has changed since input manifest was created.
-                # TODO: check input field in the YaML file has changed since
-                ret = is_ancestor(self.expt.config['git_commit_id'], self.manifests['input'].git_id())
-                # is_ancestor will return None if there is no git repo, so allow for this case
-                if ret is not None and not ret:
-                    print("\nWARNING! Config file has been altered since input manifest was generated.") 
-                    print("If input paths have changed delete manifests/input.yaml to rescan input directories\n") 
 
         if os.path.exists(self.manifests['exe'].path):
             # Read manifest

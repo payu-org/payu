@@ -50,9 +50,6 @@ def read_config(config_fname=None):
             config = {}
         else:
             raise
-    else:
-        # Store the git commit id for later use
-        config['_git_commit_id'] = get_commit_id(config_fname)
   
     collate_config = config.pop('collate', {})
 
