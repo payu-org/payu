@@ -284,19 +284,6 @@ class Manifest(object):
 
             self.have_manifest['restart'] = False
 
-            # # Generate a restart manifest
-            # for model in self.expt.models:
-            #     if model.prior_restart_path is not None:
-            #         # Try and find a manifest file in the restart dir
-            #         restart_mf = PayuManifest.find_manifest(model.prior_restart_path)
-            #         if restart_mf is not None:
-            #             print("Loading restart manifest: {}".format(os.path.join(model.prior_restart_path,restart_mf.path)))
-            #             self.restart_manifest.update(restart_mf,newpath=os.path.join(model.work_init_path_local))
-            #             # Have two flags, one per model, the other controls if there is a call
-            #             # to make_links in setup()
-            #             model.have_restart_manifest = True
-            #             # self.have_restart_manifest = True
-
     def make_links(self):
 
         print("Making links from manifests")
