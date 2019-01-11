@@ -4,7 +4,7 @@ v0.11.2:
      job).  We now prepend the executable's LD_LIBRARY_PATH before collation.
 
    - `runlog: False` was not correctly handled due to changes in the Runlog
-     object, and has been fixed.  Thanks to Nic Hannah for reporting
+     object, and has been fixed.  Thanks to Nic Hannah for reporting.
 
    - Several OSError checks throughout the module were not being handled
      correctly in Python 3, where most of these have been replaced by various
@@ -22,6 +22,8 @@ v0.11.2:
    - mnctools is now an optional dependency to be installed when MITgcm
      collation support is needed.  This will also install numpy and netCDF4,
      which can be a significant burden if unneeded, and why this is optional.
+
+   - globbing support for netCDF files in mppnccombine-fast
 
 v0.11.1:
    - PYTHONPATH is now passed directly to the next job.  Previously, we tried
