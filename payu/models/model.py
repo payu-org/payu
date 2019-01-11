@@ -200,9 +200,9 @@ class Model(object):
                 f_link = os.path.join(self.work_init_path_local, f_name)
                 self.expt.manifest.add_filepath('restart',f_link,f_orig,self.copy_inputs)
 
-        # Don't add input files to manifest if we already have a populated
-        # input manifest
-        if not self.expt.manifest.have_manifest['input']:
+        # Add input files to manifest if we don't already have a populated
+        # input manifest, or we specify scan_inputs is True (default)
+        if not self.expt.manifest.have_manifest['input'] or self.expt.manifest.scaninputs:
             # Add files to manifest
             for input_path in self.input_paths:
                 input_files = os.listdir(input_path)

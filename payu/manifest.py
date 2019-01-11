@@ -89,13 +89,6 @@ class PayuManifest(YaManifest):
                 # Flag need to update version on disk
                 self.needsync = True
             
-    def dump(self):
-        """
-        Add git hash to header before dumping the file
-        """
-        self.git_id(id=get_git_revision_hash())
-        super(PayuManifest, self).dump()
-
     def add_filepath(self, filepath, fullpath, copy=False):
         """
         Bespoke function to add filepath & fullpath to manifest
@@ -207,6 +200,8 @@ class Manifest(object):
 
         # Make sure the manifests directory exists
         mkpath(os.path.dirname(self.manifests['exe'].path))
+
+        self.scaninputs = self.manifest_config.get('scaninputs',True)
 
     def __iter__(self):
         """
