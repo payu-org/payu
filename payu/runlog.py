@@ -64,13 +64,16 @@ class Runlog(object):
             self.manifest.extend(os.path.join(model.control_path, f)
                                  for f in config_files)
 
+        # Add file manifests to runlog manifest
+        for mf in self.expt.manifest:
+            self.manifest.append(mf.path)
+
     def commit(self):
         f_null = open(os.devnull, 'w')
 
         # Check if a repository exists
         cmd = 'git rev-parse'
-        print(cmd)
-        rc = sp.call(shlex.split(cmd), stdout=f_null,
+        rc = sp.call(shlex.split(cmd), stdout=f_null, stderr=f_null,
                      cwd=self.expt.control_path)
         if rc:
             cmd = 'git init'
