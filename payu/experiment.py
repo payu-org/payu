@@ -543,6 +543,10 @@ class Experiment(object):
         else:
             curdir = None
 
+        self.runlog.create_manifest()
+        if self.runlog.enabled:
+            self.runlog.commit()
+
         # NOTE: This may not be necessary, since env seems to be getting
         # correctly updated.  Need to look into this.
         if env:
@@ -557,10 +561,6 @@ class Experiment(object):
         # Return to control directory
         if curdir:
             os.chdir(curdir)
-
-        self.runlog.create_manifest()
-        if self.runlog.enabled:
-            self.runlog.commit()
 
         f_out.close()
         f_err.close()
