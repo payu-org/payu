@@ -12,10 +12,10 @@ title = 'run'
 parameters = {'description': 'Run the model experiment'}
 
 arguments = [args.model, args.config, args.initial, args.nruns,
-             args.laboratory, args.reproduce]
+             args.laboratory]
 
 
-def runcmd(model_type, config_path, init_run, n_runs, lab_path, reproduce):
+def runcmd(model_type, config_path, init_run, n_runs, lab_path):
 
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
@@ -113,12 +113,15 @@ def runscript():
 
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)
-    expt = Experiment(lab, reproduce=run_args.reproduce)
+    expt = Experiment(lab)
+
+    expt.setup()
 
     n_runs_per_submit = expt.config.get('runspersub', 1)
+
     subrun = 1
 
-    while True:
+    while subrun <= n_runs_per_submit and expt.n_runs > 0:
 
         print('nruns: {0} nruns_per_submit: {1} subrun: {2}'
               ''.format(expt.n_runs, n_runs_per_submit, subrun))
@@ -127,19 +130,10 @@ def runscript():
         expt.run()
         expt.archive()
 
-        # Finished runs
-        if expt.n_runs == 0:
-            break
-
         # Need to manually increment the run counter if still looping
         if n_runs_per_submit > 1 and subrun < n_runs_per_submit:
             expt.counter += 1
             expt.set_output_paths()
-            # Does not make sense to reproduce a multiple run. Take care of
-            # this with argument processing?
-            expt.reproduce = False
-        else:
-            break
 
         subrun += 1
 

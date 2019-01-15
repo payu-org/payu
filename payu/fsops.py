@@ -10,9 +10,7 @@
 
 # Standard library
 import errno
-import sys, os
-import subprocess
-import shlex
+import os
 
 # Extensions
 import yaml
@@ -50,7 +48,7 @@ def read_config(config_fname=None):
             config = {}
         else:
             raise
-  
+
     collate_config = config.pop('collate', {})
 
     # Transform legacy collate config options
@@ -82,11 +80,6 @@ def make_symlink(src_path, lnk_path):
     if CHECK_LUSTRE_PATH_LEN:
         src_path = patch_lustre_path(src_path)
         lnk_path = patch_lustre_path(lnk_path)
-
-    # os.symlink will happily make a symlink to a non-existent
-    # file, but we don't want that behaviour
-    if not os.path.exists(src_path):
-        return
 
     try:
         os.symlink(src_path, lnk_path)
@@ -126,48 +119,3 @@ def patch_lustre_path(f_path):
             f_path = './' + f_path
 
     return f_path
-
-
-def get_commit_id(filepath):
-    """
-    Return git commit hash for filepath
-    """
-    cmd = shlex.split("git log -n 1 --pretty=format:%H -- ")
-    cmd.append(filepath)
-    try:
-        with open(os.devnull, 'w') as devnull:
-            hash = subprocess.check_output(cmd, stderr=devnull)
-        if sys.version_info.major==3:
-          hash.decode('ascii')
-        return hash.strip() 
-    except subprocess.CalledProcessError:
-        return None
-
-def get_git_revision_hash(short=False):
-    """
-    Return git commit hash for repository
-    """
-    cmd = ['git', 'rev-parse', 'HEAD']
-    if short:
-        cmd.insert(-1,'--short')
-
-    try:
-        with open(os.devnull, 'w') as devnull:
-            hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], stderr=devnull)
-        if sys.version_info.major==3:
-          hash.decode('ascii')
-        return hash.strip() 
-    except subprocess.CalledProcessError:
-        return None
-
-def is_ancestor(id1, id2):
-    """
-    Return True if git commit id1 is a ancestor of git commit id2
-    """
-    try:
-        with open(os.devnull, 'w') as devnull:
-            revs = subprocess.check_output(['git', 'rev-list', id2], stderr=devnull)
-    except:
-        return None
-    else:
-        return id1 in revs

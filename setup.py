@@ -33,12 +33,10 @@ setup(
         'f90nml',
         'PyYAML',
         'requests',
-        'yamanifest',
         'dateutil'
     ],
     install_requires=[
         'f90nml >= 0.16',
-        'yamanifest >= 0.3.4',
         'PyYAML',
         'requests[security]',
         'python-dateutil',

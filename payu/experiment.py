@@ -26,7 +26,6 @@ from payu.fsops import mkdir_p, make_symlink, read_config
 from payu.models import index as model_index
 import payu.profilers
 from payu.runlog import Runlog
-from payu.manifest import Manifest
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -40,7 +39,7 @@ default_restart_history = 5
 
 class Experiment(object):
 
-    def __init__(self, lab, reproduce=False):
+    def __init__(self, lab):
         self.lab = lab
 
         # TODO: replace with dict, check versions via key-value pairs
@@ -79,9 +78,6 @@ class Experiment(object):
             model.set_input_paths()
 
         self.set_output_paths()
-
-        # Initialize manifest
-        self.manifest = Manifest(self, reproduce=reproduce)
 
         # Miscellaneous configurations
         # TODO: Move this stuff somewhere else
@@ -170,7 +166,7 @@ class Experiment(object):
                                         for d in restart_dirs
                                         if d.startswith('restart')])
             else:
-                # repeat runs do not generate restart files, so check outputs
+                # uepeat runs do not generate restart files, so check outputs
                 try:
                     output_dirs = [d for d in os.listdir(self.archive_path)
                                    if d.startswith('output')]
@@ -181,7 +177,6 @@ class Experiment(object):
                         raise
 
                 # First test for restarts
-                # Now look for output directories
                 if output_dirs:
                     self.counter = 1 + max([int(d.lstrip('output'))
                                             for d in output_dirs
@@ -278,7 +273,6 @@ class Experiment(object):
 
         for model in self.models:
             model.set_model_pathnames()
-            model.set_local_pathnames()
 
         # Stream output filenames
         # TODO: per-model output streams?
@@ -371,21 +365,12 @@ class Experiment(object):
 
         make_symlink(self.work_path, self.work_sym_path)
 
-        # Set up all file manifests
-        self.manifest.setup()
-
         for model in self.models:
             model.setup()
 
         # Call the macro-model setup
         if len(self.models) > 1:
             self.model.setup()
-
-        # Use manifest to populate work directory
-        self.manifest.make_links()
-
-        # Copy manifests to work directory so they archived on completion
-        self.manifest.copy_manifests(os.path.join(self.work_path,'manifests'))
 
         setup_script = self.userscripts.get('setup')
         if setup_script:
@@ -460,7 +445,7 @@ class Experiment(object):
         for model in self.models:
 
             # Skip models without executables (e.g. couplers)
-            if not model.exec_path_local:
+            if not model.exec_path:
                 continue
 
             mpi_config = self.config.get('mpi', {})
@@ -469,7 +454,7 @@ class Experiment(object):
             # Update MPI library module (if not explicitly set)
             # TODO: Check for MPI library mismatch across multiple binaries
             if mpi_module is None:
-                mpi_module = envmod.lib_update(model.exec_path_local, 'libmpi.so')
+                mpi_module = envmod.lib_update(model.exec_path, 'libmpi.so')
 
             model_prog = []
 
@@ -510,11 +495,8 @@ class Experiment(object):
                 if prof.runscript:
                     model_prog = model_prog.append(prof.runscript)
 
- 
             model_prog.append(model.exec_prefix)
-
-            # Use the exec_name (without path) as this is now linked in work
-            model_prog.append(model.exec_name)
+            model_prog.append(model.exec_path)
 
             mpi_progs.append(' '.join(model_prog))
 
