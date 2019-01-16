@@ -385,7 +385,8 @@ class Experiment(object):
         self.manifest.make_links()
 
         # Copy manifests to work directory so they archived on completion
-        self.manifest.copy_manifests(os.path.join(self.work_path,'manifests'))
+        manifest_path = os.path.join(self.work_path, 'manifests')
+        self.manifest.copy_manifests(manifest_path)
 
         setup_script = self.userscripts.get('setup')
         if setup_script:
@@ -469,7 +470,10 @@ class Experiment(object):
             # Update MPI library module (if not explicitly set)
             # TODO: Check for MPI library mismatch across multiple binaries
             if mpi_module is None:
-                mpi_module = envmod.lib_update(model.exec_path_local, 'libmpi.so')
+                mpi_module = envmod.lib_update(
+                    model.exec_path_local,
+                    'libmpi.so'
+                )
 
             model_prog = []
 
@@ -510,7 +514,6 @@ class Experiment(object):
                 if prof.runscript:
                     model_prog = model_prog.append(prof.runscript)
 
- 
             model_prog.append(model.exec_prefix)
 
             # Use the exec_name (without path) as this is now linked in work
