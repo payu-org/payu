@@ -19,10 +19,12 @@ import shlex
 import shutil
 import subprocess as sp
 import sysconfig
+import datetime
 
 # Local
 from payu import envmod
 from payu.fsops import mkdir_p, make_symlink, read_config
+from payu.fsops import get_job_info, dump_yaml, pbs_env_init
 from payu.models import index as model_index
 import payu.profilers
 from payu.runlog import Runlog
@@ -42,6 +44,8 @@ class Experiment(object):
 
     def __init__(self, lab, reproduce=False):
         self.lab = lab
+
+        self.start_time = datetime.datetime.now()
 
         # TODO: replace with dict, check versions via key-value pairs
         self.modules = set()
@@ -102,6 +106,8 @@ class Experiment(object):
         payu_bin = os.environ.get('PAYU_PATH', default_payu_bin)
 
         self.payu_path = os.path.join(payu_bin, 'payu')
+
+        pbs_env_init()
 
     def init_models(self):
 
@@ -564,6 +570,26 @@ class Experiment(object):
 
         f_out.close()
         f_err.close()
+
+        self.finish_time = datetime.datetime.now()
+
+        info = get_job_info()
+
+        if info is None:
+            # Not being run under PBS, reverse engineer an equivalent environment
+            info = {
+                'PAYU_PATH' : self.payu_path,
+                'PAYU_CURRENT_RUN' : self.counter,
+                'PAYU_N_RUNS' :  self.n_runs
+            }
+
+        # Add extra information to save to jobinfo
+        info['PAYU_JOB_STATUS'] = rc
+        info['PAYU_START_TIME'] = self.start_time.isoformat()
+        info['PAYU_FINISH_TIME'] = self.finish_time.isoformat()
+        info['PAYU_WALLTIME'] = "{0} s".format((self.finish_time - self.start_time).total_seconds())
+
+        dump_yaml(info,os.path.join(self.work_path,'jobinfo.yaml'))
 
         # Remove any empty output files (e.g. logs)
         for fname in os.listdir(self.work_path):
