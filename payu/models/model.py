@@ -92,29 +92,50 @@ class Model(object):
 
         if self.exec_path:
             # Make exec_name consistent for models with fully qualified path.
-            # In all cases it will just be the name of the executable without a path
+            # In all cases it will just be the name of the executable without a
+            # path
             self.exec_name = os.path.basename(self.exec_path)
 
     def set_local_pathnames(self):
 
-        # This is the path relative to the control directory, required for manifests
-        # and must be called after set_model_pathnames to ensure it captures changes
-        # made in model subclasses which override set_model_pathnames
-        self.work_path_local = os.path.normpath(os.path.join('work',
-                os.path.relpath(self.work_path,self.expt.work_path)))
-        self.work_input_path_local = os.path.normpath(os.path.join('work',
-                 os.path.relpath(self.work_input_path,self.expt.work_path)))
-        self.work_restart_path_local = os.path.normpath(os.path.join('work',
-                  os.path.relpath(self.work_restart_path,self.expt.work_path)))
-        self.work_init_path_local = os.path.normpath(os.path.join('work',
-                 os.path.relpath(self.work_init_path,self.expt.work_path)))
+        # This is the path relative to the control directory, required for
+        # manifests and must be called after set_model_pathnames to ensure it
+        # captures changes made in model subclasses which override
+        # set_model_pathnames
+
+        # XXX: If path is relative to control_path, why not use it?
+        self.work_path_local = os.path.normpath(
+            os.path.join(
+                'work',
+                os.path.relpath(self.work_path, self.expt.work_path)
+            )
+        )
+        self.work_input_path_local = os.path.normpath(
+            os.path.join(
+                'work',
+                os.path.relpath(self.work_input_path, self.expt.work_path)
+            )
+        )
+        self.work_restart_path_local = os.path.normpath(
+            os.path.join(
+                'work',
+                os.path.relpath(self.work_restart_path, self.expt.work_path)
+            )
+        )
+        self.work_init_path_local = os.path.normpath(
+            os.path.join(
+                'work',
+                os.path.relpath(self.work_init_path, self.expt.work_path)
+            )
+        )
         if self.exec_path:
-            # Local path in work directory 
-            self.exec_path_local = os.path.join(self.work_path_local,
-                                          os.path.basename(self.exec_path))
+            # Local path in work directory
+            self.exec_path_local = os.path.join(
+                self.work_path_local,
+                os.path.basename(self.exec_path)
+            )
 
     def set_input_paths(self):
-
         if len(self.expt.models) == 1:
             input_dirs = self.expt.config.get('input')
         else:
@@ -167,11 +188,10 @@ class Model(object):
                                                        self.name)
 
     def get_prior_restart_files(self):
-        return [f for f in os.listdir(self.prior_restart_path) 
+        return [f for f in os.listdir(self.prior_restart_path)
                 if os.path.isfile(os.path.join(self.prior_restart_path, f))]
 
     def setup(self):
-
         # Create experiment directory structure
         mkdir_p(self.work_input_path)
         mkdir_p(self.work_restart_path)
@@ -193,30 +213,47 @@ class Model(object):
                     raise
 
         # Add restart files from prior run to restart manifest
-        if not self.expt.manifest.have_manifest['restart'] and self.prior_restart_path:
+        if (not self.expt.manifest.have_manifest['restart'] and
+                self.prior_restart_path):
             restart_files = self.get_prior_restart_files()
             for f_name in restart_files:
                 f_orig = os.path.join(self.prior_restart_path, f_name)
                 f_link = os.path.join(self.work_init_path_local, f_name)
-                self.expt.manifest.add_filepath('restart',f_link,f_orig,self.copy_inputs)
+                self.expt.manifest.add_filepath(
+                    'restart',
+                    f_link,
+                    f_orig,
+                    self.copy_inputs
+                )
 
         # Add input files to manifest if we don't already have a populated
         # input manifest, or we specify scan_inputs is True (default)
-        if not self.expt.manifest.have_manifest['input'] or self.expt.manifest.scaninputs:
+        if (not self.expt.manifest.have_manifest['input'] or
+                self.expt.manifest.scaninputs):
             # Add files to manifest
             for input_path in self.input_paths:
                 input_files = os.listdir(input_path)
                 for f_name in input_files:
                     f_orig = os.path.join(input_path, f_name)
-                    f_link = os.path.join(self.work_input_path_local,f_name)
+                    f_link = os.path.join(self.work_input_path_local, f_name)
                     # Do not use input file if it is in RESTART
                     if not os.path.exists(f_link):
-                        self.expt.manifest.add_filepath('input',f_link,f_orig,self.copy_inputs)
+                        self.expt.manifest.add_filepath(
+                            'input',
+                            f_link,
+                            f_orig,
+                            self.copy_inputs
+                        )
 
         # Make symlink to executable in work directory
-        if self.exec_path: 
-            # Add to exe manifest (this is always done so any change in exe path will be picked up)
-            self.expt.manifest.add_filepath('exe',self.exec_path_local,self.exec_path)
+        if self.exec_path:
+            # Add to exe manifest (this is always done so any change in exe
+            # path will be picked up)
+            self.expt.manifest.add_filepath(
+                'exe',
+                self.exec_path_local,
+                self.exec_path
+            )
 
         timestep = self.config.get('timestep')
         if timestep:

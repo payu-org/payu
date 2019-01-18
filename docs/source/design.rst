@@ -64,7 +64,32 @@ adopted where possible.
    In particular, ``help()`` should be readable and well-formatted for every
    module and function.
 
-3. Modules should not be renamed.  This is bad::
+3. Imports should be one per line (as in PEP8), and ideally alphabetical (as
+   recommended by PyLint).  Additionally, we separate these into three groups
+   with a blank line, and in this order:
+
+   a. Future statements
+
+   b. Standard library modules
+
+   c. Dependencies
+
+   d. Modules local to the project
+
+   Example import::
+
+      from __future__ import print_function
+
+      import os
+      import shlex
+      import sys
+
+      import requests
+      import yaml
+
+      import payu.envmod
+
+4. Modules should not be renamed.  This is bad::
 
       import numpy as np
 
@@ -78,13 +103,13 @@ adopted where possible.
 
    (Also note that this is another rule with poor conformance.)
 
-4. Multiple equivalence checks should use tuples.  This is bad::
+5. Multiple equivalence checks should use tuples.  This is bad::
 
-      if x == 'a' or x == 'b'
+      if x == 'a' or x == 'b':
 
    This is good::
 
-      if x in ('a', 'b')
+      if x in ('a', 'b'):
 
 .. _`HHGP's section on modules`:
    http://docs.python-guide.org/en/latest/writing/structure/#modules
