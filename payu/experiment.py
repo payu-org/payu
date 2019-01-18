@@ -395,12 +395,7 @@ class Experiment(object):
         self.manifest.make_links()
 
         # Copy manifests to work directory so they archived on completion
-<<<<<<< a5aeef65933a3c9833421563ec061c38b125f827
-        manifest_path = os.path.join(self.work_path, 'manifests')
-        self.manifest.copy_manifests(manifest_path)
-=======
         self.manifest.copy_manifests(os.path.join(self.work_path, 'manifests'))
->>>>>>> Removed superfluous git commands.
 
         setup_script = self.userscripts.get('setup')
         if setup_script:

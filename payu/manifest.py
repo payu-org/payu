@@ -9,8 +9,6 @@
 """
 from __future__ import print_function, absolute_import
 
-<<<<<<< a5aeef65933a3c9833421563ec061c38b125f827
-=======
 # Local
 from payu import envmod
 from payu.fsops import make_symlink
@@ -18,7 +16,6 @@ from payu.fsops import make_symlink
 # External
 from yamanifest.manifest import Manifest as YaManifest
 import yamanifest as ym
->>>>>>> Removed superfluous git commands.
 from copy import deepcopy
 import fnmatch
 import os
