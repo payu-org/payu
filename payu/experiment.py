@@ -24,7 +24,8 @@ import datetime
 # Local
 from payu import envmod
 from payu.fsops import mkdir_p, make_symlink, read_config
-from payu.fsops import get_job_info, dump_yaml, pbs_env_init
+from payu.fsops import dump_yaml
+from payu.scheduler.pbs import get_job_info, pbs_env_init, get_job_id
 from payu.models import index as model_index
 import payu.profilers
 from payu.runlog import Runlog
@@ -291,6 +292,9 @@ class Experiment(object):
         self.stdout_fname = self.lab.model_type + '.out'
         self.stderr_fname = self.lab.model_type + '.err'
 
+        self.job_fname = 'job.yaml'
+        self.env_fname = 'env.yaml'
+
     def set_output_paths(self):
 
         # Local archive paths
@@ -391,8 +395,12 @@ class Experiment(object):
         self.manifest.make_links()
 
         # Copy manifests to work directory so they archived on completion
+<<<<<<< a5aeef65933a3c9833421563ec061c38b125f827
         manifest_path = os.path.join(self.work_path, 'manifests')
         self.manifest.copy_manifests(manifest_path)
+=======
+        self.manifest.copy_manifests(os.path.join(self.work_path, 'manifests'))
+>>>>>>> Removed superfluous git commands.
 
         setup_script = self.userscripts.get('setup')
         if setup_script:
@@ -549,6 +557,9 @@ class Experiment(object):
         else:
             curdir = None
 
+        # Dump out environment
+        dump_yaml(dict(os.environ), self.env_fname)
+
         self.runlog.create_manifest()
         if self.runlog.enabled:
             self.runlog.commit()
@@ -576,20 +587,27 @@ class Experiment(object):
         info = get_job_info()
 
         if info is None:
-            # Not being run under PBS, reverse engineer an equivalent environment
+            # Not being run under PBS, reverse engineer environment
             info = {
-                'PAYU_PATH' : self.payu_path,
-                'PAYU_CURRENT_RUN' : self.counter,
-                'PAYU_N_RUNS' :  self.n_runs
+                'PAYU_PATH': os.path.dirname(self.payu_path)
             }
 
         # Add extra information to save to jobinfo
-        info['PAYU_JOB_STATUS'] = rc
-        info['PAYU_START_TIME'] = self.start_time.isoformat()
-        info['PAYU_FINISH_TIME'] = self.finish_time.isoformat()
-        info['PAYU_WALLTIME'] = "{0} s".format((self.finish_time - self.start_time).total_seconds())
+        info.update(
+            {
+              'PAYU_CURRENT_RUN': self.counter,
+              'PAYU_N_RUNS':  self.n_runs,
+              'PAYU_JOB_STATUS': rc,
+              'PAYU_START_TIME': self.start_time.isoformat(),
+              'PAYU_FINISH_TIME': self.finish_time.isoformat(),
+              'PAYU_WALLTIME': "{0} s".format(
+                  (self.finish_time - self.start_time).total_seconds()
+               ),
+            }
+        )
 
-        dump_yaml(info,os.path.join(self.work_path,'jobinfo.yaml'))
+        # Dump job info
+        dump_yaml(info, self.job_fname)
 
         # Remove any empty output files (e.g. logs)
         for fname in os.listdir(self.work_path):
@@ -610,7 +628,7 @@ class Experiment(object):
             mkdir_p(error_log_dir)
 
             # NOTE: This is PBS-specific
-            job_id = os.environ.get('PBS_JOBID', '')
+            job_id = get_job_id(short=False)
 
             for fname in (self.stdout_fname, self.stderr_fname):
                 src = os.path.join(self.control_path, fname)
@@ -618,6 +636,17 @@ class Experiment(object):
                 # NOTE: This assumes standard .out/.err extensions
                 dest = os.path.join(error_log_dir,
                                     fname[:-4] + '.' + job_id + fname[-4:])
+                print(src, dest)
+
+                shutil.copyfile(src, dest)
+
+            for fname in (self.job_fname, self.env_fname):
+
+                src = os.path.join(self.control_path, fname)
+
+                # Assumes .yaml extension
+                dest = os.path.join(error_log_dir,
+                                    fname[:-5] + '.' + job_id + fname[-5:])
                 print(src, dest)
 
                 shutil.copyfile(src, dest)
@@ -640,7 +669,10 @@ class Experiment(object):
             self.n_runs -= 1
 
         # Move logs to archive (or delete if empty)
-        for f in (self.stdout_fname, self.stderr_fname):
+        for f in (self.stdout_fname,
+                  self.stderr_fname,
+                  self.job_fname,
+                  self.env_fname):
             f_path = os.path.join(self.control_path, f)
             if os.path.getsize(f_path) == 0:
                 os.remove(f_path)
@@ -936,7 +968,10 @@ class Experiment(object):
             print('Moving log {0}'.format(f))
             shutil.move(f, os.path.join(pbs_log_path, f))
 
-        # Remove stdout/err
-        for f in (self.stdout_fname, self.stderr_fname):
+        # Remove stdout/err and yaml dumps
+        for f in (self.stdout_fname,
+                  self.stderr_fname,
+                  self.env_fname,
+                  self.job_fname):
             if os.path.isfile(f):
                 os.remove(f)
