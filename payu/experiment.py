@@ -584,21 +584,21 @@ class Experiment(object):
         if info is None:
             # Not being run under PBS, reverse engineer environment
             info = {
-                'PAYU_PATH': os.path.dirname(self.payu_path)
+              'PAYU_PATH': os.path.dirname(self.payu_path)
             }
 
         # Add extra information to save to jobinfo
         info.update(
-            {
-              'PAYU_CURRENT_RUN': self.counter,
-              'PAYU_N_RUNS':  self.n_runs,
-              'PAYU_JOB_STATUS': rc,
-              'PAYU_START_TIME': self.start_time.isoformat(),
-              'PAYU_FINISH_TIME': self.finish_time.isoformat(),
-              'PAYU_WALLTIME': "{0} s".format(
-                  (self.finish_time - self.start_time).total_seconds()
-               ),
-            }
+          {
+            'PAYU_CURRENT_RUN': self.counter,
+            'PAYU_N_RUNS':  self.n_runs,
+            'PAYU_JOB_STATUS': rc,
+            'PAYU_START_TIME': self.start_time.isoformat(),
+            'PAYU_FINISH_TIME': self.finish_time.isoformat(),
+            'PAYU_WALLTIME': "{0} s".format(
+              (self.finish_time - self.start_time).total_seconds()
+             ),
+          }
         )
 
         # Dump job info
