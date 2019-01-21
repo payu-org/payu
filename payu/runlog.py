@@ -72,10 +72,7 @@ class Runlog(object):
         f_null = open(os.devnull, 'w')
 
         # Check if a repository exists
-        cmd = 'git rev-parse'
-        rc = sp.call(shlex.split(cmd), stdout=f_null, stderr=f_null,
-                     cwd=self.expt.control_path)
-        if rc:
+        if commit_hash(self.expt.control_path) is None:
             cmd = 'git init'
             print(cmd)
             sp.check_call(shlex.split(cmd), stdout=f_null,
@@ -99,6 +96,9 @@ class Runlog(object):
                           cwd=self.expt.control_path)
         except sp.CalledProcessError:
             print('TODO: Check if commit is unchanged')
+
+        # Save the commit hash
+        self.expt.run_id = commit_hash(self.expt.control_path)
 
         f_null.close()
 
@@ -274,3 +274,29 @@ class Runlog(object):
 
         github_auth = (github_username, github_password)
         return github_auth
+
+
+# Some git utility functions
+
+def commit_hash(dir='.'):
+    """
+    Return commit hash for HEAD of checked out branch of the 
+    specified directory.
+    """
+
+    cmd = ['git', 'rev-parse', 'HEAD']
+
+    try:
+        with open(os.devnull, 'w') as devnull:
+            revision_hash = sp.check_output(
+              cmd,
+              cwd=dir,
+              stderr=devnull
+            )
+        if sys.version_info.major > 2:
+            revision_hash = revision_hash.decode('ascii')
+
+        return revision_hash.strip()
+
+    except subprocess.CalledProcessError:
+        return None

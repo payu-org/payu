@@ -108,6 +108,8 @@ class Experiment(object):
 
         self.payu_path = os.path.join(payu_bin, 'payu')
 
+        self.run_id = None
+
         pbs_env_init()
 
     def init_models(self):
@@ -590,6 +592,7 @@ class Experiment(object):
         # Add extra information to save to jobinfo
         info.update(
           {
+            'PAYU_RUN_ID': self.run_id,
             'PAYU_CURRENT_RUN': self.counter,
             'PAYU_N_RUNS':  self.n_runs,
             'PAYU_JOB_STATUS': rc,
