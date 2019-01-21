@@ -42,7 +42,12 @@ def get_job_info():
     info = get_qstat_info('-ft {0}'.format(jobid), 'Job Id:')
 
     # Select the dict for this job (there should only be one entry in any case)
-    return(info['Job Id: {}'.format(jobid)])
+    info = info['Job Id: {}'.format(jobid)]
+
+    # Add the jobid to the dict and then return
+    info['Job_ID'] = jobid
+
+    return info
 
 
 def pbs_env_init():
