@@ -10,7 +10,7 @@ import getpass
 import json
 import os
 import shlex
-import subprocess as sp
+import subprocess
 import sys
 
 # Third party
@@ -75,16 +75,16 @@ class Runlog(object):
         if commit_hash(self.expt.control_path) is None:
             cmd = 'git init'
             print(cmd)
-            sp.check_call(shlex.split(cmd), stdout=f_null,
-                          cwd=self.expt.control_path)
+            subprocess.check_call(shlex.split(cmd), stdout=f_null,
+                                  cwd=self.expt.control_path)
 
         # Add configuration files
         for fname in self.manifest:
             if os.path.isfile(fname):
                 cmd = 'git add {0}'.format(fname)
                 print(cmd)
-                sp.check_call(shlex.split(cmd), stdout=f_null,
-                              cwd=self.expt.control_path)
+                subprocess.check_call(shlex.split(cmd), stdout=f_null,
+                                      cwd=self.expt.control_path)
 
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         commit_msg = '{0}: Run {1}'.format(timestamp, self.expt.counter)
@@ -92,9 +92,9 @@ class Runlog(object):
         cmd = 'git commit -am "{0}"'.format(commit_msg)
         print(cmd)
         try:
-            sp.check_call(shlex.split(cmd), stdout=f_null,
-                          cwd=self.expt.control_path)
-        except sp.CalledProcessError:
+            subprocess.check_call(shlex.split(cmd), stdout=f_null,
+                                  cwd=self.expt.control_path)
+        except subprocess.CalledProcessError:
             print('TODO: Check if commit is unchanged')
 
         # Save the commit hash
@@ -133,7 +133,7 @@ class Runlog(object):
 
         cmd = ('ssh-agent bash -c "ssh-add {key}; git push --all payu"'
                ''.format(key=ssh_key_path))
-        sp.check_call(shlex.split(cmd), cwd=self.expt.control_path)
+        subprocess.check_call(shlex.split(cmd), cwd=self.expt.control_path)
 
     def github_setup(self):
         """Set up authentication keys and API tokens."""
@@ -214,8 +214,8 @@ class Runlog(object):
             assert repo_gen.status_code == 201
 
         # 3. Check if remote is set
-        git_remote_out = sp.check_output(shlex.split('git remote -v'),
-                                         cwd=self.expt.control_path)
+        git_remote_out = subprocess.check_output(shlex.split('git remote -v'),
+                                                 cwd=self.expt.control_path)
 
         git_remotes = dict([(r.split()[0], r.split()[1])
                             for r in git_remote_out.split('\n') if r])
@@ -227,7 +227,7 @@ class Runlog(object):
         if remote_name not in git_remotes:
             cmd = ('git remote add {name} {url}'
                    ''.format(name=remote_name, url=remote_url))
-            sp.check_call(shlex.split(cmd), cwd=self.expt.control_path)
+            subprocess.check_call(shlex.split(cmd), cwd=self.expt.control_path)
         elif git_remotes[remote_name] != remote_url:
             print('payu: error: Existing remote URL does not match '
                   'the proposed URL.')
@@ -244,7 +244,7 @@ class Runlog(object):
         ssh_keypath = os.path.join(ssh_dir, ssh_key)
         if not os.path.isfile(ssh_keypath):
             cmd = 'ssh-keygen -t rsa -f {key} -q -P ""'.format(key=ssh_key)
-            sp.check_call(shlex.split(cmd), cwd=ssh_dir)
+            subprocess.check_call(shlex.split(cmd), cwd=ssh_dir)
 
         # 5. Deploy key to repo
         with open(ssh_keypath + '.pub') as keyfile:
@@ -280,7 +280,7 @@ class Runlog(object):
 
 def commit_hash(dir='.'):
     """
-    Return commit hash for HEAD of checked out branch of the 
+    Return commit hash for HEAD of checked out branch of the
     specified directory.
     """
 
@@ -288,7 +288,7 @@ def commit_hash(dir='.'):
 
     try:
         with open(os.devnull, 'w') as devnull:
-            revision_hash = sp.check_output(
+            revision_hash = subprocess.check_output(
               cmd,
               cwd=dir,
               stderr=devnull
