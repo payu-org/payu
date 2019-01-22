@@ -38,12 +38,12 @@ class Mitgcm(Model):
 
         # TODO: Find a better place to generate this list
         files = [f for f in os.listdir(self.control_path)
-                             if f.startswith('data')]
+                 if f.startswith('data')]
         files.append('eedata')
 
-        # Rudimentary check that matching files are namelists. Can only check if 
-        # namelist is empty. May excluded false positives, but these are # devoid 
-        # of useful information in that case
+        # Rudimentary check that matching files are namelists. Can only check
+        # if # namelist is empty. May excluded false positives, but these are
+        # devoid of useful information in that case
         for fname in files:
             nml_parser = f90nml.Parser()
             nml_parser.comment_tokens += '#'
@@ -52,8 +52,8 @@ class Mitgcm(Model):
             if len(data_nml) > 0:
                 self.config_files.append(fname)
             else:
-                print("Excluding {0} from list of configuration files: "\
-                      "assumed to be not a namelist file (or empty)".format(fname))
+                print("Excluding {0} from configuration files: assumed "
+                      "to be not a namelist file (or empty)".format(fname))
 
         # Generic model setup
         super(Mitgcm, self).setup()
