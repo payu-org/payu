@@ -353,6 +353,7 @@ class Manifest(object):
             print("Checking restart manifest")
         else:
             print("Creating restart manifest")
+            self.manifests['restart'].needsync = True
         self.manifests['restart'].check_fast(reproduce=self.reproduce)
 
         # Write updates to version on disk
