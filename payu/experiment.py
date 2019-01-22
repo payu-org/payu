@@ -601,6 +601,7 @@ class Experiment(object):
         # Add extra information to save to jobinfo
         info.update(
             {
+                'PAYU_CONTROL_DIR': self.control_path,
                 'PAYU_RUN_ID': self.run_id,
                 'PAYU_CURRENT_RUN': self.counter,
                 'PAYU_N_RUNS':  self.n_runs,
