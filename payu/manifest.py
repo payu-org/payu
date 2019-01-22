@@ -9,6 +9,11 @@
 """
 from __future__ import print_function, absolute_import
 
+# Local
+from payu import envmod
+from payu.fsops import make_symlink
+
+# External
 from copy import deepcopy
 import fnmatch
 import os
@@ -16,7 +21,6 @@ import sys
 import shutil
 from distutils.dir_util import mkpath
 
-import yamanifest as ym
 from yamanifest.manifest import Manifest as YaManifest
 
 from payu import envmod
