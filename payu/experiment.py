@@ -24,7 +24,6 @@ import sysconfig
 # Local
 from payu import envmod
 from payu.fsops import mkdir_p, make_symlink, read_config
-from payu.fsops import dump_yaml
 from payu.scheduler.pbs import get_job_info, pbs_env_init, get_job_id
 from payu.models import index as model_index
 import payu.profilers
