@@ -21,6 +21,9 @@ import shutil
 import subprocess as sp
 import sysconfig
 
+# Extensions
+import yaml
+
 # Local
 from payu import envmod
 from payu.fsops import mkdir_p, make_symlink, read_config
