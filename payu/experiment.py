@@ -910,29 +910,6 @@ class Experiment(object):
     def sweep(self, hard_sweep=False):
         # TODO: Fix the IO race conditions!
 
-        if hard_sweep:
-            if os.path.isdir(self.archive_path):
-                print('Removing archive path {0}'.format(self.archive_path))
-                cmd = 'rm -rf {0}'.format(self.archive_path)
-                cmd = shlex.split(cmd)
-                rc = sp.call(cmd)
-                assert rc == 0
-
-            if os.path.islink(self.archive_sym_path):
-                print('Removing symlink {0}'.format(self.archive_sym_path))
-                os.remove(self.archive_sym_path)
-
-        if os.path.isdir(self.work_path):
-            print('Removing work path {0}'.format(self.work_path))
-            cmd = 'rm -rf {0}'.format(self.work_path)
-            cmd = shlex.split(cmd)
-            rc = sp.call(cmd)
-            assert rc == 0
-
-        if os.path.islink(self.work_sym_path):
-            print('Removing symlink {0}'.format(self.work_sym_path))
-            os.remove(self.work_sym_path)
-
         # TODO: model outstreams and pbs logs need to be handled separately
         default_job_name = os.path.basename(os.getcwd())
         short_job_name = str(self.config.get('jobname', default_job_name))[:15]
@@ -963,7 +940,30 @@ class Experiment(object):
             print('Moving log {0}'.format(f))
             shutil.move(f, os.path.join(pbs_log_path, f))
 
+        if hard_sweep:
+            if os.path.isdir(self.archive_path):
+                print('Removing archive path {0}'.format(self.archive_path))
+                cmd = 'rm -rf {0}'.format(self.archive_path)
+                cmd = shlex.split(cmd)
+                rc = sp.call(cmd)
+                assert rc == 0
+
+            if os.path.islink(self.archive_sym_path):
+                print('Removing symlink {0}'.format(self.archive_sym_path))
+                os.remove(self.archive_sym_path)
+
         # Remove stdout/err and yaml dumps
         for f in self.output_fnames:
             if os.path.isfile(f):
                 os.remove(f)
+
+        if os.path.isdir(self.work_path):
+            print('Removing work path {0}'.format(self.work_path))
+            cmd = 'rm -rf {0}'.format(self.work_path)
+            cmd = shlex.split(cmd)
+            rc = sp.call(cmd)
+            assert rc == 0
+
+        if os.path.islink(self.work_sym_path):
+            print('Removing symlink {0}'.format(self.work_sym_path))
+            os.remove(self.work_sym_path)
