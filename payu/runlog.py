@@ -289,9 +289,9 @@ def commit_hash(dir='.'):
     try:
         with open(os.devnull, 'w') as devnull:
             revision_hash = subprocess.check_output(
-              cmd,
-              cwd=dir,
-              stderr=devnull
+                cmd,
+                cwd=dir,
+                stderr=devnull
             )
         if sys.version_info.major > 2:
             revision_hash = revision_hash.decode('ascii')

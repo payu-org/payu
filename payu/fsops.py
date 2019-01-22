@@ -127,7 +127,3 @@ def patch_lustre_path(f_path):
             f_path = './' + f_path
 
     return f_path
-
-def dump_yaml(info, fname):
-    with open(fname, 'w') as file:
-        file.write(yaml.dump(info,default_flow_style=False))
