@@ -639,12 +639,16 @@ class Experiment(object):
             # NOTE: This is PBS-specific
             job_id = get_job_id(short=False)
 
+            if job_id == '':
+                job_id = self.run_id[:6]
+
             for fname in self.output_fnames:
 
                 src = os.path.join(self.control_path, fname)
 
                 stem, suffix = os.path.splitext(fname)
-                dest = ".".join((stem, job_id, suffix))
+                dest = os.path.join(error_log_dir,
+                                    ".".join((stem, job_id)) + suffix)
 
                 print(src, dest)
 
