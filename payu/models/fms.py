@@ -54,6 +54,20 @@ class Fms(Model):
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
         self.work_init_path = self.work_input_path
 
+    @staticmethod
+    def get_uncollated_files(dir):
+
+        if not os.path.isdir(dir):
+            return []
+
+        # Generate collated file list and identify the first tile
+        tile_fnames = [f for f in os.listdir(dir)
+                       if f[-4:].isdigit() and f[-8:-4] == '.nc.']
+
+        # print("dir: ",tile_fnames)
+        tile_fnames.sort()
+        return tile_fnames
+
     def archive(self, **kwargs):
 
         # Remove the 'INPUT' path
@@ -115,7 +129,7 @@ class Fms(Model):
             # and mppnccombine-fast uses an explicit -o flag to specify
             # the output
             collate_flags = " ".join([collate_flags, '-o'])
-            mpi_module = envmod.lib_update(mppnc_path, 'libmpi.so')
+            envmod.lib_update(mppnc_path, 'libmpi.so')
 
         # Import list of collated files to ignore
         collate_ignore = collate_config.get('ignore')
@@ -125,28 +139,36 @@ class Fms(Model):
             collate_ignore = [collate_ignore]
 
         # Generate collated file list and identify the first tile
-        tile_fnames = [f for f in os.listdir(self.output_path)
-                       if f[-4:].isdigit() and f[-8:-4] == '.nc.']
+        tile_fnames = {}
+        tile_fnames[self.output_path] = Fms.get_uncollated_files(self.output_path)
 
-        tile_fnames.sort()
+        print(tile_fnames)
 
-        mnc_tiles = defaultdict(list)
-        for t_fname in tile_fnames:
-            t_base, t_ext = os.path.splitext(t_fname)
-            t_ext = t_ext.lstrip('.')
+        if collate_config.get('restart',False) and self.prior_restart_path is not None:
+            # Add uncollated restart files 
+            tile_fnames[self.prior_restart_path] = Fms.get_uncollated_files(self.prior_restart_path)
 
-            # Skip any files listed in the ignore list
-            if t_base in collate_ignore:
-                continue
+        # mnc_tiles = defaultdict(list)
+        mnc_tiles = defaultdict(defaultdict(list).copy)
+        for t_dir in tile_fnames:
+            for t_fname in tile_fnames[t_dir]:
+                t_base, t_ext = os.path.splitext(t_fname)
+                t_ext = t_ext.lstrip('.')
 
-            mnc_tiles[t_base].append(t_fname)
+                # Skip any files listed in the ignore list
+                if t_base in collate_ignore:
+                    continue
+
+                mnc_tiles[t_dir][t_base].append(t_fname)
+
+        # print(mnc_tiles)
 
         if mpi and collate_config.get('glob', True):
             for t_base in mnc_tiles:
                 globstr = "{}.*".format(t_base)
                 # Try an equivalent glob and check the same files are returned
-                mnc_glob = fnmatch.filter(os.listdir(self.output_path,
-                                                     globstr))
+                mnc_glob = fnmatch.filter(os.listdir(self.output_path),
+                                                     globstr)
                 if mnc_tiles[t_base] == sorted(mnc_glob):
                     mnc_tiles[t_base] = [globstr, ]
                     print("Note: using globstr ({}) for collating {}"
@@ -179,27 +201,24 @@ class Fms(Model):
         results = []
         codes = []
         outputs = []
-        for nc_fname in mnc_tiles:
-            nc_path = os.path.join(self.output_path, nc_fname)
+        for output_path in mnc_tiles:
+            for nc_fname in mnc_tiles[output_path]:
+                nc_path = os.path.join(output_path, nc_fname)
 
-            # Remove the collated file if it already exists, since it is
-            # probably from a failed collation attempt
-            # TODO: Validate this somehow
-            if os.path.isfile(nc_path):
-                os.remove(nc_path)
+                # Remove the collated file if it already exists, since it is
+                # probably from a failed collation attempt
+                # TODO: Validate this somehow
+                if os.path.isfile(nc_path):
+                    os.remove(nc_path)
 
-            cmd = ' '.join([mppnc_path, collate_flags, nc_fname,
-                            ' '.join(mnc_tiles[nc_fname])])
-            if mpi:
+                cmd = ' '.join([mppnc_path, collate_flags, nc_fname,
+                                ' '.join(mnc_tiles[output_path][nc_fname])])
+                if mpi:
+                    cmd = "mpirun -n {} {}".format(ncpusperprocess, cmd)
 
-                cmd = "mpirun -n {n} {cmd}".format(
-                    n=ncpusperprocess,
-                    cmd=cmd
-                )
-
-            print(cmd)
-            results.append(
-                pool.apply_async(cmdthread, args=(cmd, self.output_path)))
+                print(cmd)
+                results.append(
+                    pool.apply_async(cmdthread, args=(cmd, output_path)))
 
         pool.close()
         pool.join()
