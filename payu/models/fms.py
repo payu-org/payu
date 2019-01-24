@@ -56,9 +56,14 @@ class Fms(Model):
 
     @staticmethod
     def get_uncollated_files(dir):
+
+        if not os.path.isdir(dir):
+            return []
+
         # Generate collated file list and identify the first tile
         tile_fnames = [f for f in os.listdir(dir)
                        if f[-4:].isdigit() and f[-8:-4] == '.nc.']
+
         # print("dir: ",tile_fnames)
         tile_fnames.sort()
         return tile_fnames
@@ -139,7 +144,7 @@ class Fms(Model):
 
         print(tile_fnames)
 
-        if collate_config.get('restart',False):
+        if collate_config.get('restart',False) and self.prior_restart_path is not None:
             # Add uncollated restart files 
             tile_fnames[self.prior_restart_path] = Fms.get_uncollated_files(self.prior_restart_path)
 
