@@ -55,6 +55,8 @@ class Runlog(object):
         config_path = os.path.join(self.expt.control_path,
                                    DEFAULT_CONFIG_FNAME)
 
+        self.manifest = []
+
         if os.path.isfile(config_path):
             self.manifest.append(config_path)
 
