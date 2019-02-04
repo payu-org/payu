@@ -70,9 +70,6 @@ class Cice5(Cice):
         super(Cice5, self).archive()
 
         if not self.split_paths:
-            # If inputs and restarts are in the same directory have to delete old
-            # ice restarts 
-
             res_ptr_path = os.path.join(self.restart_path, 'ice.restart_file')
             with open(res_ptr_path) as f:
                 res_name = os.path.basename(f.read()).strip()

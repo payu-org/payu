@@ -62,9 +62,9 @@ class Cice(Model):
         setup_nml = self.ice_in['setup_nml']
 
         res_path = os.path.normpath(setup_nml['restart_dir'])
-        input_dir = setup_nml.get('input_dir',None)
+        input_dir = setup_nml.get('input_dir', None)
 
-        if input_dir is None: 
+        if input_dir is None:
             # Default to reading and writing inputs/restarts in-place
             input_path = res_path
         else:
@@ -85,21 +85,25 @@ class Cice(Model):
         if not path == input_path:
             print('Grid file path in {nmlfile} ({gridpath}) does not match '
                   'input path ({inputpath})'.format(
-                    nmlfile=self.ice_nml_fname, 
-                    gridpath=path, 
-                    inputpath=input_path
-            ))
+                    nmlfile=self.ice_nml_fname,
+                    gridpath=path,
+                    inputpath=input_path))
             sys.exit(1)
 
         # Check paths are consistent in namelist
-        for var, nml in (('kmt_file', 'grid_nml'), ('pointer_file', 'setup_nml')):
+        for var, nml in (('kmt_file', 'grid_nml'),
+                         ('pointer_file', 'setup_nml')):
             tmp_path, _ = os.path.split(self.ice_in[nml].get(var))
             tmp_path = os.path.normpath(tmp_path)
             if not path == tmp_path:
-                print('Paths for {var} ({varpath}) and grid_file ({gridpath}) in {nmlfile} do not '
-                      'match'.format(var=var, varpath=tmp_path, gridpath=path, nmlfile=self.ice_nml_fname))
+                print('Paths for {var} ({varpath}) and grid_file '
+                      '({gridpath}) in {nmlfile} do not '
+                      'match'.format(var=var,
+                                     varpath=tmp_path,
+                                     gridpath=path,
+                                     nmlfile=self.ice_nml_fname))
                 sys.exit(1)
-            
+
         if not os.path.isabs(input_path):
             input_path = os.path.join(self.work_path, input_path)
         self.work_input_path = input_path
@@ -114,7 +118,6 @@ class Cice(Model):
         if not os.path.isabs(work_out_path):
             work_out_path = os.path.join(self.work_path, work_out_path)
         self.work_output_path = work_out_path
-
 
     def set_model_output_paths(self):
         super(Cice, self).set_model_output_paths()
