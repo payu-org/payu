@@ -80,13 +80,6 @@ class Cice(Model):
             if input_dir is None:
                 input_path = path
 
-        # kmt must use the same directory path as grid_file
-        kmt_input_path, _ = os.path.split(grid_nml['kmt_file'])
-        if not path == kmt_input_path:
-            print('Paths for kmt_file and grid_file in {nmlfile} do not '
-                  'match'.format(nmlfile=self.ice_nml_fname))
-            sys.exit(1)
-
         # Check for consistency in input paths due to cice having the same
         # information in multiple locations
         if not path == input_path:
@@ -97,6 +90,15 @@ class Cice(Model):
                     inputpath=input_path
             ))
             sys.exit(1)
+
+        # Check paths are consistent in namelist
+        for var, nml in (('kmt_file', 'grid_nml'), ('pointer_file', 'setup_nml')):
+            tmp_path, _ = os.path.split(self.ice_in[nml].get(var))
+            tmp_path = os.path.normpath(tmp_path)
+            if not path == tmp_path:
+                print('Paths for {var} ({varpath}) and grid_file ({gridpath}) in {nmlfile} do not '
+                      'match'.format(var=var, varpath=tmp_path, gridpath=path, nmlfile=self.ice_nml_fname))
+                sys.exit(1)
             
         if not os.path.isabs(input_path):
             input_path = os.path.join(self.work_path, input_path)
