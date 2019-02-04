@@ -62,25 +62,41 @@ class Cice(Model):
         setup_nml = self.ice_in['setup_nml']
 
         res_path = os.path.normpath(setup_nml['restart_dir'])
-        input_path = setup_nml.get('input_dir',None)
+        input_dir = setup_nml.get('input_dir',None)
 
-        if input_path is None: 
+        if input_dir is None: 
             # Default to reading and writing inputs/restarts in-place
             input_path = res_path
+        else:
+            input_path = os.path.normpath(input_dir)
 
-            # Determine if there is a work input path from grid path
-            grid_nml = self.ice_in['grid_nml']
-            path, _ = os.path.split(grid_nml['grid_file'])
-            if path and not path == '.':
-                assert not os.path.isabs(path)
+        # Determine if there is a work input path from grid path
+        grid_nml = self.ice_in['grid_nml']
+        path, _ = os.path.split(grid_nml['grid_file'])
+        if path and not path == '.':
+            assert not os.path.isabs(path)
+            path = os.path.normpath(path)
+            # Get input_dir from grid_file path unless otherwise specified
+            if input_dir is None:
                 input_path = path
 
-            # Assert that kmt uses the same directory
-            kmt_input_path, _ = os.path.split(grid_nml['kmt_file'])
-            assert input_path == kmt_input_path
+        # kmt must use the same directory path as grid_file
+        kmt_input_path, _ = os.path.split(grid_nml['kmt_file'])
+        if not path == kmt_input_path:
+            print('Paths for kmt_file and grid_file in {nmlfile} do not '
+                  'match'.format(nmlfile=self.ice_nml_fname))
+            sys.exit(1)
 
-        else:
-            input_path = os.path.normpath(input_path)
+        # Check for consistency in input paths due to cice having the same
+        # information in multiple locations
+        if not path == input_path:
+            print('Grid file path in {nmlfile} ({gridpath}) does not match '
+                  'input path ({inputpath})'.format(
+                    nmlfile=self.ice_nml_fname, 
+                    gridpath=path, 
+                    inputpath=input_path
+            ))
+            sys.exit(1)
             
         if not os.path.isabs(input_path):
             input_path = os.path.join(self.work_path, input_path)
