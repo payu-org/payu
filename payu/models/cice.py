@@ -141,7 +141,6 @@ class Cice(Model):
         return [sorted(restart_files)[-1]]
 
     def get_ptr_restart_dir(self):
-        # return self.ice_in['setup_nml']['restart_dir']
         return os.path.relpath(self.work_input_path, self.work_path)
 
     def get_access_ptr_restart_dir(self):
