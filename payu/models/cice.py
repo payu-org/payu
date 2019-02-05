@@ -73,7 +73,7 @@ class Cice(Model):
         # Determine if there is a work input path from grid path
         grid_nml = self.ice_in['grid_nml']
         path, _ = os.path.split(grid_nml['grid_file'])
-        if path and not path == '.':
+        if path and not path == os.path.curdir:
             assert not os.path.isabs(path)
             path = os.path.normpath(path)
             # Get input_dir from grid_file path unless otherwise specified
