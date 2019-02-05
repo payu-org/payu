@@ -82,7 +82,7 @@ class Cice(Model):
 
         # Check for consistency in input paths due to cice having the same
         # information in multiple locations
-        if not path == input_path:
+        if path != input_path:
             print('payu: error: '
                   'Grid file path in {nmlfile} ({gridpath}) does not match '
                   'input path ({inputpath})'.format(
@@ -92,19 +92,27 @@ class Cice(Model):
             sys.exit(1)
 
         # Check paths are consistent in namelist
-        for var, nml in (('kmt_file', 'grid_nml'),
-                         ('pointer_file', 'setup_nml')):
-            tmp_path, _ = os.path.split(self.ice_in[nml].get(var))
-            tmp_path = os.path.normpath(tmp_path)
-            if not path == tmp_path:
-                print('payu: error: '
-                      'Paths for {var} ({varpath}) and grid_file '
-                      '({gridpath}) in {nmlfile} do not '
-                      'match'.format(var=var,
-                                     varpath=tmp_path,
-                                     gridpath=path,
-                                     nmlfile=self.ice_nml_fname))
-                sys.exit(1)
+        tmp_path, _ = os.path.split(self.ice_in['grid_nml'].get('kmt_file'))
+        tmp_path = os.path.normpath(tmp_path)
+        if not path == tmp_path:
+            print('payu: error: '
+                  'Paths for kmt_file ({varpath}) and grid_file '
+                  '({gridpath}) in {nmlfile} do not '
+                  'match'.format(varpath=tmp_path,
+                                 gridpath=path,
+                                 nmlfile=self.ice_nml_fname))
+            sys.exit(1)
+
+        # Check paths are consistent in namelist
+        tmp_path, _ = os.path.split(self.ice_in['setup_nml'].get('pointer_file'))
+        tmp_path = os.path.normpath(tmp_path)
+        if not path == tmp_path:
+            print('payu: warning: '
+                  'Paths for pointer_file ({varpath}) and grid_file '
+                  '({gridpath}) in {nmlfile} do not '
+                  'match'.format(varpath=tmp_path,
+                                 gridpath=path,
+                                 nmlfile=self.ice_nml_fname))
 
         if not os.path.isabs(input_path):
             input_path = os.path.join(self.work_path, input_path)
