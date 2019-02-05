@@ -83,7 +83,8 @@ class Cice(Model):
         # Check for consistency in input paths due to cice having the same
         # information in multiple locations
         if not path == input_path:
-            print('Grid file path in {nmlfile} ({gridpath}) does not match '
+            print('payu: error: '
+                  'Grid file path in {nmlfile} ({gridpath}) does not match '
                   'input path ({inputpath})'.format(
                     nmlfile=self.ice_nml_fname,
                     gridpath=path,
@@ -96,7 +97,8 @@ class Cice(Model):
             tmp_path, _ = os.path.split(self.ice_in[nml].get(var))
             tmp_path = os.path.normpath(tmp_path)
             if not path == tmp_path:
-                print('Paths for {var} ({varpath}) and grid_file '
+                print('payu: error: '
+                      'Paths for {var} ({varpath}) and grid_file '
                       '({gridpath}) in {nmlfile} do not '
                       'match'.format(var=var,
                                      varpath=tmp_path,
