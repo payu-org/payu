@@ -980,6 +980,6 @@ class Experiment(object):
 def enable_core_dump():
     # NOTE: This is specific to newer Intel compilers, older ones use
     #       `decfort_dump_flag`.  This could be more platform-agnostic.
-    os.envion['FOR_DUMP_CORE_FILE'] = 'TRUE'
+    os.environ['FOR_DUMP_CORE_FILE'] = 'TRUE'
     resource.setrlimit(resource.RLIMIT_CORE,
                        (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
