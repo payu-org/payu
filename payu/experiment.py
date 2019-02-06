@@ -553,7 +553,9 @@ class Experiment(object):
         if self.expand_shell_vars:
             cmd = os.path.expandvars(cmd)
 
-        print(cmd)
+        # TODO: Consider making this default
+        if self.config.get('coredump', False):
+            enable_core_dump()
 
         # Our MVAPICH wrapper does not support working directories
         if mpi_module.startswith('mvapich'):
@@ -572,6 +574,7 @@ class Experiment(object):
 
         # NOTE: This may not be necessary, since env seems to be getting
         # correctly updated.  Need to look into this.
+        print(cmd)
         if env:
             # TODO: Replace with mpirun -x flag inputs
             proc = sp.Popen(shlex.split(cmd), stdout=f_out, stderr=f_err,
@@ -972,3 +975,11 @@ class Experiment(object):
         if os.path.islink(self.work_sym_path):
             print('Removing symlink {0}'.format(self.work_sym_path))
             os.remove(self.work_sym_path)
+
+
+def enable_core_dump():
+    # NOTE: This is specific to newer Intel compilers, older ones use
+    #       `decfort_dump_flag`.  This could be more platform-agnostic.
+    os.envion['FOR_DUMP_CORE_FILE'] = 'TRUE'
+    resource.setrlimit(resource.RLIMIT_CORE,
+                       (resource.RLIM_INFINITY, resource.RLIM_INFINITY))

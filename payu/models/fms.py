@@ -140,13 +140,16 @@ class Fms(Model):
 
         # Generate collated file list and identify the first tile
         tile_fnames = {}
-        tile_fnames[self.output_path] = Fms.get_uncollated_files(self.output_path)
+        fnames = Fms.get_uncollated_files(self.output_path)
+        tile_fnames[self.output_path] = fnames
 
         print(tile_fnames)
 
-        if collate_config.get('restart',False) and self.prior_restart_path is not None:
-            # Add uncollated restart files 
-            tile_fnames[self.prior_restart_path] = Fms.get_uncollated_files(self.prior_restart_path)
+        if (collate_config.get('restart', False) and
+                self.prior_restart_path is not None):
+            # Add uncollated restart files
+            fnames = Fms.get_uncollated_files(self.prior_restart_path)
+            tile_fnames[self.prior_restart_path] = fnames
 
         # mnc_tiles = defaultdict(list)
         mnc_tiles = defaultdict(defaultdict(list).copy)
@@ -168,7 +171,7 @@ class Fms(Model):
                 globstr = "{}.*".format(t_base)
                 # Try an equivalent glob and check the same files are returned
                 mnc_glob = fnmatch.filter(os.listdir(self.output_path),
-                                                     globstr)
+                                          globstr)
                 if mnc_tiles[t_base] == sorted(mnc_glob):
                     mnc_tiles[t_base] = [globstr, ]
                     print("Note: using globstr ({}) for collating {}"

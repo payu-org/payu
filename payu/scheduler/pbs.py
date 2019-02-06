@@ -54,7 +54,7 @@ def pbs_env_init():
 
     # Initialise against PBS_CONF_FILE
     if sys.platform == 'win32':
-        pbs_conf_fpath = 'C:\Program Files\PBS Pro\pbs.conf'
+        pbs_conf_fpath = r'C:\Program Files\PBS Pro\pbs.conf'
     else:
         pbs_conf_fpath = '/etc/pbs.conf'
     os.environ['PBS_CONF_FILE'] = pbs_conf_fpath
@@ -89,10 +89,10 @@ def get_qstat_info(qflag, header, projects=None, users=None):
                    or any('Job_Owner = {}'.format(u) in e for u in users))
 
     attribs = ((k.split('.')[0], v.replace('\n\t', '').split('\n'))
-                for k, v in (e.split('\n', 1) for e in entries))
+               for k, v in (e.split('\n', 1) for e in entries))
 
     status = {k: dict((kk.strip(), vv.strip())
-                for kk, vv in (att.split('=', 1) for att in v if att))
-                for k, v in attribs}
+              for kk, vv in (att.split('=', 1) for att in v if att))
+              for k, v in attribs}
 
     return status

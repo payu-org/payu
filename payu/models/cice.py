@@ -104,7 +104,9 @@ class Cice(Model):
             sys.exit(1)
 
         # Check paths are consistent in namelist
-        tmp_path, _ = os.path.split(self.ice_in['setup_nml'].get('pointer_file'))
+        tmp_path, _ = os.path.split(
+            self.ice_in['setup_nml'].get('pointer_file')
+        )
         tmp_path = os.path.normpath(tmp_path)
         if not path == tmp_path:
             print('payu: warning: '
