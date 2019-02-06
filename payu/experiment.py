@@ -978,8 +978,14 @@ class Experiment(object):
 
 
 def enable_core_dump():
-    # NOTE: This is specific to newer Intel compilers, older ones use
-    #       `decfort_dump_flag`.  This could be more platform-agnostic.
+    # Newer Intel compilers support 'FOR_DUMP_CORE_FILE' while most support
+    # 'decfort_dump_flag'.  Setting both for now, but there may be a more
+    # platform-independent way to support this.
+
+    # Enable Fortran core dump
     os.environ['FOR_DUMP_CORE_FILE'] = 'TRUE'
+    os.environ['decfort_dump_flag'] = 'TRUE'
+
+    # Allow unlimited core dump file sizes
     resource.setrlimit(resource.RLIMIT_CORE,
                        (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
