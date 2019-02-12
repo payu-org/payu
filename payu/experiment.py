@@ -122,6 +122,9 @@ class Experiment(object):
         model_fields = ['model', 'exe', 'input', 'ncpus', 'npernode', 'build',
                         'mpthreads', 'exe_prefix']
 
+        # XXX: Temporarily adding this to model config...
+        model_fields += ['mask']
+
         # TODO: Rename this to self.submodels
         self.models = []
 

@@ -232,9 +232,16 @@ class Model(object):
                 self.expt.manifest.scaninputs):
             # Add files to manifest
             for input_path in self.input_paths:
-                input_files = os.listdir(input_path)
+                if os.path.isfile(input_path):
+                    input_dir, input_file = os.path.split(input_path)
+                    input_files = [input_file]
+                else:
+                    assert(os.path.isdir(input_path))
+                    input_dir = input_path
+                    input_files = os.listdir(input_path)
+
                 for f_name in input_files:
-                    f_orig = os.path.join(input_path, f_name)
+                    f_orig = os.path.join(input_dir, f_name)
                     f_link = os.path.join(self.work_input_path_local, f_name)
                     # Do not use input file if it is in RESTART
                     if not os.path.exists(f_link):
