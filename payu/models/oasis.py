@@ -52,6 +52,10 @@ class Oasis(Model):
             if model == self:
                 continue
 
+            # Skip models without a work_path (like access)
+            if not hasattr(model, 'work_path'):
+                continue
+
             mkdir_p(model.work_path)
             for f_name in (self.config_files + input_files):
                 f_path = os.path.join(self.work_path, f_name)
