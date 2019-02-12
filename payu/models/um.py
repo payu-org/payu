@@ -41,6 +41,7 @@ class UnifiedModel(Model):
                              'namelists', 'PPCNTL', 'prefix.PRESM_A',
                              'SIZES', 'STASHC', 'UAFILES_A', 'UAFLDS_A',
                              'parexe', 'cable.nml']
+        self.optional_config_files = [ 'input_atm.nml' ]
 
         self.restart = 'restart_dump.astart'
 
@@ -69,13 +70,24 @@ class UnifiedModel(Model):
         restart_dump = os.path.join(self.work_path,
                                     'aiihca.da{0}'.format(end_date))
         f_dst = os.path.join(self.restart_path, self.restart)
-        shutil.copy(restart_dump, f_dst)
+        if os.path.exists(restart_dump):
+            shutil.copy(restart_dump, f_dst)
+        else:
+            print('payu: error: Model has not produced a restart dump file'
+                  '{} does not exist. '
+                  'Check DUMPFREQim in namelists'.format(restart_dump))
 
     def collate(self):
         pass
 
     def setup(self):
         super(UnifiedModel, self).setup()
+
+        # Set up environment variables needed to run UM.
+        # Look for a python file in the config directory.
+        um_env = imp.load_source('um_env',
+                                 os.path.join(self.control_path, 'um_env.py'))
+        um_vars = um_env.vars
 
         # Stage the UM restart file.
         if self.prior_restart_path and not self.expt.repeat_run:
@@ -84,14 +96,9 @@ class UnifiedModel(Model):
 
             if os.path.isfile(f_src):
                 make_symlink(f_src, f_dst)
-
-        # Set up environment variables needed to run UM.
-        # Look for a python file in the config directory.
-        um_env = imp.load_source('um_env',
-                                 os.path.join(self.control_path, 'um_env.py'))
-        um_vars = um_env.vars
-
-        assert len(self.input_paths) == 1
+                # every run is an NRUN with an updated ASTART file
+                um_vars['ASTART'] = self.restart
+                um_vars['TYPE'] = 'NRUN'
 
         # Set paths in environment variables.
         for k in um_vars.keys():
