@@ -535,8 +535,9 @@ class Experiment(object):
 
             model_prog.append(model.exec_prefix)
 
-            # Use the exec_name (without path) as this is now linked in work
-            model_prog.append(model.exec_name)
+            # Use the full path to symlinked exec_name in work as some
+            # older MPI libraries complained executable was not in PATH
+            model_prog.append(os.path.join(model.work_path,model.exec_name))
 
             mpi_progs.append(' '.join(model_prog))
 
