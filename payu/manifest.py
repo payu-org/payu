@@ -133,12 +133,12 @@ class PayuManifest(YaManifest):
 
         # Ignore directories
         if os.path.isdir(fullpath):
-            return
+            return False
 
         # Ignore anything matching the ignore patterns
         for pattern in self.ignore:
             if fnmatch.fnmatch(os.path.basename(fullpath), pattern):
-                return
+                return False
 
         if filepath not in self.data:
             self.data[filepath] = {}
@@ -149,6 +149,8 @@ class PayuManifest(YaManifest):
 
         if copy:
             self.data[filepath]['copy'] = copy
+
+        return True
 
     def add_fast(self, filepath, hashfn=fast_hashes, force=False):
         """
@@ -191,6 +193,33 @@ class PayuManifest(YaManifest):
                   ''.format(self.fullpath(filepath)))
             self.delete(filepath)
             self.needsync = True
+    
+    def make_link(self, filepath):
+        """
+        Payu integration function for creating symlinks in work directories
+        which point back to the original file.
+        """
+        # Check file exists. It may have been deleted but still in manifest
+        if not os.path.exists(self.fullpath(filepath)):
+            print('File not found: {filepath}'.format(
+                  filepath=self.fullpath(filepath)))
+            if self.contains(filepath):
+                print('removing from manifest')
+                self.delete(filepath)
+                self.needsync = True
+        else:
+            try:
+                if self.copy_file(filepath):
+                    shutil.copy(self.fullpath(filepath), filepath)
+                else:
+                    make_symlink(self.fullpath(filepath), filepath)
+            except:
+                action = 'copying' if self.copy_file else 'linking'
+                print('payu: error: {action} orig: {orig} '
+                      'local: {local}'.format(action=action,
+                                              orig=self.fullpath(filepath), 
+                                              local=filepath))
+                raise
 
     def copy(self, path):
         """
@@ -338,12 +367,7 @@ class Manifest(object):
         else:
             self.have_manifest['restart'] = False
 
-    def make_links(self):
-
-        print("Making links from manifests")
-
-        for mf in self.manifests:
-            self.manifests[mf].make_links()
+    def check_manifests(self):
 
         print("Checking exe and input manifests")
         self.manifests['exe'].check_fast(reproduce=self.reproduce_exe)
@@ -376,4 +400,6 @@ class Manifest(object):
         Wrapper to the add_filepath function in PayuManifest. Prevents outside
         code from directly calling anything in PayuManifest.
         """
-        self.manifests[manifest].add_filepath(filepath, fullpath, copy)
+        if self.manifests[manifest].add_filepath(filepath, fullpath, copy):
+            # Only link if filepath was added
+            self.manifests[manifest].make_link(filepath)
