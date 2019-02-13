@@ -400,6 +400,7 @@ class Manifest(object):
         Wrapper to the add_filepath function in PayuManifest. Prevents outside
         code from directly calling anything in PayuManifest.
         """
+        filepath = os.path.normpath(filepath)
         if self.manifests[manifest].add_filepath(filepath, fullpath, copy):
             # Only link if filepath was added
             self.manifests[manifest].make_link(filepath)
