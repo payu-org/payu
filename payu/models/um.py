@@ -238,4 +238,4 @@ def time_to_um_time(seconds):
 
     assert(seconds % 86400 == 0)
 
-    return [0, 0, seconds / 86400, 0, 0, 0]
+    return [0, 0, seconds // 86400, 0, 0, 0]
