@@ -400,8 +400,7 @@ class Experiment(object):
         if len(self.models) > 1:
             self.model.setup()
 
-        # Use manifest to populate work directory
-        self.manifest.make_links()
+        self.manifest.check_manifests()
 
         # Copy manifests to work directory so they archived on completion
         manifest_path = os.path.join(self.work_path, 'manifests')
