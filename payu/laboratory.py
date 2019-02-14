@@ -32,11 +32,10 @@ class Laboratory(object):
         self.model_type = model_type
 
         # Set top-level lab path if provided
-        self.basepath = None
-        if lab_path:
-            self.basepath = lab_path
-        elif 'PAYU_LAB_PATH' in os.environ:
+        if 'PAYU_LAB_PATH' in os.environ:
             self.basepath = os.environ.get('PAYU_LAB_PATH')
+        else:
+            self.basepath = lab_path
 
         # If no lab path is set, generate a default path
         if not self.basepath:
