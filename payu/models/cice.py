@@ -126,7 +126,7 @@ class Cice(Model):
             work_out_path = os.path.join(self.work_path, work_out_path)
         self.work_output_path = work_out_path
 
-        self.split_paths = (self.work_input_path != self.work_restart_path)
+        self.split_paths = (self.work_init_path != self.work_restart_path)
 
         if self.split_paths:
             self.copy_inputs = False
@@ -148,11 +148,6 @@ class Cice(Model):
                 if os.path.isdir(init_res_path):
                     self.prior_restart_path = init_res_path
 
-    # def get_prior_restart_files(self):
-    #     restart_files = [f for f in os.listdir(self.prior_restart_path)
-    #                      if f.startswith('iced.')]
-    #     return [sorted(restart_files)[-1]]
-
     def get_ptr_restart_dir(self):
         return os.path.relpath(self.work_init_path, self.work_path)
 
@@ -166,12 +161,10 @@ class Cice(Model):
 
         # Change perms of restart files, these get overwritten so much be
         # writable.
-
         if self.copy_restarts:
-            for fname in ['o2i.nc', 'i2o.nc', 'u_star.nc', 'grid.nc', 'kmt.nc',
-                        'monthly_sstsss.nc', 'mice.nc']:
-                path = os.path.join(self.work_input_path, fname)
-                if os.path.exists(path):
+            for fname in os.listdir(self.work_init_path):
+                path = os.path.join(self.work_init_path, fname)
+                if os.path.exists(path) and not os.path.islink(path):
                     try:
                         perm = (stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
                                 | stat.S_IWUSR)
@@ -204,6 +197,9 @@ class Cice(Model):
 
             res_ptr_path = os.path.join(self.work_init_path,
                                         'ice.restart_file')
+            if os.path.islink(res_ptr_path):
+                # If we've linked in a previous pointer it should be deleted
+                os.remove(res_ptr_path)
             with open(res_ptr_path, 'w') as res_ptr:
                 res_dir = self.get_ptr_restart_dir()
                 print(os.path.join(res_dir, iced_restart_file), file=res_ptr)
