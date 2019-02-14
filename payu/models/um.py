@@ -40,7 +40,7 @@ class UnifiedModel(Model):
                              'hnlist', 'ihist', 'INITHIS',
                              'namelists', 'PPCNTL', 'prefix.PRESM_A',
                              'SIZES', 'STASHC', 'UAFILES_A', 'UAFLDS_A',
-                             'parexe', 'cable.nml']
+                             'parexe', 'cable.nml', 'um_env.py']
         self.optional_config_files = [ 'input_atm.nml' ]
 
         self.restart = 'restart_dump.astart'
