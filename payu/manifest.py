@@ -19,6 +19,7 @@ import fnmatch
 import os
 import sys
 import shutil
+import stat
 from distutils.dir_util import mkpath
 
 from yamanifest.manifest import Manifest as YaManifest
@@ -171,29 +172,6 @@ class PayuManifest(YaManifest):
             return False
         return copy_file
 
-    def make_links(self):
-        """
-        Payu integration function for creating symlinks in work directories
-        which point back to the original file.
-        """
-        delete_list = []
-        for filepath in self:
-            # Check file exists. It may have been deleted but still in manifest
-            if not os.path.exists(self.fullpath(filepath)):
-                delete_list.append(filepath)
-                continue
-
-            if self.copy_file(filepath):
-                shutil.copy(self.fullpath(filepath), filepath)
-            else:
-                make_symlink(self.fullpath(filepath), filepath)
-
-        for filepath in delete_list:
-            print('File not found: {} removing from manifest'
-                  ''.format(self.fullpath(filepath)))
-            self.delete(filepath)
-            self.needsync = True
-    
     def make_link(self, filepath):
         """
         Payu integration function for creating symlinks in work directories
@@ -211,6 +189,9 @@ class PayuManifest(YaManifest):
             try:
                 if self.copy_file(filepath):
                     shutil.copy(self.fullpath(filepath), filepath)
+                    perm = (stat.S_IRUSR | stat.S_IRGRP 
+                            | stat.S_IROTH | stat.S_IWUSR)
+                    os.chmod(filepath, perm)
                 else:
                     make_symlink(self.fullpath(filepath), filepath)
             except:
