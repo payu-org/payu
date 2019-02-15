@@ -290,8 +290,9 @@ class Manifest(object):
 
             if len(self.manifests['input']) > 0:
                 self.have_manifest['input'] = True
-                self.manifests['input'].existing_filepaths = \
-                     set(self.manifests['input'].data.keys())
+                if self.scaninputs:
+                    self.manifests['input'].existing_filepaths = \
+                        set(self.manifests['input'].data.keys())
 
         if self.reproduce:
 
