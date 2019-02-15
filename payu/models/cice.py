@@ -159,20 +159,6 @@ class Cice(Model):
     def setup(self):
         super(Cice, self).setup()
 
-        # Change perms of restart files, these get overwritten so much be
-        # writable.
-        if self.copy_restarts:
-            for fname in os.listdir(self.work_init_path):
-                path = os.path.join(self.work_init_path, fname)
-                if os.path.exists(path) and not os.path.islink(path):
-                    try:
-                        perm = (stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
-                                | stat.S_IWUSR)
-                        os.chmod(path, perm)
-                    except:
-                        print("Couldn't change permissions of {}".format(path))
-                        pass
-
         setup_nml = self.ice_in['setup_nml']
         init_date = datetime.date(year=setup_nml['year_init'], month=1, day=1)
 
