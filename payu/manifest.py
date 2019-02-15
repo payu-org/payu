@@ -151,6 +151,10 @@ class PayuManifest(YaManifest):
         if copy:
             self.data[filepath]['copy'] = copy
 
+        if hasattr(self,'existing_filepaths'):
+            if filepath in self.existing_filepaths:
+                self.existing_filepaths.remove(filepath)
+
         return True
 
     def add_fast(self, filepath, hashfn=fast_hashes, force=False):
@@ -286,17 +290,21 @@ class Manifest(object):
 
             if len(self.manifests['input']) > 0:
                 self.have_manifest['input'] = True
-
-        if os.path.exists(self.manifests['exe'].path):
-            # Read manifest
-            print('Loading exe manifest: {}'
-                  ''.format(self.manifests['exe'].path))
-            self.manifests['exe'].load()
-
-            if len(self.manifests['exe']) > 0:
-                self.have_manifest['exe'] = True
+                self.manifests['input'].existing_filepaths = \
+                     set(self.manifests['input'].data.keys())
 
         if self.reproduce:
+
+            # Load the existing exe manifest if reproduce, Trivial to recreate 
+            # and no check required for changed executable paths
+            if os.path.exists(self.manifests['exe'].path):
+                # Read manifest
+                print('Loading exe manifest: {}'
+                    ''.format(self.manifests['exe'].path))
+                self.manifests['exe'].load()
+
+                if len(self.manifests['exe']) > 0:
+                    self.have_manifest['exe'] = True
 
             # Read restart manifest
             print('Loading restart manifest: {}'
@@ -352,6 +360,14 @@ class Manifest(object):
 
         print("Checking exe and input manifests")
         self.manifests['exe'].check_fast(reproduce=self.reproduce_exe)
+        if hasattr(self.manifests['input'],'existing_filepaths'):
+            # Delete filepaths from input manifest
+            for filepath in self.manifests['input'].existing_filepaths:
+                print('File no longer in input directory: {file} '
+                      'removing from manifest'.format(file=filepath))
+                self.manifests['input'].delete(filepath)
+            self.manifests['input'].needsync = True
+
         self.manifests['input'].check_fast(reproduce=self.reproduce)
 
         if self.reproduce:
