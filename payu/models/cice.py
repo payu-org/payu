@@ -288,14 +288,6 @@ class Cice(Model):
     def archive(self, **kwargs):
         super(Cice, self).archive()
 
-        # Find and delete all the (MANY!) symlinks
-        for d in [self.work_path, self.work_input_path, 
-                  self.work_init_path, self.work_restart_path]:
-            for f in os.listdir(d):
-                f_path = os.path.join(d, f)
-                if os.path.islink(f_path):
-                    os.remove(f_path)
-
         os.rename(self.work_restart_path, self.restart_path)
 
         if not self.split_paths:
