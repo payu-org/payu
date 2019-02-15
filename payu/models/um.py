@@ -51,6 +51,7 @@ class UnifiedModel(Model):
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
 
     def archive(self):
+        super(UnifiedModel, self).archive()
 
         mkdir_p(self.restart_path)
 

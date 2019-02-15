@@ -273,7 +273,12 @@ class Model(object):
 
     def archive(self):
         """Store model output to laboratory archive."""
-        raise NotImplementedError
+
+        for path, dirs, files in os.walk(self.work_path):
+            for f_name in files:
+                f_path = os.path.join(path, f_name)
+                if os.path.islink(f_path):
+                    os.remove(f_path)
 
     def collate(self):
         """Collate any tiled output into a single file."""

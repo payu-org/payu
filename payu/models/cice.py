@@ -286,6 +286,7 @@ class Cice(Model):
                 namcpl.write()
 
     def archive(self, **kwargs):
+        super(Cice, self).archive()
 
         # Find and delete all the (MANY!) symlinks
         for d in [self.work_path, self.work_input_path, 

@@ -112,6 +112,7 @@ class Oasis(Model):
                 input_nml.write(input_nml_path, force=True)
 
     def archive(self):
+        super(Oasis, self).archive()
 
         # TODO: Determine the exchange files
         restart_files = ['a2i.nc', 'i2a.nc', 'i2o.nc', 'o2i.nc']
