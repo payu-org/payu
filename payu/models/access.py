@@ -237,3 +237,6 @@ class Access(Model):
 
     def set_model_output_paths(self):
         pass
+    
+    def collate(self):
+        pass
