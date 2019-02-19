@@ -176,7 +176,7 @@ def date_to_um_dump_date(date):
 
     assert(date.month <= 12)
 
-    decade = date.year / 10
+    decade = date.year // 10
     # UM can only handle 36 decades then goes back to the beginning.
     decade = decade % 36
     year = date.year % 10
