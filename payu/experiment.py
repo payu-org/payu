@@ -366,7 +366,13 @@ class Experiment(object):
 
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
-            sys.exit('payu: error: Output path already exists.')
+            sys.exit('payu: error: Output path already exists: '
+                     '{path}.'.format(self.output_path))
+
+        # Confirm that no work path already exists
+        if os.path.exists(self.work_path):
+            sys.exit('payu: error: work path already exists: '
+                     '{path}'.format(self.work_path))
 
         mkdir_p(self.work_path)
 
