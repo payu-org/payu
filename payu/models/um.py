@@ -11,6 +11,7 @@ from __future__ import print_function
 # Standard Library
 import datetime
 import fileinput
+import glob
 import imp
 import os
 import shutil
@@ -52,6 +53,14 @@ class UnifiedModel(Model):
 
     def archive(self):
         super(UnifiedModel, self).archive()
+
+        # Delete all the stdout log files except the root PE
+        # Sorts to ensure root PE is first entry
+        files = sorted(glob.glob(os.path.join(self.work_path,'atm.fort6.pe*')),
+                       key=lambda name: int(name.rpartition('.')[-1][2:]))
+        if len(files) > 1:
+            for f_path in files[1:]:
+                os.remove(f_path)
 
         mkdir_p(self.restart_path)
 
