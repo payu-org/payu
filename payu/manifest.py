@@ -118,7 +118,8 @@ class PayuManifest(YaManifest):
                 self.add(
                     filepaths=list(hashvals.keys()),
                     hashfn=full_hashes,
-                    force=True
+                    force=True,
+                    fullpaths=[self.fullpath(fpath) for fpath in self]
                 )
 
                 # Flag need to update version on disk
