@@ -77,7 +77,7 @@ def get_model_type(model_type, config):
         sys.exit(-1)
 
 
-def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None):
+def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None, reproduce=None):
     """Construct the environment variables used by payu for resubmissions."""
     payu_env_vars = {}
 
@@ -113,6 +113,9 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None):
 
     if dir_path:
         payu_env_vars['PAYU_DIR_PATH'] = os.path.normpath(dir_path)
+
+    if reproduce:
+        payu_env_vars['PAYU_REPRODUCE'] = reproduce
 
     return payu_env_vars
 

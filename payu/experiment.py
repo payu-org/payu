@@ -45,7 +45,7 @@ default_restart_history = 5
 
 class Experiment(object):
 
-    def __init__(self, lab, reproduce=False):
+    def __init__(self, lab, reproduce=None):
         self.lab = lab
 
         self.start_time = datetime.datetime.now()
@@ -86,6 +86,10 @@ class Experiment(object):
             model.set_input_paths()
 
         self.set_output_paths()
+
+        if reproduce is None:
+            # check environment for reproduce flag under PBS
+            reproduce = os.environ.get('PAYU_REPRODUCE', False)
 
         # Initialize manifest
         self.manifest = Manifest(self, reproduce=reproduce)
