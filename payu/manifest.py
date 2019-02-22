@@ -192,6 +192,12 @@ class PayuManifest(YaManifest):
                 self.needsync = True
         else:
             try:
+                destdir = os.path.dirname(filepath)
+                # Make destination directory if not already exists
+                # Necessary because sometimes this is called before
+                # individual model setup
+                if not os.path.exists(destdir):
+                    os.makedirs(destdir)
                 if self.copy_file(filepath):
                     shutil.copy(self.fullpath(filepath), filepath)
                     perm = (stat.S_IRUSR | stat.S_IRGRP 
@@ -206,6 +212,13 @@ class PayuManifest(YaManifest):
                                               orig=self.fullpath(filepath), 
                                               local=filepath))
                 raise
+
+    def make_links(self):
+        """
+        Used to make all links at once for reproduce runs or scaninputs=False
+        """
+        for filepath in self:
+            self.make_link(filepath)
 
     def copy(self, path):
         """
@@ -297,8 +310,8 @@ class Manifest(object):
 
         if self.reproduce:
 
-            # Load the existing exe manifest if reproduce, Trivial to recreate 
-            # and no check required for changed executable paths
+            # Only load existing exe manifest if reproduce. Trivial to 
+            # recreate and no check required for changed executable paths
             if os.path.exists(self.manifests['exe'].path):
                 # Read manifest
                 print('Loading exe manifest: {}'
@@ -328,33 +341,13 @@ class Manifest(object):
                       'reproduce_exe are True')
                 exit(1)
 
+            # Must make links as no files will be added to the manifest
+            for mf in ['exe', 'restart', 'input']:
+                print(mf)
+                self.manifests[mf].make_links()
+
             for model in self.expt.models:
                 model.have_restart_manifest = True
-
-            # Inspect the restart manifest for an appropriate value of #
-            # experiment counter if not specified on the command line (and this
-            # env var set)
-            if not os.environ.get('PAYU_CURRENT_RUN'):
-                for filepath in self.manifests['restart']:
-                    head = os.path.dirname(
-                        self.manifests['restart'].fullpath(filepath)
-                    )
-                    # Inspect each element of the fullpath looking for
-                    # restartxxx style directories. Exit
-                    while True:
-                        head, tail = os.path.split(head)
-                        if tail.startswith('restart'):
-                            try:
-                                n = int(tail.lstrip('restart'))
-                            except ValueError:
-                                pass
-                            else:
-                                self.expt.counter = n + 1
-                                break
-
-                    # Short circuit as soon as restart dir found
-                    if self.expt.counter == 0:
-                        break
         else:
             self.have_manifest['restart'] = False
 
