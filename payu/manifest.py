@@ -198,7 +198,6 @@ class PayuManifest(YaManifest):
                 # individual model setup
                 if not os.path.exists(destdir):
                     os.makedirs(destdir)
-                print("linking to {}".format(filepath))
                 if self.copy_file(filepath):
                     shutil.copy(self.fullpath(filepath), filepath)
                     perm = (stat.S_IRUSR | stat.S_IRGRP 
