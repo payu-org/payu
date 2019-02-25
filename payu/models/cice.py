@@ -171,8 +171,8 @@ class Cice(Model):
             # Generate ice.restart_file
             # TODO: better check of restart filename
             iced_restart_file = None
-            iced_restart_files = [ f for f in self.get_prior_restart_files() 
-                                   if f.startswith('iced.') ]
+            iced_restart_files = [f for f in self.get_prior_restart_files()
+                                  if f.startswith('iced.')]
 
             if len(iced_restart_files) > 0:
                 iced_restart_file = sorted(iced_restart_files)[-1]

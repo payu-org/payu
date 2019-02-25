@@ -42,7 +42,7 @@ class UnifiedModel(Model):
                              'namelists', 'PPCNTL', 'prefix.PRESM_A',
                              'SIZES', 'STASHC', 'UAFILES_A', 'UAFLDS_A',
                              'parexe', 'cable.nml', 'um_env.py']
-        self.optional_config_files = [ 'input_atm.nml' ]
+        self.optional_config_files = ['input_atm.nml']
 
         self.restart = 'restart_dump.astart'
 
@@ -56,7 +56,8 @@ class UnifiedModel(Model):
 
         # Delete all the stdout log files except the root PE
         # Sorts to ensure root PE is first entry
-        files = sorted(glob.glob(os.path.join(self.work_path,'atm.fort6.pe*')),
+        files = sorted(glob.glob(
+                       os.path.join(self.work_path, 'atm.fort6.pe*')),
                        key=lambda name: int(name.rpartition('.')[-1][2:]))
         if len(files) > 1:
             for f_path in files[1:]:

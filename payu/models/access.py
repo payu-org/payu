@@ -65,7 +65,7 @@ class Access(Model):
 
             if model.model_type == 'cice' or model.model_type == 'cice5':
 
-                # Horrible hack to make a link to o2i.nc in the 
+                # Horrible hack to make a link to o2i.nc in the
                 # work/ice/RESTART directory
                 f_name = 'o2i.nc'
                 f_src = os.path.join(model.work_path, f_name)
@@ -237,6 +237,6 @@ class Access(Model):
 
     def set_model_output_paths(self):
         pass
-    
+
     def collate(self):
         pass

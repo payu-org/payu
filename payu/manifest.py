@@ -152,7 +152,7 @@ class PayuManifest(YaManifest):
         if copy:
             self.data[filepath]['copy'] = copy
 
-        if hasattr(self,'existing_filepaths'):
+        if hasattr(self, 'existing_filepaths'):
             if filepath in self.existing_filepaths:
                 self.existing_filepaths.remove(filepath)
 
@@ -200,16 +200,16 @@ class PayuManifest(YaManifest):
                     os.makedirs(destdir)
                 if self.copy_file(filepath):
                     shutil.copy(self.fullpath(filepath), filepath)
-                    perm = (stat.S_IRUSR | stat.S_IRGRP 
+                    perm = (stat.S_IRUSR | stat.S_IRGRP
                             | stat.S_IROTH | stat.S_IWUSR)
                     os.chmod(filepath, perm)
                 else:
                     make_symlink(self.fullpath(filepath), filepath)
-            except:
+            except Exception:
                 action = 'copying' if self.copy_file else 'linking'
                 print('payu: error: {action} orig: {orig} '
                       'local: {local}'.format(action=action,
-                                              orig=self.fullpath(filepath), 
+                                              orig=self.fullpath(filepath),
                                               local=filepath))
                 raise
 
@@ -310,12 +310,12 @@ class Manifest(object):
 
         if self.reproduce:
 
-            # Only load existing exe manifest if reproduce. Trivial to 
+            # Only load existing exe manifest if reproduce. Trivial to
             # recreate and no check required for changed executable paths
             if os.path.exists(self.manifests['exe'].path):
                 # Read manifest
                 print('Loading exe manifest: {}'
-                    ''.format(self.manifests['exe'].path))
+                      .format(self.manifests['exe'].path))
                 self.manifests['exe'].load()
 
                 if len(self.manifests['exe']) > 0:
@@ -355,7 +355,7 @@ class Manifest(object):
 
         print("Checking exe and input manifests")
         self.manifests['exe'].check_fast(reproduce=self.reproduce_exe)
-        if hasattr(self.manifests['input'],'existing_filepaths'):
+        if hasattr(self.manifests['input'], 'existing_filepaths'):
             # Delete filepaths from input manifest
             for filepath in self.manifests['input'].existing_filepaths:
                 print('File no longer in input directory: {file} '

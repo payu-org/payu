@@ -376,7 +376,7 @@ class Experiment(object):
         # Confirm that no work path already exists
         if os.path.exists(self.work_path):
             sys.exit('payu: error: work path already exists: {path}.\n'
-                     '             payu sweep and then payu run'\
+                     '             payu sweep and then payu run'
                      .format(path=self.work_path))
 
         mkdir_p(self.work_path)
@@ -547,7 +547,7 @@ class Experiment(object):
 
             # Use the full path to symlinked exec_name in work as some
             # older MPI libraries complained executable was not in PATH
-            model_prog.append(os.path.join(model.work_path,model.exec_name))
+            model_prog.append(os.path.join(model.work_path, model.exec_name))
 
             mpi_progs.append(' '.join(model_prog))
 
