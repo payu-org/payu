@@ -193,6 +193,9 @@ class Access(Model):
         if not self.top_level_model:
             return
 
+        cice5 = None
+        mom = None
+
         for model in self.expt.models:
             if model.model_type == 'cice':
 
@@ -212,9 +215,6 @@ class Access(Model):
                 if os.path.exists(f_src):
                     shutil.copy2(f_src, f_dst)
 
-        cice5 = None
-        mom = None
-        for model in self.expt.models:
             if model.model_type == 'cice5':
                 cice5 = model
             elif model.model_type == 'mom':
