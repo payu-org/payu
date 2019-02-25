@@ -11,6 +11,7 @@ from __future__ import print_function
 # Standard Library
 import datetime
 import fileinput
+import glob
 import imp
 import os
 import shutil
@@ -40,7 +41,8 @@ class UnifiedModel(Model):
                              'hnlist', 'ihist', 'INITHIS',
                              'namelists', 'PPCNTL', 'prefix.PRESM_A',
                              'SIZES', 'STASHC', 'UAFILES_A', 'UAFLDS_A',
-                             'parexe', 'cable.nml']
+                             'parexe', 'cable.nml', 'um_env.py']
+        self.optional_config_files = ['input_atm.nml']
 
         self.restart = 'restart_dump.astart'
 
@@ -50,6 +52,16 @@ class UnifiedModel(Model):
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
 
     def archive(self):
+        super(UnifiedModel, self).archive()
+
+        # Delete all the stdout log files except the root PE
+        # Sorts to ensure root PE is first entry
+        files = sorted(glob.glob(
+                       os.path.join(self.work_path, 'atm.fort6.pe*')),
+                       key=lambda name: int(name.rpartition('.')[-1][2:]))
+        if len(files) > 1:
+            for f_path in files[1:]:
+                os.remove(f_path)
 
         mkdir_p(self.restart_path)
 
@@ -69,13 +81,24 @@ class UnifiedModel(Model):
         restart_dump = os.path.join(self.work_path,
                                     'aiihca.da{0}'.format(end_date))
         f_dst = os.path.join(self.restart_path, self.restart)
-        shutil.copy(restart_dump, f_dst)
+        if os.path.exists(restart_dump):
+            shutil.copy(restart_dump, f_dst)
+        else:
+            print('payu: error: Model has not produced a restart dump file'
+                  '{} does not exist. '
+                  'Check DUMPFREQim in namelists'.format(restart_dump))
 
     def collate(self):
         pass
 
     def setup(self):
         super(UnifiedModel, self).setup()
+
+        # Set up environment variables needed to run UM.
+        # Look for a python file in the config directory.
+        um_env = imp.load_source('um_env',
+                                 os.path.join(self.control_path, 'um_env.py'))
+        um_vars = um_env.vars
 
         # Stage the UM restart file.
         if self.prior_restart_path and not self.expt.repeat_run:
@@ -84,14 +107,9 @@ class UnifiedModel(Model):
 
             if os.path.isfile(f_src):
                 make_symlink(f_src, f_dst)
-
-        # Set up environment variables needed to run UM.
-        # Look for a python file in the config directory.
-        um_env = imp.load_source('um_env',
-                                 os.path.join(self.control_path, 'um_env.py'))
-        um_vars = um_env.vars
-
-        assert len(self.input_paths) == 1
+                # every run is an NRUN with an updated ASTART file
+                um_vars['ASTART'] = self.restart
+                um_vars['TYPE'] = 'NRUN'
 
         # Set paths in environment variables.
         for k in um_vars.keys():
@@ -168,7 +186,7 @@ def date_to_um_dump_date(date):
 
     assert(date.month <= 12)
 
-    decade = date.year / 10
+    decade = date.year // 10
     # UM can only handle 36 decades then goes back to the beginning.
     decade = decade % 36
     year = date.year % 10
@@ -231,4 +249,4 @@ def time_to_um_time(seconds):
 
     assert(seconds % 86400 == 0)
 
-    return [0, 0, seconds / 86400, 0, 0, 0]
+    return [0, 0, seconds // 86400, 0, 0, 0]

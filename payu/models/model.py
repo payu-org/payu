@@ -188,11 +188,19 @@ class Model(object):
                                                        self.name)
 
     def get_prior_restart_files(self):
-        return [f for f in os.listdir(self.prior_restart_path)
-                if os.path.isfile(os.path.join(self.prior_restart_path, f))]
+
+        try:
+            return [f for f in os.listdir(self.prior_restart_path)
+                    if os.path.isfile(os.path.join(self.prior_restart_path, f))]
+        except Exception as e:
+            print("No prior restart files found: {error}".format(e))
+            return []
 
     def setup(self):
+
+        print("Setting up {model}".format(model=self.name))
         # Create experiment directory structure
+        mkdir_p(self.work_init_path)
         mkdir_p(self.work_input_path)
         mkdir_p(self.work_restart_path)
         mkdir_p(self.work_output_path)
@@ -223,7 +231,7 @@ class Model(object):
                     'restart',
                     f_link,
                     f_orig,
-                    self.copy_inputs
+                    self.copy_restarts
                 )
 
         # Add input files to manifest if we don't already have a populated
@@ -232,18 +240,25 @@ class Model(object):
                 self.expt.manifest.scaninputs):
             # Add files to manifest
             for input_path in self.input_paths:
-                input_files = os.listdir(input_path)
-                for f_name in input_files:
-                    f_orig = os.path.join(input_path, f_name)
-                    f_link = os.path.join(self.work_input_path_local, f_name)
-                    # Do not use input file if it is in RESTART
-                    if not os.path.exists(f_link):
-                        self.expt.manifest.add_filepath(
-                            'input',
-                            f_link,
-                            f_orig,
-                            self.copy_inputs
-                        )
+                for path, dirs, files in os.walk(input_path):
+                    workrelpath = os.path.relpath(path, input_path)
+                    subdir = os.path.normpath(
+                                os.path.join(self.work_input_path_local,
+                                workrelpath))
+                    if not os.path.exists(subdir):
+                        os.mkdir(subdir)
+                    for f_name in files:
+                        f_orig = os.path.join(path, f_name)
+                        f_link = os.path.join(
+                            self.work_input_path_local, workrelpath, f_name)
+                        # Do not use input file if it is in RESTART
+                        if not os.path.exists(f_link):
+                            self.expt.manifest.add_filepath(
+                                'input',
+                                f_link,
+                                f_orig,
+                                self.copy_inputs
+                            )
 
         # Make symlink to executable in work directory
         if self.exec_path:
@@ -265,7 +280,18 @@ class Model(object):
 
     def archive(self):
         """Store model output to laboratory archive."""
-        raise NotImplementedError
+
+        # Traverse the model directory deleting symlinks, zero length files
+        # and empty directories
+        for path, dirs, files in os.walk(self.work_path, topdown=False):
+            for f_name in files:
+                f_path = os.path.join(path, f_name)
+                if os.path.islink(f_path) or os.path.getsize(f_path) == 0:
+                    print("Removing {file}".format(file=f_path))
+                    os.remove(f_path)
+            if len(os.listdir(path)) == 0:
+                os.rmdir(path)
+                print("Removing {dir}".format(dir=path))
 
     def collate(self):
         """Collate any tiled output into a single file."""

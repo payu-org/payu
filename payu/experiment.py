@@ -45,7 +45,7 @@ default_restart_history = 5
 
 class Experiment(object):
 
-    def __init__(self, lab, reproduce=False):
+    def __init__(self, lab, reproduce=None):
         self.lab = lab
 
         self.start_time = datetime.datetime.now()
@@ -86,6 +86,10 @@ class Experiment(object):
             model.set_input_paths()
 
         self.set_output_paths()
+
+        if reproduce is None:
+            # check environment for reproduce flag under PBS
+            reproduce = os.environ.get('PAYU_REPRODUCE', False)
 
         # Initialize manifest
         self.manifest = Manifest(self, reproduce=reproduce)
@@ -366,7 +370,14 @@ class Experiment(object):
 
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
-            sys.exit('payu: error: Output path already exists.')
+            sys.exit('payu: error: Output path already exists: '
+                     '{path}.'.format(path=self.output_path))
+
+        # Confirm that no work path already exists
+        if os.path.exists(self.work_path):
+            sys.exit('payu: error: work path already exists: {path}.\n'
+                     '             payu sweep and then payu run'
+                     .format(path=self.work_path))
 
         mkdir_p(self.work_path)
 
@@ -400,8 +411,7 @@ class Experiment(object):
         if len(self.models) > 1:
             self.model.setup()
 
-        # Use manifest to populate work directory
-        self.manifest.make_links()
+        self.manifest.check_manifests()
 
         # Copy manifests to work directory so they archived on completion
         manifest_path = os.path.join(self.work_path, 'manifests')
@@ -535,8 +545,9 @@ class Experiment(object):
 
             model_prog.append(model.exec_prefix)
 
-            # Use the exec_name (without path) as this is now linked in work
-            model_prog.append(model.exec_name)
+            # Use the full path to symlinked exec_name in work as some
+            # older MPI libraries complained executable was not in PATH
+            model_prog.append(os.path.join(model.work_path, model.exec_name))
 
             mpi_progs.append(' '.join(model_prog))
 

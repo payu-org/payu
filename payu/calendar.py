@@ -9,8 +9,8 @@ def int_to_date(date):
     Convert an int of form yyyymmdd to a python date object.
     """
 
-    year = date / 10**4
-    month = date % 10**4 / 10**2
+    year = date // 10**4
+    month = date % 10**4 // 10**2
     day = date % 10**2
 
     return datetime.date(year, month, day)

@@ -69,6 +69,7 @@ class Fms(Model):
         return tile_fnames
 
     def archive(self, **kwargs):
+        super(Fms, self).archive()
 
         # Remove the 'INPUT' path
         cmd = 'rm -rf {work}'.format(work=self.work_input_path)
