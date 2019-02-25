@@ -287,11 +287,9 @@ class Model(object):
             for f_name in files:
                 f_path = os.path.join(path, f_name)
                 if os.path.islink(f_path) or os.path.getsize(f_path) == 0:
-                    print("Removing {file}".format(file=f_path))
                     os.remove(f_path)
             if len(os.listdir(path)) == 0:
                 os.rmdir(path)
-                print("Removing {dir}".format(dir=path))
 
     def collate(self):
         """Collate any tiled output into a single file."""
