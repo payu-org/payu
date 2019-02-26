@@ -19,6 +19,7 @@ import string
 
 # Extensions
 import f90nml
+import yaml
 
 # Local
 from payu.fsops import mkdir_p, make_symlink
@@ -33,6 +34,7 @@ class UnifiedModel(Model):
 
         self.model_type = 'um'
         self.default_exec = 'um'
+        self.restart_calendar_file = self.model_type + '.res.yaml'
 
         # TODO: many of these can probably be ignored.
         self.config_files = ['CNTLALL', 'prefix.CNTLATM', 'prefix.CNTLGEN',
@@ -50,6 +52,7 @@ class UnifiedModel(Model):
         super(UnifiedModel, self).set_model_pathnames()
 
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
+        self.work_init_path = os.path.join(self.work_path, 'INIT')
 
     def archive(self):
         super(UnifiedModel, self).archive()
@@ -71,12 +74,22 @@ class UnifiedModel(Model):
 
         resubmit_inc = nml['NLSTCALL']['RUN_RESUBMIT_INC']
         runtime = um_time_to_time(resubmit_inc)
-        runtime = datetime.timedelta(seconds=runtime)
+        # runtime = datetime.timedelta(seconds=runtime)
 
         basis_time = nml['NLSTCALL']['MODEL_BASIS_TIME']
         init_date = um_date_to_date(basis_time)
 
-        end_date = date_to_um_dump_date(init_date + runtime)
+        end_date = cal.date_plus_seconds(init_date,
+                                         runtime,
+                                         cal.GREGORIAN)
+
+        # Save model time to restart next run
+        with open(os.path.join(self.restart_path, 
+                  self.restart_calendar_file), 'w') as restart_file:
+            restart_file.write(yaml.dump({'end_date':end_date}, 
+                               default_flow_style=False))
+
+        end_date = date_to_um_dump_date(end_date)
 
         restart_dump = os.path.join(self.work_path,
                                     'aiihca.da{0}'.format(end_date))
@@ -84,8 +97,8 @@ class UnifiedModel(Model):
         if os.path.exists(restart_dump):
             shutil.copy(restart_dump, f_dst)
         else:
-            print('payu: error: Model has not produced a restart dump file'
-                  '{} does not exist. '
+            print('payu: error: Model has not produced a restart dump file:\n'
+                  '{} does not exist.\n'
                   'Check DUMPFREQim in namelists'.format(restart_dump))
 
     def collate(self):
@@ -129,19 +142,13 @@ class UnifiedModel(Model):
         work_nml = f90nml.read(work_nml_path)
 
         # Modify namelists for a continuation run.
-        if self.prior_output_path and not self.expt.repeat_run:
+        if self.prior_restart_path and not self.expt.repeat_run:
 
-            prior_nml_path = os.path.join(self.prior_output_path, 'namelists')
-            prior_nml = f90nml.read(prior_nml_path)
+            with open(os.path.join(self.work_init_path, 
+                      self.restart_calendar_file), 'r') as restart_file:
+                restart_info = yaml.load(restart_file)
 
-            basis_time = prior_nml['NLSTCALL']['MODEL_BASIS_TIME']
-            init_date = um_date_to_date(basis_time)
-            resubmit_inc = prior_nml['NLSTCALL']['RUN_RESUBMIT_INC']
-            runtime = um_time_to_time(resubmit_inc)
-
-            run_start_date = cal.date_plus_seconds(init_date,
-                                                   runtime,
-                                                   cal.GREGORIAN)
+            run_start_date = restart_info['end_date']
 
             # Write out and save new calendar information.
             run_start_date_um = date_to_um_date(run_start_date)
