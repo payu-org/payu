@@ -52,7 +52,6 @@ class UnifiedModel(Model):
         super(UnifiedModel, self).set_model_pathnames()
 
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
-        self.work_init_path = os.path.join(self.work_path, 'INIT')
 
     def archive(self):
         super(UnifiedModel, self).archive()
@@ -141,11 +140,14 @@ class UnifiedModel(Model):
         work_nml_path = os.path.join(self.work_path, 'namelists')
         work_nml = f90nml.read(work_nml_path)
 
-        # Modify namelists for a continuation run.
-        if self.prior_restart_path and not self.expt.repeat_run:
+        restart_calendar_path = os.path.join(self.work_init_path, 
+                      self.restart_calendar_file)
 
-            with open(os.path.join(self.work_init_path, 
-                      self.restart_calendar_file), 'r') as restart_file:
+        # Modify namelists for a continuation run.
+        if self.prior_restart_path and not self.expt.repeat_run \
+            and os.path.exists(restart_calendar_path):
+
+            with open(restart_calendar_path, 'r') as restart_file:
                 restart_info = yaml.load(restart_file)
 
             run_start_date = restart_info['end_date']
