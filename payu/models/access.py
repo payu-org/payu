@@ -207,13 +207,13 @@ class Access(Model):
                     if os.path.exists(f_src):
                         shutil.move(f_src, f_dst)
 
-            # Copy configs from work path to restart
-            for f_name in model.config_files:
-                f_src = os.path.join(model.work_path, f_name)
-                f_dst = os.path.join(model.restart_path, f_name)
+                # Copy configs from work path to restart
+                for f_name in model.config_files:
+                    f_src = os.path.join(model.work_path, f_name)
+                    f_dst = os.path.join(model.restart_path, f_name)
 
-                if os.path.exists(f_src):
-                    shutil.copy2(f_src, f_dst)
+                    if os.path.exists(f_src):
+                        shutil.copy2(f_src, f_dst)
 
             if model.model_type == 'cice5':
                 cice5 = model
