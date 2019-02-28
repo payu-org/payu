@@ -119,7 +119,7 @@ class PayuManifest(YaManifest):
                     filepaths=list(hashvals.keys()),
                     hashfn=full_hashes,
                     force=True,
-                    fullpaths=[self.fullpath(fpath) for fpath 
+                    fullpaths=[self.fullpath(fpath) for fpath
                                in list(hashvals.keys())]
                 )
 
@@ -218,7 +218,7 @@ class PayuManifest(YaManifest):
         """
         Used to make all links at once for reproduce runs or scaninputs=False
         """
-        for filepath in self:
+        for filepath in list(self):
             self.make_link(filepath)
 
     def copy(self, path):
