@@ -83,9 +83,9 @@ class UnifiedModel(Model):
                                          cal.GREGORIAN)
 
         # Save model time to restart next run
-        with open(os.path.join(self.restart_path, 
+        with open(os.path.join(self.restart_path,
                   self.restart_calendar_file), 'w') as restart_file:
-            restart_file.write(yaml.dump({'end_date':end_date}, 
+            restart_file.write(yaml.dump({'end_date': end_date},
                                default_flow_style=False))
 
         end_date = date_to_um_dump_date(end_date)
@@ -140,12 +140,12 @@ class UnifiedModel(Model):
         work_nml_path = os.path.join(self.work_path, 'namelists')
         work_nml = f90nml.read(work_nml_path)
 
-        restart_calendar_path = os.path.join(self.work_init_path, 
-                      self.restart_calendar_file)
+        restart_calendar_path = os.path.join(self.work_init_path,
+                                             self.restart_calendar_file)
 
         # Modify namelists for a continuation run.
         if self.prior_restart_path and not self.expt.repeat_run \
-            and os.path.exists(restart_calendar_path):
+           and os.path.exists(restart_calendar_path):
 
             with open(restart_calendar_path, 'r') as restart_file:
                 restart_info = yaml.load(restart_file)

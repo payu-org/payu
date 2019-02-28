@@ -119,7 +119,7 @@ class PayuManifest(YaManifest):
                     filepaths=list(hashvals.keys()),
                     hashfn=full_hashes,
                     force=True,
-                    fullpaths=[self.fullpath(fpath) for fpath 
+                    fullpaths=[self.fullpath(fpath) for fpath
                                in list(hashvals.keys())]
                 )
 
