@@ -240,7 +240,6 @@ class Model(object):
                 self.expt.manifest.scaninputs):
             # Gather files for manifest
             manifest_files = []
-            print(self.input_paths)
             for input_path in self.input_paths:
                 if os.path.isfile(input_path):
                     input_dir, input_file = os.path.split(input_path)
@@ -269,7 +268,6 @@ class Model(object):
                             manifest_files.append((f_orig, f_link))
 
             # Add files to manifest
-            print(manifest_files)
             for f_orig, f_link in manifest_files:
                  # Do not use input file if it is in RESTART
                  if not os.path.exists(f_link):
