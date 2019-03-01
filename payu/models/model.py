@@ -238,45 +238,44 @@ class Model(object):
         # input manifest, or we specify scan_inputs is True (default)
         if (not self.expt.manifest.have_manifest['input'] or
                 self.expt.manifest.scaninputs):
-            # Gather files for manifest
-            manifest_files = []
             for input_path in self.input_paths:
                 if os.path.isfile(input_path):
-                    input_dir, input_file = os.path.split(input_path)
-                    f_orig = os.path.join(input_dir, input_file)
-                    f_link = os.path.join(self.work_input_path_local,
-                                          input_file)
-                    manifest_files.append((f_orig, f_link))
+                    # Build a mock walk iterator for a single file
+                    fwalk = iter([(
+                        os.path.dirname(input_path),
+                        [],
+                        [os.path.basename(input_path)]
+                    )])
+                    # Overwrite the input_path as a directory
+                    input_path = os.path.dirname(input_path)
                 else:
-                    assert(os.path.isdir(input_path))
+                    fwalk = os.walk(input_path)
 
-                    for path, dirs, files in os.walk(input_path):
-                        workrelpath = os.path.relpath(path, input_path)
-                        subdir = os.path.normpath(
-                            os.path.join(self.work_input_path_local,
-                                         workrelpath)
+                for path, dirs, files in fwalk:
+                    workrelpath = os.path.relpath(path, input_path)
+                    subdir = os.path.normpath(
+                        os.path.join(self.work_input_path_local,
+                                     workrelpath)
+                    )
+
+                    if not os.path.exists(subdir):
+                        os.mkdir(subdir)
+
+                    for f_name in files:
+                        f_orig = os.path.join(path, f_name)
+                        f_link = os.path.join(
+                            self.work_input_path_local,
+                            workrelpath,
+                            f_name
                         )
-
-                        if not os.path.exists(subdir):
-                            os.mkdir(subdir)
-
-                        for f_name in files:
-                            f_orig = os.path.join(path, f_name)
-                            f_link = os.path.join(
-                                self.work_input_path_local, workrelpath, f_name
+                        # Do not use input file if it is in RESTART
+                        if not os.path.exists(f_link):
+                            self.expt.manifest.add_filepath(
+                                'input',
+                                f_link,
+                                f_orig,
+                                self.copy_inputs
                             )
-                            manifest_files.append((f_orig, f_link))
-
-            # Add files to manifest
-            for f_orig, f_link in manifest_files:
-                 # Do not use input file if it is in RESTART
-                 if not os.path.exists(f_link):
-                     self.expt.manifest.add_filepath(
-                         'input',
-                         f_link,
-                         f_orig,
-                         self.copy_inputs
-                     )
 
         # Make symlink to executable in work directory
         if self.exec_path:
