@@ -98,6 +98,7 @@ reproduce = {
     'parameters': {
         'action':   'store_true',
         'dest':     'reproduce',
+        'default':  None,
         'help':     'Only run if manifests are correct',
     }
 }

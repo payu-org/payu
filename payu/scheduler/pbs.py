@@ -78,7 +78,9 @@ def get_qstat_info(qflag, header, projects=None, users=None):
     cmd = '{} {}'.format(qstat, qflag)
 
     cmd = shlex.split(cmd)
-    output = subprocess.check_output(cmd).decode().encode()
+    output = subprocess.check_output(cmd)
+    if sys.version_info.major >= 3:
+        output = output.decode()
 
     entries = (e for e in output.split('{}: '.format(header)) if e)
 

@@ -32,7 +32,7 @@ class Oasis(Model):
 
         self.model_type = 'oasis'
         self.copy_restarts = True
-        self.copy_inputs = True
+        self.copy_inputs = False
 
         self.config_files = ['namcouple']
 
@@ -50,6 +50,10 @@ class Oasis(Model):
 
             # Skip the oasis self-reference
             if model == self:
+                continue
+
+            # Skip models without a work_path (like access)
+            if not hasattr(model, 'work_path'):
                 continue
 
             mkdir_p(model.work_path)
@@ -108,6 +112,7 @@ class Oasis(Model):
                 input_nml.write(input_nml_path, force=True)
 
     def archive(self):
+        super(Oasis, self).archive()
 
         # TODO: Determine the exchange files
         restart_files = ['a2i.nc', 'i2a.nc', 'i2o.nc', 'o2i.nc']
@@ -118,7 +123,7 @@ class Oasis(Model):
             f_dst = os.path.join(self.restart_path, f)
 
             if os.path.exists(f_src):
-                shutil.copy2(f_src, f_dst)
+                shutil.move(f_src, f_dst)
 
     def collate(self):
         pass

@@ -19,7 +19,8 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, reproduce):
 
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
-    pbs_vars = cli.set_env_vars(init_run, n_runs, lab_path)
+    pbs_vars = cli.set_env_vars(init_run, n_runs, lab_path,
+                                reproduce=reproduce)
 
     # Set the queue
     # NOTE: Maybe force all jobs on the normal queue
@@ -135,8 +136,8 @@ def runscript():
         if n_runs_per_submit > 1 and subrun < n_runs_per_submit:
             expt.counter += 1
             expt.set_output_paths()
-            # Does not make sense to reproduce a multiple run. Take care of
-            # this with argument processing?
+            # Does not make sense to reproduce a multiple run.
+            # Take care of this with argument processing?
             expt.reproduce = False
         else:
             break

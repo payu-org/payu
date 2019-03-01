@@ -34,7 +34,7 @@ class Access(Model):
         self.model_type = 'access'
 
         for model in self.expt.models:
-            if model.model_type == 'cice':
+            if model.model_type == 'cice' or model.model_type == 'cice5':
                 model.config_files = ['cice_in.nml',
                                       'input_ice.nml']
                 model.optional_config_files = ['input_ice_gfdl.nml',
@@ -42,16 +42,20 @@ class Access(Model):
 
                 model.ice_nml_fname = 'cice_in.nml'
 
-                model.access_restarts = ['u_star.nc', 'sicemass.nc', 'mice.nc']
+                model.access_restarts = ['mice.nc']
+                model.copy_restarts = True
 
                 model.set_timestep = model.set_access_timestep
                 model.get_ptr_restart_dir = model.get_access_ptr_restart_dir
+
+            if model.model_type == 'cice5':
+                model.access_restarts.append(['u_star.nc', 'sicemass.nc'])
 
     def setup(self):
         if not self.top_level_model:
             return
 
-        cpl_keys = {'cice': ('input_ice.nml', 'coupling_nml', 'runtime0'),
+        cpl_keys = {'cice': ('input_ice.nml', 'coupling', 'runtime0'),
                     'matm': ('input_atm.nml', 'coupling', 'truntime0')}
 
         # Keep track of this in order to set the oasis runtime.
@@ -59,7 +63,18 @@ class Access(Model):
 
         for model in self.expt.models:
 
-            if model.model_type == 'cice':
+            if model.model_type == 'cice' or model.model_type == 'cice5':
+
+                # Horrible hack to make a link to o2i.nc in the
+                # work/ice/RESTART directory
+                f_name = 'o2i.nc'
+                f_src = os.path.join(model.work_path, f_name)
+                f_dst = os.path.join(model.work_restart_path, f_name)
+
+                if os.path.isfile(f_src):
+                    make_symlink(f_src, f_dst)
+
+            if model.model_type == 'cice5':
 
                 # Stage the supplemental input files
                 if model.prior_restart_path:
@@ -178,6 +193,9 @@ class Access(Model):
         if not self.top_level_model:
             return
 
+        cice5 = None
+        mom = None
+
         for model in self.expt.models:
             if model.model_type == 'cice':
 
@@ -187,19 +205,16 @@ class Access(Model):
                     f_dst = os.path.join(model.restart_path, f_name)
 
                     if os.path.exists(f_src):
+                        shutil.move(f_src, f_dst)
+
+                # Copy configs from work path to restart
+                for f_name in model.config_files:
+                    f_src = os.path.join(model.work_path, f_name)
+                    f_dst = os.path.join(model.restart_path, f_name)
+
+                    if os.path.exists(f_src):
                         shutil.copy2(f_src, f_dst)
 
-            # Copy configs from work path to restart
-            for f_name in model.config_files:
-                f_src = os.path.join(model.work_path, f_name)
-                f_dst = os.path.join(model.restart_path, f_name)
-
-                if os.path.exists(f_src):
-                    shutil.copy2(f_src, f_dst)
-
-        cice5 = None
-        mom = None
-        for model in self.expt.models:
             if model.model_type == 'cice5':
                 cice5 = model
             elif model.model_type == 'mom':
@@ -214,8 +229,14 @@ class Access(Model):
     def set_model_pathnames(self):
         pass
 
+    def set_local_pathnames(self):
+        pass
+
     def set_input_paths(self):
         pass
 
     def set_model_output_paths(self):
+        pass
+
+    def collate(self):
         pass

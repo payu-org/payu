@@ -59,33 +59,6 @@ class Cice5(Cice):
         # Make log dir
         mkdir_p(os.path.join(self.work_path, 'log'))
 
-    def set_model_pathnames(self):
-        super(Cice5, self).set_model_pathnames()
-
-        self.split_paths = (self.work_input_path != self.work_restart_path)
-
-        if self.split_paths:
-            self.copy_inputs = False
-
-    def archive(self):
-        super(Cice5, self).archive()
-
-        if not self.split_paths:
-            res_ptr_path = os.path.join(self.restart_path, 'ice.restart_file')
-            with open(res_ptr_path) as f:
-                res_name = os.path.basename(f.read()).strip()
-
-            assert os.path.exists(os.path.join(self.restart_path, res_name))
-
-            # Delete the old restart file (keep the one in ice.restart_file)
-            for f in self.get_prior_restart_files():
-                if f.startswith('iced.'):
-                    if f == res_name:
-                        continue
-                    os.remove(os.path.join(self.restart_path, f))
-        else:
-            shutil.rmtree(self.work_input_path)
-
     def get_prior_restart_files(self):
         if self.prior_restart_path is not None:
             return sorted(os.listdir(self.prior_restart_path))

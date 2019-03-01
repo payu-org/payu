@@ -19,6 +19,7 @@ import fnmatch
 import os
 import sys
 import shutil
+import stat
 from distutils.dir_util import mkpath
 
 from yamanifest.manifest import Manifest as YaManifest
@@ -117,7 +118,9 @@ class PayuManifest(YaManifest):
                 self.add(
                     filepaths=list(hashvals.keys()),
                     hashfn=full_hashes,
-                    force=True
+                    force=True,
+                    fullpaths=[self.fullpath(fpath) for fpath
+                               in list(hashvals.keys())]
                 )
 
                 # Flag need to update version on disk
@@ -133,12 +136,12 @@ class PayuManifest(YaManifest):
 
         # Ignore directories
         if os.path.isdir(fullpath):
-            return
+            return False
 
         # Ignore anything matching the ignore patterns
         for pattern in self.ignore:
             if fnmatch.fnmatch(os.path.basename(fullpath), pattern):
-                return
+                return False
 
         if filepath not in self.data:
             self.data[filepath] = {}
@@ -149,6 +152,12 @@ class PayuManifest(YaManifest):
 
         if copy:
             self.data[filepath]['copy'] = copy
+
+        if hasattr(self, 'existing_filepaths'):
+            if filepath in self.existing_filepaths:
+                self.existing_filepaths.remove(filepath)
+
+        return True
 
     def add_fast(self, filepath, hashfn=fast_hashes, force=False):
         """
@@ -169,28 +178,48 @@ class PayuManifest(YaManifest):
             return False
         return copy_file
 
-    def make_links(self):
+    def make_link(self, filepath):
         """
         Payu integration function for creating symlinks in work directories
         which point back to the original file.
         """
-        delete_list = []
-        for filepath in self:
-            # Check file exists. It may have been deleted but still in manifest
-            if not os.path.exists(self.fullpath(filepath)):
-                delete_list.append(filepath)
-                continue
+        # Check file exists. It may have been deleted but still in manifest
+        if not os.path.exists(self.fullpath(filepath)):
+            print('File not found: {filepath}'.format(
+                  filepath=self.fullpath(filepath)))
+            if self.contains(filepath):
+                print('removing from manifest')
+                self.delete(filepath)
+                self.needsync = True
+        else:
+            try:
+                destdir = os.path.dirname(filepath)
+                # Make destination directory if not already exists
+                # Necessary because sometimes this is called before
+                # individual model setup
+                if not os.path.exists(destdir):
+                    os.makedirs(destdir)
+                if self.copy_file(filepath):
+                    shutil.copy(self.fullpath(filepath), filepath)
+                    perm = (stat.S_IRUSR | stat.S_IRGRP
+                            | stat.S_IROTH | stat.S_IWUSR)
+                    os.chmod(filepath, perm)
+                else:
+                    make_symlink(self.fullpath(filepath), filepath)
+            except Exception:
+                action = 'copying' if self.copy_file else 'linking'
+                print('payu: error: {action} orig: {orig} '
+                      'local: {local}'.format(action=action,
+                                              orig=self.fullpath(filepath),
+                                              local=filepath))
+                raise
 
-            if self.copy_file(filepath):
-                shutil.copy(self.fullpath(filepath), filepath)
-            else:
-                make_symlink(self.fullpath(filepath), filepath)
-
-        for filepath in delete_list:
-            print('File not found: {} removing from manifest'
-                  ''.format(self.fullpath(filepath)))
-            self.delete(filepath)
-            self.needsync = True
+    def make_links(self):
+        """
+        Used to make all links at once for reproduce runs or scaninputs=False
+        """
+        for filepath in list(self):
+            self.make_link(filepath)
 
     def copy(self, path):
         """
@@ -276,17 +305,22 @@ class Manifest(object):
 
             if len(self.manifests['input']) > 0:
                 self.have_manifest['input'] = True
-
-        if os.path.exists(self.manifests['exe'].path):
-            # Read manifest
-            print('Loading exe manifest: {}'
-                  ''.format(self.manifests['exe'].path))
-            self.manifests['exe'].load()
-
-            if len(self.manifests['exe']) > 0:
-                self.have_manifest['exe'] = True
+                if self.scaninputs:
+                    self.manifests['input'].existing_filepaths = \
+                        set(self.manifests['input'].data.keys())
 
         if self.reproduce:
+
+            # Only load existing exe manifest if reproduce. Trivial to
+            # recreate and no check required for changed executable paths
+            if os.path.exists(self.manifests['exe'].path):
+                # Read manifest
+                print('Loading exe manifest: {}'
+                      .format(self.manifests['exe'].path))
+                self.manifests['exe'].load()
+
+                if len(self.manifests['exe']) > 0:
+                    self.have_manifest['exe'] = True
 
             # Read restart manifest
             print('Loading restart manifest: {}'
@@ -308,45 +342,28 @@ class Manifest(object):
                       'reproduce_exe are True')
                 exit(1)
 
+            # Must make links as no files will be added to the manifest
+            for mf in ['exe', 'restart', 'input']:
+                print(mf)
+                self.manifests[mf].make_links()
+
             for model in self.expt.models:
                 model.have_restart_manifest = True
-
-            # Inspect the restart manifest for an appropriate value of #
-            # experiment counter if not specified on the command line (and this
-            # env var set)
-            if not os.environ.get('PAYU_CURRENT_RUN'):
-                for filepath in self.manifests['restart']:
-                    head = os.path.dirname(
-                        self.manifests['restart'].fullpath(filepath)
-                    )
-                    # Inspect each element of the fullpath looking for
-                    # restartxxx style directories. Exit
-                    while True:
-                        head, tail = os.path.split(head)
-                        if tail.startswith('restart'):
-                            try:
-                                n = int(tail.lstrip('restart'))
-                            except ValueError:
-                                pass
-                            else:
-                                self.expt.counter = n + 1
-                                break
-
-                    # Short circuit as soon as restart dir found
-                    if self.expt.counter == 0:
-                        break
         else:
             self.have_manifest['restart'] = False
 
-    def make_links(self):
-
-        print("Making links from manifests")
-
-        for mf in self.manifests:
-            self.manifests[mf].make_links()
+    def check_manifests(self):
 
         print("Checking exe and input manifests")
         self.manifests['exe'].check_fast(reproduce=self.reproduce_exe)
+        if hasattr(self.manifests['input'], 'existing_filepaths'):
+            # Delete filepaths from input manifest
+            for filepath in self.manifests['input'].existing_filepaths:
+                print('File no longer in input directory: {file} '
+                      'removing from manifest'.format(file=filepath))
+                self.manifests['input'].delete(filepath)
+            self.manifests['input'].needsync = True
+
         self.manifests['input'].check_fast(reproduce=self.reproduce)
 
         if self.reproduce:
@@ -376,4 +393,7 @@ class Manifest(object):
         Wrapper to the add_filepath function in PayuManifest. Prevents outside
         code from directly calling anything in PayuManifest.
         """
-        self.manifests[manifest].add_filepath(filepath, fullpath, copy)
+        filepath = os.path.normpath(filepath)
+        if self.manifests[manifest].add_filepath(filepath, fullpath, copy):
+            # Only link if filepath was added
+            self.manifests[manifest].make_link(filepath)
