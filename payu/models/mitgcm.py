@@ -17,6 +17,7 @@ import subprocess as sp
 
 # Extensions
 import f90nml
+import yaml
 
 # Local
 from payu.fsops import mkdir_p
@@ -31,6 +32,8 @@ class Mitgcm(Model):
         # Model-specific configuration
         self.model_type = 'mitgcm'
         self.default_exec = 'mitgcmuv'
+
+        self.restart_calendar_file = self.model_type + '.res.yaml'
 
         # NOTE: We use a subroutine to generate the MITgcm configuration list
 
@@ -48,7 +51,11 @@ class Mitgcm(Model):
             nml_parser = f90nml.Parser()
             nml_parser.comment_tokens += '#'
 
-            data_nml = nml_parser.read(fname)
+            try:
+                data_nml = nml_parser.read(fname)
+            except Exception as e:
+                data_nml = []
+
             if len(data_nml) > 0:
                 self.config_files.append(fname)
             else:
@@ -60,10 +67,9 @@ class Mitgcm(Model):
 
         # Link restart files to work directory
         if self.prior_restart_path and not self.expt.repeat_run:
-
             # Determine total number of timesteps since initialisation
             core_restarts = [f for f in os.listdir(self.prior_restart_path)
-                             if f.startswith('pickup.')]
+                            if f.startswith('pickup.')]
             try:
                 # NOTE: Use the most recent, in case of multiple restarts
                 n_iter0 = max([int(f.split('.')[1]) for f in core_restarts])
@@ -86,31 +92,70 @@ class Mitgcm(Model):
         # (deltatmom) and tracer (deltat).  If deltat is missing, then we just
         # try deltatmom.  But I am not sure how to best handle this case.
 
+        restart_calendar_path = os.path.join(self.work_init_path,
+                                             self.restart_calendar_file)
         # TODO: Sort this out with an MITgcm user
         try:
             dt = data_nml['parm03']['deltat']
         except KeyError:
             dt = data_nml['parm03']['deltatmom']
 
-        # Runtime seems to be set either by timesteps (ntimesteps) or physical
+        # Runtime is set either by timesteps (ntimesteps) or physical
         # time (startTime and endTime).
+        t_start = data_nml['parm03'].get('starttime', None)
+        t_end = data_nml['parm03'].get('endtime', None)
 
-        # TODO: Sort this out with an MITgcm user
-        try:
-            n_timesteps = data_nml['parm03']['ntimesteps']
-            pchkpt_freq = dt * n_timesteps
-        except KeyError:
-            t_start = data_nml['parm03']['starttime']
-            t_end = data_nml['parm03']['endtime']
-            pchkpt_freq = t_end - t_start
+        n_timesteps = data_nml['parm03'].get('ntimesteps', None)
+
+        if t_start is None or (self.prior_restart_path and not self.expt.repeat_run):
+            if t_start is not None:
+                print('starttime will be re-calculated. Value in data will be ignored')
+            if t_end is not None:
+                print('endtime will be re-calculated. Value in data will be ignored')
+
+            # Look for a restart file from a previous run
+            if os.path.exists(restart_calendar_path):
+                with open(restart_calendar_path, 'r') as restart_file:
+                    restart_info = yaml.load(restart_file)
+                t_start = restart_info['endtime']
+            else:
+                # Use same logic as MITgcm and assume
+                # constant dt for the whole experiment
+                t_start = n_iter0 * dt
+        else:
+            if t_end is not None:
+                # Standardise on starttime, ntimesteps and niter0
+                del data_nml['parm03']['endtime']
+
+                if n_timesteps is None:
+                    n_timesteps = (t_end - t_start) / dt
+
+        t_end = t_start + dt * n_timesteps
+        pchkpt_freq = t_end - t_start
+
+        print('  start time: {}'.format(t_start))
+        print('  end time:   {}'.format(t_end))
+        print('  niter0 :    {}'.format(n_iter0))
+        print('  ntimesteps: {}'.format(n_timesteps))
+        print('  dt:         {}'.format(dt))
+        print('  end - start:    {}'.format(pchkpt_freq))
+        print('  dt * ntimeteps: {}'.format(dt * n_timesteps))
+        if pchkpt_freq != dt * n_timesteps:
+            print('payu : error : time inconsistencies')
+            sys.exit(1)
+
+        data_nml['parm03']['startTime'] = t_start
+        data_nml['parm03']['niter0'] = n_iter0
+        data_nml['parm03']['endTime'] = t_end
 
         # NOTE: Consider permitting pchkpt_freq < dt * n_timesteps
-        # NOTE: May re-enable chkpt_freq in the future
-        data_nml['parm03']['niter0'] = n_iter0
         data_nml['parm03']['pchkptfreq'] = pchkpt_freq
         data_nml['parm03']['chkptfreq'] = 0
 
         data_nml.write(data_path, force=True)
+
+        # Save this to write out when archiving
+        self.endtime = t_end
 
         # Patch or create data.mnc
         mnc_header = os.path.join(self.work_path, 'mnc_')
@@ -138,6 +183,12 @@ class Mitgcm(Model):
                 raise
 
     def archive(self):
+
+        # Save model time to restart next run
+        with open(os.path.join(self.restart_path,
+                  self.restart_calendar_file), 'w') as restart_file:
+            restart_file.write(yaml.dump({'endtime': self.endtime},
+                               default_flow_style=False))
 
         # Remove symbolic links to input or pickup files:
         for f in os.listdir(self.work_path):
