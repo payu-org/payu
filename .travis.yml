@@ -5,7 +5,7 @@ python:
     - "3.5"
 # Disabling Torque setup until we can get this working on Travis
 before_install:
-    - sudo apt-get install torque-server torque-client torque-mom torque-pam libnetcdf-dev netcdf-bin
+    - sudo apt-get install torque-server torque-client torque-mom torque-pam libnetcdf-dev libhdf5-dev
     - sudo ./test/setup_torque.sh
 install:
     - pip install .
