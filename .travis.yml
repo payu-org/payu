@@ -2,11 +2,10 @@ language: python
 python:
     - "2.7"
     - "3.5"
+    - "3.6"
 # Disabling Torque setup until we can get this working on Travis
 before_install:
     - sudo apt-get install torque-server torque-client torque-mom torque-pam
-    - if [[ $TRAVIS_PYTHON_VERSION == '3.4' ]]; then
-          sudo apt-get install libhdf5-serial-dev netcdf-bin libnetcdf-dev; fi
     - sudo ./test/setup_torque.sh
 install:
     - pip install .
