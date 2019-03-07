@@ -107,12 +107,19 @@ class Mitgcm(Model):
 
         n_timesteps = data_nml['parm03'].get('ntimesteps', None)
 
-        if t_start is None or (self.prior_restart_path and not self.expt.repeat_run):
-            if t_start is not None:
-                print('starttime will be re-calculated. Value in data will be ignored')
+        # Support specifying just start and end times, and infer
+        # n_timesteps from this, even if dt changes run length
+        # remains the same
+        if t_start is not None:
             if t_end is not None:
-                print('endtime will be re-calculated. Value in data will be ignored')
+                # Standardise on starttime, ntimesteps and niter0
+                del data_nml['parm03']['endtime']
 
+                if n_timesteps is None:
+                    print("Calculated n_timesteps from starttime and endtime")
+                    n_timesteps = (t_end - t_start) / dt
+
+        if t_start is None or (self.prior_restart_path and not self.expt.repeat_run):
             # Look for a restart file from a previous run
             if os.path.exists(restart_calendar_path):
                 with open(restart_calendar_path, 'r') as restart_file:
@@ -122,13 +129,6 @@ class Mitgcm(Model):
                 # Use same logic as MITgcm and assume
                 # constant dt for the whole experiment
                 t_start = n_iter0 * dt
-        else:
-            if t_end is not None:
-                # Standardise on starttime, ntimesteps and niter0
-                del data_nml['parm03']['endtime']
-
-                if n_timesteps is None:
-                    n_timesteps = (t_end - t_start) / dt
 
         t_end = t_start + dt * n_timesteps
         pchkpt_freq = t_end - t_start
