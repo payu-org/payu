@@ -3,7 +3,6 @@ python:
     - "2.7"
     - "3.5"
     - "3.6"
-    - "3.7"
 # Disabling Torque setup until we can get this working on Travis
 before_install:
     - sudo apt-get install torque-server torque-client torque-mom torque-pam
