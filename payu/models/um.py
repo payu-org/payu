@@ -157,12 +157,6 @@ class UnifiedModel(Model):
             work_nml['NLSTCALL']['MODEL_BASIS_TIME'] = run_start_date_um
             work_nml['NLSTCALL']['ANCIL_REFTIME'] = run_start_date_um
 
-            # Tell CABLE that this is a continuation run.
-            cable_nml_path = os.path.join(self.work_path, 'cable.nml')
-            cable_nml = f90nml.read(cable_nml_path)
-            cable_nml['cable']['cable_user']['CABLE_RUNTIME_COUPLED'] = False
-            cable_nml.write(cable_nml_path, force=True)
-
         else:
             run_start_date = work_nml['NLSTCALL']['MODEL_BASIS_TIME']
             run_start_date = um_date_to_date(run_start_date)
