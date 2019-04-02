@@ -159,12 +159,14 @@ class PayuManifest(YaManifest):
 
         return True
 
-    def add_fast(self, filepath, hashfn=fast_hashes, force=False):
+    def add_fast(self, filepath, hashfn=None, force=False):
         """
         Bespoke function to add filepaths but set shortcircuit to True, which
         means only the first calculatable hash will be stored. In this way only
         one "fast" hashing function need be called for each filepath.
         """
+        if hashfn is None:
+            hashfn = fast_hashes
         self.add(filepath, hashfn, force, shortcircuit=True)
 
     def copy_file(self, filepath):
