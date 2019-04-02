@@ -147,7 +147,7 @@ configuration.
 
 ``exe``
    Binary executable for the model. This can either be a filename in the
-   laboratories ``bin`` directory, or an absolute filepath. Various model
+   laboratory's ``bin`` directory, or an absolute filepath. Various model
    drivers typically define their own default executable names.
 
 ``submodels``
