@@ -183,7 +183,7 @@ def date_to_um_dump_date(date):
     Convert a time date object to a um dump format date which is
     <decade><year><month><day>0
 
-    To accomodate two digit months and days the UM uses letters. e.g. 1st oct
+    To accommodate two digit months and days the UM uses letters. e.g. 1st oct
     is writing 01a10.
     """
 

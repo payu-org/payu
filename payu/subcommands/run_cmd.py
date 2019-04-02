@@ -69,7 +69,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, reproduce):
     node_misalignment = n_cpus % max_cpus_per_node != 0
     node_increase = n_cpus_per_node < max_cpus_per_node
 
-    # Increase the CPUs to accomodate the cpu-per-node request
+    # Increase the CPUs to accommodate the cpu-per-node request
     if n_cpus > max_cpus_per_node and (node_increase or node_misalignment):
 
         # Number of requested nodes

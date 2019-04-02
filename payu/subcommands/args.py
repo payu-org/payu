@@ -24,7 +24,7 @@ config = {
 }
 
 
-# Intial run counter
+# Initial run counter
 initial = {
     'flags': ('--initial', '-i'),
     'parameters': {

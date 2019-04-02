@@ -24,7 +24,7 @@ class Gold(Fms):
 
     def __init__(self, expt, name, config):
 
-        # FMS initalisation
+        # FMS initialisation
         super(Gold, self).__init__(expt, name, config)
 
         self.model_type = 'gold'

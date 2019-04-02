@@ -23,7 +23,7 @@ class Mom6(Fms):
 
     def __init__(self, expt, name, config):
 
-        # FMS initalisation
+        # FMS initialisation
         super(Mom6, self).__init__(expt, name, config)
 
         self.model_type = 'mom6'
