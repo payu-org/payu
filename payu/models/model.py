@@ -193,7 +193,7 @@ class Model(object):
             return [f for f in os.listdir(self.prior_restart_path)
                     if os.path.isfile(os.path.join(self.prior_restart_path, f))]
         except Exception as e:
-            print("No prior restart files found: {error}".format(e))
+            print("No prior restart files found: {error}".format(error=str(e)))
             return []
 
     def setup(self):
