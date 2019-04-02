@@ -42,7 +42,7 @@ class Fms(Model):
 
     def __init__(self, expt, name, config):
 
-        # payu initalisation
+        # payu initialisation
         super(Fms, self).__init__(expt, name, config)
 
     def set_model_pathnames(self):

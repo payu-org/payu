@@ -162,7 +162,7 @@ class PayuManifest(YaManifest):
     def add_fast(self, filepath, hashfn=fast_hashes, force=False):
         """
         Bespoke function to add filepaths but set shortcircuit to True, which
-        means only the first calculatable hash will be stored. In this way only
+        means only the first calculable hash will be stored. In this way only
         one "fast" hashing function need be called for each filepath.
         """
         self.add(filepath, hashfn, force, shortcircuit=True)
@@ -262,7 +262,7 @@ class Manifest(object):
         if isinstance(self.ignore, str):
             self.ignore = [self.ignore]
 
-        # Intialise manifests
+        # Initialise manifests
         self.manifests = {}
         for mf in ['input', 'restart', 'exe']:
             self.manifests[mf] = PayuManifest(

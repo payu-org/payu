@@ -19,7 +19,7 @@ class Mom(Fms):
 
     def __init__(self, expt, name, config):
 
-        # FMS initalisation
+        # FMS initialisation
         super(Mom, self).__init__(expt, name, config)
 
         # Append the MOM-specific configuration details

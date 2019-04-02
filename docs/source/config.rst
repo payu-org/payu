@@ -147,7 +147,7 @@ configuration.
 
 ``exe``
    Binary executable for the model. This can either be a filename in the
-   laboratorys ``bin`` directory, or an absolute filepath. Various model
+   laboratories ``bin`` directory, or an absolute filepath. Various model
    drivers typically define their own default executable names.
 
 ``submodels``
@@ -236,7 +236,7 @@ Postprocessing
 
    ``run``
       User-defined command to be called after model execution but prior to
-      model output archivel.
+      model output archive.
 
    ``archive``
       User-defined command to be called after model archival, but prior to any
