@@ -6,7 +6,6 @@
 
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
-from payu.runlog import Runlog
 import payu.subcommands.args as args
 
 title = 'ghsetup'

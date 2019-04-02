@@ -11,7 +11,7 @@ import sys
 import subprocess as sp
 
 from payu import envmod
-from payu.fsops import make_symlink, mkdir_p
+from payu.fsops import mkdir_p
 
 
 class Model(object):

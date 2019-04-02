@@ -1,5 +1,4 @@
 import os
-import shutil
 import sys
 
 from payu import envmod

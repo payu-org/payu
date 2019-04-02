@@ -10,16 +10,12 @@
 
 # Standard Library
 import os
-import sys
-import shlex
 import shutil
-import subprocess
 
 # Extensions
 import f90nml
 
 # Local
-import payu.calendar as cal
 from payu.fsops import mkdir_p, make_symlink
 from payu.models.model import Model
 from payu.namcouple import Namcouple

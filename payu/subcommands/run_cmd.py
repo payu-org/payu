@@ -1,7 +1,6 @@
 import os
 import argparse
 
-import payu
 from payu import cli
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
