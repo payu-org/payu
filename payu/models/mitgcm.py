@@ -45,7 +45,7 @@ class Mitgcm(Model):
         files.append('eedata')
 
         # Rudimentary check that matching files are namelists. Can only check
-        # if # namelist is empty. May excluded false positives, but these are
+        # if namelist is empty. May excluded false positives, but these are
         # devoid of useful information in that case
         for fname in files:
             nml_parser = f90nml.Parser()
@@ -118,6 +118,9 @@ class Mitgcm(Model):
                 if n_timesteps is None:
                     print("Calculated n_timesteps from starttime and endtime")
                     n_timesteps = (t_end - t_start) / dt
+            else
+                # Assume n_timesteps and dt set correctly
+                pass
 
         if t_start is None or (self.prior_restart_path and not self.expt.repeat_run):
             # Look for a restart file from a previous run
