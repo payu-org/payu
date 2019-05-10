@@ -179,7 +179,13 @@ class Mitgcm(Model):
         data_nml['parm03']['endTime'] = t_end
 
         # NOTE: Consider permitting pchkpt_freq < dt * n_timesteps
-        data_nml['parm03']['pchkptfreq'] = pchkpt_freq
+        if t_end % pchkpt_freq != 0:
+            # Terrible hack for when we change dt, the pickup frequency no longer
+            # make sense, so have to set it to the total runtime
+            data_nml['parm03']['pchkptfreq'] = t_end
+        else:
+            data_nml['parm03']['pchkptfreq'] = pchkpt_freq
+
         data_nml['parm03']['chkptfreq'] = 0
 
         data_nml.write(data_path, force=True)
