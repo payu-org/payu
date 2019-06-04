@@ -37,6 +37,19 @@ class Mitgcm(Model):
 
         # NOTE: We use a subroutine to generate the MITgcm configuration list
 
+    @staticmethod
+    def read_namelist(fname):
+        """
+        MITgcm has some additional requirements when reading namelists, so
+        isolate the logic to this routine
+        """
+
+        # MITgcm strips shell-style (#) comments from its namelists
+        nml_parser = f90nml.Parser()
+        nml_parser.comment_tokens += '#'
+
+        return nml_parser.read(fname)
+
     def setup(self):
 
         # TODO: Find a better place to generate this list
@@ -45,14 +58,11 @@ class Mitgcm(Model):
         files.append('eedata')
 
         # Rudimentary check that matching files are namelists. Can only check
-        # if # namelist is empty. May excluded false positives, but these are
+        # if namelist is empty. May excluded false positives, but these are
         # devoid of useful information in that case
         for fname in files:
-            nml_parser = f90nml.Parser()
-            nml_parser.comment_tokens += '#'
-
             try:
-                data_nml = nml_parser.read(fname)
+                data_nml = self.read_namelist(fname)
             except Exception as e:
                 data_nml = []
 
@@ -65,7 +75,6 @@ class Mitgcm(Model):
         # Generic model setup
         super(Mitgcm, self).setup()
 
-        # Link restart files to work directory
         if self.prior_restart_path and not self.expt.repeat_run:
             # Determine total number of timesteps since initialisation
             core_restarts = [f for f in os.listdir(self.prior_restart_path)
@@ -79,14 +88,8 @@ class Mitgcm(Model):
             n_iter0 = 0
 
         # Update configuration file 'data'
-
         data_path = os.path.join(self.work_path, 'data')
-
-        # MITgcm strips shell-style (#) comments from its namelists
-        nml_parser = f90nml.Parser()
-        nml_parser.comment_tokens += '#'
-
-        data_nml = nml_parser.read(data_path)
+        data_nml = self.read_namelist(data_path)
 
         # Timesteps are either global (deltat) or divided into momentum
         # (deltatmom) and tracer (deltat).  If deltat is missing, then we just
@@ -117,7 +120,10 @@ class Mitgcm(Model):
 
                 if n_timesteps is None:
                     print("Calculated n_timesteps from starttime and endtime")
-                    n_timesteps = (t_end - t_start) / dt
+                    n_timesteps = (t_end - t_start) // dt
+            else:
+                # Assume n_timesteps and dt set correctly
+                pass
 
         if t_start is None or (self.prior_restart_path and not self.expt.repeat_run):
             # Look for a restart file from a previous run
@@ -130,6 +136,29 @@ class Mitgcm(Model):
                 # constant dt for the whole experiment
                 t_start = n_iter0 * dt
 
+        # Check if deltat has changed
+        if n_iter0 != t_start // dt:
+
+            n_iter0_previous = n_iter0
+            
+            # Specify a pickup suffix using previous niter0
+            data_nml['parm03']['pickupsuff'] = '{:010d}'.format(n_iter0_previous)
+
+            n_iter0 = t_start // dt
+
+            if n_iter0 * dt != t_start:
+                print('payu : error: Timestep changed to {dt}. New timestep not'
+                      ' integer multiple of start time: {start}'.format(dt=dt, 
+                      start=t_start))
+                sys.exit(1)
+
+            if n_iter0 + n_timesteps == n_iter0_previous:
+                print('payu : error: Timestep changed to {dt}. Timestep at end'
+                      ' identical to previous pickups: {niter}'.format(dt=dt, 
+                      niter=(n_iter0 + n_timesteps)))
+                print('This would overwrite previous pickups')
+                sys.exit(1)
+
         t_end = t_start + dt * n_timesteps
         pchkpt_freq = t_end - t_start
 
@@ -141,7 +170,8 @@ class Mitgcm(Model):
         print('  end - start:    {}'.format(pchkpt_freq))
         print('  dt * ntimeteps: {}'.format(dt * n_timesteps))
         if pchkpt_freq != dt * n_timesteps:
-            print('payu : error : time inconsistencies')
+            print('payu : error : time inconsistencies, '
+                  'pchkptfreq != experiment length')
             sys.exit(1)
 
         data_nml['parm03']['startTime'] = t_start
@@ -149,20 +179,23 @@ class Mitgcm(Model):
         data_nml['parm03']['endTime'] = t_end
 
         # NOTE: Consider permitting pchkpt_freq < dt * n_timesteps
-        data_nml['parm03']['pchkptfreq'] = pchkpt_freq
+        if t_end % pchkpt_freq != 0:
+            # Terrible hack for when we change dt, the pickup frequency no longer
+            # make sense, so have to set it to the total runtime
+            data_nml['parm03']['pchkptfreq'] = t_end
+        else:
+            data_nml['parm03']['pchkptfreq'] = pchkpt_freq
+
         data_nml['parm03']['chkptfreq'] = 0
 
         data_nml.write(data_path, force=True)
-
-        # Save this to write out when archiving
-        self.endtime = t_end
 
         # Patch or create data.mnc
         mnc_header = os.path.join(self.work_path, 'mnc_')
 
         data_mnc_path = os.path.join(self.work_path, 'data.mnc')
         try:
-            data_mnc_nml = nml_parser.read(data_mnc_path)
+            data_mnc_nml = self.read_namelist(data_mnc_path)
             data_mnc_nml['mnc_01']['mnc_outdir_str'] = mnc_header
             data_mnc_nml.write(data_mnc_path, force=True)
 
@@ -184,10 +217,15 @@ class Mitgcm(Model):
 
     def archive(self):
 
+        # Need to parse the data namelist file to access the
+        # endTime
+        data_path = os.path.join(self.work_path, 'data')
+        data_nml = self.read_namelist(data_path)
+
         # Save model time to restart next run
         with open(os.path.join(self.restart_path,
                   self.restart_calendar_file), 'w') as restart_file:
-            restart_file.write(yaml.dump({'endtime': self.endtime},
+            restart_file.write(yaml.dump({'endtime': data_nml['parm03']['endTime']},
                                default_flow_style=False))
 
         # Remove symbolic links to input or pickup files:
