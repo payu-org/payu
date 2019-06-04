@@ -27,6 +27,7 @@ from payu.models.model import Model
 class Mitgcm(Model):
 
     def __init__(self, expt, name, config):
+
         super(Mitgcm, self).__init__(expt, name, config)
 
         # Model-specific configuration
