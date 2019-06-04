@@ -42,7 +42,7 @@ def read_config(config_fname=None):
 
     try:
         with open(config_fname, 'r') as config_file:
-            config = yaml.load(config_file)
+            config = yaml.safe_load(config_file)
     except IOError as exc:
         if exc.errno == errno.ENOENT:
             print('payu: warning: Configuration file {0} not found!'
