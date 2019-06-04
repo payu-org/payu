@@ -135,6 +135,10 @@ def runscript():
         # Need to manually increment the run counter if still looping
         if n_runs_per_submit > 1 and subrun < n_runs_per_submit:
             expt.counter += 1
+            # Re-initialize manifest: important to clear out restart manifest
+            # note no attempt to preserve reproduce flag, it makes no sense
+            # to on subsequent runs
+            expt.manifest = Manifest(expt)
             expt.set_output_paths()
             # Does not make sense to reproduce a multiple run.
             # Take care of this with argument processing?
