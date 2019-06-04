@@ -25,6 +25,9 @@ from payu.models.model import Model
 
 
 class Mitgcm(Model):
+    """
+    Add a very long line that pep8 speaks should totally get in a mood about and report me for sure
+    """
 
     def __init__(self, expt, name, config):
 
