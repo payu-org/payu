@@ -7,6 +7,7 @@ from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
 from payu import fsops
+from payu.manifest import Manifest
 
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
@@ -135,6 +136,10 @@ def runscript():
         # Need to manually increment the run counter if still looping
         if n_runs_per_submit > 1 and subrun < n_runs_per_submit:
             expt.counter += 1
+            # Re-initialize manifest: important to clear out restart manifest
+            # note no attempt to preserve reproduce flag, it makes no sense
+            # to on subsequent runs
+            expt.manifest = Manifest(expt, reproduce=False)
             expt.set_output_paths()
             # Does not make sense to reproduce a multiple run.
             # Take care of this with argument processing?
