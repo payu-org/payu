@@ -1,8 +1,6 @@
 import os
-import shutil
 
 from payu.profilers.profiler import Profiler
-from payu.fsops import mkdir_p
 
 
 class Darshan(Profiler):

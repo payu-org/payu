@@ -11,7 +11,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 from __future__ import print_function
 
 import os
-import shutil
 
 from payu.models.cice import Cice
 from payu.fsops import mkdir_p

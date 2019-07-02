@@ -14,11 +14,8 @@ from __future__ import print_function
 # Standard Library
 import errno
 import os
-import stat
 import sys
-import shlex
 import shutil
-import subprocess as sp
 import datetime
 
 # Extensions

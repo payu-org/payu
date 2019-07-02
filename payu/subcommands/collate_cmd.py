@@ -5,7 +5,6 @@ import argparse
 import os
 
 # Local
-import payu
 from payu import cli
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory

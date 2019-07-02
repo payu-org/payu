@@ -10,9 +10,6 @@
 # Standard library
 import errno
 import os
-import shlex
-import subprocess
-import sys
 
 # Extensions
 import yaml

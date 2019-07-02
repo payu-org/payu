@@ -7,7 +7,6 @@ import os
 import shlex
 import shutil
 import subprocess
-import sys
 
 import f90nml
 import payu.envmod
