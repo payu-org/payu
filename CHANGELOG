@@ -1,3 +1,21 @@
+v1.0:
+    - Manifest support has been added.  This feature will generate a manifest
+      which enables more rigorous checksums for model inputs and greater
+      reproducibility of runs.
+    - `PAYU_REPRODUCE` environment variable denotes a reproducible run using
+      manifests.
+    - Job statistics and environment variables are now saved as output files.
+      Several new environmental variables have also been added to facilitate
+      logging of jobs.  This information is also logged as
+    - Minimal implementation of a Scheduler class.  Currently only bare support
+      for PBS.
+    - Core dumps can be explicitly enabled using the `coredump` config flag.
+
+    Bugfixes:
+    - Many calendar calculations were updated to use explict integer division.
+    - Several issues related to MITgcm calendar and time interval support have
+      been fixed and improved.
+
 v0.11.2:
    - Payu collation jobs launched by an initial payu job would sometimes fail
      if the LD_LIBRARY_PATH was not set correctly (usually in a `payu-run`
