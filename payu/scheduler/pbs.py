@@ -41,7 +41,8 @@ def get_job_info():
         info = get_qstat_info('-ft {0}'.format(jobid), 'Job Id:')
 
     if info is not None:
-        # Select the dict for this job (there should only be one entry in any case)
+        # Select the dict for this job (there should only be one 
+        # entry in any case)
         info = info['Job Id: {}'.format(jobid)]
 
         # Add the jobid to the dict and then return
