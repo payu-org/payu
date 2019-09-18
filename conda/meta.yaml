@@ -25,6 +25,9 @@ requirements:
 test:
     imports:
         - payu
+    commands:
+        - payu init
+
 
 about:
     home: https://github.com/payu-org/payu/
