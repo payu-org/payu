@@ -21,6 +21,7 @@ requirements:
         - PyYAML
         - requests[security]
         - python-dateutil
+        - tenacity
 
 test:
     imports:
