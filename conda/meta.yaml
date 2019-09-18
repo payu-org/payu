@@ -1,0 +1,30 @@
+package:
+    name: payu
+    version: {{ GIT_DESCRIBE_TAG}}
+
+build:
+    noarch: python
+    number: {{ GIT_DESCRIBE_NUMBER }}
+    script: python -m pip install --no-deps --ignore-installed .
+
+source:
+    git_url: ../
+
+requirements:
+    build:
+        - python
+        - pbr
+    run:
+        - python
+        - f90nml >= 0.16
+        - yamanifest >= 0.3.4
+        - PyYAML
+        - requests[security]
+        - python-dateutil
+
+test:
+    imports:
+        - ncigrafana
+
+about:
+    home: https://github.com/payu-org/payu/
