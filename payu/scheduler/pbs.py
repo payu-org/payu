@@ -14,7 +14,7 @@ import sys
 import shlex
 import subprocess
 
-import tenacity
+from tenacity import retry, stop_after_delay
 
 def get_job_id(short=True):
     """
