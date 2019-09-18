@@ -14,6 +14,7 @@ import sys
 import shlex
 import subprocess
 
+import tenacity
 
 def get_job_id(short=True):
     """
@@ -28,24 +29,23 @@ def get_job_id(short=True):
 
     return(jobid)
 
-
 def get_job_info():
     """
     Get information about the job from the PBS server
     """
-
     jobid = get_job_id()
 
-    if jobid == '':
-        return None
+    info = None
 
-    info = get_qstat_info('-ft {0}'.format(jobid), 'Job Id:')
+    if not jobid == '':
+        info = get_qstat_info('-ft {0}'.format(jobid), 'Job Id:')
 
-    # Select the dict for this job (there should only be one entry in any case)
-    info = info['Job Id: {}'.format(jobid)]
+    if info is not None:
+        # Select the dict for this job (there should only be one entry in any case)
+        info = info['Job Id: {}'.format(jobid)]
 
-    # Add the jobid to the dict and then return
-    info['Job_ID'] = jobid
+        # Add the jobid to the dict and then return
+        info['Job_ID'] = jobid
 
     return info
 
@@ -72,6 +72,9 @@ def pbs_env_init():
         sys.exit(1)
 
 
+# Wrap this in retry from tenancity. Keep trying for 10 seconds and
+# even if still fails return None
+@retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
 def get_qstat_info(qflag, header, projects=None, users=None):
 
     qstat = os.path.join(os.environ['PBS_EXEC'], 'bin', 'qstat')
