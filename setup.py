@@ -34,7 +34,8 @@ setup(
         'PyYAML',
         'requests',
         'yamanifest',
-        'dateutil'
+        'dateutil',
+        'tenacity',
     ],
     install_requires=[
         'f90nml >= 0.16',
@@ -42,6 +43,7 @@ setup(
         'PyYAML',
         'requests[security]',
         'python-dateutil',
+        'tenacity',
     ],
     entry_points={
         'console_scripts': [
