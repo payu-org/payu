@@ -24,7 +24,7 @@ requirements:
 
 test:
     imports:
-        - ncigrafana
+        - payu
 
 about:
     home: https://github.com/payu-org/payu/
