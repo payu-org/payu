@@ -31,7 +31,7 @@ test:
     imports:
         - payu
     commands:
-        - payu init
+        - payu list
 
 
 about:
