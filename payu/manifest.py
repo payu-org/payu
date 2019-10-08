@@ -345,8 +345,15 @@ class Manifest(object):
 
             for model in self.expt.models:
                 model.have_restart_manifest = True
+
         else:
             self.have_manifest['restart'] = False
+
+            if not self.scaninputs:
+                # If input directories not scanned then the only
+                # way to populate the inputs in work is to rely
+                # on input manifest
+                self.manifests['input'].make_links()
 
     def check_manifests(self):
 
