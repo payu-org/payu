@@ -340,7 +340,7 @@ class Manifest(object):
 
             # Must make links as no files will be added to the manifest
             for mf in ['exe', 'restart', 'input']:
-                print(mf)
+                print('Making links: {}'.format(mf))
                 self.manifests[mf].make_links()
 
             for model in self.expt.models:
@@ -353,6 +353,7 @@ class Manifest(object):
                 # If input directories not scanned then the only
                 # way to populate the inputs in work is to rely
                 # on input manifest
+                print('Making links from input manifest (scaninputs=False)')
                 self.manifests['input'].make_links()
 
     def check_manifests(self):
