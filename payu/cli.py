@@ -124,6 +124,8 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
 def submit_job(pbs_script, pbs_config, pbs_vars=None):
     """Submit a userscript the scheduler."""
 
+    pbs_env_init()
+
     # Initialisation
     if pbs_vars is None:
         pbs_vars = {}

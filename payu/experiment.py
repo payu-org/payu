@@ -116,8 +116,6 @@ class Experiment(object):
 
         self.run_id = None
 
-        pbs_env_init()
-
     def init_models(self):
 
         self.model_name = self.config.get('model')
