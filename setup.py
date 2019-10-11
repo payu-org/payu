@@ -45,6 +45,9 @@ setup(
         'python-dateutil',
         'tenacity',
     ],
+    tests_require=[
+        'pytest',
+    ]
     entry_points={
         'console_scripts': [
             'payu = payu.cli:parse',
