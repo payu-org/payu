@@ -10,8 +10,7 @@ install:
 before_script:
     - pip install -r test/requirements_test.txt
 script:
-    - pytest -s test/test_manifest.py
-    - PYTHONPATH=$(pwd) coverage run --source payu bin/payu
+    - PYTHONPATH=$(pwd) coverage run --source payu pytest test/test_manifest.py
 after_success:
     - coverage report -m
     - coveralls
