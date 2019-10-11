@@ -282,7 +282,6 @@ class Manifest(object):
         return len(self.manifests)
 
     def setup(self):
-   
         if (os.path.exists(self.manifests['input'].path) and
                 not self.manifest_config.get('overwrite', False)):
             # Always read input manifest if available
@@ -297,7 +296,7 @@ class Manifest(object):
                     self.manifests['input'].existing_filepaths = \
                         set(self.manifests['input'].data.keys())
                 else:
-                    # Input directories not scanned. Populate 
+                    # Input directories not scanned. Populate
                     # inputs in workdir using input manifest
                     print('Making input links from manifest'
                           '(scaninputs=False)')
@@ -305,7 +304,7 @@ class Manifest(object):
 
         if self.reproduce['exe']:
             # Only load existing exe manifest if reproduce. Trivial to
-            # recreate and means no check required for changed 
+            # recreate and means no check required for changed
             # executable paths
             if os.path.exists(self.manifests['exe'].path):
                 # Read manifest
@@ -321,8 +320,8 @@ class Manifest(object):
             self.manifests['exe'].make_links()
 
         if self.reproduce['restart']:
-            # Only load restart manifest if reproduce. Normally want to 
-            # scan for new restarts 
+            # Only load restart manifest if reproduce. Normally want to
+            # scan for new restarts
 
             # Read restart manifest
             print('Loading restart manifest: {}'
@@ -344,7 +343,7 @@ class Manifest(object):
         for mf in self.manifests.keys():
             if self.reproduce[mf] and not self.have_manifest[mf]:
                 print('{} manifest must exist if reproduce is True'
-                        ''.format(mf.capitalize()))
+                      ''.format(mf.capitalize()))
                 exit(1)
 
     def check_manifests(self):
@@ -357,7 +356,7 @@ class Manifest(object):
                 # Delete missing filepaths from input manifest
                 for filepath in self.manifests['input'].existing_filepaths:
                     print('File no longer in input directory: {file} '
-                        'removing from manifest'.format(file=filepath))
+                          'removing from manifest'.format(file=filepath))
                     self.manifests['input'].delete(filepath)
                 self.manifests['input'].needsync = True
 
@@ -368,7 +367,8 @@ class Manifest(object):
         else:
             print("Creating restart manifest")
             self.manifests['restart'].needsync = True
-        self.manifests['restart'].check_fast(reproduce=self.reproduce['restart'])
+        self.manifests['restart'].check_fast(
+                reproduce=self.reproduce['restart'])
 
         # Write updates to version on disk
         for mf in self.manifests:

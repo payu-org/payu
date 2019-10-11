@@ -4,6 +4,7 @@ from pathlib import Path
 
 import yaml
 
+
 @contextmanager
 def cd(directory):
     """
@@ -17,13 +18,15 @@ def cd(directory):
     finally:
         os.chdir(old_dir)
 
+
 def make_random_file(filename, size=1000**2):
     """
-    Make a file of specified size filled with some 
+    Make a file of specified size filled with some
     random content
     """
     with open(filename, 'wb') as fout:
         fout.write(os.urandom(size))
+
 
 def get_manifests(mfdir):
     """
