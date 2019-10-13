@@ -1,6 +1,8 @@
 language: python
 python:
+    - "2.7"
     - "3.6"
+    - "3.7"
 # Disabling Torque setup until we can get this working on Travis
 before_install:
     - sudo apt-get install torque-server torque-client torque-mom torque-pam
@@ -10,7 +12,8 @@ install:
 before_script:
     - pip install -r test/requirements_test.txt
 script:
-    - PYTHONPATH=$(pwd) coverage run --source payu -m py.test test/test_manifest.py
+    - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then payu list; fi;
+    - if [[ $TRAVIS_PYTHON_VERSION >= 3.6 ]]; then PYTHONPATH=$(pwd) coverage run --source payu bin/payu
 after_success:
     - coverage report -m
     - coveralls
