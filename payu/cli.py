@@ -20,6 +20,7 @@ import payu
 import payu.envmod as envmod
 from payu.models import index as supported_models
 import payu.subcommands
+from payu.scheduler.pbs import pbs_env_init
 
 # Default configuration
 DEFAULT_CONFIG = 'config.yaml'
