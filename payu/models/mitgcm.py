@@ -209,9 +209,8 @@ class Mitgcm(Model):
                     'mnc_outdir_date':  True,
                     'monitor_mnc':      True
                 }
-                data_mnc_nml = {'mnc_01': mnc_01_grp}
-
-                nml_parser.write(data_mnc_nml, data_mnc_path)
+                data_mnc_nml = f90nml.Namelist(mnc_01=mnc_01_grp)
+                data_mnc_nml.write(data_mnc_path)
             else:
                 raise
 
