@@ -13,7 +13,7 @@ before_script:
     - pip install -r test/requirements_test.txt
 script:
     - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then payu list; fi;
-    - if [[ $TRAVIS_PYTHON_VERSION == 3.6 || $TRAVIS_PYTHON_VERSION == 3.7 ]]; then PYTHONPATH=$(pwd) coverage run --source payu bin/payu; fi;
+    - if [[ $TRAVIS_PYTHON_VERSION == 3.6 || $TRAVIS_PYTHON_VERSION == 3.7 ]]; then PYTHONPATH=$(pwd) coverage run --source payu payu -m py.test test/test_manifest.py; fi;
 after_success:
     - coverage report -m
     - coveralls
