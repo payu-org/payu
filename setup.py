@@ -47,6 +47,7 @@ setup(
     ],
     tests_require=[
         'pytest',
+        'pylint',
     ],
     entry_points={
         'console_scripts': [
