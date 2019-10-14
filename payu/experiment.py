@@ -889,17 +889,16 @@ class Experiment(object):
         # First try to interpret the argument as a full command:
         try:
             sp.check_call(shlex.split(script_cmd))
-        except (EnvironmentError, sp.CalledProcessError) as exc:
+        except EnvironmentError as exc:
             # Now try to run the script explicitly
-            if isinstance(exc, EnvironmentError) and exc.errno == errno.ENOENT:
+            if exc.errno == errno.ENOENT:
                 cmd = os.path.join(self.control_path, script_cmd)
                 # Simplistic recursion check
                 assert os.path.isfile(cmd)
                 self.run_userscript(cmd)
 
             # If we get a "non-executable" error, then guess the type
-            elif (isinstance(exc, EnvironmentError)
-                    and exc.errno == errno.EACCES):
+            elif exc.errno == errno.EACCES:
                 # TODO: Move outside
                 ext_cmd = {'.py': sys.executable,
                            '.sh': '/bin/bash',
@@ -917,15 +916,10 @@ class Experiment(object):
                 else:
                     # If we can't guess the shell, then abort
                     raise
-
+        except sp.CalledProcessError as exc:
             # If the script runs but the output is bad, then warn the user
-            elif type(exc) == sp.CalledProcessError:
-                print('payu: warning: user script \'{0}\' failed (error {1}).'
-                      ''.format(script_cmd, exc.returncode))
-
-            # If all else fails, raise an error
-            else:
-                raise
+            print('payu: warning: user script \'{0}\' failed (error {1}).'
+                  ''.format(script_cmd, exc.returncode))
 
     def sweep(self, hard_sweep=False):
         # TODO: Fix the IO race conditions!
