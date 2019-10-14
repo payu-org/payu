@@ -136,6 +136,9 @@ class Mom(Fms):
 
     def create_mask_table(self, input_nml):
         import netCDF4
+     
+        # Disable E1136 which is tripped below when accessing grid_vars
+        # pylint: disable=unsubscriptable-object
 
         # Get the grid spec path
         grid_spec_fname = 'grid_spec.nc'
