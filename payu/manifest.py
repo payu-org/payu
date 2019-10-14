@@ -18,7 +18,7 @@ import stat
 
 from yamanifest.manifest import Manifest as YaManifest
 
-from payu.fsops import make_symlink
+from payu.fsops import make_symlink, mkdir_p
 
 
 # fast_hashes = ['nchash','binhash']
@@ -39,6 +39,7 @@ class PayuManifest(YaManifest):
             self.ignore = ignore
 
         self.needsync = False
+        self.existing_filepaths = set()
 
     def check_fast(self, reproduce=False, **args):
         """
@@ -146,9 +147,8 @@ class PayuManifest(YaManifest):
         if copy:
             self.data[filepath]['copy'] = copy
 
-        if hasattr(self, 'existing_filepaths'):
-            if filepath in self.existing_filepaths:
-                self.existing_filepaths.remove(filepath)
+        if filepath in self.existing_filepaths:
+            self.existing_filepaths.remove(filepath)
 
         return True
 
@@ -266,7 +266,7 @@ class Manifest(object):
             self.reproduce[mf] = self.reproduce_config.get(mf, reproduce)
 
         # Make sure the manifests directory exists
-        os.makedirs(os.path.dirname(self.manifests['exe'].path), exist_ok=True)
+        mkdir_p(os.path.dirname(self.manifests['exe'].path))
 
         self.scaninputs = self.manifest_config.get('scaninputs', True)
 
@@ -352,7 +352,7 @@ class Manifest(object):
         self.manifests['exe'].check_fast(reproduce=self.reproduce['exe'])
 
         if not self.reproduce['input']:
-            if hasattr(self.manifests['input'], 'existing_filepaths'):
+            if len(self.manifests['input'].existing_filepaths) > 0:
                 # Delete missing filepaths from input manifest
                 for filepath in self.manifests['input'].existing_filepaths:
                     print('File no longer in input directory: {file} '
@@ -378,7 +378,7 @@ class Manifest(object):
 
     def copy_manifests(self, path):
 
-        os.makedirs(path, exist_ok=True)
+        mkdir_p(path)
         try:
             for mf in self.manifests:
                 self.manifests[mf].copy(path)
