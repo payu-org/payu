@@ -136,7 +136,7 @@ class Mom(Fms):
 
     def create_mask_table(self, input_nml):
         import netCDF4
-     
+
         # Disable E1136 which is tripped below when accessing grid_vars
         # pylint: disable=unsubscriptable-object
 
@@ -165,6 +165,8 @@ class Mom(Fms):
             if ocn_topog_fname in os.listdir(input_dir):
                 ocn_topog_path = os.path.join(input_dir, ocn_topog_fname)
                 break
+
+        # pylint: enable=unsubscriptable-object
 
         grid_spec_nc.close()
 

@@ -190,8 +190,9 @@ class Model(object):
     def get_prior_restart_files(self):
 
         try:
-            return [f for f in os.listdir(self.prior_restart_path)
-                    if os.path.isfile(os.path.join(self.prior_restart_path, f))]
+            path = self.restart_path
+            return [f for f in os.listdir(path)
+                    if os.path.isfile(os.path.join(path, f))]
         except Exception as e:
             print("No prior restart files found: {error}".format(error=str(e)))
             return []

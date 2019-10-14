@@ -16,8 +16,8 @@ config_files = [
             'input.nml'
         ]
 
-class Test(Model):
 
+class Test(Model):
 
     def __init__(self, expt, name, config):
 

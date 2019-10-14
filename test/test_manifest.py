@@ -19,15 +19,6 @@ import payu.models.test
 
 from common import cd, make_random_file, get_manifests
 
-def payu_setup(model_type=None, 
-               config_path=None, 
-               lab_path=None, 
-               force_archive=None, 
-               reproduce=None):
-    """
-    Wrapper around original setup command to provide default arguments
-    """
-    payu_setup_orignal(model_type, config_path, lab_path, force_archive, reproduce)
 
 verbose = True
 
@@ -60,9 +51,26 @@ config = {
                         }
             }
 
+
+def payu_setup(model_type=None,
+               config_path=None,
+               lab_path=None,
+               force_archive=None,
+               reproduce=None):
+    """
+    Wrapper around original setup command to provide default arguments
+    """
+    payu_setup_orignal(model_type,
+                       config_path,
+                       lab_path,
+                       force_archive,
+                       reproduce)
+
+
 def write_config():
     with (ctrldir / 'config.yaml').open('w') as file:
         file.write(yaml.dump(config, default_flow_style=False))
+
 
 def make_exe():
     # Create a fake executable file
@@ -72,46 +80,51 @@ def make_exe():
     exe_size = 199
     make_random_file(bindir/exe, exe_size)
 
+
 def make_inputs():
     # Create some fake input files
     inputdir = labdir / 'input' / config['input']
     inputdir.mkdir(parents=True, exist_ok=True)
     for i in range(1, 4):
-        make_random_file(inputdir/'input_00{i}.bin'.format(i=i), 
+        make_random_file(inputdir/'input_00{i}.bin'.format(i=i),
                          1000**2 + i)
+
 
 def make_restarts():
     # Create some fake restart files
     restartdir = labdir / 'archive' / 'restarts'
     restartdir.mkdir(parents=True, exist_ok=True)
     for i in range(1, 4):
-        make_random_file(restartdir/'restart_00{i}.bin'.format(i=i), 
+        make_random_file(restartdir/'restart_00{i}.bin'.format(i=i),
                          5000**2 + i)
+
 
 def make_all_files():
     make_inputs()
     make_exe()
     make_restarts()
 
+
 def sweep_work(hard_sweep=False):
     # Sweep workdir
     with cd(ctrldir):
-        payu_sweep(model_type=None, 
-                   config_path=None, 
-                   hard_sweep=hard_sweep, 
+        payu_sweep(model_type=None,
+                   config_path=None,
+                   hard_sweep=hard_sweep,
                    lab_path=str(labdir))
+
 
 def setup_module(module):
     """
     Put any test-wide setup code in here, e.g. creating test files
     """
-    if verbose: 
-        print ("setup_module      module:%s" % module.__name__)
-        
+    if verbose:
+        print("setup_module      module:%s" % module.__name__)
+
     # Should be taken care of by teardown, in case remnants lying around
     try:
         shutil.rmtree(tmpdir)
-    except:
+    except FileNotFoundError:
         pass
 
     try:
@@ -123,12 +136,13 @@ def setup_module(module):
 
     write_config()
 
+
 def teardown_module(module):
     """
     Put any test-wide teardown code in here, e.g. removing test outputs
     """
-    if verbose: 
-        print ("teardown_module   module:%s" % module.__name__)
+    if verbose:
+        print("teardown_module   module:%s" % module.__name__)
 
     try:
         # shutil.rmtree(tmpdir)
@@ -183,8 +197,8 @@ def test_setup():
         assert((workdir/f).is_file())
 
     for i in range(1, 4):
-        assert((workdir/'input_00{i}.bin'.format(i=i)).stat().st_size 
-                == 1000**2 + i)
+        assert((workdir/'input_00{i}.bin'.format(i=i)).stat().st_size
+               == 1000**2 + i)
 
     manifests = get_manifests(ctrldir/'manifests')
     for mfpath in manifests:
@@ -207,6 +221,7 @@ def test_setup():
     # Sweep workdir
     sweep_work()
 
+
 def test_setup_restartdir():
 
     restartdir = labdir / 'archive' / 'restarts'
@@ -220,7 +235,7 @@ def test_setup_restartdir():
     manifests = get_manifests(ctrldir/'manifests')
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
-        
+
     # Manifests should not match, as have added restarts
     assert(not manifests == get_manifests(ctrldir/'manifests'))
 
@@ -235,7 +250,7 @@ def test_exe_reproduce():
     write_config()
     manifests = get_manifests(ctrldir/'manifests')
 
-    # Run setup with unchanged exe but reproduce exe set to True. 
+    # Run setup with unchanged exe but reproduce exe set to True.
     # Should run without error
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
@@ -315,7 +330,7 @@ def test_input_reproduce():
     for i in range(1, 4):
         (inputdir/'input_00{i}.bin'.format(i=i)).touch()
 
-    # Run setup, should work as only fasthash will differ, code then 
+    # Run setup, should work as only fasthash will differ, code then
     # checks full hash and updates fasthash if fullhash matches
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
@@ -350,12 +365,13 @@ def test_input_reproduce():
     # Run setup with changed exe but reproduce exe set to False
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
-        
+
     # Check manifests have changed as expected
     assert(not manifests == get_manifests(ctrldir/'manifests'))
 
     # Sweep workdir
     sweep_work()
+
 
 def test_restart_reproduce():
 
@@ -368,7 +384,7 @@ def test_restart_reproduce():
     # Run setup with unchanged restarts
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
- 
+
     assert(manifests == get_manifests(ctrldir/'manifests'))
 
     restartdir = labdir / 'archive' / 'restarts'
@@ -440,7 +456,7 @@ def test_all_reproduce():
 
     make_all_files()
 
-    # Run setup with reproduce=True, which should raise an error as 
+    # Run setup with reproduce=True, which should raise an error as
     # all files changed
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         # Run setup with unchanged exe but reproduce exe set to True
@@ -457,6 +473,7 @@ def test_all_reproduce():
     # Manifests should have changed
     assert(not manifests == get_manifests(ctrldir/'manifests'))
 
+
 def test_hard_sweep():
 
     pass
@@ -464,5 +481,5 @@ def test_hard_sweep():
     sweep_work(hard_sweep=True)
 
     # Check all the correct directories have been removed
-    assert(not (labdir / 'archive' / 'ctrl' ).is_dir())
-    assert(not (labdir / 'work' / 'ctrl' ).is_dir())
+    assert(not (labdir / 'archive' / 'ctrl').is_dir())
+    assert(not (labdir / 'work' / 'ctrl').is_dir())

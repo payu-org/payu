@@ -78,7 +78,7 @@ class Mitgcm(Model):
         if self.prior_restart_path and not self.expt.repeat_run:
             # Determine total number of timesteps since initialisation
             core_restarts = [f for f in os.listdir(self.prior_restart_path)
-                            if f.startswith('pickup.')]
+                             if f.startswith('pickup.')]
             try:
                 # NOTE: Use the most recent, in case of multiple restarts
                 n_iter0 = max([int(f.split('.')[1]) for f in core_restarts])
@@ -125,7 +125,8 @@ class Mitgcm(Model):
                 # Assume n_timesteps and dt set correctly
                 pass
 
-        if t_start is None or (self.prior_restart_path and not self.expt.repeat_run):
+        if t_start is None or (self.prior_restart_path
+           and not self.expt.repeat_run):
             # Look for a restart file from a previous run
             if os.path.exists(restart_calendar_path):
                 with open(restart_calendar_path, 'r') as restart_file:
@@ -139,23 +140,23 @@ class Mitgcm(Model):
         # Check if deltat has changed
         if n_iter0 != t_start // dt:
 
-            n_iter0_previous = n_iter0
-            
             # Specify a pickup suffix using previous niter0
-            data_nml['parm03']['pickupsuff'] = '{:010d}'.format(n_iter0_previous)
+            data_nml['parm03']['pickupsuff'] = '{:010d}'.format(n_iter0)
+
+            n_iter0_previous = n_iter0
 
             n_iter0 = t_start // dt
 
             if n_iter0 * dt != t_start:
-                print('payu : error: Timestep changed to {dt}. New timestep not'
-                      ' integer multiple of start time: {start}'.format(dt=dt, 
-                      start=t_start))
+                print('payu : error: Timestep changed to {dt}. New timestep '
+                      'not integer multiple of start time: '
+                      '{start}'.format(dt=dt, start=t_start))
                 sys.exit(1)
 
             if n_iter0 + n_timesteps == n_iter0_previous:
-                print('payu : error: Timestep changed to {dt}. Timestep at end'
-                      ' identical to previous pickups: {niter}'.format(dt=dt, 
-                      niter=(n_iter0 + n_timesteps)))
+                print('payu : error: Timestep changed to {dt}. '
+                      'Timestep at end identical to previous pickups: '
+                      '{niter}'.format(dt=dt, niter=(n_iter0 + n_timesteps)))
                 print('This would overwrite previous pickups')
                 sys.exit(1)
 
@@ -180,8 +181,8 @@ class Mitgcm(Model):
 
         # NOTE: Consider permitting pchkpt_freq < dt * n_timesteps
         if t_end % pchkpt_freq != 0:
-            # Terrible hack for when we change dt, the pickup frequency no longer
-            # make sense, so have to set it to the total runtime
+            # Terrible hack for when we change dt, the pickup frequency
+            # no longer make sense, so have to set it to the total runtime
             data_nml['parm03']['pchkptfreq'] = t_end
         else:
             data_nml['parm03']['pchkptfreq'] = pchkpt_freq
@@ -224,8 +225,8 @@ class Mitgcm(Model):
         # Save model time to restart next run
         with open(os.path.join(self.restart_path,
                   self.restart_calendar_file), 'w') as restart_file:
-            restart_file.write(yaml.dump({'endtime': data_nml['parm03']['endTime']},
-                               default_flow_style=False))
+            restart = {'endtime': data_nml['parm03']['endTime']},
+            restart_file.write(yaml.dump(restart, default_flow_style=False))
 
         # Remove symbolic links to input or pickup files:
         for f in os.listdir(self.work_path):

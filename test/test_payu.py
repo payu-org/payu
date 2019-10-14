@@ -17,6 +17,7 @@ import payu
 import payu.fsops
 import payu.laboratory
 
+
 class Test(unittest.TestCase):
 
     def setUp(self):
@@ -114,6 +115,7 @@ class Test(unittest.TestCase):
         sys.stdout = StringIO()
         lab = payu.laboratory.Laboratory('model')
         sys.stdout = sys.__stdout__
+
 
 if __name__ == '__main__':
     unittest.main()
