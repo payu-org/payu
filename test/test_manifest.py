@@ -139,10 +139,11 @@ def teardown_module(module):
 # These are integration tests. They have an undesirable dependence on each
 # other. It would be possible to make them independent, but then they'd
 # be reproducing previous "tests", like init. So this design is deliberate
-# but compromised. It means when running an error in one test can cascade 
+# but compromised. It means when running an error in one test can cascade
 # and cause other tests to fail.
 #
 # Unfortunate but there you go.
+
 
 def test_init():
 
@@ -153,6 +154,7 @@ def test_init():
     # Check all the correct directories have been created
     for subdir in ['bin', 'input', 'archive', 'codebase']:
         assert((labdir / subdir).is_dir())
+
 
 def test_setup():
 
@@ -165,12 +167,12 @@ def test_setup():
 
     config_files = payu.models.test.config_files
     for file in config_files:
-        make_random_file( ctrldir/file, 29)
+        make_random_file(ctrldir/file, 29)
 
     # Run setup
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
-        
+
     workdir = ctrldir / 'work'
     assert(workdir.is_symlink())
     assert(workdir.is_dir())
@@ -180,25 +182,26 @@ def test_setup():
     for f in config_files + ['config.yaml']:
         assert((workdir/f).is_file())
 
-    for i in range(1,4):
-        assert((workdir/'input_00{i}.bin'.format(i=i)).stat().st_size == 1000**2 + i)
+    for i in range(1, 4):
+        assert((workdir/'input_00{i}.bin'.format(i=i)).stat().st_size 
+                == 1000**2 + i)
 
     manifests = get_manifests(ctrldir/'manifests')
     for mfpath in manifests:
-        assert( (ctrldir/'manifests'/mfpath).is_file() )
+        assert((ctrldir/'manifests'/mfpath).is_file())
 
     # Check manifest in work directory is the same as control directory
     assert(manifests == get_manifests(workdir/'manifests'))
 
     # Sweep workdir and recreate
     sweep_work()
-    
+
     assert(not workdir.is_dir())
     assert(not workdirfull.is_dir())
 
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
-        
+
     assert(manifests == get_manifests(workdir/'manifests'))
 
     # Sweep workdir
@@ -224,6 +227,7 @@ def test_setup_restartdir():
     # Sweep workdir
     sweep_work()
 
+
 def test_exe_reproduce():
 
     # Set reproduce exe to True
@@ -231,10 +235,11 @@ def test_exe_reproduce():
     write_config()
     manifests = get_manifests(ctrldir/'manifests')
 
-    # Run setup with unchanged exe but reproduce exe set to True. Should run without error
+    # Run setup with unchanged exe but reproduce exe set to True. 
+    # Should run without error
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
-        
+
     assert(manifests == get_manifests(ctrldir/'manifests'))
 
     # Sweep workdir
@@ -243,13 +248,13 @@ def test_exe_reproduce():
     bindir = labdir / 'bin'
     exe = config['exe']
 
-    # Update the modification time of the executable, should run ok 
+    # Update the modification time of the executable, should run ok
     (bindir/exe).touch()
 
     # Run setup with changed exe but reproduce exe set to False
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
-        
+
     # Manifests will have changed as fasthash is altered
     assert(not manifests == get_manifests(ctrldir/'manifests'))
 
@@ -264,7 +269,7 @@ def test_exe_reproduce():
         # Run setup with unchanged exe but reproduce exe set to True
         with cd(ctrldir):
             payu_setup(lab_path=str(labdir))
-            
+
         assert pytest_wrapped_e.type == SystemExit
         assert pytest_wrapped_e.value.code == 1
 
@@ -278,12 +283,13 @@ def test_exe_reproduce():
     # Run setup with changed exe but reproduce exe set to False
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
-        
+
     # Check manifests have changed as expected
     assert(not manifests == get_manifests(ctrldir/'manifests'))
 
     # Sweep workdir
     sweep_work()
+
 
 def test_input_reproduce():
 
@@ -299,21 +305,21 @@ def test_input_reproduce():
     # Run setup with unchanged exe but reproduce exe set to True
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
-        
+
     assert(manifests == get_manifests(ctrldir/'manifests'))
 
     # Sweep workdir
     sweep_work()
 
     # Update modification times for input files
-    for i in range(1,4):
+    for i in range(1, 4):
         (inputdir/'input_00{i}.bin'.format(i=i)).touch()
 
-    # Run setup, should work as only fasthash will differ, code then checks full hash and
-    # updates fasthash if fullhash matches
+    # Run setup, should work as only fasthash will differ, code then 
+    # checks full hash and updates fasthash if fullhash matches
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
-        
+
     # Manifests should no longer match as fasthashes have been updated
     assert(not manifests == get_manifests(ctrldir/'manifests'))
 
@@ -328,7 +334,7 @@ def test_input_reproduce():
         # Run setup with unchanged exe but reproduce exe set to True
         with cd(ctrldir):
             payu_setup(lab_path=str(labdir))
-        
+
         assert pytest_wrapped_e.type == SystemExit
         assert pytest_wrapped_e.value.code == 1
 
@@ -362,13 +368,13 @@ def test_restart_reproduce():
     # Run setup with unchanged restarts
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
-        
+ 
     assert(manifests == get_manifests(ctrldir/'manifests'))
 
     restartdir = labdir / 'archive' / 'restarts'
 
     # Change modification times on restarts
-    for i in range(1,4):
+    for i in range(1, 4):
         (restartdir/'restart_00{i}.bin'.format(i=i)).touch()
 
     # Sweep workdir
@@ -377,7 +383,7 @@ def test_restart_reproduce():
     # Run setup with touched restarts
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
-        
+
     # Manifests should have changed
     assert(not manifests == get_manifests(ctrldir/'manifests'))
 
@@ -416,13 +422,14 @@ def test_restart_reproduce():
     # Sweep workdir
     sweep_work()
 
+
 def test_all_reproduce():
 
     # Remove reproduce options from config
     del(config['manifest']['reproduce'])
     write_config()
 
-    # Run setup 
+    # Run setup
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
 
@@ -433,7 +440,8 @@ def test_all_reproduce():
 
     make_all_files()
 
-    # Run setup with reproduce=True, which should raise an error as all files changed
+    # Run setup with reproduce=True, which should raise an error as 
+    # all files changed
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         # Run setup with unchanged exe but reproduce exe set to True
         with cd(ctrldir):
@@ -442,7 +450,7 @@ def test_all_reproduce():
     # Sweep workdir
     sweep_work()
 
-    # Run setup 
+    # Run setup
     with cd(ctrldir):
         payu_setup(lab_path=str(labdir))
 

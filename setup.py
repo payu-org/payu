@@ -36,6 +36,7 @@ setup(
         'yamanifest',
         'dateutil',
         'tenacity',
+        'scipy',
     ],
     install_requires=[
         'f90nml >= 0.16',
