@@ -8,6 +8,7 @@ import os
 from payu import cli
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
+from payu import fsops
 import payu.subcommands.args as args
 
 title = 'profile'
@@ -19,7 +20,7 @@ arguments = [args.model, args.config, args.initial, args.nruns,
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path):
 
-    pbs_config = cli.get_config(config_path)
+    pbs_config = fsops.read_config(config_path)
     pbs_vars = cli.set_env_vars(init_run, n_runs, lab_path)
 
     pbs_config['queue'] = pbs_config.get('profile_queue', 'normal')
