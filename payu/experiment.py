@@ -655,7 +655,7 @@ class Experiment(object):
             job_id = get_job_id(short=False)
 
             if job_id == '':
-                job_id = self.run_id[:6]
+                job_id = str(self.run_id)[:6]
 
             for fname in self.output_fnames:
 

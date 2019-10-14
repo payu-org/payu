@@ -93,12 +93,12 @@ def make_all_files():
     make_exe()
     make_restarts()
 
-def sweep_work():
+def sweep_work(hard_sweep=False):
     # Sweep workdir
     with cd(ctrldir):
         payu_sweep(model_type=None, 
                    config_path=None, 
-                   hard_sweep=False, 
+                   hard_sweep=hard_sweep, 
                    lab_path=str(labdir))
 
 def setup_module(module):
@@ -131,7 +131,7 @@ def teardown_module(module):
         print ("teardown_module   module:%s" % module.__name__)
 
     try:
-        shutil.rmtree(tmpdir)
+        # shutil.rmtree(tmpdir)
         print('removing tmp')
     except Exception as e:
         print(e)
@@ -448,3 +448,13 @@ def test_all_reproduce():
 
     # Manifests should have changed
     assert(not manifests == get_manifests(ctrldir/'manifests'))
+
+def test_hard_sweep():
+
+    pass
+    # Sweep workdir
+    sweep_work(hard_sweep=True)
+
+    # Check all the correct directories have been removed
+    assert(not (labdir / 'archive' / 'ctrl' ).is_dir())
+    assert(not (labdir / 'work' / 'ctrl' ).is_dir())
