@@ -48,11 +48,11 @@ class Laboratory(object):
         self.input_basepath = os.path.join(self.basepath, 'input')
         self.work_path = os.path.join(self.basepath, 'work')
 
-        print("laboratory path: ",self.basepath)
-        print("binary path: ",self.bin_path)
-        print("input path: ",self.input_basepath)
-        print("work path: ",self.work_path)
-        print("archive path: ",self.archive_path)
+        print("laboratory path: ", self.basepath)
+        print("binary path: ", self.bin_path)
+        print("input path: ", self.input_basepath)
+        print("work path: ", self.work_path)
+        print("archive path: ", self.archive_path)
 
     def get_default_lab_path(self, config):
         """Generate a default laboratory path based on user environment."""
