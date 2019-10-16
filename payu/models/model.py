@@ -236,7 +236,7 @@ class Model(object):
                 )
 
         # Add input files to manifest if we don't already have a populated
-        # input manifest, or we specify scan_inputs is True (default)
+        # input manifest, or we specify scaninputs is True (default)
         if (not self.expt.manifest.have_manifest['input'] or
                 self.expt.manifest.scaninputs):
             for input_path in self.input_paths:

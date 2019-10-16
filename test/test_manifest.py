@@ -422,6 +422,100 @@ def test_input_reproduce():
     sweep_work()
 
 
+def test_input_scaninputs():
+
+    inputdir = labdir / 'input' / config['input']
+    inputdir.mkdir(parents=True, exist_ok=True)
+
+    # Set scaninputs input to True
+    config['manifest']['scaninputs'] = True
+    write_config()
+
+    # Run setup with unchanged input 
+    payu_setup(lab_path=str(labdir))
+    manifests = get_manifests(ctrldir/'manifests')
+
+    # Sweep workdir
+    sweep_work()
+
+    # Set scaninputs input to False
+    config['manifest']['scaninputs'] = False
+    write_config()
+
+    # Run setup, should work and manifests unchanged
+    payu_setup(lab_path=str(labdir))
+    assert(manifests == get_manifests(ctrldir/'manifests'))
+
+    # Sweep workdir
+    sweep_work()
+
+    # Update modification times for input files
+    for i in range(1, 4):
+        (inputdir/'input_00{i}.bin'.format(i=i)).touch()
+
+    # Run setup, should work as only fasthash will differ, code then
+    # checks full hash and updates fasthash if fullhash matches
+    payu_setup(lab_path=str(labdir))
+
+    # Manifests should no longer match as fasthashes have been updated
+    assert(not manifests == get_manifests(ctrldir/'manifests'))
+
+    # Reset manifest "truth"
+    manifests = get_manifests(ctrldir/'manifests')
+
+    # Sweep workdir
+    sweep_work()
+
+    # Re-create input files
+    make_inputs()
+
+    # Run setup again. Should be fine, but manifests changed
+    payu_setup(lab_path=str(labdir))
+    assert(not manifests == get_manifests(ctrldir/'manifests'))
+
+    # Reset manifest "truth"
+    manifests = get_manifests(ctrldir/'manifests')
+
+    # Sweep workdir
+    sweep_work()
+
+    # Make a new input file
+    (inputdir/'lala').touch()
+
+    # Run setup again. Should be fine, manifests unchanged as
+    # scaninputs=False
+    payu_setup(lab_path=str(labdir))
+    assert(manifests == get_manifests(ctrldir/'manifests'))
+
+    # Sweep workdir
+    sweep_work()
+
+    # Set scaninputs input to True
+    config['manifest']['scaninputs'] = True
+    write_config()
+
+    # Run setup again. Should be fine, but manifests changed now 
+    # as scaninputs=False
+    payu_setup(lab_path=str(labdir))
+    assert(not manifests == get_manifests(ctrldir/'manifests'))
+    assert((workdir/'lala').is_file())
+
+    # Sweep workdir
+    sweep_work()
+
+    # Delete silly input file
+    (inputdir/'lala').unlink()
+
+    # Re-run after removing silly input file
+    payu_setup(lab_path=str(labdir))
+
+    # Reset manifest "truth"
+    manifests = get_manifests(ctrldir/'manifests')
+
+    # Sweep workdir
+    sweep_work()
+
+
 def test_restart_reproduce():
 
     # Set reproduce restart to True
