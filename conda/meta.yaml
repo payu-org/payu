@@ -14,6 +14,7 @@ requirements:
     build:
         - python
         - pbr
+        - setuptools
     run:
         - python
         - f90nml >=0.16
