@@ -282,25 +282,31 @@ class Manifest(object):
         return len(self.manifests)
 
     def setup(self):
-        if (os.path.exists(self.manifests['input'].path) and
-                not self.manifest_config.get('overwrite', False)):
-            # Always read input manifest if available
-            print('Loading input manifest: {path}'
-                  ''.format(path=self.manifests['input'].path))
-            self.manifests['input'].load()
 
-            if len(self.manifests['input']) > 0:
-                self.have_manifest['input'] = True
-                if self.scaninputs:
-                    # Save existing filepath information
-                    self.manifests['input'].existing_filepaths = \
-                        set(self.manifests['input'].data.keys())
-                else:
-                    # Input directories not scanned. Populate
-                    # inputs in workdir using input manifest
-                    print('Making input links from manifest'
-                          '(scaninputs=False)')
-                    self.manifests['input'].make_links()
+        if (os.path.exists(self.manifests['input'].path)):
+            # Always read input manifest if available
+            try:
+                print('Loading input manifest: {path}'
+                    ''.format(path=self.manifests['input'].path))
+                self.manifests['input'].load()
+
+                if len(self.manifests['input']) > 0:
+                    self.have_manifest['input'] = True
+                    if self.scaninputs:
+                        # Save existing filepath information
+                        self.manifests['input'].existing_filepaths = \
+                            set(self.manifests['input'].data.keys())
+                    else:
+                        # Input directories not scanned. Populate
+                        # inputs in workdir using input manifest
+                        print('Making input links from manifest'
+                                '(scaninputs=False)')
+                        self.manifests['input'].make_links()
+            except Exception as e:
+                print("Error loading input manifest: {}".format(e))
+                self.manifests['input'].have_manifest = False
+            finally:
+                self.manifests['input'].have_manifest = True
 
         if self.reproduce['exe']:
             # Only load existing exe manifest if reproduce. Trivial to
@@ -318,6 +324,8 @@ class Manifest(object):
             # Must make links as no files will be added to the manifest
             print('Making exe links')
             self.manifests['exe'].make_links()
+        else:
+            self.have_manifest['exe'] = False
 
         if self.reproduce['restart']:
             # Only load restart manifest if reproduce. Normally want to
