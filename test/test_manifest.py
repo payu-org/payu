@@ -337,7 +337,7 @@ def test_input_reproduce():
     # Sweep workdir
     sweep_work()
 
-    # Delete input directory from config, should still work from 
+    # Delete input directory from config, should still work from
     # manifest with input reproduce True
     input = config['input']
     write_config()
@@ -431,7 +431,7 @@ def test_input_scaninputs():
     config['manifest']['scaninputs'] = True
     write_config()
 
-    # Run setup with unchanged input 
+    # Run setup with unchanged input
     payu_setup(lab_path=str(labdir))
     manifests = get_manifests(ctrldir/'manifests')
 
@@ -494,7 +494,7 @@ def test_input_scaninputs():
     config['manifest']['scaninputs'] = True
     write_config()
 
-    # Run setup again. Should be fine, but manifests changed now 
+    # Run setup again. Should be fine, but manifests changed now
     # as scaninputs=False
     payu_setup(lab_path=str(labdir))
     assert(not manifests == get_manifests(ctrldir/'manifests'))

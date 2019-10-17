@@ -287,7 +287,7 @@ class Manifest(object):
             # Always read input manifest if available
             try:
                 print('Loading input manifest: {path}'
-                    ''.format(path=self.manifests['input'].path))
+                      ''.format(path=self.manifests['input'].path))
                 self.manifests['input'].load()
 
                 if len(self.manifests['input']) > 0:
@@ -300,7 +300,7 @@ class Manifest(object):
                         # Input directories not scanned. Populate
                         # inputs in workdir using input manifest
                         print('Making input links from manifest'
-                                '(scaninputs=False)')
+                              '(scaninputs=False)')
                         self.manifests['input'].make_links()
             except Exception as e:
                 print("Error loading input manifest: {}".format(e))
