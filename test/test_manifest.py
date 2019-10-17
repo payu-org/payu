@@ -53,6 +53,15 @@ config = {
             }
 
 
+def sweep_work(hard_sweep=False):
+    # Sweep workdir
+    with cd(ctrldir):
+        payu_sweep(model_type=None,
+                   config_path=None,
+                   hard_sweep=hard_sweep,
+                   lab_path=str(labdir))
+
+
 def payu_setup(model_type=None,
                config_path=None,
                lab_path=None,
@@ -63,20 +72,15 @@ def payu_setup(model_type=None,
     and run in ctrldir
     """
     with cd(ctrldir):
+        payu_sweep(model_type=None,
+                   config_path=None,
+                   hard_sweep=False,
+                   lab_path=str(labdir))
         payu_setup_orignal(model_type,
                            config_path,
                            lab_path,
                            force_archive,
                            reproduce)
-
-
-def sweep_work(hard_sweep=False):
-    # Sweep workdir
-    with cd(ctrldir):
-        payu_sweep(model_type=None,
-                   config_path=None,
-                   hard_sweep=hard_sweep,
-                   lab_path=str(labdir))
 
 
 def write_config():
@@ -218,9 +222,6 @@ def test_setup():
 
     assert(manifests == get_manifests(workdir/'manifests'))
 
-    # Sweep workdir
-    sweep_work()
-
 
 def test_setup_restartdir():
 
@@ -238,9 +239,6 @@ def test_setup_restartdir():
     # Manifests should not match, as have added restarts
     assert(not manifests == get_manifests(ctrldir/'manifests'))
 
-    # Sweep workdir
-    sweep_work()
-
 
 def test_exe_reproduce():
 
@@ -254,9 +252,6 @@ def test_exe_reproduce():
     payu_setup(lab_path=str(labdir))
 
     assert(manifests == get_manifests(ctrldir/'manifests'))
-
-    # Sweep workdir
-    sweep_work()
 
     bindir = labdir / 'bin'
     exe = config['exe']
@@ -272,9 +267,6 @@ def test_exe_reproduce():
 
     # Reset manifests "truth"
     manifests = get_manifests(ctrldir/'manifests')
-
-    # Sweep workdir
-    sweep_work()
 
     # Delete exe path from config, should get it from manifest
     del(config['exe'])
@@ -301,9 +293,6 @@ def test_exe_reproduce():
         assert pytest_wrapped_e.type == SystemExit
         assert pytest_wrapped_e.value.code == 1
 
-    # Sweep workdir
-    sweep_work()
-
     # Change reproduce exe back to False
     config['manifest']['reproduce']['exe'] = False
     write_config()
@@ -313,9 +302,6 @@ def test_exe_reproduce():
 
     # Check manifests have changed as expected
     assert(not manifests == get_manifests(ctrldir/'manifests'))
-
-    # Sweep workdir
-    sweep_work()
 
 
 def test_input_reproduce():
@@ -334,9 +320,6 @@ def test_input_reproduce():
     payu_setup(lab_path=str(labdir))
     assert(manifests == get_manifests(ctrldir/'manifests'))
 
-    # Sweep workdir
-    sweep_work()
-
     # Delete input directory from config, should still work from
     # manifest with input reproduce True
     input = config['input']
@@ -347,9 +330,6 @@ def test_input_reproduce():
     payu_setup(lab_path=str(labdir))
 
     assert(manifests == get_manifests(ctrldir/'manifests'))
-
-    # Sweep workdir
-    sweep_work()
 
     # Update modification times for input files
     for i in range(1, 4):
@@ -378,9 +358,6 @@ def test_input_reproduce():
         assert pytest_wrapped_e.type == SystemExit
         assert pytest_wrapped_e.value.code == 1
 
-    # Sweep workdir
-    sweep_work()
-
     # Change reproduce input back to False
     config['manifest']['reproduce']['input'] = False
     write_config()
@@ -397,9 +374,6 @@ def test_input_reproduce():
     # Reset manifest "truth"
     manifests = get_manifests(ctrldir/'manifests')
 
-    # Sweep workdir
-    sweep_work()
-
     # Delete input manifest
     (ctrldir/'manifests'/'input.yaml').unlink()
 
@@ -410,16 +384,10 @@ def test_input_reproduce():
     for i in range(1, 4):
         assert(not (workdir/'input_00{i}.bin'.format(i=i)).is_file())
 
-    # Sweep workdir
-    sweep_work()
-
     # Set input path back and recreate input manifest
     config['input'] = input
     write_config()
     payu_setup(lab_path=str(labdir))
-
-    # Sweep workdir
-    sweep_work()
 
 
 def test_input_scaninputs():
@@ -435,9 +403,6 @@ def test_input_scaninputs():
     payu_setup(lab_path=str(labdir))
     manifests = get_manifests(ctrldir/'manifests')
 
-    # Sweep workdir
-    sweep_work()
-
     # Set scaninputs input to False
     config['manifest']['scaninputs'] = False
     write_config()
@@ -445,9 +410,6 @@ def test_input_scaninputs():
     # Run setup, should work and manifests unchanged
     payu_setup(lab_path=str(labdir))
     assert(manifests == get_manifests(ctrldir/'manifests'))
-
-    # Sweep workdir
-    sweep_work()
 
     # Update modification times for input files
     for i in range(1, 4):
@@ -463,9 +425,6 @@ def test_input_scaninputs():
     # Reset manifest "truth"
     manifests = get_manifests(ctrldir/'manifests')
 
-    # Sweep workdir
-    sweep_work()
-
     # Re-create input files
     make_inputs()
 
@@ -476,9 +435,6 @@ def test_input_scaninputs():
     # Reset manifest "truth"
     manifests = get_manifests(ctrldir/'manifests')
 
-    # Sweep workdir
-    sweep_work()
-
     # Make a new input file
     (inputdir/'lala').touch()
 
@@ -486,9 +442,6 @@ def test_input_scaninputs():
     # scaninputs=False
     payu_setup(lab_path=str(labdir))
     assert(manifests == get_manifests(ctrldir/'manifests'))
-
-    # Sweep workdir
-    sweep_work()
 
     # Set scaninputs input to True
     config['manifest']['scaninputs'] = True
@@ -500,9 +453,6 @@ def test_input_scaninputs():
     assert(not manifests == get_manifests(ctrldir/'manifests'))
     assert((workdir/'lala').is_file())
 
-    # Sweep workdir
-    sweep_work()
-
     # Delete silly input file
     (inputdir/'lala').unlink()
 
@@ -511,9 +461,6 @@ def test_input_scaninputs():
 
     # Reset manifest "truth"
     manifests = get_manifests(ctrldir/'manifests')
-
-    # Sweep workdir
-    sweep_work()
 
 
 def test_restart_reproduce():
@@ -534,9 +481,6 @@ def test_restart_reproduce():
     for i in range(1, 4):
         (restartdir/'restart_00{i}.bin'.format(i=i)).touch()
 
-    # Sweep workdir
-    sweep_work()
-
     # Run setup with touched restarts, should work with modified
     # manifest
     payu_setup(lab_path=str(labdir))
@@ -547,9 +491,6 @@ def test_restart_reproduce():
     # Reset manifest "truth"
     manifests = get_manifests(ctrldir/'manifests')
 
-    # Sweep workdir
-    sweep_work()
-
     # Modify restart files
     make_restarts()
 
@@ -557,9 +498,6 @@ def test_restart_reproduce():
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         # Run setup with unchanged exe but reproduce exe set to True
         payu_setup(lab_path=str(labdir))
-
-    # Sweep workdir
-    sweep_work()
 
     # Set reproduce restart to False
     config['manifest']['reproduce']['restart'] = False
@@ -570,9 +508,6 @@ def test_restart_reproduce():
 
     # Manifests should have changed
     assert(not manifests == get_manifests(ctrldir/'manifests'))
-
-    # Sweep workdir
-    sweep_work()
 
 
 def test_all_reproduce():
@@ -586,9 +521,6 @@ def test_all_reproduce():
 
     manifests = get_manifests(ctrldir/'manifests')
 
-    # Sweep workdir
-    sweep_work()
-
     make_all_files()
 
     # Run setup with reproduce=True, which should raise an error as
@@ -596,9 +528,6 @@ def test_all_reproduce():
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         # Run setup with unchanged exe but reproduce exe set to True
         payu_setup(lab_path=str(labdir), reproduce=True)
-
-    # Sweep workdir
-    sweep_work()
 
     # Run setup
     payu_setup(lab_path=str(labdir))
@@ -609,7 +538,6 @@ def test_all_reproduce():
 
 def test_hard_sweep():
 
-    pass
     # Sweep workdir
     sweep_work(hard_sweep=True)
 
