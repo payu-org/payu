@@ -41,7 +41,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, reproduce):
         # TODO: Is control_path defined at this stage?
         mask_table_fname = None
         for fname in os.listdir(os.curdir):
-            if f.startswith('mask_table'):
+            if fname.startswith('mask_table'):
                 mask_table_fname = fname
 
         # TODO TODO

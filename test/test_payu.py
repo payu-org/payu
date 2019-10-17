@@ -17,6 +17,7 @@ import payu
 import payu.fsops
 import payu.laboratory
 
+
 class Test(unittest.TestCase):
 
     def setUp(self):
@@ -41,7 +42,7 @@ class Test(unittest.TestCase):
         os.rmdir(tmp_dir)
 
     def test_read_config(self):
-        config_path = 'config_mom5.yaml'
+        config_path = os.path.join('test', 'config_mom5.yaml')
         config = payu.fsops.read_config(config_path)
 
         # Raise a non-ENOENT error (e.g. EACCES)
@@ -114,6 +115,7 @@ class Test(unittest.TestCase):
         sys.stdout = StringIO()
         lab = payu.laboratory.Laboratory('model')
         sys.stdout = sys.__stdout__
+
 
 if __name__ == '__main__':
     unittest.main()

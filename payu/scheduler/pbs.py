@@ -16,6 +16,7 @@ import subprocess
 
 from tenacity import retry, stop_after_delay
 
+
 def get_job_id(short=True):
     """
     Return PBS job id
@@ -29,6 +30,7 @@ def get_job_id(short=True):
 
     return(jobid)
 
+
 def get_job_info():
     """
     Get information about the job from the PBS server
@@ -41,7 +43,7 @@ def get_job_info():
         info = get_qstat_info('-ft {0}'.format(jobid), 'Job Id:')
 
     if info is not None:
-        # Select the dict for this job (there should only be one 
+        # Select the dict for this job (there should only be one
         # entry in any case)
         info = info['Job Id: {}'.format(jobid)]
 

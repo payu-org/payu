@@ -9,6 +9,7 @@ from payu.models.mom import Mom
 from payu.models.mom6 import Mom6
 from payu.models.nemo import Nemo
 from payu.models.oasis import Oasis
+from payu.models.test import Test
 from payu.models.um import UnifiedModel
 from payu.models.ww3 import WW3
 from payu.models.qgcm import Qgcm
@@ -28,6 +29,7 @@ index = {
     'mom':      Mom,
     'nemo':     Nemo,
     'oasis':    Oasis,
+    'test':     Test,
     'um':       UnifiedModel,
     'ww3':      WW3,
     'mom6':     Mom6,

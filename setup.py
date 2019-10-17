@@ -36,6 +36,7 @@ setup(
         'yamanifest',
         'dateutil',
         'tenacity',
+        'scipy',
     ],
     install_requires=[
         'f90nml >= 0.16',
@@ -44,6 +45,10 @@ setup(
         'requests[security]',
         'python-dateutil',
         'tenacity',
+    ],
+    tests_require=[
+        'pytest',
+        'pylint',
     ],
     entry_points={
         'console_scripts': [

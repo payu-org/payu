@@ -1,8 +1,13 @@
 Payu
 ====
 
-.. image:: https://travis-ci.org/marshallward/payu.svg?branch=master
-   :target: https://travis-ci.org/marshallward/payu
+.. image:: https://travis-ci.org/payu-org/payu.svg?branch=master
+    :target: https://travis-ci.org/payu-org/payu
+.. image:: https://coveralls.io/repos/github/payu-org/payu/badge.svg?branch=master
+    :target: https://coveralls.io/github/payu-org/payu?branch=master
+
+
+
 
 Payu is a climate model workflow management tool for supercomputing
 environments.

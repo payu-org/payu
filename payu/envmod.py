@@ -98,6 +98,7 @@ def lib_update(bin_path, lib_name):
         if lib_name in lib_entry:
             lib_path = lib_entry.split()[2]
 
+            # pylint: disable=unbalanced-tuple-unpacking
             mod_name, mod_version = fsops.splitpath(lib_path)[2:4]
 
             module('unload', mod_name)
