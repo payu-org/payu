@@ -753,7 +753,7 @@ class Experiment(object):
                 res_path = os.path.join(self.archive_path, res_dir)
 
                 # Only delete real directories; ignore symbolic restart links
-                if os.path.isdir(res_path):
+                if (not os.path.islink(res_path)):
                     shutil.rmtree(res_path)
 
         # Ensure dynamic library support for subsequent python calls
