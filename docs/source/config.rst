@@ -285,12 +285,3 @@ Miscellaneous
 ``repeat``
    Ignore any restart files and repeat the initial run upon resubmission. This
    is generally only used for testing purposes, such as bit reproducibility.
-
-Deprecated settings
-===================
-
-``core2iaf``
-   This is used to extract an individual year out of a larger multi-year
-   forcing field in the MOM ocean model. However, there is currently no
-   performance improvement when using this setting, so it is not recommended
-   and is scheduled for deletion.
