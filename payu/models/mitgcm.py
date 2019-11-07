@@ -225,7 +225,7 @@ class Mitgcm(Model):
         # Save model time to restart next run
         with open(os.path.join(self.restart_path,
                   self.restart_calendar_file), 'w') as restart_file:
-            restart = {'endtime': data_nml['parm03']['endTime']},
+            restart = {'endtime': data_nml['parm03']['endTime']}
             restart_file.write(yaml.dump(restart, default_flow_style=False))
 
         # Remove symbolic links to input or pickup files:
