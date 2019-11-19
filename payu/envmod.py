@@ -22,7 +22,11 @@ def setup(basepath=DEFAULT_BASEPATH):
     """Set the environment modules used by the Environment Module system."""
 
     module_version = os.environ.get('MODULE_VERSION', DEFAULT_VERSION)
-    moduleshome = os.path.join(basepath, module_version)
+
+    moduleshome = os.environ.get('MODULESHOME', None)
+
+    if moduleshome is None:
+        moduleshome = os.path.join(basepath, module_version)
 
     # Abort if MODULESHOME does not exist
     if not os.path.isdir(moduleshome):
