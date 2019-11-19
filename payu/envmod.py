@@ -15,7 +15,7 @@ if not hasattr(subprocess, 'check_output'):
     subprocess.check_output = check_output
 
 DEFAULT_BASEPATH = '/opt/Modules'
-DEFAULT_VERSION = '3.2.6'
+DEFAULT_VERSION = 'v4.3.0'
 
 
 def setup(basepath=DEFAULT_BASEPATH):
