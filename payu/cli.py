@@ -119,6 +119,12 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
     if reproduce:
         payu_env_vars['PAYU_REPRODUCE'] = reproduce
 
+    # Pass through important module related environment variables
+    module_env_vars = ['MODULESHOME', 'MODULES_CMD', 'MODULEPATH', 'MODULEV']
+    for var in module_env_vars:
+        if var in os.environ:
+            payu_env_vars[var] = os.environ[var]
+
     return payu_env_vars
 
 
