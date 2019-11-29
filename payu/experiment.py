@@ -237,7 +237,7 @@ class Experiment(object):
         loaded_mods = os.environ.get('LOADEDMODULES', '').split(':')
 
         for mod in loaded_mods:
-            if len(mod) > 0: 
+            if len(mod) > 0:
                 print('mod '+mod)
                 mod_base = mod.split('/')[0]
                 if mod_base not in core_modules:
