@@ -106,7 +106,6 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, reproduce):
 
 def runscript():
 
-    print('modulepath = {}'.format(os.environ.get('MODULEPATH',None)))
     parser = argparse.ArgumentParser()
     for arg in arguments:
         parser.add_argument(*arg['flags'], **arg['parameters'])

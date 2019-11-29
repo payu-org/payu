@@ -39,8 +39,6 @@ def setup(basepath=DEFAULT_BASEPATH):
     os.environ['MODULE_VERSION_STACK'] = module_version
     os.environ['MODULESHOME'] = moduleshome
 
-    print(os.environ)
-
     if 'MODULEPATH' not in os.environ:
         module_initpath = os.path.join(moduleshome, 'init', '.modulespath')
         with open(module_initpath) as initpaths:
@@ -84,8 +82,6 @@ def module(command, *args):
 
     cmd = '{0} python {1} {2}'.format(modulecmd, command, ' '.join(args))
 
-    print(cmd)
-
     envs, _ = subprocess.Popen(shlex.split(cmd),
                                stdout=subprocess.PIPE).communicate()
     exec(envs)
@@ -108,8 +104,6 @@ def lib_update(bin_path, lib_name):
 
             # pylint: disable=unbalanced-tuple-unpacking
             mod_name, mod_version = fsops.splitpath(lib_path)[2:4]
-
-            print(mod_name, mod_version, lib_path)
 
             module('unload', mod_name)
             module('load', os.path.join(mod_name, mod_version))
