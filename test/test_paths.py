@@ -10,11 +10,14 @@ import payu
 
 from payu.laboratory import Laboratory
 
-from common import cd, make_random_file, get_manifests, tmpdir, ctrldir, labdir, workdir
+from common import cd, make_random_file, get_manifests
+from common import tmpdir, ctrldir, labdir, workdir
 from common import config, sweep_work, payu_init, payu_setup
-from common import write_config, make_exe, make_inputs, make_restarts, make_all_files
+from common import write_config
+from common import make_exe, make_inputs, make_restarts, make_all_files
 
 verbose = True
+
 
 def setup_module(module):
     """
@@ -53,7 +56,7 @@ def teardown_module(module):
         print(e)
 
 
-def test_laboratory():
+def test_laboratory_basepath():
 
     # Test instantiating a Laboratory object
     with cd(ctrldir):
@@ -72,14 +75,12 @@ def test_laboratory():
     write_config()
     with cd(ctrldir):
         lab = Laboratory(None, None, None)
-        
+
         shortpath = '.'
         for path in ['/short', '/scratch']:
             if Path(path).exists():
                 shortpath = path
                 break
-
-        # pdb.set_trace()
 
         assert(Path(lab.basepath).parents[2] == Path(shortpath))
         assert(Path(lab.basepath).parts[2] == os.environ['PROJECT'])
