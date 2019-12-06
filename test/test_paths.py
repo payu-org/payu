@@ -82,6 +82,6 @@ def test_laboratory_basepath():
                 shortpath = path
                 break
 
-        assert(Path(lab.basepath).parents[2] == Path(shortpath))
-        assert(Path(lab.basepath).parts[2] == os.environ['PROJECT'])
+        assert(list(Path(lab.basepath).parents)[2] == Path(shortpath))
+        assert(Path(lab.basepath).parts[-3] == os.environ['PROJECT'])
         assert(Path(lab.basepath).parts[-1] == 'lab')
