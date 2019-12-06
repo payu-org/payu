@@ -37,6 +37,14 @@ class Laboratory(object):
         else:
             self.basepath = lab_path
 
+        # Support multiple bases for default short/scratch 
+        # locations. Fall back to control directory if others
+        # don't exist
+        for path in ['/short', '/scratch', '.']:
+            if os.path.exists(path):
+                self.base = path
+                break
+
         # If no lab path is set, generate a default path
         if not self.basepath:
             self.basepath = self.get_default_lab_path(config)
@@ -60,7 +68,7 @@ class Laboratory(object):
 
         # Append project name if present (NCI-specific)
         default_project = os.environ.get('PROJECT', '')
-        default_short_path = os.path.join('/short', default_project)
+        default_short_path = os.path.join(self.base, default_project)
         default_user = pwd.getpwuid(os.getuid()).pw_name
 
         short_path = config.get('shortpath', default_short_path)
