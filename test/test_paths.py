@@ -85,3 +85,23 @@ def test_laboratory_basepath():
         assert(list(Path(lab.basepath).parents)[2] == Path(shortpath))
         assert(Path(lab.basepath).parts[-3] == os.environ['PROJECT'])
         assert(Path(lab.basepath).parts[-1] == 'lab')
+
+def test_laboratory_path():
+
+    # Set a PROJECT env variable to get reproducible paths
+    os.environ['PROJECT'] = 'x00'
+
+    # Set a relative laboratory name
+    labname = 'testlab'
+    config['laboratory'] = labname
+    write_config()
+    with cd(ctrldir):
+        lab = Laboratory(None, None, None)
+
+        shortpath = '.'
+        for path in ['/short', '/scratch']:
+            if Path(path).exists():
+                shortpath = path
+                break
+
+        assert(Path(lab.basepath).parts[-1] == labname)
