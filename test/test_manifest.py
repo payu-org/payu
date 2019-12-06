@@ -11,9 +11,11 @@ import pdb
 
 import payu.models.test
 
-from common import cd, make_random_file, get_manifests, tmpdir, ctrldir, labdir, workdir
+from common import cd, make_random_file, get_manifests
+from common import tmpdir, ctrldir, labdir, workdir
 from common import config, sweep_work, payu_init, payu_setup
-from common import write_config, make_exe, make_inputs, make_restarts, make_all_files
+from common import write_config
+from common import make_exe, make_inputs, make_restarts, make_all_files
 
 verbose = True
 

@@ -37,7 +37,7 @@ class Laboratory(object):
         else:
             self.basepath = lab_path
 
-        # Support multiple bases for default short/scratch 
+        # Support multiple bases for default short/scratch
         # locations. Fall back to control directory if others
         # don't exist
         for path in ['/short', '/scratch', '.']:
