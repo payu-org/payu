@@ -9,6 +9,7 @@ import yaml
 import payu
 
 from payu.laboratory import Laboratory
+from payu.cli import find_mounts
 
 from common import cd, make_random_file, get_manifests
 from common import tmpdir, ctrldir, labdir, workdir
@@ -105,3 +106,20 @@ def test_laboratory_path():
                 break
 
         assert(Path(lab.basepath).parts[-1] == labname)
+
+def test_find_mounts():
+
+    paths = ['/f/data/x00', '/tmp/y11']
+    mounts = ['/f/data', '/tmp']
+
+    assert( find_mounts(paths, mounts) == 'fdata/x00+tmp/y11' )
+
+    # Only return where a match is found
+    mounts = ['/f/data']
+
+    assert( find_mounts(paths, mounts) == 'fdata/x00' )
+
+    paths = ['/f/data/x00']
+    mounts = ['/f/data', '/tmp']
+
+    assert( find_mounts(paths, mounts) == 'fdata/x00' )

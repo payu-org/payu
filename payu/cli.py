@@ -12,6 +12,7 @@ from distutils import sysconfig
 import importlib
 import os
 import pkgutil
+import re
 import shlex
 import subprocess
 import sys
@@ -126,6 +127,31 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
             payu_env_vars[var] = os.environ[var]
 
     return payu_env_vars
+
+
+def find_mounts(paths, mounts):
+    """
+    Search a path for a matching mount point and return the NCI compatible
+    string to add to the qsub command
+    """
+    if not isinstance(paths, list):
+        paths = [paths,]
+    if not isinstance(mounts, list):
+        mounts = [mounts,]
+
+    storages = []
+
+    for p in paths:
+        for m in mounts:
+            if p.startswith(m):
+                # Relevant project code is the next element of the path
+                # after the mount point
+                proj_code = os.path.relpath(p, m).split(os.path.sep)[0]
+                storages.append("/".join([re.sub(os.path.sep,'',m),
+                                          proj_code]))
+                break
+    
+    return '+'.join(storages)
 
 
 def submit_job(pbs_script, pbs_config, pbs_vars=None):
