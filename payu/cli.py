@@ -131,15 +131,15 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
 
 def find_mounts(paths, mounts):
     """
-    Search a path for a matching mount point and return the NCI compatible
-    string to add to the qsub command
+    Search a path for a matching mount point and return a set of unique
+    NCI compatible strings to add to the qsub command
     """
     if not isinstance(paths, list):
-        paths = [paths,]
+        paths = [paths, ]
     if not isinstance(mounts, list):
-        mounts = [mounts,]
+        mounts = [mounts, ]
 
-    storages = []
+    storages = set()
 
     for p in paths:
         for m in mounts:
@@ -147,11 +147,10 @@ def find_mounts(paths, mounts):
                 # Relevant project code is the next element of the path
                 # after the mount point
                 proj_code = os.path.relpath(p, m).split(os.path.sep)[0]
-                storages.append("/".join([re.sub(os.path.sep,'',m),
-                                          proj_code]))
+                storages.add("/".join([re.sub(os.path.sep, '', m), proj_code]))
                 break
-    
-    return '+'.join(storages)
+
+    return storages
 
 
 def submit_job(pbs_script, pbs_config, pbs_vars=None):
