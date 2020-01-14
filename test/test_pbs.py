@@ -76,6 +76,9 @@ def test_run():
 
         payu_cmd = 'payu-run'
 
+        if 'MODULESHOME' in os.environ:
+            del(os.environ['MODULESHOME'])
+
         cmd = pbs.generate_command(payu_cmd, config, pbs_vars)
 
         # print(cmd)
