@@ -32,7 +32,10 @@ def setup(basepath=DEFAULT_BASEPATH):
     if not os.path.isdir(moduleshome):
         print('payu: warning: MODULESHOME does not exist; disabling '
               'environment modules.')
-        os.environ['MODULESHOME'] = ''
+        try:
+            del(os.environ['MODULESHOME'])
+        except KeyError:
+            pass
         return
     else:
         print('payu: Found modules in {}'.format(moduleshome))
@@ -79,8 +82,6 @@ def module(command, *args):
         print('payu: warning: No Environment Modules found; skipping {0} call.'
               ''.format(command))
         return
-
-    print("MODULESHOME: {}".format(os.environ['MODULESHOME']))
 
     modulecmd = ('{0}/bin/modulecmd'.format(os.environ['MODULESHOME']))
 
