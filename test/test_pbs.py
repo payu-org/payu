@@ -68,8 +68,8 @@ def test_run():
     # functioning PBS install in travis
     payu.scheduler.pbs.pbs_env_init = lambda: True
 
-    payu_path = os.path.join(os.environ['PWD'],'bin')
-    pbs_vars = { 'PAYU_PATH' : payu_path }
+    payu_path = os.path.join(os.environ['PWD'], 'bin')
+    pbs_vars = {'PAYU_PATH' : payu_path}
 
     # Test pbs generating a PBS command
     with cd(ctrldir):
@@ -87,9 +87,11 @@ def test_run():
         parser.add_argument('-q', type=str, required=True)
         parser.add_argument('-P', type=str, required=True)
         parser.add_argument('-N', type=str, required=True)
-        parser.add_argument('-v', metavar='KEY-VALUE', nargs='+', required=True)
+        parser.add_argument('-v', metavar='KEY-VALUE', 
+                            nargs='+', required=True)
         parser.add_argument('-j', type=str, required=True)
-        parser.add_argument('-l', metavar='KEY=VALUE', nargs='+', action='append', required=True)
+        parser.add_argument('-l', metavar='KEY=VALUE', 
+                            nargs='+', action='append', required=True)
         parser.add_argument('remaining', nargs=argparse.REMAINDER)
 
         args = parser.parse_args(cmd.split()[1:])
@@ -108,11 +110,11 @@ def test_run():
         resources_found = {}
         for resource in resources:
             try:
-                k,v = resource.split('=')
+                k, v = resource.split('=')
             except ValueError:
-                k,v = (resource, True)
+                k, v = (resource, True)
             resources_found[k] = v
-        
+
         # Check all resources specified in config are correct
         for resource in ['walltime', 'ncpus', 'mem']:
             assert(resources_found[resource] == str(config[resource]))
@@ -123,7 +125,7 @@ def test_run():
 
         env = {}
         for env_var in args.v:
-            k,v = env_var.split('=')
+            k, v = env_var.split('=')
             env[k] = v
 
         assert('PAYU_PATH' in env)

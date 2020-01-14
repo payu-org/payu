@@ -192,7 +192,7 @@ def generate_command(pbs_script, pbs_config, pbs_vars=None):
     for mount, projects in storage_config:
         mounts.add(mount)
         for project in projects:
-            storages.add("{mount}/{project}".format(mount=mount, 
+            storages.add("{mount}/{project}".format(mount=mount,
                                                     project=project))
 
     pbs_flags_extend = '+'.join(storages)
@@ -213,7 +213,7 @@ def generate_command(pbs_script, pbs_config, pbs_vars=None):
         assert os.path.isfile(pbs_script)
 
     # Check for storage paths that might need to be mounted in the
-    # python and script paths 
+    # python and script paths
     storages.update(find_mounts([sys.executable, pbs_script], mounts))
 
     # Set up environment modules here for PBS.

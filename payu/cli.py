@@ -127,6 +127,7 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
 
     return payu_env_vars
 
+
 def submit_job(script, config, vars=None):
     """Submit a userscript the scheduler."""
 
