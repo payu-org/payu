@@ -35,7 +35,7 @@ def setup(basepath=DEFAULT_BASEPATH):
         os.environ['MODULESHOME'] = ''
         return
     else:
-        print('payu: Found modules in {}'.format(moduleshome)')
+        print('payu: Found modules in {}'.format(moduleshome))
 
     os.environ['MODULE_VERSION'] = module_version
     os.environ['MODULE_VERSION_STACK'] = module_version
