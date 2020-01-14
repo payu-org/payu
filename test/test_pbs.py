@@ -64,12 +64,12 @@ def teardown_module(module):
 
 def test_run():
 
-    # Monkey patch pbs_env_init as we don't have a 
+    # Monkey patch pbs_env_init as we don't have a
     # functioning PBS install in travis
     payu.scheduler.pbs.pbs_env_init = lambda: True
 
     payu_path = os.path.join(os.environ['PWD'], 'bin')
-    pbs_vars = {'PAYU_PATH' : payu_path}
+    pbs_vars = {'PAYU_PATH': payu_path}
 
     # Test pbs generating a PBS command
     with cd(ctrldir):
@@ -87,10 +87,10 @@ def test_run():
         parser.add_argument('-q', type=str, required=True)
         parser.add_argument('-P', type=str, required=True)
         parser.add_argument('-N', type=str, required=True)
-        parser.add_argument('-v', metavar='KEY-VALUE', 
+        parser.add_argument('-v', metavar='KEY-VALUE',
                             nargs='+', required=True)
         parser.add_argument('-j', type=str, required=True)
-        parser.add_argument('-l', metavar='KEY=VALUE', 
+        parser.add_argument('-l', metavar='KEY=VALUE',
                             nargs='+', action='append', required=True)
         parser.add_argument('remaining', nargs=argparse.REMAINDER)
 
@@ -105,7 +105,7 @@ def test_run():
         for resource in args.l:
             resources.extend(resource)
 
-        other_resources = {'wd' : True}
+        other_resources = {'wd': True}
 
         resources_found = {}
         for resource in resources:
