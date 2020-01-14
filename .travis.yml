@@ -14,7 +14,7 @@ before_script:
 script:
     - payu list
     - pylint --extension-pkg-whitelist=netCDF4 -E payu
-    - if [[ $TRAVIS_PYTHON_VERSION == 3.6 || $TRAVIS_PYTHON_VERSION == 3.7 ]]; then PYTHONPATH=$(pwd) coverage run --source payu -m py.test test/*.py; fi;
+    - if [[ $TRAVIS_PYTHON_VERSION == 3.6 || $TRAVIS_PYTHON_VERSION == 3.7 ]]; then PYTHONPATH=$(pwd) coverage run --source payu -m py.test -s test/*.py; fi;
 after_success:
     - coverage report -m
     - coveralls
