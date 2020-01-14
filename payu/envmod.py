@@ -80,6 +80,8 @@ def module(command, *args):
               ''.format(command))
         return
 
+    print("MODULESHOME: {}".format(os.environ['MODULESHOME']))
+
     modulecmd = ('{0}/bin/modulecmd'.format(os.environ['MODULESHOME']))
 
     cmd = '{0} python {1} {2}'.format(modulecmd, command, ' '.join(args))
