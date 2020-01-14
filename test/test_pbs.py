@@ -64,6 +64,10 @@ def teardown_module(module):
 
 def test_run():
 
+    # Monkey patch pbs_env_init as we don't have a 
+    # functioning PBS install in travis
+    payu.scheduler.pbs.pbs_env_init = lambda: True
+
     payu_path = os.path.join(os.environ['PWD'],'bin')
     pbs_vars = { 'PAYU_PATH' : payu_path }
 
