@@ -12,8 +12,7 @@ from payu.subcommands.init_cmd import runcmd as payu_init
 from payu.subcommands.setup_cmd import runcmd as payu_setup_orignal
 from payu.subcommands.sweep_cmd import runcmd as payu_sweep
 
-# tmpdir = Path().cwd() / Path('test') / 'tmp'
-tmpdir = Path('test') / 'tmp'
+tmpdir = Path().cwd() / Path('test') / 'tmp'
 ctrldir = tmpdir / 'ctrl'
 labdir = tmpdir / 'lab'
 workdir = ctrldir / 'work'

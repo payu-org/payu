@@ -107,34 +107,3 @@ def test_laboratory_path():
                 break
 
         assert(Path(lab.basepath).parts[-1] == labname)
-
-
-def test_find_mounts():
-
-    paths = ['/f/data/x00', '/tmp/y11']
-    mounts = ['/f/data', '/tmp']
-
-    assert(find_mounts(paths, mounts) == set(['fdata/x00', 'tmp/y11']))
-
-    # Only return where a match is found
-    mounts = ['/f/data']
-
-    assert(find_mounts(paths, mounts) == set(['fdata/x00', ]))
-
-    # Test with more mounts than there are paths
-    paths = ['/f/data/x00']
-    mounts = ['/f/data', '/tmp']
-
-    assert(find_mounts(paths, mounts) == set(['fdata/x00', ]))
-
-    # Test with duplicate paths
-    paths = ['/f/data/x00', '/f/data/x00']
-    mounts = ['/f/data', '/tmp']
-
-    assert(find_mounts(paths, mounts) == set(['fdata/x00', ]))
-
-    # Test with longer path
-    paths = ['/f/data/x00/fliberty/gibbet', ]
-    mounts = ['/f/data', '/tmp']
-
-    assert(find_mounts(paths, mounts) == set(['fdata/x00', ]))
