@@ -17,10 +17,10 @@ from payu.scheduler import pbs
 
 
 from common import cd, make_random_file, get_manifests
-from common import tmpdir, ctrldir, labdir, workdir
+from common import tmpdir, ctrldir, labdir, workdir, payudir
 from common import config, sweep_work, payu_init, payu_setup
 from common import write_config
-from common import make_exe, make_inputs, make_restarts, make_all_files
+from common import make_exe, make_inputs, make_restarts, make_payu_exe, make_all_files
 
 verbose = True
 
@@ -42,6 +42,8 @@ def setup_module(module):
         tmpdir.mkdir()
         labdir.mkdir()
         ctrldir.mkdir()
+        payudir.mkdir()
+        make_payu_exe()
     except Exception as e:
         print(e)
 
@@ -61,6 +63,57 @@ def teardown_module(module):
     except Exception as e:
         print(e)
 
+def test_encode_mount():
+
+    assert(pbs.encode_mount('/test/a') == 'testa')
+    assert(pbs.encode_mount('test/a') == 'testa')
+    assert(pbs.encode_mount('test/b') == 'testb')
+
+def test_make_mount_string():
+
+    assert(pbs.make_mount_string('testa','x00') == 'testa/x00')
+
+def test_find_mounts():
+
+    paths = ['/f/data/x00/', '/tmp/y11/']
+    mounts = ['/f/data', '/tmp']
+
+    assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', 'tmp/y11']))
+
+    # Only return where a match is found
+    mounts = ['/f/data']
+
+    assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
+
+    # Test with more mounts than there are paths
+    paths = ['/f/data/x00/']
+    mounts = ['/f/data', '/tmp']
+
+    assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
+
+    # Test with duplicate paths
+    paths = ['/f/data/x00/', '/f/data/x00/']
+    mounts = ['/f/data', '/tmp']
+
+    assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
+
+    # Test with longer path
+    paths = ['/f/data/x00/fliberty/gibbet', ]
+    mounts = ['/f/data', '/tmp']
+
+    assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
+
+    # Test without leading slash
+    paths = ['f/data/x00/fliberty/gibbet', ]
+    mounts = ['f/data', '/tmp']
+
+    assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
+
+    # Test without leading slash
+    paths = ['/f/data/x00', ]
+    mounts = ['f/data', ]
+
+    assert(pbs.find_mounts(paths, mounts) == set())
 
 def test_run():
 
@@ -68,20 +121,27 @@ def test_run():
     # functioning PBS install in travis
     payu.scheduler.pbs.pbs_env_init = lambda: True
 
-    payu_path = os.path.join(os.environ['PWD'], 'bin')
-    pbs_vars = {'PAYU_PATH': payu_path}
+    payu.scheduler.pbs.check_exe_path = lambda x, y: y
+
+    # payu_path = os.path.join(os.environ['PWD'], 'bin')
+    payu_path = payudir / 'bin'
+    payu_path = Path('/f/data/a000/some/path')
+    pbs_vars = {'PAYU_PATH': str(payu_path)}
+    # A pretend python interpreter string
+    python_exe = '/f/data/m000/python/bin/python'
 
     # Test pbs generating a PBS command
     with cd(ctrldir):
 
         payu_cmd = 'payu-run'
 
-        if 'MODULESHOME' in os.environ:
-            del(os.environ['MODULESHOME'])
+        config['storage'] = {}
+        config['storage']['test'] = ['x00']
+        config['storage']['/f/data'] = ['x00']
 
-        cmd = pbs.generate_command(payu_cmd, config, pbs_vars)
+        cmd = pbs.generate_command(payu_cmd, config, pbs_vars, python_exe)
 
-        # print(cmd)
+        print(cmd)
 
         # Create test parser
         parser = argparse.ArgumentParser(description='Test')
@@ -98,7 +158,7 @@ def test_run():
         parser.add_argument('remaining', nargs=argparse.REMAINDER)
 
         args = parser.parse_args(cmd.split()[1:])
-        # print(args)
+        print(args)
 
         assert(args.N == config['jobname'])
         assert(args.P == config['project'])
@@ -122,6 +182,8 @@ def test_run():
         for resource in ['walltime', 'ncpus', 'mem']:
             assert(resources_found[resource] == str(config[resource]))
 
+        assert(resources_found['storage'] == 'fdata/a000+fdata/m000+fdata/x00+test/x00')
+
         # Check other auto-added resources are present
         for resource in other_resources:
             assert(other_resources[resource] == resources_found[resource])
@@ -132,38 +194,7 @@ def test_run():
             env[k] = v
 
         assert('PAYU_PATH' in env)
-        assert(env['PAYU_PATH'] == payu_path)
+        assert(env['PAYU_PATH'] == str(payu_path))
 
         assert(args.remaining[-2].endswith('python'))
         assert(args.remaining[-1].endswith(payu_cmd))
-
-
-def test_find_mounts():
-
-    paths = ['/f/data/x00', '/tmp/y11']
-    mounts = ['/f/data', '/tmp']
-
-    assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', 'tmp/y11']))
-
-    # Only return where a match is found
-    mounts = ['/f/data']
-
-    assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
-
-    # Test with more mounts than there are paths
-    paths = ['/f/data/x00']
-    mounts = ['/f/data', '/tmp']
-
-    assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
-
-    # Test with duplicate paths
-    paths = ['/f/data/x00', '/f/data/x00']
-    mounts = ['/f/data', '/tmp']
-
-    assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
-
-    # Test with longer path
-    paths = ['/f/data/x00/fliberty/gibbet', ]
-    mounts = ['/f/data', '/tmp']
-
-    assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))

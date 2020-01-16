@@ -124,3 +124,13 @@ def patch_lustre_path(f_path):
             f_path = './' + f_path
 
     return f_path
+
+
+def check_exe_path(payu_path, pbs_script):
+    """Check a payu executable path is locateable """
+    if not os.path.isabs(pbs_script):
+        pbs_script = os.path.join(payu_path, pbs_script)
+
+    assert os.path.isfile(pbs_script)
+    
+    return pbs_script

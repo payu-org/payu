@@ -12,10 +12,14 @@ from payu.subcommands.init_cmd import runcmd as payu_init
 from payu.subcommands.setup_cmd import runcmd as payu_setup_orignal
 from payu.subcommands.sweep_cmd import runcmd as payu_sweep
 
-tmpdir = Path().cwd() / Path('test') / 'tmp'
+# tmpdir = Path().cwd() / Path('test') / 'tmp'
+tmpdir = Path('test') / 'tmp'
 ctrldir = tmpdir / 'ctrl'
 labdir = tmpdir / 'lab'
 workdir = ctrldir / 'work'
+payudir = tmpdir / 'payu'
+
+print('tmpdir: {}'.format(tmpdir))
 
 config = {
             'shortpath': '..',
@@ -115,6 +119,15 @@ def make_exe():
     exe = config['exe']
     exe_size = 199
     make_random_file(bindir/exe, exe_size)
+
+
+def make_payu_exe():
+    # Create a fake payu executable
+    bindir = payudir / 'bin'
+    bindir.mkdir(parents=True, exist_ok=True)
+    exe_size = 199
+    make_random_file(bindir/'payu-run', exe_size)
+    make_random_file(bindir/'payu-collate', exe_size)
 
 
 def make_inputs():

@@ -16,6 +16,7 @@ import shlex
 import subprocess
 
 import payu.envmod as envmod
+from payu.fsops import check_exe_path
 
 from tenacity import retry, stop_after_delay
 
@@ -109,6 +110,21 @@ def get_qstat_info(qflag, header, projects=None, users=None):
     return status
 
 
+def encode_mount(mount):
+    """
+    Turn a mount point point into the keyword used to specify storages,
+    i.e. remove path separators
+    """
+    return re.sub(os.path.sep, '', mount)
+
+
+def make_mount_string(mount, project):
+    """
+    Return mount and project string used to specify storages
+    """
+    return "{mount}/{project}".format(mount=mount, project=project)
+
+
 def find_mounts(paths, mounts):
     """
     Search a path for a matching mount point and return a set of unique
@@ -126,14 +142,15 @@ def find_mounts(paths, mounts):
             if p.startswith(m):
                 # Relevant project code is the next element of the path
                 # after the mount point
-                proj_code = os.path.relpath(p, m).split(os.path.sep)[0]
-                storages.add("/".join([re.sub(os.path.sep, '', m), proj_code]))
-                break
+                proj_match = re.match('^'+m+'.*?'+os.path.sep+'(.*?)'+'('+os.path.sep+')', p)
+                if proj_match:
+                    storages.add(make_mount_string(encode_mount(m), proj_match.group(1)))
+                    break
 
     return storages
 
 
-def generate_command(pbs_script, pbs_config, pbs_vars=None):
+def generate_command(pbs_script, pbs_config, pbs_vars=None, python_exe=None):
     """Prepare a correct PBS command string"""
 
     pbs_env_init()
@@ -141,6 +158,10 @@ def generate_command(pbs_script, pbs_config, pbs_vars=None):
     # Initialisation
     if pbs_vars is None:
         pbs_vars = {}
+
+    # Necessary for testing
+    if python_exe is None:
+        python_exe = sys.executable
 
     pbs_flags = []
 
@@ -189,32 +210,28 @@ def generate_command(pbs_script, pbs_config, pbs_vars=None):
     storages = set()
     storage_config = pbs_config.get('storage', {})
     mounts = set(['/scratch', '/g/data'])
-    for mount, projects in storage_config:
+    for mount in storage_config:
         mounts.add(mount)
-        for project in projects:
-            storages.add("{mount}/{project}".format(mount=mount,
-                                                    project=project))
-
-    pbs_flags_extend = '+'.join(storages)
-    if pbs_flags_extend:
-        pbs_flags.append("-l storage={}".format(pbs_flags_extend))
+        for project in storage_config[mount]:
+            storages.add(make_mount_string(encode_mount(mount), project))
 
     # Append any additional qsub flags here
     pbs_flags_extend = pbs_config.get('qsub_flags')
     if pbs_flags_extend:
         pbs_flags.append(pbs_flags_extend)
 
-    if not os.path.isabs(pbs_script):
-        # NOTE: PAYU_PATH is always set if `set_env_vars` was always called.
-        #       This is currently always true, but is not explicitly enforced.
-        #       So this conditional check is a bit redundant.
-        payu_bin = pbs_vars.get('PAYU_PATH', os.path.dirname(sys.argv[0]))
-        pbs_script = os.path.join(payu_bin, pbs_script)
-        assert os.path.isfile(pbs_script)
+    payu_path = pbs_vars.get('PAYU_PATH', os.path.dirname(sys.argv[0]))
+    pbs_script = check_exe_path(payu_path, pbs_script)
 
     # Check for storage paths that might need to be mounted in the
     # python and script paths
-    storages.update(find_mounts([sys.executable, pbs_script], mounts))
+    storages.update(find_mounts([python_exe, payu_path, pbs_script], mounts))
+
+    # Add storage flags. Note that these are sorted to get predictable
+    # behaviour for testing
+    pbs_flags_extend = '+'.join(sorted(storages))
+    if pbs_flags_extend:
+        pbs_flags.append("-l storage={}".format(pbs_flags_extend))
 
     # Set up environment modules here for PBS.
     envmod.setup()
@@ -223,7 +240,7 @@ def generate_command(pbs_script, pbs_config, pbs_vars=None):
     # Construct job submission command
     cmd = 'qsub {flags} -- {python} {script}'.format(
         flags=' '.join(pbs_flags),
-        python=sys.executable,
+        python=python_exe,
         script=pbs_script
     )
 
