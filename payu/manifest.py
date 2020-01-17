@@ -229,13 +229,10 @@ class Manifest(object):
     methods to operate on them
     """
 
-    def __init__(self, expt, reproduce):
-
-        # Inherit experiment configuration
-        self.expt = expt
+    def __init__(self, config, reproduce):
 
         # Manifest control configuration
-        self.manifest_config = self.expt.config.get('manifest', {})
+        self.manifest_config = config
 
         # Not currently supporting specifying hash functions
         # self.hash_functions = manifest_config.get(
@@ -338,9 +335,6 @@ class Manifest(object):
 
             if len(self.manifests['restart']) > 0:
                 self.have_manifest['restart'] = True
-
-            for model in self.expt.models:
-                model.have_restart_manifest = True
 
             # Must make links as no files will be added to the manifest
             print('Making restart links')
