@@ -19,6 +19,16 @@ from common import make_exe, make_inputs, make_restarts, make_all_files
 
 verbose = True
 
+def make_config_files():
+    """
+    Create files required for test model
+    """
+
+    config_files = payu.models.test.config_files
+    for file in config_files:
+        make_random_file(ctrldir/file, 29)
+
+
 def setup_module(module):
     """
     Put any test-wide setup code in here, e.g. creating test files
@@ -36,6 +46,7 @@ def setup_module(module):
         tmpdir.mkdir()
         labdir.mkdir()
         ctrldir.mkdir()
+        make_all_files()
     except Exception as e:
         print(e)
 
@@ -84,6 +95,7 @@ def test_setup():
     bindir = labdir / 'bin'
     exe = config['exe']
 
+    make_config_files()
     config_files = payu.models.test.config_files
     for file in config_files:
         make_random_file(ctrldir/file, 29)
@@ -432,6 +444,32 @@ def test_all_reproduce():
 
     # Manifests should have changed
     assert(not manifests == get_manifests(ctrldir/'manifests'))
+
+
+def test_get_all_fullpaths():
+
+    make_all_files()
+    make_config_files()
+
+    # Run setup
+    payu_setup(lab_path=str(labdir))
+
+    manifests = get_manifests(ctrldir/'manifests')
+
+    sweep_work()
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        expt.setup()
+        files = expt.manifest.get_all_fullpaths()
+
+    allfiles = []
+    for mf in manifests:
+        for f in manifests[mf]:
+            allfiles.append(manifests[mf][f]['fullpath'])
+
+    assert(set(files) == set(allfiles))
 
 
 def test_hard_sweep():

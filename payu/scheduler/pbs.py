@@ -17,6 +17,7 @@ import subprocess
 
 import payu.envmod as envmod
 from payu.fsops import check_exe_path
+from payu.manifest import Manifest
 
 from tenacity import retry, stop_after_delay
 
@@ -148,6 +149,17 @@ def find_mounts(paths, mounts):
                     break
 
     return storages
+
+
+def get_manifest_paths():
+    """
+    Return a list of paths from manifest files to use to check for 
+    storage paths
+    """
+    tmpmanifest = Manifest({})
+    tmpmanifest.load()
+
+    return tmpmanifest.get_all_paths()
 
 
 def generate_command(pbs_script, pbs_config, pbs_vars=None, python_exe=None):

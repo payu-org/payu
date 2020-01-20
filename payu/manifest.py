@@ -222,6 +222,12 @@ class PayuManifest(YaManifest):
         """
         shutil.copy(self.path, path)
 
+    def get_paths(self):
+        files = []
+        for filepath in list(self):
+            files.append(self.fullpath(filepath))
+        return files
+
 
 class Manifest(object):
     """
@@ -278,8 +284,10 @@ class Manifest(object):
         """Return the number of manifests in the manifest class."""
         return len(self.manifests)
 
-    def setup(self):
-
+    def load(self):
+        """
+        Load manifests 
+        """
         if (os.path.exists(self.manifests['input'].path)):
             # Always read input manifest if available
             try:
@@ -289,16 +297,7 @@ class Manifest(object):
 
                 if len(self.manifests['input']) > 0:
                     self.have_manifest['input'] = True
-                    if self.scaninputs:
-                        # Save existing filepath information
-                        self.manifests['input'].existing_filepaths = \
-                            set(self.manifests['input'].data.keys())
-                    else:
-                        # Input directories not scanned. Populate
-                        # inputs in workdir using input manifest
-                        print('Making input links from manifest'
-                              '(scaninputs=False)')
-                        self.manifests['input'].make_links()
+
             except Exception as e:
                 print("Error loading input manifest: {}".format(e))
                 self.manifests['input'].have_manifest = False
@@ -317,10 +316,6 @@ class Manifest(object):
 
                 if len(self.manifests['exe']) > 0:
                     self.have_manifest['exe'] = True
-
-            # Must make links as no files will be added to the manifest
-            print('Making exe links')
-            self.manifests['exe'].make_links()
         else:
             self.have_manifest['exe'] = False
 
@@ -336,11 +331,35 @@ class Manifest(object):
             if len(self.manifests['restart']) > 0:
                 self.have_manifest['restart'] = True
 
+        else:
+            self.have_manifest['restart'] = False
+
+    def setup(self):
+
+        self.load()
+
+        if self.have_manifest['input']:
+            if self.scaninputs:
+                # Save existing filepath information
+                self.manifests['input'].existing_filepaths = \
+                    set(self.manifests['input'].data.keys())
+            else:
+                # Input directories not scanned. Populate
+                # inputs in workdir using input manifest
+                print('Making input links from manifest'
+                      '(scaninputs=False)')
+                print('Making input links')
+                self.manifests['input'].make_links()
+
+        if self.have_manifest['exe']:
+            # Must make links as no files will be added to the manifest
+            print('Making exe links')
+            self.manifests['exe'].make_links()
+
+        if self.have_manifest['restart']:
             # Must make links as no files will be added to the manifest
             print('Making restart links')
             self.manifests['restart'].make_links()
-        else:
-            self.have_manifest['restart'] = False
 
         for mf in self.manifests.keys():
             if self.reproduce[mf] and not self.have_manifest[mf]:
@@ -396,3 +415,12 @@ class Manifest(object):
         if self.manifests[manifest].add_filepath(filepath, fullpath, copy):
             # Only link if filepath was added
             self.manifests[manifest].make_link(filepath)
+
+    def get_all_fullpaths(self):
+        """
+        Return a list of all fullpaths in manifest files
+        """
+        files = []
+        for mf in self.manifests:
+            files.extend(self.manifests[mf].get_paths())
+        return files
