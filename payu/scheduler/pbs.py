@@ -156,10 +156,10 @@ def get_manifest_paths():
     Return a list of paths from manifest files to use to check for 
     storage paths
     """
-    tmpmanifest = Manifest({})
+    tmpmanifest = Manifest(config={}, reproduce=False)
     tmpmanifest.load()
 
-    return tmpmanifest.get_all_paths()
+    return tmpmanifest.get_all_fullpaths()
 
 
 def generate_command(pbs_script, pbs_config, pbs_vars=None, python_exe=None):
@@ -238,6 +238,8 @@ def generate_command(pbs_script, pbs_config, pbs_vars=None, python_exe=None):
     # Check for storage paths that might need to be mounted in the
     # python and script paths
     storages.update(find_mounts([python_exe, payu_path, pbs_script], mounts))
+
+    storages.update(find_mounts(get_manifest_paths(), mounts))
 
     # Add storage flags. Note that these are sorted to get predictable
     # behaviour for testing
