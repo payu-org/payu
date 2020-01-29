@@ -269,7 +269,8 @@ class Model(object):
                             workrelpath,
                             f_name
                         )
-                        # Do not use input file if it is in RESTART
+                        # Do not use input file if already linked 
+                        # as a restart file
                         if not os.path.exists(f_link):
                             self.expt.manifest.add_filepath(
                                 'input',
