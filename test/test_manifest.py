@@ -96,9 +96,6 @@ def test_setup():
     exe = config['exe']
 
     make_config_files()
-    config_files = payu.models.test.config_files
-    for file in config_files:
-        make_random_file(ctrldir/file, 29)
 
     # Run setup
     payu_setup(lab_path=str(labdir))
@@ -107,6 +104,8 @@ def test_setup():
     assert(workdir.is_dir())
     assert((workdir/exe).resolve() == (bindir/exe).resolve())
     workdirfull = workdir.resolve()
+
+    config_files = payu.models.test.config_files
 
     for f in config_files + ['config.yaml']:
         assert((workdir/f).is_file())
@@ -301,6 +300,10 @@ def test_input_reproduce():
 
 
 def test_input_scaninputs():
+
+    # Re-create input files
+    make_config_files()
+    make_inputs()
 
     inputdir = labdir / 'input' / config['input']
     inputdir.mkdir(parents=True, exist_ok=True)
