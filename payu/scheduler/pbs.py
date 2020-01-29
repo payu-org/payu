@@ -237,8 +237,17 @@ def generate_command(pbs_script, pbs_config, pbs_vars=None, python_exe=None):
 
     # Check for storage paths that might need to be mounted in the
     # python and script paths
-    storages.update(find_mounts([python_exe, payu_path, pbs_script], mounts))
+    extra_search_paths = [python_exe, payu_path, pbs_script]
 
+    laboratory_path = pbs_config.get('laboratory', None)
+    if laboratory_path is not None:
+        extra_search_paths.append(laboratory_path)
+    short_path = pbs_config.get('shortpath', None)
+    if short_path is not None:
+        extra_search_paths.append(short_path)
+
+    storages.update(find_mounts([python_exe, payu_path, pbs_script], mounts))
+    print(get_manifest_paths())
     storages.update(find_mounts(get_manifest_paths(), mounts))
 
     # Add storage flags. Note that these are sorted to get predictable
