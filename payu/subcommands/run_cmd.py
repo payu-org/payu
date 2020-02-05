@@ -138,7 +138,7 @@ def runscript():
             # Re-initialize manifest: important to clear out restart manifest
             # note no attempt to preserve reproduce flag, it makes no sense
             # to on subsequent runs
-            expt.manifest = Manifest(expt, reproduce=False)
+            expt.manifest = Manifest(expt.config.get('manifest',{}), reproduce=False)
             expt.set_output_paths()
             # Does not make sense to reproduce a multiple run.
             # Take care of this with argument processing?
