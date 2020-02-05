@@ -140,20 +140,21 @@ def find_mounts(paths, mounts):
 
     for p in paths:
         for m in mounts:
-            if p.startswith(m):
-                # Relevant project code is the next element of the path
-                # after the mount point
-                proj_match = re.match('^'+m+'.*?'+os.path.sep+'(.*?)'+'('+os.path.sep+')', p)
-                if proj_match:
-                    storages.add(make_mount_string(encode_mount(m), proj_match.group(1)))
-                    break
+            # Relevant project code is the next element of the path
+            # after the mount point
+            proj_match = re.match('^' + m + '.*?' + os.path.sep + '(.*?)'
+                                    + '(' + os.path.sep + ')', p)
+            if proj_match:
+                storages.add(make_mount_string(encode_mount(m), 
+                                                proj_match.group(1)))
+                break
 
     return storages
 
 
 def get_manifest_paths():
     """
-    Return a list of paths from manifest files to use to check for 
+    Return a list of paths from manifest files to use to check for
     storage paths
     """
     tmpmanifest = Manifest(config={}, reproduce=False)

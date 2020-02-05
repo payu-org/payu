@@ -132,5 +132,5 @@ def check_exe_path(payu_path, pbs_script):
         pbs_script = os.path.join(payu_path, pbs_script)
 
     assert os.path.isfile(pbs_script)
-    
+
     return pbs_script

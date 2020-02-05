@@ -184,13 +184,9 @@ class PayuManifest(YaManifest):
                   filepath=self.fullpath(filepath)))
             if self.contains(filepath):
                 print('removing from manifest')
-                try:
-                    self.delete(filepath)
-                    self.needsync = True
-                except:
-                    pass
-                finally:
-                    self.existing_filepaths.discard(filepath)
+                self.delete(filepath)
+                self.needsync = True
+                self.existing_filepaths.discard(filepath)
         else:
             try:
                 destdir = os.path.dirname(filepath)
@@ -275,7 +271,7 @@ class Manifest(object):
         if self.reproduce['input'] and self.scaninputs:
             print("scaninputs set to False when reproduce input is True")
             self.scaninputs = False
-    
+ 
     def init_mf(self, mf):
         # Initialise a sub-manifest object
         self.manifests[mf] = PayuManifest(
@@ -297,14 +293,14 @@ class Manifest(object):
 
     def load(self):
         """
-        Load manifests 
+        Load manifests
         """
         for mf in self.manifests:
             self.have_manifest[mf] = False
             if (os.path.exists(self.manifests[mf].path)):
                 try:
                     print('Loading {mf} manifest: {path}'
-                        ''.format(mf=mf, path=self.manifests[mf].path))
+                          ''.format(mf=mf, path=self.manifests[mf].path))
                     self.manifests[mf].load()
                 except Exception as e:
                     print('Error loading {mf} manifest: '
@@ -312,33 +308,33 @@ class Manifest(object):
                 finally:
                     if len(self.manifests[mf]) > 0:
                         self.have_manifest[mf] = True
-            
+
     def setup(self):
 
         # Load all available manifests
         self.load()
 
         if self.have_manifest['input']:
-            if self.scaninputs: # Must be False for reproduce=True
+            if self.scaninputs:  # Must be False for reproduce=True
                 # Save existing filepath information
                 self.manifests['input'].existing_filepaths = \
                     set(self.manifests['input'].data.keys())
 
         if self.have_manifest['exe']:
             if not self.reproduce['exe']:
-                # Re-initialise exe manifest. Trivial to recreate 
-                # and means no check required for changed executable 
+                # Re-initialise exe manifest. Trivial to recreate
+                # and means no check required for changed executable
                 # paths
                 self.init_mf('exe')
 
         if self.have_manifest['restart']:
             if not self.reproduce['restart']:
-                # Re-initialise restart manifest. Only keep restart manifest 
+                # Re-initialise restart manifest. Only keep restart manifest
                 # if reproduce. Normally want to scan for new restarts
                 self.init_mf('restart')
 
         # Check to make all manifests that should be populated are and
-        # make links in work directory for existing manifests 
+        # make links in work directory for existing manifests
         for mf in self.manifests.keys():
             if self.have_manifest[mf]:
                 # Don't make links for inputs when scaninputs is True
@@ -349,7 +345,7 @@ class Manifest(object):
             else:
                 if self.reproduce[mf]:
                     print('{} manifest must exist if reproduce is True'
-                        ''.format(mf.capitalize()))
+                          ''.format(mf.capitalize()))
                     exit(1)
 
     def check_manifests(self):
