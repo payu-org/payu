@@ -125,6 +125,7 @@ def test_run():
 
     # payu_path = os.path.join(os.environ['PWD'], 'bin')
     payu_path = payudir / 'bin'
+    # create new path for payu_path to check a000 picked up as storage
     payu_path = Path('/f/data/a000/some/path')
     pbs_vars = {'PAYU_PATH': str(payu_path)}
     # A pretend python interpreter string
@@ -138,6 +139,9 @@ def test_run():
         config['storage'] = {}
         config['storage']['test'] = ['x00']
         config['storage']['/f/data'] = ['x00']
+
+        config['laboratory'] = '/f/data/c000/blah'
+        config['shortpath'] = '/f/data/y00/blah/blah'
 
         cmd = pbs.generate_command(payu_cmd, config, pbs_vars, python_exe)
 
@@ -158,7 +162,6 @@ def test_run():
         parser.add_argument('remaining', nargs=argparse.REMAINDER)
 
         args = parser.parse_args(cmd.split()[1:])
-        print(args)
 
         assert(args.N == config['jobname'])
         assert(args.P == config['project'])
@@ -182,7 +185,7 @@ def test_run():
         for resource in ['walltime', 'ncpus', 'mem']:
             assert(resources_found[resource] == str(config[resource]))
 
-        assert(resources_found['storage'] == 'fdata/a000+fdata/m000+fdata/x00+test/x00')
+        assert(resources_found['storage'] == 'fdata/a000+fdata/c000+fdata/m000+fdata/x00+fdata/y00+test/x00')
 
         # Check other auto-added resources are present
         for resource in other_resources:
