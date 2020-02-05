@@ -19,6 +19,7 @@ from common import make_exe, make_inputs, make_restarts, make_all_files
 
 verbose = True
 
+
 def make_config_files():
     """
     Create files required for test model

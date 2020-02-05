@@ -20,7 +20,8 @@ from common import cd, make_random_file, get_manifests
 from common import tmpdir, ctrldir, labdir, workdir, payudir
 from common import config, sweep_work, payu_init, payu_setup
 from common import write_config
-from common import make_exe, make_inputs, make_restarts, make_payu_exe, make_all_files
+from common import make_exe, make_inputs, make_restarts
+from common import make_payu_exe, make_all_files
 
 verbose = True
 
@@ -63,15 +64,18 @@ def teardown_module(module):
     except Exception as e:
         print(e)
 
+
 def test_encode_mount():
 
     assert(pbs.encode_mount('/test/a') == 'testa')
     assert(pbs.encode_mount('test/a') == 'testa')
     assert(pbs.encode_mount('test/b') == 'testb')
 
+
 def test_make_mount_string():
 
-    assert(pbs.make_mount_string('testa','x00') == 'testa/x00')
+    assert(pbs.make_mount_string('testa', 'x00') == 'testa/x00')
+
 
 def test_find_mounts():
 
@@ -114,6 +118,7 @@ def test_find_mounts():
     mounts = ['f/data', ]
 
     assert(pbs.find_mounts(paths, mounts) == set())
+
 
 def test_run():
 
@@ -185,7 +190,8 @@ def test_run():
         for resource in ['walltime', 'ncpus', 'mem']:
             assert(resources_found[resource] == str(config[resource]))
 
-        assert(resources_found['storage'] == 'fdata/a000+fdata/c000+fdata/m000+fdata/x00+fdata/y00+test/x00')
+        assert(resources_found['storage'] == 
+               'fdata/a000+fdata/c000+fdata/m000+fdata/x00+fdata/y00+test/x00')
 
         # Check other auto-added resources are present
         for resource in other_resources:
