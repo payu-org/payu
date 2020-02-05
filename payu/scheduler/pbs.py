@@ -246,8 +246,7 @@ def generate_command(pbs_script, pbs_config, pbs_vars=None, python_exe=None):
     if short_path is not None:
         extra_search_paths.append(short_path)
 
-    storages.update(find_mounts([python_exe, payu_path, pbs_script], mounts))
-    print(get_manifest_paths())
+    storages.update(find_mounts(extra_search_paths, mounts))
     storages.update(find_mounts(get_manifest_paths(), mounts))
 
     # Add storage flags. Note that these are sorted to get predictable
