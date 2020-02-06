@@ -190,7 +190,7 @@ def test_run():
         for resource in ['walltime', 'ncpus', 'mem']:
             assert(resources_found[resource] == str(config[resource]))
 
-        assert(resources_found['storage'] == 
+        assert(resources_found['storage'] ==
                'fdata/a000+fdata/c000+fdata/m000+fdata/x00+fdata/y00+test/x00')
 
         # Check other auto-added resources are present

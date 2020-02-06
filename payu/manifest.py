@@ -271,7 +271,7 @@ class Manifest(object):
         if self.reproduce['input'] and self.scaninputs:
             print("scaninputs set to False when reproduce input is True")
             self.scaninputs = False
- 
+
     def init_mf(self, mf):
         # Initialise a sub-manifest object
         self.manifests[mf] = PayuManifest(
