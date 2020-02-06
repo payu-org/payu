@@ -92,7 +92,8 @@ class Experiment(object):
             reproduce = os.environ.get('PAYU_REPRODUCE', False)
 
         # Initialize manifest
-        self.manifest = Manifest(self, reproduce=reproduce)
+        self.manifest = Manifest(self.config.get('manifest', {}),
+                                 reproduce=reproduce)
 
         # Miscellaneous configurations
         # TODO: Move this stuff somewhere else
