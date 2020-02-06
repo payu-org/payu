@@ -18,6 +18,7 @@ import sys
 
 import payu
 import payu.envmod as envmod
+from payu.fsops import is_conda
 from payu.models import index as supported_models
 import payu.subcommands
 from payu.scheduler.pbs import generate_command
@@ -83,9 +84,11 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
     """Construct the environment variables used by payu for resubmissions."""
     payu_env_vars = {}
 
-    # Setup Python dynamic library link
-    lib_paths = sysconfig.get_config_vars('LIBDIR')
-    payu_env_vars['LD_LIBRARY_PATH'] = ':'.join(lib_paths)
+    if not is_conda():
+        # Setup Python dynamic library link
+        lib_paths = sysconfig.get_config_vars('LIBDIR')
+        payu_env_vars['LD_LIBRARY_PATH'] = ':'.join(lib_paths)
+
     if 'PYTHONPATH' in os.environ:
         payu_env_vars['PYTHONPATH'] = os.environ['PYTHONPATH']
 
