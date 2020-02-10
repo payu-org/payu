@@ -9,6 +9,8 @@ import yaml
 import payu
 
 from payu.laboratory import Laboratory
+from payu.scheduler.pbs import find_mounts
+
 
 from common import cd, make_random_file, get_manifests
 from common import tmpdir, ctrldir, labdir, workdir

@@ -10,6 +10,7 @@
 # Standard library
 import errno
 import os
+import sys
 
 # Extensions
 import yaml
@@ -124,3 +125,19 @@ def patch_lustre_path(f_path):
             f_path = './' + f_path
 
     return f_path
+
+
+def check_exe_path(payu_path, pbs_script):
+    """Check a payu executable path is locateable """
+    if not os.path.isabs(pbs_script):
+        pbs_script = os.path.join(payu_path, pbs_script)
+
+    assert os.path.isfile(pbs_script)
+
+    return pbs_script
+
+
+def is_conda():
+    """Return True if python interpreter is in a conda environment"""
+
+    return os.path.exists(os.path.join(sys.prefix, 'conda-meta'))

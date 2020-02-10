@@ -32,8 +32,13 @@ def setup(basepath=DEFAULT_BASEPATH):
     if not os.path.isdir(moduleshome):
         print('payu: warning: MODULESHOME does not exist; disabling '
               'environment modules.')
-        os.environ['MODULESHOME'] = ''
+        try:
+            del(os.environ['MODULESHOME'])
+        except KeyError:
+            pass
         return
+    else:
+        print('payu: Found modules in {}'.format(moduleshome))
 
     os.environ['MODULE_VERSION'] = module_version
     os.environ['MODULE_VERSION_STACK'] = module_version

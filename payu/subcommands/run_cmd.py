@@ -29,8 +29,8 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path, reproduce):
 
     # TODO: Create drivers for servers
     platform = pbs_config.get('platform', {})
-    max_cpus_per_node = platform.get('nodesize', 16)
-    max_ram_per_node = platform.get('nodemem', 32)
+    max_cpus_per_node = platform.get('nodesize', 48)
+    max_ram_per_node = platform.get('nodemem', 192)
 
     # Adjust the CPUs for any model-specific settings
     # TODO: Incorporate this into the Model driver
@@ -138,7 +138,8 @@ def runscript():
             # Re-initialize manifest: important to clear out restart manifest
             # note no attempt to preserve reproduce flag, it makes no sense
             # to on subsequent runs
-            expt.manifest = Manifest(expt, reproduce=False)
+            expt.manifest = Manifest(expt.config.get('manifest', {}),
+                                     reproduce=False)
             expt.set_output_paths()
             # Does not make sense to reproduce a multiple run.
             # Take care of this with argument processing?
