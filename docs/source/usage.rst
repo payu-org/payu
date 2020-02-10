@@ -19,7 +19,9 @@ The general layout of a payu-supported experiment consists of two directories:
 * The *control directory*, where the experiment is configured and run.
 
 This separation allows us to run multiple self-resubmitting experiments
-simultaneously that can share common executables and input data.
+simultaneously that can share common executables and input data. It also 
+allows the flexibility to have the relatively small control directories
+in a location that is continuously backed up.
 
 
 Setting up the laboratory
@@ -34,44 +36,67 @@ First, check the list of supported models::
 
 This shows the keyword for each supported model.
 
+Automatic setup
+---------------
+
+To initialise the model laboratory, type::
+
+   payu init -m model
+
+where ``model`` is the model name from ``payu list``. This will create the
+laboratory directory tree.
+
+Automatic compilation of models is no longer supported.
 
 Manual setup
 ------------
 
-Currently, the automated setup and build routines have some bugs that need
-fixing, so most users will have to set up the laboratory manually.
+If the automated approach does not work you will have to set up the laboratory 
+manually.
 
 1. Create a directory for the laboratory to reside. The default directory path
    is shown below:
 
    .. code:: sh
 
-      mkdir -p /short/${PROJECT}/${USER}/${MODEL}
+      mkdir -p /scratch/${PROJECT}/${USER}/${MODEL}
 
    where ``${MODEL}`` is from the list of supported models. For example, if
    your username is ``abc123`` and your default project is ``v45``, then the
    default laboratory directory for the MOM ocean model would be
-   ``/short/v45/abc123/mom``.
+   ``/scratch/v45/abc123/mom``.
 
 2. Create subdirectories for the model binaries and input fields::
 
-      cd /short/${PROJECT}/${USER}/${MODEL}
+      cd /scratch/${PROJECT}/${USER}/${MODEL}
       mkdir bin input
 
-3. Compile a model and copy its executable into the ``bin`` directory::
+Populate laboratory directories
+-------------------------------
+
+1. Compile a model and copy its executable into the ``bin`` directory::
 
       cp /path/to/exec bin/exec
 
    You will want to give the executable a unique name.
 
-4. Create or gather any input data files into an input subdirectory::
+2. Create or gather any input data files into an input subdirectory::
 
       mkdir input/my_data
       cp /path/to/data input/my_data/
 
    You will want a unique name for each input directory.
 
-5. Return to the home directory and create a *control directory*::
+Create experiment
+-----------------
+
+The payu control directory is maintained under version control using 
+git_ so existing experiments can be cloned. This is the best way to copy
+and experiment as it guarantees that only the required files are copied
+to a new control directory, and maintains a link to the original 
+experiment through the shared git history.
+
+3. Return to the home directory and create a *control directory*::
 
       mkdir -p ${HOME}/${MODEL}/my_expt
       cd ${HOME}/${MODEL}/my_expt
@@ -79,11 +104,13 @@ fixing, so most users will have to set up the laboratory manually.
    Although the example control directory here is in the user's home directory,
    they can be placed anywhere and there is no predefined location.
 
-6. Copy any input text files in the control directory::
+4. Populated the control directory. 
+
+Copy any input text files in the control directory::
 
       cp /path/to/configs ${HOME}/${MODEL}/my_expt
 
-7. Configure the experiment in a ``config.yaml`` file, such as the one shown
+   Configure the experiment in a ``config.yaml`` file, such as the one shown
    below for MOM::
 
       # Scheduler settings
@@ -95,7 +122,7 @@ fixing, so most users will have to set up the laboratory manually.
 
       # Model settings
       model: mom
-      shortpath: /short/v45
+      shortpath: /scratch/v45
       exe: fms_MOM_solo.x
       input: bowl1
 
@@ -106,18 +133,8 @@ fixing, so most users will have to set up the laboratory manually.
    See the :ref:`config` section for more details.
 
 
-Automatic setup
----------------
-
-*This is currently not working, but the intended process is outlined here.*
-
-To initialise the model laboratory, type::
-
-   payu init -m model
-
-where ``model`` is the model name from ``payu list``. This will create the
-laboratory directory tree, get the source code, and build the model under its
-default configuration.
+.. _git: https://git-scm.com
+   
 
 
 Running your experiment
