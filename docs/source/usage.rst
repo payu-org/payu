@@ -23,8 +23,6 @@ simultaneously that can share common executables and input data. It also
 allows the flexibility to have the relatively small control directories
 in a location that is continuously backed up.
 
-
-
 Setting up the laboratory
 =========================
 
@@ -75,13 +73,14 @@ manually.
 Populate laboratory directories
 -------------------------------
 
-1. Compile a model and copy its executable into the ``bin`` directory::
+1. Compile a model and copy its executable into the ``bin`` directory in the laboratory::
 
       cp /path/to/exec bin/exec
 
    You will want to give the executable a unique name.
 
-2. Create or gather any input data files into an input subdirectory::
+2. Create or gather any input data files into an subdirectory in the input directory in the 
+   laboratory::
 
       mkdir input/my_data
       cp /path/to/data input/my_data/
@@ -93,11 +92,20 @@ Create experiment
 
 The payu control directory is maintained under version control using 
 git_ so existing experiments can be cloned. This is the best way to copy
-and experiment as it guarantees that only the required files are copied
+an experiment as it guarantees that only the required files are copied
 to a new control directory, and maintains a link to the original 
 experiment through the shared git history.
 
-3. Return to the home directory and create a *control directory*::
+For example::
+    
+      mkdir -p ${HOME}/${MODEL}
+      cd ${HOME}/${MODEL}
+      git clone https://github.com/payu-org/mom-example.git my_expt
+      cd my_expt
+
+To create an experiment manually:
+
+1. Return to the home directory and create a *control directory*::
 
       mkdir -p ${HOME}/${MODEL}/my_expt
       cd ${HOME}/${MODEL}/my_expt
@@ -105,9 +113,9 @@ experiment through the shared git history.
    Although the example control directory here is in the user's home directory,
    they can be placed anywhere and there is no predefined location.
 
-4. Populated the control directory. 
+2. Populate the control directory. 
 
-Copy any input text files in the control directory::
+   Copy any input text files in the control directory::
 
       cp /path/to/configs ${HOME}/${MODEL}/my_expt
 
@@ -116,7 +124,6 @@ Copy any input text files in the control directory::
 
       # Scheduler settings
       queue: normal
-      project: v45
       ncpus: 1
       walltime: 10:00
       jobname: bowl1
@@ -128,8 +135,9 @@ Copy any input text files in the control directory::
       input: bowl1
 
       # Postprocessing
-      collate_walltime: 10:00
-      collate_mem: 1GB
+      collate:
+          walltime: 10:00
+          mem: 1GB
 
    See the :ref:`config` section for more details.
 
@@ -141,12 +149,30 @@ Copy any input text files in the control directory::
 Running your experiment
 =======================
 
-Once the laboratory has been setup and the experiment has been configured, run
-the experiment by typing the following::
+Once the laboratory has been created and the experiment has been configured, you
+can check that the paths have been correctly specified by running::
+
+    payu  setup
+
+This creates the temporary ``work`` directory and is done automatically when
+the model is run. If there any errors these can be fixed. ``payu`` will not
+run the model if there is an existing ``work`` directory, so this must be
+removed like so::
+
+    payu sweep
+
+The ``setup`` command will also generate manifest files in the ``manifest``
+directory. The manifest files track the executable, input and restart files used
+in each run. When running at NCI the manifest file must be present as it is
+scanned for storage points in order to correctly specify the argument to the
+```-l storage=``` option when submitting a PBS job.
+
+Once you are satisfied the configuration is correct, and there is no existing
+```work``` directory, run the experiment by typing the following::
 
    payu run
 
-This will run the model once and store the output in the archive directory.
+This will run the model once and store the output in the ```archive``` directory.
 
 To continue the simulation from its last point, type ``payu run`` again.
 
@@ -189,7 +215,7 @@ deleted.
 Deleting an experiment archive
 ------------------------------
 
-If you also want to delete all runs from an experiment in the ``archive``, then
+If you also want to delete all runs from an experiment in the ``archive``, 
 use the ``--hard`` flag::
 
    payu sweep --hard
@@ -204,9 +230,10 @@ Other experiment runs will not be harmed by this command.
 Postprocessing
 ==============
 
-Model output in parallel jobs is typically divided across several files, which
+Model output in parallel jobs is sometimes divided across several files, which
 can be inconvenient for analysis. Payu offers a ``collate`` subcommand to
-collate these separated files into a single file.
+collate these separated files into a single file. This is only necessary, and 
+supported, for some models.
 
 For most jobs, collation is called automatically. But if you need to manually
 collate the ``K``\ th run, type the following::

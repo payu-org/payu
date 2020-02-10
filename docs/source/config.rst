@@ -25,7 +25,7 @@ Scheduler
 These settings are primarily used by the PBS scheduler.
 
 ``queue`` (*Default:* ``normal``)
-   The PBS queue to submit your job. Equivalent to ``qsub -q QUEUE``.
+   The PBS queue to submit your job. Equivalent to ``qsub -q queue``.
 
 ``project`` (*Default:* ``$PROJECT``)
    The project from which to submit the model (and deduct CPU hours).
@@ -45,6 +45,13 @@ These settings are primarily used by the PBS scheduler.
    Although it usually matches the CPU request, the actual request
    may be larger if ``npernode`` is being used.
 
+``ncpureq``
+   Hard override for the number of cpus used in the PBS submit. This is useful
+   when the number of CPUs used in the ``mpirun`` command is not the same as 
+   the number of cpus required. For example, when running an OpenMP only model 
+   like ``qgcm``, set ``ncpus=1``, and then set ``ncpureq`` to the number 
+   of threads required to run the model.
+
 ``npernode``
    The number of CPUs used per node. This settings is passed on to ``mpirun``
    during model execution. In most cases, this is converted into an
@@ -53,12 +60,21 @@ These settings are primarily used by the PBS scheduler.
    This setting may be needed in cases where a node is unable to efficiently
    use all of its CPUs, such as performance issues related to NUMA.
 
-``mem`` (*Default: 31GiB per node*)
+``mem`` (*Default: 192GiB per node*)
    Amount of memory required for the job. Equivalent to ``qsub -l mem=MEM``.
    The default value requests (almost) all of the nodes' memory for jobs using
    multiple nodes.
 
    In general, it is good practice to keep this number as low as possible.
+
+```platform```
+   Set platform specific defaults. Available sub options:
+       ```nodemem```
+          Override default memory per node. Used when memory not specified to
+          calculate memory request
+       ```nodesize```
+          Override default ncpus per node. Used to calculate ncpus to fully
+          utilise nodes regardless of requested number of cpus
 
 ``walltime``
    The amount of time required to run an individual job, specified as
@@ -167,7 +183,7 @@ configuration.
    experiment in ``~/mom/bowl1``, then ``mom`` will be used as the model type.
    However, it is generally better to specify the model type.
 
-``shortpath`` (*Default:* ``/short/${PROJECT}``)
+``shortpath`` (*Default:* ``/scratch/${PROJECT}``)
    The top-level directory for general scratch space, where laboratories and
    model output are stored. Users who run from multiple projects will generally
    want to set this explicitly.
@@ -181,15 +197,16 @@ configuration.
 
    the absolute path of an external directory::
 
-      input: /short/v45/core_input/iaf/
+      input: /scratch/v45/core_input/iaf/
 
    or a list of input directories::
 
       input:
          - year_100_restarts
          - core_inputs
+         - /scratch/v45/core_input/iaf/
 
-   If there are multiple files in each directory with the same name, then the
+   If there are files in each directory with the same name, then the
    earlier directory of the list takes precedence.
 
 ``exe``
@@ -243,7 +260,7 @@ configuration.
    recommended that laboratories be stored under username, so this setting is
    usually not necessary (nor recommended).
 
-``laboratory`` (*Default:* ``/short/${PROJECT}/${USER}/${MODEL}``)
+``laboratory`` (*Default:* ``/scratch/${PROJECT}/${USER}/${MODEL}``)
    The top-level directory for the model laboratory, where the codebase, model
    executables, input fields, running jobs, and archived output are stored.
 
@@ -256,14 +273,28 @@ configuration.
    ``control`` directory name.
 
 
+Manifests
+---------
+
+payu automatically generates and updates manifest files in the ``manifest``
+subdirectory in the control directory. The manifests are also writtern in the 
+YAML_ file format.
+
+There are three manifests, ``manifest/exe.yaml`` tracks executable files, 
+``manifest/input.yaml`` tracks input files and ``manifest/restart.yaml`` 
+tracks restart files.
+
+
 Postprocessing
-==============
+--------------
 
 ``collate`` (*Default:* ``True``)
    Controls whether or not a collation job is submitted after model execution.
 
    This is typically ``True``, although individual model drivers will often set the
    default value to ``False`` if collation is unnecessary.
+
+   See above for specific ``collate`` options. 
 
 ``userscripts``
    Namelist to include separate userscripts or subcommands at various stages of
@@ -300,7 +331,7 @@ Miscellaneous
 
 ``debug`` (*Default:* ``False``)
    Enable the debugger for any ``mpirun`` jobs. Equivalent to ``mpirun
-   --debug``. On raijin, this defaults to a Totalview session. This will
+   --debug``. At NCI this defaults to a Totalview session. This will
    probably only work for interactive sessions.
 
 ``mpirun``
