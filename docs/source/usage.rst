@@ -24,6 +24,7 @@ allows the flexibility to have the relatively small control directories
 in a location that is continuously backed up.
 
 
+
 Setting up the laboratory
 =========================
 
