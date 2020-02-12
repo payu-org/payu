@@ -103,7 +103,8 @@ For example::
       git clone https://github.com/payu-org/mom-example.git my_expt
       cd my_expt
 
-To create an experiment manually:
+If a suitable experiment does not already exist it will have to be
+created manually:
 
 1. Return to the home directory and create a *control directory*::
 
@@ -195,6 +196,21 @@ is 1, and so on.
 Running jobs are stored in laboratory's ``work`` subdirectory, and completed
 runs are stored in the ``archive`` subdirectory.
 
+It is possible to require that a run reproduce an existing run using the ``-r``
+flag:
+
+  payu run -r
+
+When this invoked all the manifests are read in and hashes checked for consistency
+and only if all executables, inputs and restart files are unchanged will the run
+proceed. As the restart files are read directly from the manifests which are written
+before the previous run completed, by definition a restart run will not look for 
+or use any restart files that are more recent.
+
+The reproduce option can be useful to be able to re-run a simulation for the 
+purposes of checking reproducibility when compute infrastructure changes, or when
+spinning off a perturbation run to ensure consistency with a control run before
+applying modifications.
 
 Cleaning up 
 ===========

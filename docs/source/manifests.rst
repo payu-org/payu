@@ -1,4 +1,4 @@
-.. _usage:
+.. _manifests:
 
 =====
 Manifests
@@ -8,8 +8,8 @@ Introduction
 ========
 
 payu automatically generates and updates manifest files in the ``manifest``
-subdirectory in the control directory. The manifests are stored in the 
-YAML_ file format.
+subdirectory in the control directory. The manifests are stored in YAML_ 
+format.
 
 There are three manifests: ``manifest/exe.yaml`` tracks executable files, 
 ``manifest/input.yaml`` tracks input files and ``manifest/restart.yaml`` 
@@ -49,13 +49,13 @@ An example input manifest is shown below::
 
 The first section of the file specifes a format (``yamanifest``) and a version 
 number (``1.0``). The second section has a local path in the ``work`` directory
-as the key, and for each of these paths stores the location in the filesystem (``fullpath``)
-and two hashes, ``binhash`` and ``md5``. 
+as the key, and for each of these paths stores the location in the filesystem 
+(``fullpath``) and two hashes, ``binhash`` and ``md5``. 
 
-There are two hashes as the ``binhash`` is fast and size independent designed 
-just to detect if changes to the file. If a change is detected the slower but 
-robust MD5 hash is calculated. Whenever a hash changes it is stored in the 
-manifest file.
+There are two hashes as ``binhash`` is fast and size independent designed 
+just to detect if a file has changed. If the calculated binhash is not the same
+as that stored in the manifest the slower but robust MD5 hash is calculated. 
+Whenever a hash changes the updated value is stored in the manifest file.
 
 Experiment tracking
 ===================
@@ -63,7 +63,7 @@ Experiment tracking
 The manifest files are automatically added to the git repository that 
 tracks changes to the experimental configuration. Each time
 the model is run the manifest is checked and changed hashes are updated, 
-and new files added.
+and any new files found are added to the manifest.
 
 In this way manifests uniquely identify all executables, input and restart files
 for each model run.
@@ -72,25 +72,33 @@ Manifest updates
 ----------------
 
 Each of the manifests is updated in a slightly different way which reflects
-the way the files change.
+the way the files are expected to change during an experiment.
 
-The executable manifest is recalculated each time the model is run, as 
-executables are generally fairly small in size and number there is very 
+The executable manifest is recalculated each time the model is run.
+Executables are generally fairly small in size and number, so there is very 
 little overhead calculating full MD5 hashes. This also means there is no 
 need to check that exectutable paths are still correct and also any 
-changes to executables are picked up.
+changes to executables are automatically included in the manifest.
 
 The restart manifest is also recalculated for every run as there is no expectation
 that restart (or pickup) files are ever the same between normal model runs.
 
-It is expected that the input manifest changes relatively rarely, and can often
-contain a small number of very large files. It is this combination that can cause
-a significant time overhead if full MD5 hashes have to be computed. The use of
-a fast change-sensitive hash means these time consuming hashes only need be computed
-when a change has been detected. So as much information from the input manifest as
-possible is retained.
+The input manifest changes relatively rarely and can often contain a small 
+number of very large files. It is this combination that can cause a significant 
+time overhead if full MD5 hashes have to be computed for every run. By using
+binhash, a fast change-sensitive hash, these time consuming hashes only 
+need be computed when a change has been detected. So the slow md5 hashes
+are recalculated as little as possible.
 
 Manifest options
 ----------------
+
+By default manifests just reflect the state of the model, and when files
+change the update hashes are saved in the manifest. These changes in the
+manifest files are then tracked with git.
+
+There are some configuration options available to change this default 
+behaviour.
+
 
 

@@ -97,76 +97,21 @@ These settings are primarily used by the PBS scheduler.
    This is a generic configuration marker for any unsupported qsub flags. This
    setting is applied to any ``qsub`` calls.
 
-
-Collation
----------
-
-Collation scheduling can be configured independently of model runs. Not all models
-support, or indeed require, collation. Collation is currently supported for MITgcm
-and any of the FMS based models (MOM, GOLD, SIS).
-
-The collate process joins a number of smaller files which contain different 
-parts of the model grid together into target output files.
-
-Parallelisation of collation is supported for FMS based models using threaded
-multiprocessing. Collation time can be reduced if there are multiple
-target collate files. The magnitude of the collation time reduction depends a 
-great deal on the time taken to collate each target file, the number of such files,
-and the number of cpus used. It is difficult to say a priori what settings are 
-optimal: some experimentation may be necessary. 
-
-There is also experimental support for MPI parallelisation when using 
-mppnccombine-fast_
-
-.. _mppnccombine-fast: https://github.com/coecms/mppnccombine-fast
-
-Collate options are specified as sub-options within a separate ``collate``
-namespace: 
-
-``enable`` (*Default:* ``True``)
-   Flag to enable/disable collation
-
-``queue`` (*Default:* ``copyq``)
-   PBS queue used for collation jobs.
-
-``walltime``
-   Time required for output collation.
-
-``mem`` (*Default:* ``2GB``)
-   Memory required for output collation.
-
-FMS based model only options:
-
-``ncpus``
-   Number of cpus used for collation. 
-
-``ignore``
-   Ignore these target files during collation. This can either be a single filename or
-   a list of filenames.
-
-``flags``
-   Specify the flags passed to the collation program. Defaults depend on value of 
-   ``mpi`` flag
-
-``exe``
-   Binary executable for the collate program. This can be either a filename in 
-   the laboratory's ``bin`` directory, or an absolute filepath.
-
-``restart`` (*Defaut:* ``False``)
-   Collate restart files from previous run.
-
-``mpi``
-   Use mpi parallelism and mppnccombine-fast_
-
-``glob``
-   When ``mpi`` is ``True`` attempt to generate an equivalent glob string for the
-   list of files being collated to avoid issues with limits on the number of 
-   arguments for an command being run using MPI
-
-``threads`` (*Default:* 1)
-   When ``mpi`` is ``True`` it is also possible to still use multiple threads by
-   specifying this option. The number of cpus used for each collation thread is then
-   ``ncpus / nthreads``
+``storage``
+   On the NCI system gadi all storage mount points must be specified, except
+   ``/home`` and ``/scratch/$PROJECT``. By default payu will scan all relevant
+   configuration paths and manifests for filepaths that are stored on mounts
+   that begin with ``/scratch`` or ``/g/data``, and add the correct storage 
+   flags to the ``qsub`` submission. In cases where payu cannot determine 
+   all the required storage points automatically they can be specified using 
+   the ``storage`` option. Each key is a storage mount point descriptor, and
+   contains an array of project code values::
+      storage:
+            gdata:
+                  - x00
+                  - a15
+            scratch:
+                  - zz3
 
 Model
 -----
@@ -276,14 +221,112 @@ configuration.
 Manifests
 ---------
 
-payu automatically generates and updates manifest files in the ``manifest``
-subdirectory in the control directory. The manifests are also writtern in the 
-YAML_ file format.
+payu automatically generates and updates manifest files. See :ref:`manifests` 
+section for details.
 
-There are three manifests, ``manifest/exe.yaml`` tracks executable files, 
-``manifest/input.yaml`` tracks input files and ``manifest/restart.yaml`` 
-tracks restart files.
+``reproduce``
+      These options allow fine-grained control of manifest checking to 
+      enable reproducible experiments. The default value is the value 
+      of the global ``reproduce`` flag, which is set using a command 
+      line argument and defaults to *False*. These options **override**
+      the global ``reproduce`` flag. If set to *True* payu will refuse
+      to run if the hashes in the relevant manifest do not match.
 
+      ``exe`` (*Default: global reproduce flag*)
+            Enforce executable reproducibility. If set to *True* will
+            refuse to run if hashes do not match.
+
+      ``input`` (*Default: global reproduce flag*)
+            Enforce input file reproducibility. If set to *True* will
+            refuse to run if hashes do no match. Will not search for 
+            any new files.
+
+      ``restart`` (*Default: global reproduce flag*)
+            Enforce restart file reproducibility
+
+``scaninputs`` (*Default: True*)
+      Scan input directories for new files. Set to *False* when reproduce
+      input is *True*. 
+
+      If a manifest file is complete and it is desirable
+      to not add spurious files to the manifest but allow existing files 
+      to change, setting this option to *False* would allow that behaviour.
+
+``ignore`` (*Default: .\**):
+      List of ``glob`` patterns which match files to ignore when 
+      scanning input directories. This is an array, so multiple
+      patterns can be specified on multiple lines. The defaul is
+      *.\** which ignores all hidden files on a POSIX filesystem.
+
+Collation
+---------
+
+Collation scheduling can be configured independently of model runs. Not all models
+support, or indeed require, collation. Collation is currently supported for MITgcm
+and any of the FMS based models (MOM, GOLD, SIS).
+
+The collate process joins a number of smaller files which contain different 
+parts of the model grid together into target output files.
+
+Parallelisation of collation is supported for FMS based models using threaded
+multiprocessing. Collation time can be reduced if there are multiple
+target collate files. The magnitude of the collation time reduction depends a 
+great deal on the time taken to collate each target file, the number of such files,
+and the number of cpus used. It is difficult to say a priori what settings are 
+optimal: some experimentation may be necessary. 
+
+There is also experimental support for MPI parallelisation when using 
+mppnccombine-fast_
+
+.. _mppnccombine-fast: https://github.com/coecms/mppnccombine-fast
+
+Collate options are specified as sub-options within a separate ``collate``
+namespace: 
+
+``enable`` (*Default: True*)
+   Flag to enable/disable collation
+
+``queue`` (*Default:* ``copyq``)
+   PBS queue used for collation jobs.
+
+``walltime``
+   Time required for output collation.
+
+``mem`` (*Default:* ``2GB``)
+   Memory required for output collation.
+
+FMS based model only options:
+
+``ncpus``
+   Number of cpus used for collation. 
+
+``ignore``
+   Ignore these target files during collation. This can either be a single filename or
+   a list of filenames.
+
+``flags``
+   Specify the flags passed to the collation program. Defaults depend on value of 
+   ``mpi`` flag
+
+``exe``
+   Binary executable for the collate program. This can be either a filename in 
+   the laboratory's ``bin`` directory, or an absolute filepath.
+
+``restart`` (*Defaut: False*)
+   Collate restart files from previous run.
+
+``mpi``
+   Use mpi parallelism and mppnccombine-fast_
+
+``glob``
+   When ``mpi`` is ``True`` attempt to generate an equivalent glob string for the
+   list of files being collated to avoid issues with limits on the number of 
+   arguments for an command being run using MPI
+
+``threads`` (*Default:* 1)
+   When ``mpi`` is ``True`` it is also possible to still use multiple threads by
+   specifying this option. The number of cpus used for each collation thread is then
+   ``ncpus / nthreads``
 
 Postprocessing
 --------------
