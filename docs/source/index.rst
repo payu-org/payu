@@ -14,7 +14,6 @@ commands::
 
    mkdir new_expt; cd new_expt
    payu init -m mom
-   payu build
    payu run
 
 Currently, payu is very highly customised for users of NCI computing
@@ -39,6 +38,7 @@ Contents:
    install
    usage
    config
+   manifests
    design
 
 

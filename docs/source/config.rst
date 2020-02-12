@@ -25,7 +25,7 @@ Scheduler
 These settings are primarily used by the PBS scheduler.
 
 ``queue`` (*Default:* ``normal``)
-   The PBS queue to submit your job. Equivalent to ``qsub -q QUEUE``.
+   The PBS queue to submit your job. Equivalent to ``qsub -q queue``.
 
 ``project`` (*Default:* ``$PROJECT``)
    The project from which to submit the model (and deduct CPU hours).
@@ -45,6 +45,13 @@ These settings are primarily used by the PBS scheduler.
    Although it usually matches the CPU request, the actual request
    may be larger if ``npernode`` is being used.
 
+``ncpureq``
+   Hard override for the number of cpus used in the PBS submit. This is useful
+   when the number of CPUs used in the ``mpirun`` command is not the same as 
+   the number of cpus required. For example, when running an OpenMP only model 
+   like ``qgcm``, set ``ncpus=1``, and then set ``ncpureq`` to the number 
+   of threads required to run the model.
+
 ``npernode``
    The number of CPUs used per node. This settings is passed on to ``mpirun``
    during model execution. In most cases, this is converted into an
@@ -53,12 +60,21 @@ These settings are primarily used by the PBS scheduler.
    This setting may be needed in cases where a node is unable to efficiently
    use all of its CPUs, such as performance issues related to NUMA.
 
-``mem`` (*Default: 31GiB per node*)
+``mem`` (*Default: 192GiB per node*)
    Amount of memory required for the job. Equivalent to ``qsub -l mem=MEM``.
    The default value requests (almost) all of the nodes' memory for jobs using
    multiple nodes.
 
    In general, it is good practice to keep this number as low as possible.
+
+```platform```
+   Set platform specific defaults. Available sub options:
+       ```nodemem```
+          Override default memory per node. Used when memory not specified to
+          calculate memory request
+       ```nodesize```
+          Override default ncpus per node. Used to calculate ncpus to fully
+          utilise nodes regardless of requested number of cpus
 
 ``walltime``
    The amount of time required to run an individual job, specified as
@@ -81,29 +97,21 @@ These settings are primarily used by the PBS scheduler.
    This is a generic configuration marker for any unsupported qsub flags. This
    setting is applied to any ``qsub`` calls.
 
-
-Collation
----------
-
-Collation scheduling can be configured independently of model runs. Currently,
-all collation jobs are single CPU jobs and are not parallelised.
-
-``collate_queue`` (*Default:* ``copyq``)
-   PBS queue used for collation jobs.
-
-``collate_walltime``
-   Time required for output collation.
-
-``collate_mem``
-   Memory required for output collation.
-
-``collate_ignore``
-   Ignore these files during collation. This can either be a single filename or
-   a list of filenames. Only FMS models (MOM, GOLD) support this setting.
-
-``collate_flags``
-   Specify the flags passed to the collation program.
-   Only FMS models (MOM, GOLD) support this setting.
+``storage``
+   On the NCI system gadi all storage mount points must be specified, except
+   ``/home`` and ``/scratch/$PROJECT``. By default payu will scan all relevant
+   configuration paths and manifests for filepaths that are stored on mounts
+   that begin with ``/scratch`` or ``/g/data``, and add the correct storage 
+   flags to the ``qsub`` submission. In cases where payu cannot determine 
+   all the required storage points automatically they can be specified using 
+   the ``storage`` option. Each key is a storage mount point descriptor, and
+   contains an array of project code values::
+      storage:
+            gdata:
+                  - x00
+                  - a15
+            scratch:
+                  - zz3
 
 Model
 -----
@@ -120,7 +128,7 @@ configuration.
    experiment in ``~/mom/bowl1``, then ``mom`` will be used as the model type.
    However, it is generally better to specify the model type.
 
-``shortpath`` (*Default:* ``/short/${PROJECT}``)
+``shortpath`` (*Default:* ``/scratch/${PROJECT}``)
    The top-level directory for general scratch space, where laboratories and
    model output are stored. Users who run from multiple projects will generally
    want to set this explicitly.
@@ -134,15 +142,16 @@ configuration.
 
    the absolute path of an external directory::
 
-      input: /short/v45/core_input/iaf/
+      input: /scratch/v45/core_input/iaf/
 
    or a list of input directories::
 
       input:
          - year_100_restarts
          - core_inputs
+         - /scratch/v45/core_input/iaf/
 
-   If there are multiple files in each directory with the same name, then the
+   If there are files in each directory with the same name, then the
    earlier directory of the list takes precedence.
 
 ``exe``
@@ -196,7 +205,7 @@ configuration.
    recommended that laboratories be stored under username, so this setting is
    usually not necessary (nor recommended).
 
-``laboratory`` (*Default:* ``/short/${PROJECT}/${USER}/${MODEL}``)
+``laboratory`` (*Default:* ``/scratch/${PROJECT}/${USER}/${MODEL}``)
    The top-level directory for the model laboratory, where the codebase, model
    executables, input fields, running jobs, and archived output are stored.
 
@@ -209,14 +218,126 @@ configuration.
    ``control`` directory name.
 
 
+Manifests
+---------
+
+payu automatically generates and updates manifest files. See :ref:`manifests` 
+section for details.
+
+``reproduce``
+      These options allow fine-grained control of manifest checking to 
+      enable reproducible experiments. The default value is the value 
+      of the global ``reproduce`` flag, which is set using a command 
+      line argument and defaults to *False*. These options **override**
+      the global ``reproduce`` flag. If set to *True* payu will refuse
+      to run if the hashes in the relevant manifest do not match.
+
+      ``exe`` (*Default: global reproduce flag*)
+            Enforce executable reproducibility. If set to *True* will
+            refuse to run if hashes do not match.
+
+      ``input`` (*Default: global reproduce flag*)
+            Enforce input file reproducibility. If set to *True* will
+            refuse to run if hashes do no match. Will not search for 
+            any new files.
+
+      ``restart`` (*Default: global reproduce flag*)
+            Enforce restart file reproducibility
+
+``scaninputs`` (*Default: True*)
+      Scan input directories for new files. Set to *False* when reproduce
+      input is *True*. 
+
+      If a manifest file is complete and it is desirable
+      to not add spurious files to the manifest but allow existing files 
+      to change, setting this option to *False* would allow that behaviour.
+
+``ignore`` (*Default: .\**):
+      List of ``glob`` patterns which match files to ignore when 
+      scanning input directories. This is an array, so multiple
+      patterns can be specified on multiple lines. The defaul is
+      *.\** which ignores all hidden files on a POSIX filesystem.
+
+Collation
+---------
+
+Collation scheduling can be configured independently of model runs. Not all models
+support, or indeed require, collation. Collation is currently supported for MITgcm
+and any of the FMS based models (MOM, GOLD, SIS).
+
+The collate process joins a number of smaller files which contain different 
+parts of the model grid together into target output files.
+
+Parallelisation of collation is supported for FMS based models using threaded
+multiprocessing. Collation time can be reduced if there are multiple
+target collate files. The magnitude of the collation time reduction depends a 
+great deal on the time taken to collate each target file, the number of such files,
+and the number of cpus used. It is difficult to say a priori what settings are 
+optimal: some experimentation may be necessary. 
+
+There is also experimental support for MPI parallelisation when using 
+mppnccombine-fast_
+
+.. _mppnccombine-fast: https://github.com/coecms/mppnccombine-fast
+
+Collate options are specified as sub-options within a separate ``collate``
+namespace: 
+
+``enable`` (*Default: True*)
+   Flag to enable/disable collation
+
+``queue`` (*Default:* ``copyq``)
+   PBS queue used for collation jobs.
+
+``walltime``
+   Time required for output collation.
+
+``mem`` (*Default:* ``2GB``)
+   Memory required for output collation.
+
+FMS based model only options:
+
+``ncpus``
+   Number of cpus used for collation. 
+
+``ignore``
+   Ignore these target files during collation. This can either be a single filename or
+   a list of filenames.
+
+``flags``
+   Specify the flags passed to the collation program. Defaults depend on value of 
+   ``mpi`` flag
+
+``exe``
+   Binary executable for the collate program. This can be either a filename in 
+   the laboratory's ``bin`` directory, or an absolute filepath.
+
+``restart`` (*Defaut: False*)
+   Collate restart files from previous run.
+
+``mpi``
+   Use mpi parallelism and mppnccombine-fast_
+
+``glob``
+   When ``mpi`` is ``True`` attempt to generate an equivalent glob string for the
+   list of files being collated to avoid issues with limits on the number of 
+   arguments for an command being run using MPI
+
+``threads`` (*Default:* 1)
+   When ``mpi`` is ``True`` it is also possible to still use multiple threads by
+   specifying this option. The number of cpus used for each collation thread is then
+   ``ncpus / nthreads``
+
 Postprocessing
-==============
+--------------
 
 ``collate`` (*Default:* ``True``)
    Controls whether or not a collation job is submitted after model execution.
 
    This is typically ``True``, although individual model drivers will often set the
    default value to ``False`` if collation is unnecessary.
+
+   See above for specific ``collate`` options. 
 
 ``userscripts``
    Namelist to include separate userscripts or subcommands at various stages of
@@ -253,7 +374,7 @@ Miscellaneous
 
 ``debug`` (*Default:* ``False``)
    Enable the debugger for any ``mpirun`` jobs. Equivalent to ``mpirun
-   --debug``. On raijin, this defaults to a Totalview session. This will
+   --debug``. At NCI this defaults to a Totalview session. This will
    probably only work for interactive sessions.
 
 ``mpirun``
