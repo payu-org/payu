@@ -32,8 +32,17 @@ class PayuManifest(YaManifest):
     A manifest object sub-classed from yamanifest object with some payu
     specific additions and enhancements.
     """
-    def __init__(self, path, hashes=None, ignore=None, **kwargs):
-        super(PayuManifest, self).__init__(path, hashes, **kwargs)
+    def __init__(self, path,
+                 ignore=None,
+                 fast_hashes=fast_hashes,
+                 full_hashes=full_hashes,
+                 **kwargs):
+
+        super(PayuManifest, self).__init__(path=path,
+                                           hashes=fast_hashes+full_hashes,
+                                           **kwargs)
+        self.fast_hashes = fast_hashes
+        self.full_hashes = full_hashes
 
         if ignore is not None:
             self.ignore = ignore
@@ -51,7 +60,7 @@ class PayuManifest(YaManifest):
         fast_check = self.check_file(
             filepaths=self.data.keys(),
             hashvals=hashvals,
-            hashfn=fast_hashes,
+            hashfn=self.fast_hashes,
             shortcircuit=True,
             **args
         )
@@ -71,7 +80,7 @@ class PayuManifest(YaManifest):
                     tmphash = {}
                     full_check = self.check_file(
                         filepaths=filepath,
-                        hashfn=full_hashes,
+                        hashfn=self.full_hashes,
                         hashvals=tmphash,
                         shortcircuit=False,
                         **args
@@ -80,7 +89,7 @@ class PayuManifest(YaManifest):
                     if full_check:
                         # File is still ok, so replace fast hashes
                         print('Full hashes ({0}) checked ok'
-                              ''.format(full_hashes))
+                              ''.format(self.full_hashes))
                         print('Updating fast hashes for {0} in {1}'
                               ''.format(filepath, self.path))
                         self.add_fast(filepath, force=True)
@@ -111,7 +120,7 @@ class PayuManifest(YaManifest):
                 # be written as null.
                 self.add(
                     filepaths=list(hashvals.keys()),
-                    hashfn=full_hashes,
+                    hashfn=self.full_hashes,
                     force=True,
                     fullpaths=[self.fullpath(fpath) for fpath
                                in list(hashvals.keys())]
@@ -120,7 +129,7 @@ class PayuManifest(YaManifest):
                 # Flag need to update version on disk
                 self.needsync = True
 
-    def add_filepath(self, filepath, fullpath, copy=False):
+    def add_filepath(self, filepath, fullpath, hashes, copy=False):
         """
         Bespoke function to add filepath & fullpath to manifest
         object without hashing. Can defer hashing until all files are
@@ -142,7 +151,7 @@ class PayuManifest(YaManifest):
 
         self.data[filepath]['fullpath'] = fullpath
         if 'hashes' not in self.data[filepath]:
-            self.data[filepath]['hashes'] = {hash: None for hash in all_hashes}
+            self.data[filepath]['hashes'] = {hash: None for hash in hashes}
 
         if copy:
             self.data[filepath]['copy'] = copy
@@ -159,7 +168,7 @@ class PayuManifest(YaManifest):
         one "fast" hashing function need be called for each filepath.
         """
         if hashfn is None:
-            hashfn = fast_hashes
+            hashfn = self.fast_hashes
         self.add(filepath, hashfn, force, shortcircuit=True)
 
     def copy_file(self, filepath):
@@ -231,6 +240,11 @@ class PayuManifest(YaManifest):
             files.append(self.fullpath(filepath))
         return files
 
+    def get_hashes(self, hashfn):
+        hashes = []
+        for filepath in self:
+            hashes.append(self.get(filepath, hashfn))
+        return hashes
 
 class Manifest(object):
     """
@@ -244,10 +258,13 @@ class Manifest(object):
         self.manifest_config = config
 
         # Not currently supporting specifying hash functions
-        # self.hash_functions = manifest_config.get(
-        #     'hashfns',
-        #     ['nchash','binhash','md5']
-        # )
+        self.fast_hashes = self.manifest_config.get('fasthash', fast_hashes)
+        self.full_hashes = self.manifest_config.get('fullhash', full_hashes)
+
+        if type(self.fast_hashes) is str:
+            self.fast_hashes = [self.fast_hashes, ]
+        if type(self.full_hashes) is str:
+            self.full_hashes = [self.full_hashes, ]
 
         self.ignore = self.manifest_config.get('ignore', ['.*'])
         if isinstance(self.ignore, str):
@@ -276,7 +293,9 @@ class Manifest(object):
         # Initialise a sub-manifest object
         self.manifests[mf] = PayuManifest(
             os.path.join('manifests', '{}.yaml'.format(mf)),
-            ignore=self.ignore
+            ignore=self.ignore,
+            fast_hashes=self.fast_hashes,
+            full_hashes=self.full_hashes
         )
         self.have_manifest[mf] = False
 
@@ -393,7 +412,11 @@ class Manifest(object):
         code from directly calling anything in PayuManifest.
         """
         filepath = os.path.normpath(filepath)
-        if self.manifests[manifest].add_filepath(filepath, fullpath, copy):
+        if self.manifests[manifest].add_filepath(filepath=filepath,
+                                                 fullpath=fullpath,
+                                                 hashes=self.fast_hashes +
+                                                        self.full_hashes,
+                                                 copy=copy):
             # Only link if filepath was added
             self.manifests[manifest].make_link(filepath)
 

@@ -1,24 +1,26 @@
+import copy
 import os
 from pathlib import Path
-import shutil
-
+import pdb
 import pytest
+import shutil
 import yaml
 
 import payu
-
-import pdb
-
 import payu.models.test
 
-from common import cd, make_random_file, get_manifests
-from common import tmpdir, ctrldir, labdir, workdir
-from common import config, sweep_work, payu_init, payu_setup
-from common import write_config
-from common import make_exe, make_inputs, make_restarts, make_all_files
+print('__file__={0:<35} | __name__={1:<20} | __package__={2:<20}'.format(__file__,__name__,str(__package__)))
+
+from .common import cd, make_random_file, get_manifests
+from .common import tmpdir, ctrldir, labdir, workdir
+from .common import sweep_work, payu_init, payu_setup
+from .common import config as config_orig
+from .common import write_config
+from .common import make_exe, make_inputs, make_restarts, make_all_files
 
 verbose = True
 
+config = copy.deepcopy(config_orig)
 
 def make_config_files():
     """
@@ -51,7 +53,7 @@ def setup_module(module):
     except Exception as e:
         print(e)
 
-    write_config()
+    write_config(config)
 
 
 def teardown_module(module):
@@ -139,7 +141,7 @@ def test_setup_restartdir():
 
     # Set a restart directory in config
     config['restart'] = str(restartdir)
-    write_config()
+    write_config(config)
 
     make_restarts()
 
@@ -154,7 +156,7 @@ def test_exe_reproduce():
 
     # Set reproduce exe to True
     config['manifest']['reproduce']['exe'] = True
-    write_config()
+    write_config(config)
     manifests = get_manifests(ctrldir/'manifests')
 
     # Run setup with unchanged exe but reproduce exe set to True.
@@ -180,7 +182,7 @@ def test_exe_reproduce():
 
     # Delete exe path from config, should get it from manifest
     del(config['exe'])
-    write_config()
+    write_config(config)
 
     # Run setup with changed exe but reproduce exe set to False
     payu_setup(lab_path=str(labdir))
@@ -205,7 +207,7 @@ def test_exe_reproduce():
 
     # Change reproduce exe back to False
     config['manifest']['reproduce']['exe'] = False
-    write_config()
+    write_config(config)
 
     # Run setup with changed exe but reproduce exe set to False
     payu_setup(lab_path=str(labdir))
@@ -222,7 +224,7 @@ def test_input_reproduce():
     # Set reproduce input to True
     config['manifest']['reproduce']['exe'] = False
     config['manifest']['reproduce']['input'] = True
-    write_config()
+    write_config(config)
     manifests = get_manifests(ctrldir/'manifests')
 
     # Run setup with unchanged input reproduce input set to True
@@ -233,7 +235,7 @@ def test_input_reproduce():
     # Delete input directory from config, should still work from
     # manifest with input reproduce True
     input = config['input']
-    write_config()
+    write_config(config)
     del(config['input'])
 
     # Run setup, should work
@@ -270,7 +272,7 @@ def test_input_reproduce():
 
     # Change reproduce input back to False
     config['manifest']['reproduce']['input'] = False
-    write_config()
+    write_config(config)
 
     # Run setup with changed inputs but reproduce input set to False
     payu_setup(lab_path=str(labdir))
@@ -296,7 +298,7 @@ def test_input_reproduce():
 
     # Set input path back and recreate input manifest
     config['input'] = input
-    write_config()
+    write_config(config)
     payu_setup(lab_path=str(labdir))
 
 
@@ -311,7 +313,7 @@ def test_input_scaninputs():
 
     # Set scaninputs input to True
     config['manifest']['scaninputs'] = True
-    write_config()
+    write_config(config)
 
     # Run setup with unchanged input
     payu_setup(lab_path=str(labdir))
@@ -319,7 +321,7 @@ def test_input_scaninputs():
 
     # Set scaninputs input to False
     config['manifest']['scaninputs'] = False
-    write_config()
+    write_config(config)
 
     # Run setup, should work and manifests unchanged
     payu_setup(lab_path=str(labdir))
@@ -359,7 +361,7 @@ def test_input_scaninputs():
 
     # Set scaninputs input to True
     config['manifest']['scaninputs'] = True
-    write_config()
+    write_config(config)
 
     # Run setup again. Should be fine, but manifests changed now
     # as scaninputs=False
@@ -383,7 +385,7 @@ def test_restart_reproduce():
     config['manifest']['reproduce']['input'] = False
     config['manifest']['reproduce']['restart'] = True
     del(config['restart'])
-    write_config()
+    write_config(config)
     manifests = get_manifests(ctrldir/'manifests')
 
     # Run setup with unchanged restarts
@@ -415,7 +417,7 @@ def test_restart_reproduce():
 
     # Set reproduce restart to False
     config['manifest']['reproduce']['restart'] = False
-    write_config()
+    write_config(config)
 
     # Run setup with modified restarts reproduce set to False
     payu_setup(lab_path=str(labdir))
@@ -428,7 +430,7 @@ def test_all_reproduce():
 
     # Remove reproduce options from config
     del(config['manifest']['reproduce'])
-    write_config()
+    write_config(config)
 
     # Run setup
     payu_setup(lab_path=str(labdir))
@@ -475,6 +477,86 @@ def test_get_all_fullpaths():
 
     assert(set(files) == set(allfiles))
 
+
+def test_get_hashes():
+
+    make_all_files()
+    make_config_files()
+
+    # Run setup
+    payu_setup(lab_path=str(labdir))
+
+    manifests = get_manifests(ctrldir/'manifests')
+
+    sweep_work()
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        expt.setup()
+        hashes = expt.manifest.manifests['input'].get_hashes('md5')
+
+    allhashes = []
+    for f in manifests['input.yaml']:
+        allhashes.append(manifests['input.yaml'][f]['hashes']['md5'])
+
+    assert(set(hashes) == set(allhashes))
+
+
+def test_set_hash():
+
+    # Revert to original config
+    config = copy.deepcopy(config_orig)
+    write_config(config)
+
+    make_all_files()
+    make_config_files()
+
+    # Run setup
+    payu_setup(lab_path=str(labdir))
+
+    manifests = get_manifests(ctrldir/'manifests')
+
+    sweep_work()
+
+    # Remove existing manifests. Don't support changing
+    # hashes and retaining manifests
+    shutil.rmtree(ctrldir/'manifests')
+
+    # Change full hash from md5 to sha256
+    config['manifest']['fullhash'] = 'sha256'
+    write_config(config)
+
+    # Run setup
+    payu_setup(lab_path=str(labdir))
+
+    assert(not manifests == get_manifests(ctrldir/'manifests'))
+
+    manifests = get_manifests(ctrldir/'manifests')
+
+    for mf in manifests:
+        for f in manifests[mf]:
+            assert(manifests[mf][f]['hashes']['sha256'])
+            assert(len(manifests[mf][f]['hashes']['sha256']) == 64)
+
+    sweep_work()
+
+    # Remove existing manifests. Don't support changing
+    # hashes and retaining manifests
+    shutil.rmtree(ctrldir / 'manifests')
+
+    # Change full hash from md5 to binhash
+    config['manifest']['fullhash'] = 'binhash'
+    write_config(config)
+
+    # Run setup
+    payu_setup(lab_path=str(labdir))
+
+    manifests = get_manifests(ctrldir/'manifests')
+
+    for mf in manifests:
+        for f in manifests[mf]:
+            assert(list(manifests[mf][f]['hashes'].keys()) == ['binhash'])
 
 def test_hard_sweep():
 

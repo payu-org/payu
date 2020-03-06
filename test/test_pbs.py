@@ -16,12 +16,12 @@ from payu.laboratory import Laboratory
 from payu.scheduler import pbs
 
 
-from common import cd, make_random_file, get_manifests
-from common import tmpdir, ctrldir, labdir, workdir, payudir
-from common import config, sweep_work, payu_init, payu_setup
-from common import write_config
-from common import make_exe, make_inputs, make_restarts
-from common import make_payu_exe, make_all_files
+from .common import cd, make_random_file, get_manifests
+from .common import tmpdir, ctrldir, labdir, workdir, payudir
+from .common import config, sweep_work, payu_init, payu_setup
+from .common import write_config
+from .common import make_exe, make_inputs, make_restarts
+from .common import make_payu_exe, make_all_files
 
 verbose = True
 
@@ -48,7 +48,7 @@ def setup_module(module):
     except Exception as e:
         print(e)
 
-    write_config()
+    write_config(config)
 
 
 def teardown_module(module):

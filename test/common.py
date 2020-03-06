@@ -106,7 +106,7 @@ def payu_setup(model_type=None,
                            reproduce)
 
 
-def write_config():
+def write_config(config):
     with (ctrldir / 'config.yaml').open('w') as file:
         file.write(yaml.dump(config, default_flow_style=False))
 
@@ -138,13 +138,14 @@ def make_inputs():
                          1000**2 + i)
 
 
-def make_restarts():
+def make_restarts(fnames=None):
     # Create some fake restart files
     restartdir = labdir / 'archive' / 'restarts'
     restartdir.mkdir(parents=True, exist_ok=True)
-    for i in range(1, 4):
-        make_random_file(restartdir/'restart_00{i}.bin'.format(i=i),
-                         5000**2 + i)
+    if fnames is None:
+        fnames = ['restart_00{i}.bin'.format(i=i) for i in range(1, 4)]
+    for i, fname in enumerate(fnames):
+        make_random_file(restartdir/fname, 5000**2 + i)
 
 
 def make_all_files():

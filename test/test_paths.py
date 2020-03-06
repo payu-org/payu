@@ -12,11 +12,11 @@ from payu.laboratory import Laboratory
 from payu.scheduler.pbs import find_mounts
 
 
-from common import cd, make_random_file, get_manifests
-from common import tmpdir, ctrldir, labdir, workdir
-from common import config, sweep_work, payu_init, payu_setup
-from common import write_config
-from common import make_exe, make_inputs, make_restarts, make_all_files
+from .common import cd, make_random_file, get_manifests
+from .common import tmpdir, ctrldir, labdir, workdir
+from .common import config, sweep_work, payu_init, payu_setup
+from .common import write_config
+from .common import make_exe, make_inputs, make_restarts, make_all_files
 
 verbose = True
 
@@ -41,7 +41,7 @@ def setup_module(module):
     except Exception as e:
         print(e)
 
-    write_config()
+    write_config(config)
 
 
 def teardown_module(module):
@@ -74,7 +74,7 @@ def test_laboratory_basepath():
     # in config, so will fall through to default
     # depending on platform
     del(config['shortpath'])
-    write_config()
+    write_config(config)
     with cd(ctrldir):
         lab = Laboratory(None, None, None)
 
@@ -96,7 +96,7 @@ def test_laboratory_path():
     # Set a relative laboratory name
     labname = 'testlab'
     config['laboratory'] = labname
-    write_config()
+    write_config(config)
     with cd(ctrldir):
         lab = Laboratory(None, None, None)
 
