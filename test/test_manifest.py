@@ -9,8 +9,6 @@ import yaml
 import payu
 import payu.models.test
 
-print('__file__={0:<35} | __name__={1:<20} | __package__={2:<20}'.format(__file__,__name__,str(__package__)))
-
 from .common import cd, make_random_file, get_manifests
 from .common import tmpdir, ctrldir, labdir, workdir
 from .common import sweep_work, payu_init, payu_setup
