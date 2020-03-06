@@ -38,7 +38,7 @@ class PayuManifest(YaManifest):
                  full_hashes=full_hashes,
                  **kwargs):
 
-        super(PayuManifest, self).__init__(path=path, 
+        super(PayuManifest, self).__init__(path=path,
                                            hashes=fast_hashes+full_hashes,
                                            **kwargs)
         self.fast_hashes = fast_hashes
@@ -414,7 +414,7 @@ class Manifest(object):
         filepath = os.path.normpath(filepath)
         if self.manifests[manifest].add_filepath(filepath=filepath,
                                                  fullpath=fullpath,
-                                                 hashes=self.fast_hashes+
+                                                 hashes=self.fast_hashes +
                                                         self.full_hashes,
                                                  copy=copy):
             # Only link if filepath was added
