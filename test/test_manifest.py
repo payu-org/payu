@@ -500,6 +500,7 @@ def test_get_hashes():
 
     assert(set(hashes) == set(allhashes))
 
+
 def test_set_hash():
 
     # Revert to original config
@@ -518,7 +519,7 @@ def test_set_hash():
 
     # Remove existing manifests. Don't support changing
     # hashes and retaining manifests
-    shutil.rmtree( ctrldir/ 'manifests')
+    shutil.rmtree(ctrldir/'manifests')
 
     # Change full hash from md5 to sha256
     config['manifest']['fullhash'] = 'sha256'
@@ -540,7 +541,7 @@ def test_set_hash():
 
     # Remove existing manifests. Don't support changing
     # hashes and retaining manifests
-    shutil.rmtree( ctrldir/ 'manifests')
+    shutil.rmtree(ctrldir / 'manifests')
 
     # Change full hash from md5 to binhash
     config['manifest']['fullhash'] = 'binhash'
@@ -563,4 +564,3 @@ def test_hard_sweep():
     # Check all the correct directories have been removed
     assert(not (labdir / 'archive' / 'ctrl').is_dir())
     assert(not (labdir / 'work' / 'ctrl').is_dir())
-

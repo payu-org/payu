@@ -143,7 +143,7 @@ def make_restarts(fnames=None):
     restartdir = labdir / 'archive' / 'restarts'
     restartdir.mkdir(parents=True, exist_ok=True)
     if fnames is None:
-        fnames = ['restart_00{i}.bin'.format(i=i) for i in range(1,4)]
+        fnames = ['restart_00{i}.bin'.format(i=i) for i in range(1, 4)]
     for i, fname in enumerate(fnames):
         make_random_file(restartdir/fname, 5000**2 + i)
 
