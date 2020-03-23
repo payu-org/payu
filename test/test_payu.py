@@ -105,10 +105,10 @@ def test_movetree():
 
     tmptwo = testdir / 'tmp2'
 
+    payu.fsops.movetree(tmpdir, tmptwo)
+
     # Ensure top directories are distinct
     assert( tmpdir.stat().st_ino != tmptwo.stat().st_ino )
-
-    payu.fsops.movetree(tmpdir, tmptwo)
 
     # Ensure directory tree faithfully moved
     assert( treeinfo == savetree(tmptwo) )
