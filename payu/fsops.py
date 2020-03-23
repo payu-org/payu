@@ -54,12 +54,13 @@ def movetree(src, dst, symlinks=False):
             # XXX What about devices, sockets etc.?
         except OSError as why:
             errors.append((srcname, dstname, str(why)))
-        # catch the Error from the recursive copytree so that we can
+        # catch the Error from the recursive movetree so that we can
         # continue with other files
         except Error as err:
             errors.extend(err.args[0])
     if errors:
         raise Error(errors)
+
 
 def read_config(config_fname=None):
     """Parse input configuration file and return a config dict."""

@@ -26,7 +26,7 @@ import yaml
 
 # Local
 from payu import envmod
-from payu.fsops import mkdir_p, make_symlink, read_config
+from payu.fsops import mkdir_p, make_symlink, read_config, movetree
 from payu.scheduler.pbs import get_job_info, pbs_env_init, get_job_id
 from payu.models import index as model_index
 import payu.profilers
@@ -730,11 +730,7 @@ class Experiment(object):
         if os.path.exists(self.output_path):
             sys.exit('payu: error: Output path already exists.')
 
-        cmd = 'mv {work} {output}'.format(
-            work=self.work_path,
-            output=self.output_path
-        )
-        sp.check_call(shlex.split(cmd))
+        movetree(self.work_path, self.output_path)
 
         # Remove old restart files
         # TODO: Move to subroutine
