@@ -10,6 +10,7 @@
 # Standard library
 import errno
 import os
+import shutil
 import sys
 
 # Extensions
@@ -31,6 +32,34 @@ def mkdir_p(path):
         if exc.errno != errno.EEXIST:
             raise
 
+
+def movetree(src, dst, symlinks=False):
+    """
+    Code lifted from from shutil copytree
+    """
+    names = os.listdir(src)
+    os.makedirs(dst)
+    errors = []
+    for name in names:
+        srcname = os.path.join(src, name)
+        dstname = os.path.join(dst, name)
+        try:
+            if symlinks and os.path.islink(srcname):
+                linkto = os.readlink(srcname)
+                os.symlink(linkto, dstname)
+            elif os.path.isdir(srcname):
+                movetree(srcname, dstname, symlinks)
+            else:
+                shutil.move(srcname, dstname)
+            # XXX What about devices, sockets etc.?
+        except OSError as why:
+            errors.append((srcname, dstname, str(why)))
+        # catch the Error from the recursive copytree so that we can
+        # continue with other files
+        except Error as err:
+            errors.extend(err.args[0])
+    if errors:
+        raise Error(errors)
 
 def read_config(config_fname=None):
     """Parse input configuration file and return a config dict."""
