@@ -1,11 +1,11 @@
 version: 2.0
 jobs:
-    py36:
+    py37:
         working_directory: ~/circleci
         docker:
             - image: circleci/python
               environment:
-                PYTHON_VER: 3.6
+                PYTHON_VER: 3.7
 
         steps:
             - checkout
@@ -44,7 +44,7 @@ workflows:
     version: 2
     build_and_publsh:
         jobs:
-            - py36:
+            - py37:
                 filters:
                     tags:
                         only: /.*/
