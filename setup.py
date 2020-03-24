@@ -37,6 +37,7 @@ setup(
         'dateutil',
         'tenacity',
         'scipy',
+        'numpy >= 1.16.0',
     ],
     install_requires=[
         'f90nml >= 0.16',
