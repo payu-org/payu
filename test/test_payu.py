@@ -106,7 +106,7 @@ def test_movetree():
 
     treeinfo = savetree(tmpdir)
 
-    tmp_inode = tmpdir.stat().st_ino 
+    tmp_inode = tmpdir.stat().st_ino
 
     payu.fsops.movetree(tmpdir, tmptwo)
 

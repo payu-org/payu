@@ -43,15 +43,11 @@ def movetree(src, dst, symlinks=False):
     for name in names:
         srcname = os.path.join(src, name)
         dstname = os.path.join(dst, name)
-        try:
-            if symlinks and os.path.islink(srcname):
-                linkto = os.readlink(srcname)
-                os.symlink(linkto, dstname)
-            else:
-                shutil.move(srcname, dstname)
-            # XXX What about devices, sockets etc.?
-        except:
-            raise
+        if symlinks and os.path.islink(srcname):
+            linkto = os.readlink(srcname)
+            os.symlink(linkto, dstname)
+        else:
+            shutil.move(srcname, dstname)
 
     shutil.rmtree(src)
 
