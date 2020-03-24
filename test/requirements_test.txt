@@ -6,3 +6,4 @@ pylint
 mnctools
 scipy
 Sphinx
+numpy >= 1.16.0
