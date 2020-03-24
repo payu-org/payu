@@ -47,8 +47,6 @@ def movetree(src, dst, symlinks=False):
             if symlinks and os.path.islink(srcname):
                 linkto = os.readlink(srcname)
                 os.symlink(linkto, dstname)
-            elif os.path.isdir(srcname):
-                movetree(srcname, dstname, symlinks)
             else:
                 shutil.move(srcname, dstname)
             # XXX What about devices, sockets etc.?
@@ -60,6 +58,8 @@ def movetree(src, dst, symlinks=False):
             errors.extend(err.args[0])
     if errors:
         raise Error(errors)
+    else:
+        shutil.rmtree(src)
 
 
 def read_config(config_fname=None):
