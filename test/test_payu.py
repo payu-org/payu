@@ -1,3 +1,4 @@
+from io import StringIO
 import os
 from pathlib import Path
 import pytest
@@ -5,24 +6,18 @@ import shutil
 import stat
 import sys
 
-try:
-    # Python 2.x (str)
-    from cStringIO import StringIO
-except ImportError:
-    # Python 3.x (unicode)
-    from io import StringIO
-
-sys.path.insert(1, '../')
-import payu
-
 # Submodules
+import payu
 import payu.fsops
 import payu.laboratory
 
 from .common import testdir, tmpdir, ctrldir, labdir, workdir
 from .common import make_exe, make_inputs, make_restarts, make_all_files
 
+
+sys.path.insert(1, '../')
 verbose = False
+
 
 def setup_module(module):
     """
@@ -70,14 +65,17 @@ def scantree(path):
         else:
             yield entry
 
+
 def savetree(path):
     """
     Save a directory tree to a dict
     """
     result = {}
     for entry in scantree(path):
-        result[entry.name] = (Path(entry.path).relative_to(path), entry.stat().st_size)
+        result[entry.name] = (Path(entry.path).relative_to(path),
+                              entry.stat().st_size)
     return(result)
+
 
 # fsops tests
 def test_mkdir_p():
@@ -97,6 +95,7 @@ def test_mkdir_p():
     os.chmod(tmp_dir, stat.S_IWUSR)
     os.rmdir(tmp_dir)
 
+
 def test_movetree():
 
     make_all_files()
@@ -108,12 +107,13 @@ def test_movetree():
     payu.fsops.movetree(tmpdir, tmptwo)
 
     # Ensure top directories are distinct
-    assert( tmpdir.stat().st_ino != tmptwo.stat().st_ino )
+    assert(tmpdir.stat().st_ino != tmptwo.stat().st_ino)
 
     # Ensure directory tree faithfully moved
-    assert( treeinfo == savetree(tmptwo) )
+    assert(treeinfo == savetree(tmptwo))
 
     shutil.rmtree(tmptwo)
+
 
 def test_read_config():
     config_path = os.path.join('test', 'config_mom5.yaml')
@@ -130,6 +130,7 @@ def test_read_config():
     os.chmod(config_tmp, stat.S_IWUSR)
     config_file.close()
     os.remove(config_tmp)
+
 
 def test_make_symlink():
     tmp_path = 'tmp_file'
@@ -167,6 +168,7 @@ def test_make_symlink():
     os.remove(tmp_path)
     os.remove(tmp_alt_path)
 
+
 def test_splitpath():
 
     # Absolute path
@@ -181,9 +183,11 @@ def test_splitpath():
     paths = payu.fsops.splitpath('a')
     assert(paths == ('a',))
 
+
 def test_default_lab_path():
     # TODO
     pass
+
 
 def test_lab_new():
     # TODO: validate stdout
