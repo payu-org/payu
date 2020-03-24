@@ -35,11 +35,11 @@ def mkdir_p(path):
 
 def movetree(src, dst, symlinks=False):
     """
-    Code lifted from from shutil copytree
+    Code based on shutil copytree, but non-recursive
+    as uses move for contents of src directory
     """
     names = os.listdir(src)
     os.makedirs(dst)
-    errors = []
     for name in names:
         srcname = os.path.join(src, name)
         dstname = os.path.join(dst, name)
@@ -50,17 +50,10 @@ def movetree(src, dst, symlinks=False):
             else:
                 shutil.move(srcname, dstname)
             # XXX What about devices, sockets etc.?
-        except OSError as why:
-            errors.append((srcname, dstname, str(why)))
-        # catch the Error from the recursive movetree so that we can
-        # continue with other files
-        except Error as err:
-            errors.extend(err.args[0])
-    if errors:
-        raise Error(errors)
-    else:
-        shutil.rmtree(src)
+        except:
+            raise
 
+    shutil.rmtree(src)
 
 def read_config(config_fname=None):
     """Parse input configuration file and return a config dict."""

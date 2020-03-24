@@ -18,6 +18,8 @@ from .common import make_exe, make_inputs, make_restarts, make_all_files
 sys.path.insert(1, '../')
 verbose = False
 
+tmptwo = testdir / 'tmp2'
+
 
 def setup_module(module):
     """
@@ -50,6 +52,8 @@ def teardown_module(module):
     try:
         shutil.rmtree(tmpdir)
         print('removing tmp')
+        shutil.rmtree(tmptwo)
+        print('removing tmp2')
     except Exception as e:
         print(e)
 
@@ -102,17 +106,21 @@ def test_movetree():
 
     treeinfo = savetree(tmpdir)
 
-    tmptwo = testdir / 'tmp2'
+    tmp_inode = tmpdir.stat().st_ino 
 
     payu.fsops.movetree(tmpdir, tmptwo)
 
-    # Ensure top directories are distinct
-    assert(tmpdir.stat().st_ino != tmptwo.stat().st_ino)
+    # Ensure src directory removed
+    assert(not tmpdir.exists())
+
+    # Ensure dst directory has new inode number
+    assert(tmp_inode != tmptwo.stat().st_ino)
 
     # Ensure directory tree faithfully moved
     assert(treeinfo == savetree(tmptwo))
 
-    shutil.rmtree(tmptwo)
+    # Move tmp2 back to tmp
+    shutil.move(tmptwo, tmpdir)
 
 
 def test_read_config():
