@@ -1,11 +1,11 @@
 .. _manifests:
 
-=====
+=========
 Manifests
-=====
+=========
 
 Introduction
-========
+============
 
 payu automatically generates and updates manifest files in the ``manifest``
 subdirectory in the control directory. The manifests are stored in YAML_ 
@@ -18,6 +18,8 @@ tracks restart files.
 Only files in the temporary ``work`` directory are tracked by manifests. Any
 files that are directly accessed from other locations in the filesystem
 within models or other programs **are not tracked**
+
+.. _YAML: http://www.yaml.org/
 
 Manifest contents
 =================
