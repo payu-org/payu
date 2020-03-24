@@ -51,7 +51,7 @@ workflows:
 
             - publish:
                 requires:
-                    - py36
+                    - py37
                 filters:
                     tags:
                         only: /.*/
