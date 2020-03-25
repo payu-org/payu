@@ -10,6 +10,7 @@
 # Standard library
 import errno
 import os
+import shutil
 import sys
 
 # Extensions
@@ -31,6 +32,24 @@ def mkdir_p(path):
         if exc.errno != errno.EEXIST:
             raise
 
+
+def movetree(src, dst, symlinks=False):
+    """
+    Code based on shutil copytree, but non-recursive
+    as uses move for contents of src directory
+    """
+    names = os.listdir(src)
+    os.makedirs(dst)
+    for name in names:
+        srcname = os.path.join(src, name)
+        dstname = os.path.join(dst, name)
+        if symlinks and os.path.islink(srcname):
+            linkto = os.readlink(srcname)
+            os.symlink(linkto, dstname)
+        else:
+            shutil.move(srcname, dstname)
+
+    shutil.rmtree(src)
 
 def read_config(config_fname=None):
     """Parse input configuration file and return a config dict."""

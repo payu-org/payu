@@ -10,6 +10,7 @@ import multiprocessing
 import os
 import resource as res
 import shlex
+import shutil
 import subprocess as sp
 import sys
 from itertools import count
@@ -72,18 +73,13 @@ class Fms(Model):
         super(Fms, self).archive()
 
         # Remove the 'INPUT' path
-        cmd = 'rm -rf {work}'.format(work=self.work_input_path)
-        sp.check_call(shlex.split(cmd))
+        shutil.rmtree(self.work_input_path, ignore_errors=True)
 
         # Archive restart files before processing model output
         if os.path.isdir(self.restart_path):
             os.rmdir(self.restart_path)
 
-        cmd = 'mv {work} {restart}'.format(
-            work=self.work_restart_path,
-            restart=self.restart_path
-        )
-        sp.check_call(shlex.split(cmd))
+        shutil.move(self.work_restart_path, self.restart_path)
 
     def collate(self):
 

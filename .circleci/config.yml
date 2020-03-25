@@ -3,9 +3,9 @@ jobs:
     py36:
         working_directory: ~/circleci
         docker:
-            - image: circleci/python
+            - image: circleci/python:3.6.9
               environment:
-                PYTHON_VER: 3.6
+                PYTHON_VER: 3.6.9
 
         steps:
             - checkout
