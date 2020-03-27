@@ -5,7 +5,7 @@ package:
 build:
     noarch: python
     number: {{ GIT_DESCRIBE_NUMBER }}
-    script: python -m pip install --no-deps --ignore-installed .
+    script: {{ PYTHON }}  -m pip install --no-deps --ignore-installed .
 
 source:
     git_url: ../
