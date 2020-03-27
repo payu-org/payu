@@ -3,7 +3,7 @@ jobs:
     py36:
         working_directory: ~/circleci
         docker:
-            - image: circleci/python:3.6.9
+            - image: continuumio/miniconda3
               environment:
                 PYTHON_VER: 3.6.9
 
@@ -11,34 +11,31 @@ jobs:
             - checkout
 
             - run: |
-                wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O conda.sh
-                bash conda.sh -b -p ~/conda
-                ~/conda/bin/conda update --all
-                ~/conda/bin/conda config --system --add channels conda-forge
-                ~/conda/bin/conda config --system --add channels coecms
-                ~/conda/bin/conda install --yes conda-build conda-verify
+                conda config --system --add channels conda-forge
+                conda config --system --add channels coecms
+                conda install conda-build conda-verify
 
             - run: |
-                ~/conda/bin/conda build -c coecms conda --python=${PYTHON_VER}
+                conda build conda
 
             - run: |
                 mkdir ~/artefacts
-                cp $(~/conda/bin/conda build conda --python=${PYTHON_VER} --output) ~/artefacts
+                cp $(conda build conda --output) ~/artefacts
 
             - persist_to_workspace:
                 root: ~/artefacts
                 paths: '*'
 
     publish:
-        working_directory: /circleci
+        working_directory: ~/circleci
         docker:
-            - image: scottwales/conda-build
+            - image: continuumio/miniconda3
         steps:
             - attach_workspace:
-                at: /artefacts
+                at: ~/artefacts
 
             - run:
-                anaconda --token "${ANACONDA_TOKEN}" upload --user "${ANACONDA_USER}" /artefacts/*.tar.bz2
+                anaconda --token "${ANACONDA_TOKEN}" upload --user "${ANACONDA_USER}" ~/artefacts/*.tar.bz2
 
 workflows:
     version: 2

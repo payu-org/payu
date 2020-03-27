@@ -1,11 +1,16 @@
 package:
     name: payu
-    version: {{ GIT_DESCRIBE_TAG}}
+    version: {{ GIT_DESCRIBE_TAG }}
 
 build:
     noarch: python
     number: {{ GIT_DESCRIBE_NUMBER }}
-    script: python -m pip install --no-deps --ignore-installed .
+    script: "{{ PYTHON }}  -m pip install . --no-deps"
+    entry_points:
+        - payu = payu.cli:parse
+        - payu-run = payu.subcommands.run_cmd:runscript
+        - payu-collate = payu.subcommands.collate_cmd:runscript
+        - payu-profile = payu.subcommands.profile_cmd:runscript
 
 source:
     git_url: ../
@@ -31,8 +36,8 @@ requirements:
 test:
     imports:
         - payu
-    # commands:
-    #     - payu list
+    commands:
+        - payu list
 
 
 about:
