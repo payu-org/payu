@@ -20,7 +20,7 @@ jobs:
 
             - run: |
                 mkdir ~/artefacts
-                conda build conda --output-folder ~/artefacts
+                ~/conda/bin/conda build conda --output-folder ~/artefacts
 
             - persist_to_workspace:
                 root: ~/artefacts
