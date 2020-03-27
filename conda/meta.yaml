@@ -6,6 +6,11 @@ build:
     noarch: python
     number: {{ GIT_DESCRIBE_NUMBER }}
     script: "{{ PYTHON }}  -m pip install . --no-deps"
+    entry_points:
+        - payu = payu.cli:parse
+        - payu-run = payu.subcommands.run_cmd:runscript
+        - payu-collate = payu.subcommands.collate_cmd
+        - payu-profile = payu.subcommands.profile_cmd
 
 source:
     git_url: ../
