@@ -19,23 +19,20 @@ jobs:
                 ~/conda/bin/conda install --yes conda-build conda-verify
 
             - run: |
-                ~/conda/bin/conda build -c coecms conda --python=${PYTHON_VER}
-
-            - run: |
                 mkdir ~/artefacts
-                cp $(~/conda/bin/conda build conda --python=${PYTHON_VER} --output) ~/artefacts
+                cp $(~/conda/bin/conda build . --output) ~/artefacts
 
             - persist_to_workspace:
                 root: ~/artefacts
                 paths: '*'
 
     publish:
-        working_directory: /circleci
+        working_directory: ~/circleci
         docker:
             - image: scottwales/conda-build
         steps:
             - attach_workspace:
-                at: /artefacts
+                at: ~/artefacts
 
             - run:
                 anaconda --token "${ANACONDA_TOKEN}" upload --user "${ANACONDA_USER}" /artefacts/*.tar.bz2
