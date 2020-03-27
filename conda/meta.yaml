@@ -9,8 +9,8 @@ build:
     entry_points:
         - payu = payu.cli:parse
         - payu-run = payu.subcommands.run_cmd:runscript
-        - payu-collate = payu.subcommands.collate_cmd
-        - payu-profile = payu.subcommands.profile_cmd
+        - payu-collate = payu.subcommands.collate_cmd:runscript
+        - payu-profile = payu.subcommands.profile_cmd:runscript
 
 source:
     git_url: ../
