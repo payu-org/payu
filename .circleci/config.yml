@@ -20,7 +20,7 @@ jobs:
 
             - run: |
                 mkdir ~/artefacts
-                cp $(~/conda/bin/conda build . --output) ~/artefacts
+                cp $(~/conda/bin/conda build conda --output) ~/artefacts
 
             - persist_to_workspace:
                 root: ~/artefacts
