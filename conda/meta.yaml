@@ -1,6 +1,6 @@
 package:
     name: payu
-    version: {{ GIT_DESCRIBE_TAG}}
+    version: {{ GIT_DESCRIBE_TAG }}
 
 build:
     noarch: python
