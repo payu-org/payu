@@ -20,7 +20,7 @@ jobs:
 
             - run: |
                 mkdir ~/artefacts
-                cp $(~/conda/bin/conda build conda --output) ~/artefacts
+                cp $(conda build conda --output) ~/artefacts
 
             - persist_to_workspace:
                 root: ~/artefacts
@@ -35,7 +35,7 @@ jobs:
                 at: ~/artefacts
 
             - run:
-                anaconda --token "${ANACONDA_TOKEN}" upload --user "${ANACONDA_USER}" /artefacts/*.tar.bz2
+                anaconda --token "${ANACONDA_TOKEN}" upload --user "${ANACONDA_USER}" ~/artefacts/*.tar.bz2
 
 workflows:
     version: 2
