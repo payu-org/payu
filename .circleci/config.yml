@@ -36,7 +36,7 @@ jobs:
                 conda install anaconda-client
 
             - run:
-                conda --token "${ANACONDA_TOKEN}" upload --user "${ANACONDA_USER}" ~/artefacts/*.tar.bz2
+                anaconda --token "${ANACONDA_TOKEN}" upload --user "${ANACONDA_USER}" ~/artefacts/*.tar.bz2
 
 workflows:
     version: 2
