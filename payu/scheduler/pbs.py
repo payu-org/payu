@@ -140,13 +140,12 @@ def find_mounts(paths, mounts):
 
     for p in paths:
         for m in mounts:
-            # Relevant project code is the next element of the path
-            # after the mount point
-            proj_match = re.match('^' + m + '.*?' + os.path.sep + '(.*?)'
-                                  + '(' + os.path.sep + ')', p)
-            if proj_match:
-                storages.add(make_mount_string(encode_mount(m),
-                                               proj_match.group(1)))
+            if p.startswith(m):
+                # Relevant project code is the next element of the path
+                # after the mount point. DO NOT USE os.path.split as it
+                # is not consistent with trailing slash
+                proj = os.path.relpath(p, m).split(os.path.sep)[0]
+                storages.add(make_mount_string(encode_mount(m), proj))
                 break
 
     return storages
