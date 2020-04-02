@@ -363,6 +363,10 @@ Postprocessing
       User-defined command to be called after model archival, but prior to any
       postprocessing operations, such as ``payu collate``.
 
+   ``error``
+      User-defined command to be called if model does not run correctly and
+      returns an error code. Useful for automatic error postmortem.
+
 ``postscript``
    This is an older, less user-friendly, method to submit a script after ``payu
    collate`` has completed. Unlike the ``userscripts``, it does not support
