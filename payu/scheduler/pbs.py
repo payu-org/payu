@@ -145,7 +145,7 @@ def find_mounts(paths, mounts):
                 # after the mount point. DO NOT USE os.path.split as it
                 # is not consistent with trailing slash
                 proj = os.path.relpath(p, m).split(os.path.sep)[0]
-                storages.add(make_mount_string(encode_mount(m),proj))
+                storages.add(make_mount_string(encode_mount(m), proj))
                 break
 
     return storages
