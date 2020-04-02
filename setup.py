@@ -51,6 +51,14 @@ setup(
         'pylint',
         'Sphinx',
     ],
+    entry_points={
+        'console_scripts': [
+            'payu = payu.cli:parse',
+            'payu-run = payu.subcommands.run_cmd:runscript',
+            'payu-collate = payu.subcommands.collate_cmd:runscript',
+            'payu-profile = payu.subcommands.profile_cmd:runscript',
+        ]
+    },
     classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: Apache Software License',
