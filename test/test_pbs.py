@@ -119,6 +119,12 @@ def test_find_mounts():
 
     assert(pbs.find_mounts(paths, mounts) == set())
 
+    # Test without trailing slash
+    paths = ['/f/data/x00', ]
+    mounts = ['/f/data', ]
+
+    assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
+
 
 def test_run():
 
@@ -146,7 +152,7 @@ def test_run():
         config['storage']['/f/data'] = ['x00']
 
         config['laboratory'] = '/f/data/c000/blah'
-        config['shortpath'] = '/f/data/y00/blah/blah'
+        config['shortpath'] = '/f/data/y00'
 
         cmd = pbs.generate_command(payu_cmd, config, pbs_vars, python_exe)
 
