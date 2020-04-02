@@ -675,6 +675,10 @@ class Experiment(object):
             # Create the symlink to the logs if it does not exist
             make_symlink(self.archive_path, self.archive_sym_path)
 
+            error_script = self.userscripts.get('error')
+            if error_script:
+                self.run_userscript(error_script)
+
             # Terminate payu
             sys.exit('payu: Model exited with error code {0}; aborting.'
                      ''.format(rc))
