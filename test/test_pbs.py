@@ -125,6 +125,13 @@ def test_find_mounts():
 
     assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
 
+    # Test legacy naming that allows for extra characters at the
+    # end of mount path
+    paths = ['/f/data1a/x00', ]
+    mounts = ['/f/data', ]
+
+    assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
+
 
 def test_run():
 
