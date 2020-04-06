@@ -141,10 +141,12 @@ def find_mounts(paths, mounts):
     for p in paths:
         for m in mounts:
             if p.startswith(m):
+                # Find the number of path elements in the mount string
+                offset = len(m.split(os.path.sep))
                 # Relevant project code is the next element of the path
                 # after the mount point. DO NOT USE os.path.split as it
                 # is not consistent with trailing slash
-                proj = os.path.relpath(p, m).split(os.path.sep)[0]
+                proj = p.split(os.path.sep)[offset]
                 storages.add(make_mount_string(encode_mount(m), proj))
                 break
 
