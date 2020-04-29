@@ -51,6 +51,7 @@ def movetree(src, dst, symlinks=False):
 
     shutil.rmtree(src)
 
+
 def read_config(config_fname=None):
     """Parse input configuration file and return a config dict."""
 
