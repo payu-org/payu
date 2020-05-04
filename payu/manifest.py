@@ -246,6 +246,7 @@ class PayuManifest(YaManifest):
             hashes.append(self.get(filepath, hashfn))
         return hashes
 
+
 class Manifest(object):
     """
     A Manifest class which stores all manifests for file tracking and
@@ -412,11 +413,11 @@ class Manifest(object):
         code from directly calling anything in PayuManifest.
         """
         filepath = os.path.normpath(filepath)
-        if self.manifests[manifest].add_filepath(filepath=filepath,
-                                                 fullpath=fullpath,
-                                                 hashes=self.fast_hashes +
-                                                        self.full_hashes,
-                                                 copy=copy):
+        if self.manifests[manifest].add_filepath(
+                filepath=filepath,
+                fullpath=fullpath,
+                hashes=self.fast_hashes + self.full_hashes,
+                copy=copy):
             # Only link if filepath was added
             self.manifests[manifest].make_link(filepath)
 
