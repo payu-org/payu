@@ -376,6 +376,12 @@ Postprocessing
 Miscellaneous
 =============
 
+``restart``
+   Specify the full path to a restart directory from which to start
+   the run. This is known as a "warm start". This option has no effect 
+   if there is an existing restart directory in ``archive``, and so 
+   does not **have** to be removed for subsequent submissions.
+
 ``debug`` (*Default:* ``False``)
    Enable the debugger for any ``mpirun`` jobs. Equivalent to ``mpirun
    --debug``. At NCI this defaults to a Totalview session. This will
