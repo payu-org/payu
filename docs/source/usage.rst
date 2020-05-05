@@ -196,6 +196,10 @@ is 1, and so on.
 Running jobs are stored in laboratory's ``work`` subdirectory, and completed
 runs are stored in the ``archive`` subdirectory.
 
+If you have instructed ``payu`` to run for a number of resubmits but for some
+reason need to stop a run after the current run has completed create a file
+called ``stop_run`` in the control directory. 
+
 It is possible to require that a run reproduce an existing run using the ``-r``
 flag:
 
