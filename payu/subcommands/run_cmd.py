@@ -16,7 +16,7 @@ arguments = [args.model, args.config, args.initial, args.nruns,
 
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
-           reproduce, force):
+           reproduce=False, force=False):
 
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
