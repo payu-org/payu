@@ -98,7 +98,19 @@ reproduce = {
     'parameters': {
         'action':   'store_true',
         'dest':     'reproduce',
-        'default':  None,
+        'default':  False,
         'help':     'Only run if manifests are correct',
+    }
+}
+
+
+# Force run to proceed despite existing directories
+force = {
+    'flags': ('--force', '-f'),
+    'parameters': {
+        'action':   'store_true',
+        'dest':     'force',
+        'default':  False,
+        'help':     'Force run to proceed, overwriting existing directories',
     }
 }
