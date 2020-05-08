@@ -91,7 +91,8 @@ def payu_setup(model_type=None,
                lab_path=None,
                force_archive=None,
                reproduce=None,
-               sweep=True):
+               sweep=True,
+               force=False):
     """
     Wrapper around original setup command to provide default arguments
     and run in ctrldir
@@ -106,7 +107,8 @@ def payu_setup(model_type=None,
                            config_path,
                            lab_path,
                            force_archive,
-                           reproduce)
+                           reproduce,
+                           force)
 
 
 def write_config(config):
