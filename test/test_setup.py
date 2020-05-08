@@ -120,3 +120,17 @@ def test_setup():
     assert setup_error.type == SystemExit
 
     payu_setup(lab_path=str(labdir), sweep=False, force=True)
+
+    assert(workdir.is_symlink())
+    assert(workdir.is_dir())
+    assert((workdir/exe).resolve() == (bindir/exe).resolve())
+    workdirfull = workdir.resolve()
+
+    config_files = payu.models.test.config_files
+
+    for f in config_files + ['config.yaml']:
+        assert((workdir/f).is_file())
+
+    for i in range(1, 4):
+        assert((workdir/'input_00{i}.bin'.format(i=i)).stat().st_size
+               == 1000**2 + i)
