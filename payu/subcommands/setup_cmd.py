@@ -17,7 +17,7 @@ arguments = [
 ]
 
 
-def runcmd(model_type, config_path, lab_path, force_archive, 
+def runcmd(model_type, config_path, lab_path, force_archive,
            reproduce=False, force=False):
 
     lab = Laboratory(model_type, config_path, lab_path)

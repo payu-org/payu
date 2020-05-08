@@ -100,9 +100,9 @@ def payu_setup(model_type=None,
     with cd(ctrldir):
         if sweep:
             payu_sweep(model_type=None,
-                    config_path=None,
-                    hard_sweep=False,
-                    lab_path=str(labdir))
+                       config_path=None,
+                       hard_sweep=False,
+                       lab_path=str(labdir))
         payu_setup_orignal(model_type,
                            config_path,
                            lab_path,

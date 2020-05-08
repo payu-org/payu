@@ -14,7 +14,8 @@ from payu import fsops
 title = 'collate'
 parameters = {'description': 'Collate tiled output into single output files'}
 
-arguments = [args.model, args.config, args.initial, args.laboratory, args.dir_path]
+arguments = [args.model, args.config, args.initial, args.laboratory, 
+             args.dir_path]
 
 
 def runcmd(model_type, config_path, init_run, lab_path, dir_path):
@@ -94,14 +95,14 @@ def runscript():
 
     run_args = parser.parse_args()
 
-    pbs_vars = cli.set_env_vars(run_args.init_run, 
-                                run_args.lab_path, 
+    pbs_vars = cli.set_env_vars(run_args.init_run,
+                                run_args.lab_path,
                                 run_args.dir_path)
 
     for var in pbs_vars:
         os.environ[var] = str(pbs_vars[var])
 
-    lab = Laboratory(run_args.model_type, 
+    lab = Laboratory(run_args.model_type,
                      run_args.config_path,
                      run_args.lab_path)
     expt = Experiment(lab)

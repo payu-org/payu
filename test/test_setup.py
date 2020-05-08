@@ -20,6 +20,7 @@ verbose = True
 
 config = copy.deepcopy(config_orig)
 
+
 def make_config_files():
     """
     Create files required for test model
@@ -115,7 +116,8 @@ def test_setup():
         assert((workdir/'input_00{i}.bin'.format(i=i)).stat().st_size
                == 1000**2 + i)
 
-    with pytest.raises(SystemExit, match="work path already exists") as setup_error:
+    with pytest.raises(SystemExit, 
+                       match="work path already exists") as setup_error:
         payu_setup(lab_path=str(labdir), sweep=False, force=False)
     assert setup_error.type == SystemExit
 

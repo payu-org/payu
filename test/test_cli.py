@@ -16,11 +16,13 @@ verbose = True
 
 parser = None
 
+
 def test_generate_parser():
 
     global parser
 
     parser = payu.cli.generate_parser()
+
 
 def test_parse():
 
