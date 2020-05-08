@@ -90,16 +90,18 @@ def payu_setup(model_type=None,
                config_path=None,
                lab_path=None,
                force_archive=None,
-               reproduce=None):
+               reproduce=None,
+               sweep=True):
     """
     Wrapper around original setup command to provide default arguments
     and run in ctrldir
     """
     with cd(ctrldir):
-        payu_sweep(model_type=None,
-                   config_path=None,
-                   hard_sweep=False,
-                   lab_path=str(labdir))
+        if sweep:
+            payu_sweep(model_type=None,
+                    config_path=None,
+                    hard_sweep=False,
+                    lab_path=str(labdir))
         payu_setup_orignal(model_type,
                            config_path,
                            lab_path,
