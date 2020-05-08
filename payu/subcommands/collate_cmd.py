@@ -14,7 +14,7 @@ from payu import fsops
 title = 'collate'
 parameters = {'description': 'Collate tiled output into single output files'}
 
-arguments = [args.model, args.config, args.initial, args.laboratory, 
+arguments = [args.model, args.config, args.initial, args.laboratory,
              args.dir_path]
 
 
