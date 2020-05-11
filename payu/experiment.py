@@ -1,5 +1,4 @@
-"""payu.experiment
-   ===============
+"""payu.experiment ===============
 
    Interface to an individual experiment managed by payu
 
@@ -45,8 +44,9 @@ default_restart_history = 5
 
 class Experiment(object):
 
-    def __init__(self, lab, reproduce=None):
+    def __init__(self, lab, reproduce=False, force=False):
         self.lab = lab
+        self.force = force
 
         self.start_time = datetime.datetime.now()
 
@@ -87,7 +87,7 @@ class Experiment(object):
 
         self.set_output_paths()
 
-        if reproduce is None:
+        if not reproduce:
             # check environment for reproduce flag under PBS
             reproduce = os.environ.get('PAYU_REPRODUCE', False)
 
@@ -379,9 +379,14 @@ class Experiment(object):
 
         # Confirm that no work path already exists
         if os.path.exists(self.work_path):
-            sys.exit('payu: error: work path already exists: {path}.\n'
-                     '             payu sweep and then payu run'
-                     .format(path=self.work_path))
+            if self.force:
+                print('payu: work path already exists.\n'
+                      '      Sweeping as --force option is True.')
+                self.sweep()
+            else:
+                sys.exit('payu: error: work path already exists: {path}.\n'
+                         '             payu sweep and then payu run'
+                         .format(path=self.work_path))
 
         mkdir_p(self.work_path)
 

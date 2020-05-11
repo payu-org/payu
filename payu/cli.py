@@ -30,6 +30,20 @@ DEFAULT_CONFIG = 'config.yaml'
 def parse():
     """Parse the command line inputs and execute the subcommand."""
 
+    parser = generate_parser()
+
+    # Display help if no arguments are provided
+    if len(sys.argv) == 1:
+        parser.print_help()
+    else:
+        args = vars(parser.parse_args())
+        run_cmd = args.pop('run_cmd')
+        run_cmd(**args)
+
+
+def generate_parser():
+    """Parse the command line inputs generate and return parser."""
+
     # Build the list of subcommand modules
     modnames = [mod for (_, mod, _)
                 in pkgutil.iter_modules(payu.subcommands.__path__,
@@ -52,14 +66,7 @@ def parse():
         for arg in cmd.arguments:
             cmd_parser.add_argument(*arg['flags'], **arg['parameters'])
 
-    # Display help if no arguments are provided
-    if len(sys.argv) == 1:
-        parser.print_help()
-    else:
-        args = vars(parser.parse_args())
-        run_cmd = args.pop('run_cmd')
-        run_cmd(**args)
-
+    return parser
 
 def get_model_type(model_type, config):
     """Determine and validate the active model type."""

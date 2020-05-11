@@ -12,14 +12,16 @@ arguments = [
     args.config,
     args.laboratory,
     args.force_archive,
-    args.reproduce
+    args.reproduce,
+    args.force
 ]
 
 
-def runcmd(model_type, config_path, lab_path, force_archive, reproduce):
+def runcmd(model_type, config_path, lab_path, force_archive,
+           reproduce=False, force=False):
 
     lab = Laboratory(model_type, config_path, lab_path)
-    expt = Experiment(lab, reproduce=reproduce)
+    expt = Experiment(lab, reproduce=reproduce, force=force)
 
     expt.setup(force_archive=force_archive)
 

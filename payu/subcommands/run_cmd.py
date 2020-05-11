@@ -12,10 +12,11 @@ title = 'run'
 parameters = {'description': 'Run the model experiment'}
 
 arguments = [args.model, args.config, args.initial, args.nruns,
-             args.laboratory, args.reproduce]
+             args.laboratory, args.reproduce, args.force]
 
 
-def runcmd(model_type, config_path, init_run, n_runs, lab_path, reproduce):
+def runcmd(model_type, config_path, init_run, n_runs, lab_path,
+           reproduce=False, force=False):
 
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
@@ -114,7 +115,7 @@ def runscript():
 
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)
-    expt = Experiment(lab, reproduce=run_args.reproduce)
+    expt = Experiment(lab, reproduce=run_args.reproduce, force=run_args.force)
 
     n_runs_per_submit = expt.config.get('runspersub', 1)
     subrun = 1
