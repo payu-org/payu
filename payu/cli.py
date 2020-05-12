@@ -87,7 +87,7 @@ def get_model_type(model_type, config):
 
 
 def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
-                 reproduce=None):
+                 reproduce=False, force=False):
     """Construct the environment variables used by payu for resubmissions."""
     payu_env_vars = {}
 
@@ -128,6 +128,9 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
 
     if reproduce:
         payu_env_vars['PAYU_REPRODUCE'] = reproduce
+
+    if force:
+        payu_env_vars['PAYU_FORCE'] = force
 
     # Pass through important module related environment variables
     module_env_vars = ['MODULESHOME', 'MODULES_CMD', 'MODULEPATH', 'MODULEV']

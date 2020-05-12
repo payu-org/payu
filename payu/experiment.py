@@ -46,7 +46,12 @@ class Experiment(object):
 
     def __init__(self, lab, reproduce=False, force=False):
         self.lab = lab
-        self.force = force
+
+        if not force:
+            # check environment for force flag under PBS
+            self.force = os.environ.get('PAYU_FORCE', False)
+        else:
+            self.force = force
 
         self.start_time = datetime.datetime.now()
 
