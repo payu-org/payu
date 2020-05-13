@@ -9,9 +9,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(os.pardir)))
 
 # Sphinx setup
 #needs_sphinx = '1.0'
-extensions = ['sphinx.ext.autodoc', 
-              'sphinx.ext.ifconfig', 
-              'sphinx.ext.viewcode', 
+extensions = ['sphinx.ext.autodoc',
+              'sphinx.ext.ifconfig',
+              'sphinx.ext.viewcode',
               'sphinx.ext.autosectionlabel']
 autosectionlabel_maxdepth = 2
 templates_path = ['_templates']
