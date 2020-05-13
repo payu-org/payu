@@ -25,23 +25,23 @@ from test.common import make_exe, make_inputs, make_restarts, make_all_files
 verbose = True
 
 # From tutorial_barotropic_gyre
-data = {                   
-    "parm01": {     
+data = {
+    "parm01": {
         "viscah": 400.0,
         "f0": 0.0001,
         "beta": 1e-11,
         "rhoconst": 1000.0,
         "gbaro": 9.81,
         "rigidlid": False,
-        "implicitfreesurface": True,   
+        "implicitfreesurface": True,
         "tempstepping": False,
         "saltstepping": False
-    },              
-    "parm02": {     
+    },
+    "parm02": {
         "cg2dtargetresidual": 1e-07,
         "cg2dmaxiters": 1000
-    },              
-    "parm03": {     
+    },
+    "parm03": {
         "niter0": 0,
         "ntimesteps": 10,
         "deltat": 1200.0,
@@ -50,25 +50,26 @@ data = {
         "dumpfreq": 12000.0,
         "monitorfreq": 1200.0,
         "monitorselect": 2
-    },                       
-    "parm04": {       
+    },
+    "parm04": {
         "usingcartesiangrid": True,
-        "delx": [ 20000. ] * 62,   
-        "dely": [ 20000. ] * 62,  
+        "delx": [ 20000. ] * 62,
+        "dely": [ 20000. ] * 62,
         "xgorigin": -20000.0,
         "ygorigin": -20000.0,
         "delr": 5000.0
-    },                             
-    "parm05": {     
+    },
+    "parm05": {
         "bathyfile": "bathy.bin",
         "zonalwindfile": "windx_cosy.bin",
         "meridwindfile": None
-    }               
-}                 
+    }
+}
 
 config = copy.deepcopy(config_orig)
 
 config['model'] = 'mitgcm'
+
 
 def make_config_files():
     """
@@ -121,9 +122,10 @@ def make_pickup_names(istep):
     return ['pickup.{:010d}.001.001.{}'.format(istep, 
              type) for type in ['data', 'meta']]
 
+
 def test_make_pickup_names():
-    assert(make_pickup_names(10) == [ 'pickup.0000000010.001.001.data',  
-                                      'pickup.0000000010.001.001.meta' ])
+    assert(make_pickup_names(10) == ['pickup.0000000010.001.001.data',  
+                                     'pickup.0000000010.001.001.meta' ])
 
 # These are integration tests. They have an undesirable dependence on each
 # other. It would be possible to make them independent, but then they'd
@@ -187,7 +189,6 @@ def test_setup():
 
     # Check manifest in work directory is the same as control directory
     assert(manifests == get_manifests(workdir/'manifests'))
-
 
     # Sweep workdir and recreate
     sweep_work()
@@ -330,6 +331,5 @@ def test_setup_change_deltat():
     # pickup files in the work directory, as the nIter is the same
     matchstr = '.*Timestep at end identical to previous pickups.*'
     with pytest.raises(SystemExit, match=matchstr) as setup_error:
-    # with pytest.raises(SystemExit) as setup_error:
         payu_setup(lab_path=str(labdir))
     assert setup_error.type == SystemExit
