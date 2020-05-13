@@ -120,7 +120,7 @@ class Mitgcm(Model):
 
                 if n_timesteps is None:
                     print("Calculated n_timesteps from starttime and endtime")
-                    n_timesteps = (t_end - t_start) // dt
+                    n_timesteps = (t_end - t_start) / dt
             else:
                 # Assume n_timesteps and dt set correctly
                 pass
@@ -138,14 +138,14 @@ class Mitgcm(Model):
                 t_start = n_iter0 * dt
 
         # Check if deltat has changed
-        if n_iter0 != t_start // dt:
+        if n_iter0 != t_start / dt:
 
             # Specify a pickup suffix using previous niter0
             data_nml['parm03']['pickupsuff'] = '{:010d}'.format(n_iter0)
 
             n_iter0_previous = n_iter0
 
-            n_iter0 = t_start // dt
+            n_iter0 = t_start / dt
 
             if n_iter0 * dt != t_start:
                 print('payu : error: Timestep changed to {dt}. New timestep '
@@ -154,11 +154,11 @@ class Mitgcm(Model):
                 sys.exit(1)
 
             if n_iter0 + n_timesteps == n_iter0_previous:
-                print('payu : error: Timestep changed to {dt}. '
+                mesg=('payu : error: Timestep changed to {dt}. '
                       'Timestep at end identical to previous pickups: '
-                      '{niter}'.format(dt=dt, niter=(n_iter0 + n_timesteps)))
-                print('This would overwrite previous pickups')
-                sys.exit(1)
+                      '{niter}\nThis would overwrite previous '
+                      'pickups'.format(dt=dt, niter=(n_iter0 + n_timesteps)))
+                sys.exit(mesg)
 
         t_end = t_start + dt * n_timesteps
         pchkpt_freq = t_end - t_start
