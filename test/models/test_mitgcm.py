@@ -119,7 +119,7 @@ def teardown_module(module):
 
 def make_pickup_names(istep):
 
-    return ['pickup.{:010d}.001.001.{}'.format(istep, type) 
+    return ['pickup.{:010d}.001.001.{}'.format(istep, type)
             for type in ['data', 'meta']]
 
 

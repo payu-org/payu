@@ -154,10 +154,10 @@ class Mitgcm(Model):
                 sys.exit(1)
 
             if n_iter0 + n_timesteps == n_iter0_previous:
-                mesg=('payu : error: Timestep changed to {dt}. '
-                      'Timestep at end identical to previous pickups: '
-                      '{niter}\nThis would overwrite previous '
-                      'pickups'.format(dt=dt, niter=(n_iter0 + n_timesteps)))
+                mesg = ('payu : error: Timestep changed to {dt}. '
+                        'Timestep at end identical to previous pickups: '
+                        '{niter}\nThis would overwrite previous '
+                        'pickups'.format(dt=dt, niter=(n_iter0 + n_timesteps)))
                 sys.exit(mesg)
 
         t_end = t_start + dt * n_timesteps
