@@ -150,17 +150,16 @@ created manually:
 Running your experiment
 =======================
 
-Once the laboratory has been created and the experiment has been configured, you
-can check that the paths have been correctly specified by running::
+Once the laboratory has been created and the experiment has been configured, as 
+an optioal step you can check that the paths have been correctly specified by 
+running::
 
     payu  setup
 
 This creates the temporary ``work`` directory and is done automatically when
-the model is run. If there any errors these can be fixed. ``payu`` will not
-run the model if there is an existing ``work`` directory, so this must be
-removed like so::
-
-    payu sweep
+the model is run. If there any errors in the configuration, such as incorrect 
+or missing paths, these can be fixed. ``payu`` will not run the model if there 
+is an existing ``work`` directory, so this must be removed (see :ref:`Cleaning up`).
 
 The ``setup`` command will also generate manifest files in the ``manifest``
 directory. The manifest files track the executable, input and restart files used
@@ -174,6 +173,11 @@ Once you are satisfied the configuration is correct, and there is no existing
    payu run
 
 This will run the model once and store the output in the ```archive``` directory.
+
+Optionally is there is an existing ``work`` directory the ``-f/--force`` flag 
+will automatically ``sweep`` any existing ``work`` directory::
+
+   payu run -f
 
 To continue the simulation from its last point, type ``payu run`` again.
 
@@ -200,8 +204,8 @@ If you have instructed ``payu`` to run for a number of resubmits but for some
 reason need to stop a run after the current run has completed create a file
 called ``stop_run`` in the control directory. 
 
-It is possible to require that a run reproduce an existing run using the ``-r``
-flag:
+It is possible to require that a run reproduce an existing run using the 
+``-r/--reproduce`` flag:
 
   payu run -r
 
@@ -230,7 +234,6 @@ command::
 This will delete the contents of ``work`` and move any model and scheduler logs
 into a ``pbs_logs`` directory.  Any model output in ``archive`` will not be
 deleted.
-
 
 Deleting an experiment archive
 ------------------------------
