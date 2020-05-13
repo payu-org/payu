@@ -53,8 +53,8 @@ data = {
     },
     "parm04": {
         "usingcartesiangrid": True,
-        "delx": [ 20000. ] * 62,
-        "dely": [ 20000. ] * 62,
+        "delx": [20000.] * 62,
+        "dely": [20000.] * 62,
         "xgorigin": -20000.0,
         "ygorigin": -20000.0,
         "delr": 5000.0
@@ -119,13 +119,13 @@ def teardown_module(module):
 
 def make_pickup_names(istep):
 
-    return ['pickup.{:010d}.001.001.{}'.format(istep, 
-             type) for type in ['data', 'meta']]
+    return ['pickup.{:010d}.001.001.{}'.format(istep, type) 
+            for type in ['data', 'meta']]
 
 
 def test_make_pickup_names():
-    assert(make_pickup_names(10) == ['pickup.0000000010.001.001.data',  
-                                     'pickup.0000000010.001.001.meta' ])
+    assert(make_pickup_names(10) == ['pickup.0000000010.001.001.data',
+                                     'pickup.0000000010.001.001.meta'])
 
 # These are integration tests. They have an undesirable dependence on each
 # other. It would be possible to make them independent, but then they'd
