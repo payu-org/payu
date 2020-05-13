@@ -174,7 +174,7 @@ Once you are satisfied the configuration is correct, and there is no existing
 
 This will run the model once and store the output in the ```archive``` directory.
 
-Optionally is there is an existing ``work`` directory the ``-f/--force`` flag 
+Optionally if there is an existing ``work`` directory the ``-f/--force`` flag 
 will automatically ``sweep`` any existing ``work`` directory::
 
    payu run -f
