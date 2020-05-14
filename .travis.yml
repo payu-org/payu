@@ -17,5 +17,4 @@ script:
     - if [[ $TRAVIS_PYTHON_VERSION == 3.6 || $TRAVIS_PYTHON_VERSION == 3.7 ]]; then PYTHONPATH=. coverage run --source payu -m py.test -s test; fi;
     - cd docs && make html
 after_success:
-    - coverage report -m
-    - coveralls
+    - if [[ $TRAVIS_PYTHON_VERSION == 3.7 ]]; then coverage report -m; coveralls; fi;
