@@ -5,3 +5,4 @@ pylint
 mnctools
 Sphinx
 pytest-cov
+numpy>=1.16.0
