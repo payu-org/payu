@@ -1,9 +1,8 @@
-coverage == 3.7.1 ; python_version == '3.2'
-coverage ; python_version != '3.2'
+coverage
 coveralls
 pytest
 pylint
 mnctools
-scipy
 Sphinx
+pytest-cov
 numpy>=1.16.0
