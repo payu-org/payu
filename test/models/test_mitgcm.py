@@ -175,9 +175,9 @@ def test_setup():
 
     assert data_local['parm03']['nIter0'] == 0
     assert data_local['parm03']['nTimeSteps'] == 10
-    assert data_local['parm03']['deltaT'] == 1200
-    assert data_local['parm03']['starttime'] == 0
-    assert data_local['parm03']['endtime'] == 12000
+    assert data_local['parm03']['deltaT'] == 1200.
+    assert data_local['parm03']['starttime'] == 0.
+    assert data_local['parm03']['endtime'] == 12000.
 
     for i in range(1, 4):
         assert((workdir/'input_00{i}.bin'.format(i=i)).stat().st_size
@@ -214,7 +214,7 @@ def test_setup_restartdir():
     make_restarts(res_fnames)
 
     mitgcm_restart = {}
-    mitgcm_restart['endtime'] = 12000
+    mitgcm_restart['endtime'] = 12000.
 
     with (restartdir / 'mitgcm.res.yaml').open('w') as file:
         file.write(yaml.dump(mitgcm_restart, default_flow_style=False))
@@ -229,9 +229,9 @@ def test_setup_restartdir():
 
     assert data_local['parm03']['nIter0'] == 10
     assert data_local['parm03']['nTimeSteps'] == 10
-    assert data_local['parm03']['deltaT'] == 1200
-    assert data_local['parm03']['starttime'] == 12000
-    assert data_local['parm03']['endtime'] == 24000
+    assert data_local['parm03']['deltaT'] == 1200.
+    assert data_local['parm03']['starttime'] == 12000.
+    assert data_local['parm03']['endtime'] == 24000.
 
 
 def test_setup_change_deltat():
@@ -250,12 +250,12 @@ def test_setup_change_deltat():
     # Time step has halved, so nIter0 is doubled
     assert data_local['parm03']['nIter0'] == 20
     assert data_local['parm03']['nTimeSteps'] == 10
-    assert data_local['parm03']['deltaT'] == 600
-    assert data_local['parm03']['starttime'] == 12000
-    assert data_local['parm03']['endtime'] == 18000
+    assert data_local['parm03']['deltaT'] == 600.
+    assert data_local['parm03']['starttime'] == 12000.
+    assert data_local['parm03']['endtime'] == 18000.
 
     # Double deltaT
-    data['parm03']['deltat'] = 2400
+    data['parm03']['deltat'] = 2400.
 
     make_config_files()
 
@@ -266,9 +266,9 @@ def test_setup_change_deltat():
     # Time step has halved, so nIter0 is doubled
     assert data_local['parm03']['nIter0'] == 5
     assert data_local['parm03']['nTimeSteps'] == 10
-    assert data_local['parm03']['deltaT'] == 2400
-    assert data_local['parm03']['starttime'] == 12000
-    assert data_local['parm03']['endtime'] == 36000
+    assert data_local['parm03']['deltaT'] == 2400.
+    assert data_local['parm03']['starttime'] == 12000.
+    assert data_local['parm03']['endtime'] == 36000.
 
     # Fractional deltaT
     data['parm03']['deltat'] = 0.001
@@ -284,15 +284,15 @@ def test_setup_change_deltat():
     assert data_local['parm03']['nIter0'] == 12000000
     assert data_local['parm03']['nTimeSteps'] == 12000000
     assert data_local['parm03']['deltaT'] == 0.001
-    assert data_local['parm03']['starttime'] == 12000
-    assert data_local['parm03']['endtime'] == 24000
+    assert data_local['parm03']['starttime'] == 12000.
+    assert data_local['parm03']['endtime'] == 24000.
 
     # Use start and end time instead of ntimesteps. Normal
     # deltaT
-    data['parm03']['deltat'] = 1200
+    data['parm03']['deltat'] = 1200.
     del data['parm03']['ntimesteps']
-    data['parm03']['starttime'] = 0
-    data['parm03']['endtime'] = 12000
+    data['parm03']['starttime'] = 0.
+    data['parm03']['endtime'] = 12000.
 
     make_config_files()
 
@@ -303,9 +303,9 @@ def test_setup_change_deltat():
     # Time step normal so nIter0 is 10, but no ntimesteps,
     # instead startime and endtime have been altered
     assert data_local['parm03']['nIter0'] == 10
-    assert data_local['parm03']['deltaT'] == 1200
-    assert data_local['parm03']['starttime'] == 12000
-    assert data_local['parm03']['endtime'] == 24000
+    assert data_local['parm03']['deltaT'] == 1200.
+    assert data_local['parm03']['starttime'] == 12000.
+    assert data_local['parm03']['endtime'] == 24000.
 
     # Halve deltaT
     data['parm03']['deltat'] = 600
@@ -318,12 +318,12 @@ def test_setup_change_deltat():
 
     # Time step has halved, so nIter0 is doubled
     assert data_local['parm03']['nIter0'] == 20
-    assert data_local['parm03']['deltaT'] == 600
-    assert data_local['parm03']['starttime'] == 12000
-    assert data_local['parm03']['endtime'] == 24000
+    assert data_local['parm03']['deltaT'] == 600.
+    assert data_local['parm03']['starttime'] == 12000.
+    assert data_local['parm03']['endtime'] == 24000.
 
     # Double deltaT
-    data['parm03']['deltat'] = 2400
+    data['parm03']['deltat'] = 2400.
 
     make_config_files()
 

@@ -99,9 +99,9 @@ class Mitgcm(Model):
                                              self.restart_calendar_file)
         # TODO: Sort this out with an MITgcm user
         try:
-            dt = data_nml['parm03']['deltat']
+            dt = float(data_nml['parm03']['deltat'])
         except KeyError:
-            dt = data_nml['parm03']['deltatmom']
+            dt = float(data_nml['parm03']['deltatmom'])
 
         # Runtime is set either by timesteps (ntimesteps) or physical
         # time (startTime and endTime).
@@ -120,7 +120,7 @@ class Mitgcm(Model):
 
                 if n_timesteps is None:
                     print("Calculated n_timesteps from starttime and endtime")
-                    n_timesteps = (t_end - t_start) / dt
+                    n_timesteps = round((t_end - t_start) / dt)
             else:
                 # Assume n_timesteps and dt set correctly
                 pass
@@ -131,27 +131,27 @@ class Mitgcm(Model):
             if os.path.exists(restart_calendar_path):
                 with open(restart_calendar_path, 'r') as restart_file:
                     restart_info = yaml.load(restart_file)
-                t_start = restart_info['endtime']
+                t_start = float(restart_info['endtime'])
             else:
                 # Use same logic as MITgcm and assume
                 # constant dt for the whole experiment
                 t_start = n_iter0 * dt
 
         # Check if deltat has changed
-        if n_iter0 != t_start / dt:
+        if n_iter0 != round(t_start / dt):
 
             # Specify a pickup suffix using previous niter0
             data_nml['parm03']['pickupsuff'] = '{:010d}'.format(n_iter0)
 
             n_iter0_previous = n_iter0
 
-            n_iter0 = t_start / dt
+            n_iter0 = round(t_start / dt)
 
             if n_iter0 * dt != t_start:
-                print('payu : error: Timestep changed to {dt}. New timestep '
-                      'not integer multiple of start time: '
-                      '{start}'.format(dt=dt, start=t_start))
-                sys.exit(1)
+                mesg = ('payu : error: Timestep changed to {dt}. New timestep '
+                        'not integer multiple of start time: '
+                        '{start}'.format(dt=dt, start=t_start))
+                sys.exit(mesg)
 
             if n_iter0 + n_timesteps == n_iter0_previous:
                 mesg = ('payu : error: Timestep changed to {dt}. '
