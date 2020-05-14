@@ -15,6 +15,8 @@ script:
     - payu list
     - pylint --extension-pkg-whitelist=netCDF4 -E payu
     - if [[ $TRAVIS_PYTHON_VERSION == 3.6 || $TRAVIS_PYTHON_VERSION == 3.7 ]]; then PYTHONPATH=. pytest --cov=payu -s test; fi;
+    - ls -l .coverage
     - cd docs && make html
 after_success:
+    - ls -l .coverage
     - if [[ $TRAVIS_PYTHON_VERSION == 3.6 || $TRAVIS_PYTHON_VERSION == 3.7 ]]; then coveralls; fi;
