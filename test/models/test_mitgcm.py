@@ -333,3 +333,38 @@ def test_setup_change_deltat():
     with pytest.raises(SystemExit, match=matchstr) as setup_error:
         payu_setup(lab_path=str(labdir))
     assert setup_error.type == SystemExit
+
+    # deltaT which is not a divisor. Set ntimesteps instead of
+    # start and end times
+    data['parm03']['deltat'] = 999.
+    data['parm03']['ntimesteps'] = 5.
+    del data['parm03']['starttime']
+    del data['parm03']['endtime']
+
+    make_config_files()
+
+    payu_setup(lab_path=str(labdir))
+
+    data_local = f90nml.read(workdir/'data')
+
+    # Time step has halved, so nIter0 is doubled
+    assert data_local['parm03']['nIter0'] == 0
+    assert data_local['parm03']['deltaT'] == 999.
+    assert data_local['parm03']['basetime'] == 12000.
+    assert data_local['parm03']['starttime'] == 12000.
+    assert data_local['parm03']['endtime'] == 16995.
+    assert data_local['parm03']['pickupsuff'] == '0000000010'
+
+    # Make same number of timesteps as previous, which should throw
+    # an error
+    data['parm03']['ntimesteps'] = 10.
+
+    make_config_files()
+
+    # This should throw an error, as it would overwrite the existing
+    # pickup files in the work directory, as the nIter is the same
+    # matchstr = '.*not integer multiple.*'
+    matchstr = '.*Timestep at end identical to previous pickups.*'
+    with pytest.raises(SystemExit, match=matchstr) as setup_error:
+        payu_setup(lab_path=str(labdir))
+    assert setup_error.type == SystemExit
