@@ -213,6 +213,35 @@ def test_exe_reproduce():
     # Check manifests have changed as expected
     assert(not manifests == get_manifests(ctrldir/'manifests'))
 
+    # Make an executable in a no-default location
+    weirdbinpath = bindir / 'weird' / 'model.exe' 
+    weirdbinpath.parent.mkdir(exist_ok=True)
+    shutil.move(str(bindir/exe), str(weirdbinpath))
+
+    config['exe'] = str(weirdbinpath)
+    write_config(config)
+
+    # Run setup with changed exe but reproduce exe set to False
+    payu_setup(lab_path=str(labdir))
+
+    manifests = get_manifests(ctrldir/'manifests')
+
+    # Run setup with unchanged exe but reproduce exe set to True.
+    # Should run without error
+    payu_setup(lab_path=str(labdir))
+
+    # Change exe back to exe name with no path
+    config['exe'] = str(exe)
+    # Change reproduce exe back to False
+    config['manifest']['reproduce']['exe'] = True
+
+    write_config(config)
+
+    # Run setup with changed exe but reproduce exe set to True
+    payu_setup(lab_path=str(labdir))
+
+    assert(manifests == get_manifests(ctrldir/'manifests'))
+
 
 def test_input_reproduce():
 
