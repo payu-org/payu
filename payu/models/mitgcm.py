@@ -151,11 +151,9 @@ class Mitgcm(Model):
             n_iter0 = round(t_start / dt)
 
             if n_iter0 * dt != t_start:
-                # mesg = ('payu : error: Timestep changed to {dt}. New timestep '
-                #         'not integer multiple of start time: '
-                #         '{start}'.format(dt=dt, start=t_start))
-                # sys.exit(mesg)
-
+                # Modify basetime. 
+                # TODO: Change logic entirely to using
+                # this conceptually much simpler approach
                 basetime = t_start
                 n_iter0 = 0
 
