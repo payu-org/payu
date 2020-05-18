@@ -151,7 +151,7 @@ class Mitgcm(Model):
             n_iter0 = round(t_start / dt)
 
             if n_iter0 * dt != t_start:
-                # Modify basetime. 
+                # Modify basetime.
                 # TODO: Change logic entirely to using
                 # this conceptually much simpler approach
                 basetime = t_start
