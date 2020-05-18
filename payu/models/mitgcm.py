@@ -103,6 +103,9 @@ class Mitgcm(Model):
         except KeyError:
             dt = float(data_nml['parm03']['deltatmom'])
 
+        # Basetime defaults to zero
+        basetime = 0.
+
         # Runtime is set either by timesteps (ntimesteps) or physical
         # time (startTime and endTime).
         t_start = data_nml['parm03'].get('starttime', None)
@@ -130,7 +133,7 @@ class Mitgcm(Model):
             # Look for a restart file from a previous run
             if os.path.exists(restart_calendar_path):
                 with open(restart_calendar_path, 'r') as restart_file:
-                    restart_info = yaml.load(restart_file)
+                    restart_info = yaml.safe_load(restart_file)
                 t_start = float(restart_info['endtime'])
             else:
                 # Use same logic as MITgcm and assume
@@ -148,10 +151,11 @@ class Mitgcm(Model):
             n_iter0 = round(t_start / dt)
 
             if n_iter0 * dt != t_start:
-                mesg = ('payu : error: Timestep changed to {dt}. New timestep '
-                        'not integer multiple of start time: '
-                        '{start}'.format(dt=dt, start=t_start))
-                sys.exit(mesg)
+                # Modify basetime.
+                # TODO: Change logic entirely to using
+                # this conceptually much simpler approach
+                basetime = t_start
+                n_iter0 = 0
 
             if n_iter0 + n_timesteps == n_iter0_previous:
                 mesg = ('payu : error: Timestep changed to {dt}. '
@@ -163,21 +167,24 @@ class Mitgcm(Model):
         t_end = t_start + dt * n_timesteps
         pchkpt_freq = t_end - t_start
 
+        print('  base time:  {}'.format(basetime))
         print('  start time: {}'.format(t_start))
         print('  end time:   {}'.format(t_end))
         print('  niter0 :    {}'.format(n_iter0))
         print('  ntimesteps: {}'.format(n_timesteps))
         print('  dt:         {}'.format(dt))
-        print('  end - start:    {}'.format(pchkpt_freq))
-        print('  dt * ntimeteps: {}'.format(dt * n_timesteps))
+        print('  end - start:     {}'.format(pchkpt_freq))
+        print('  dt * ntimesteps: {}'.format(dt * n_timesteps))
         if pchkpt_freq != dt * n_timesteps:
             print('payu : error : time inconsistencies, '
-                  'pchkptfreq != experiment length')
+                  'pchkptfreq ({}) != experiment length ({})'
+                  ''.format(pchkpt_freq, dt * n_timesteps))
             sys.exit(1)
 
         data_nml['parm03']['startTime'] = t_start
         data_nml['parm03']['niter0'] = n_iter0
         data_nml['parm03']['endTime'] = t_end
+        data_nml['parm03']['baseTime'] = basetime
 
         # NOTE: Consider permitting pchkpt_freq < dt * n_timesteps
         if t_end % pchkpt_freq != 0:
