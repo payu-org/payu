@@ -281,7 +281,7 @@ class Model(object):
 
         # Make symlink to executable in work directory
         if self.exec_path:
-            # If have exe manifest this implies exe reproduce is True. Do not 
+            # If have exe manifest this implies exe reproduce is True. Do not
             # want to overwrite exe manifest in this case
             if not self.expt.manifest.have_manifest['exe']:
                 # Add to exe manifest (this is always done so any change in exe

@@ -216,7 +216,7 @@ def test_exe_reproduce():
     # Reset manifests "truth"
     manifests = get_manifests(ctrldir/'manifests')
 
-    # Make exe in config.yaml unfindable by giving it a non-existent 
+    # Make exe in config.yaml unfindable by giving it a non-existent
     # path but crucially the same name as the proper executable
     config['exe'] = '/bogus/test.exe'
 
