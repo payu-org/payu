@@ -281,13 +281,16 @@ class Model(object):
 
         # Make symlink to executable in work directory
         if self.exec_path:
-            # Add to exe manifest (this is always done so any change in exe
-            # path will be picked up)
-            self.expt.manifest.add_filepath(
-                'exe',
-                self.exec_path_local,
-                self.exec_path
-            )
+            # If have exe manifest this implies exe reproduce is True. Do not
+            # want to overwrite exe manifest in this case
+            if not self.expt.manifest.have_manifest['exe']:
+                # Add to exe manifest (this is always done so any change in exe
+                # path will be picked up)
+                self.expt.manifest.add_filepath(
+                    'exe',
+                    self.exec_path_local,
+                    self.exec_path
+                )
 
         timestep = self.config.get('timestep')
         if timestep:
