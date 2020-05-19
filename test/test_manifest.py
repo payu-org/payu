@@ -213,31 +213,19 @@ def test_exe_reproduce():
     # Check manifests have changed as expected
     assert(not manifests == get_manifests(ctrldir/'manifests'))
 
-    # Make an executable in a no-default location
-    weirdbinpath = bindir / 'weird' / 'model.exe' 
-    weirdbinpath.parent.mkdir(exist_ok=True)
-    shutil.move(str(bindir/exe), str(weirdbinpath))
-
-    config['exe'] = str(weirdbinpath)
-    write_config(config)
-
-    # Run setup with changed exe but reproduce exe set to False
-    payu_setup(lab_path=str(labdir))
-
+    # Reset manifests "truth"
     manifests = get_manifests(ctrldir/'manifests')
 
-    # Run setup with unchanged exe but reproduce exe set to True.
-    # Should run without error
-    payu_setup(lab_path=str(labdir))
+    # Make exe in config.yaml unfindable by giving it a non-existent name
+    config['exe'] = 'bogus.exe'
 
-    # Change exe back to exe name with no path
-    config['exe'] = str(exe)
-    # Change reproduce exe back to False
+    # Change reproduce exe back to True
     config['manifest']['reproduce']['exe'] = True
 
     write_config(config)
 
-    # Run setup with changed exe but reproduce exe set to True
+    # Run setup with changed exe but reproduce exe set to True. Should
+    # work fine as the exe path is in the manifest
     payu_setup(lab_path=str(labdir))
 
     assert(manifests == get_manifests(ctrldir/'manifests'))
@@ -251,6 +239,7 @@ def test_input_reproduce():
     # Set reproduce input to True
     config['manifest']['reproduce']['exe'] = False
     config['manifest']['reproduce']['input'] = True
+    config['exe'] = config_orig['exe']
     write_config(config)
     manifests = get_manifests(ctrldir/'manifests')
 
