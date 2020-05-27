@@ -21,7 +21,9 @@ arguments = [args.model, args.config, args.initial, args.laboratory,
 def runcmd(model_type, config_path, init_run, lab_path, dir_path):
 
     pbs_config = fsops.read_config(config_path)
-    pbs_vars = cli.set_env_vars(init_run, lab_path, dir_path)
+    pbs_vars = cli.set_env_vars(init_run=init_run,
+                                lab_path=lab_path,
+                                dir_path=dir_path)
 
     collate_config = pbs_config.get('collate', {})
 
@@ -95,9 +97,9 @@ def runscript():
 
     run_args = parser.parse_args()
 
-    pbs_vars = cli.set_env_vars(run_args.init_run,
-                                run_args.lab_path,
-                                run_args.dir_path)
+    pbs_vars = cli.set_env_vars(init_run=run_args.init_run,
+                                lab_path=run_args.lab_path,
+                                dir_path=run_args.dir_path)
 
     for var in pbs_vars:
         os.environ[var] = str(pbs_vars[var])
