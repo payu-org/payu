@@ -21,7 +21,9 @@ arguments = [args.model, args.config, args.initial, args.nruns,
 def runcmd(model_type, config_path, init_run, n_runs, lab_path):
 
     pbs_config = fsops.read_config(config_path)
-    pbs_vars = cli.set_env_vars(init_run, n_runs, lab_path)
+    pbs_vars = cli.set_env_vars(init_run=init_run,
+                                n_runs=n_runs,
+                                lab_path=lab_path)
 
     pbs_config['queue'] = pbs_config.get('profile_queue', 'normal')
 
@@ -71,7 +73,8 @@ def runscript():
 
     run_args = parser.parse_args()
 
-    pbs_vars = cli.set_env_vars(run_args.init_run, run_args.n_runs)
+    pbs_vars = cli.set_env_vars(init_run=run_args.init_run,
+                                n_runs=run_args.n_runs)
     for var in pbs_vars:
         os.environ[var] = str(pbs_vars[var])
 

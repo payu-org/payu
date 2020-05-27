@@ -20,8 +20,11 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
-    pbs_vars = cli.set_env_vars(init_run, n_runs, lab_path,
-                                reproduce=reproduce, force=force)
+    pbs_vars = cli.set_env_vars(init_run=init_run,
+                                n_runs=n_runs,
+                                lab_path=lab_path,
+                                reproduce=reproduce,
+                                force=force)
 
     # Set the queue
     # NOTE: Maybe force all jobs on the normal queue
