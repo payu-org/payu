@@ -26,7 +26,7 @@ import yaml
 # Local
 from payu import envmod
 from payu.fsops import mkdir_p, make_symlink, read_config, movetree
-from payu.scheduler.pbs import get_job_info, pbs_env_init, get_job_id
+from payu.schedulers.pbs import get_job_info, pbs_env_init, get_job_id
 from payu.models import index as model_index
 import payu.profilers
 from payu.runlog import Runlog
@@ -520,9 +520,12 @@ class Experiment(object):
 
             model_prog = []
 
-            # Our MPICH wrapper does not support a working directory flag
-            if not mpi_module.startswith('mvapich'):
+            if mpi_module.startswith('openmpi'):
+                # Our MPICH wrapper does not support a working directory flag
                 model_prog.append('-wdir {0}'.format(model.work_path))
+            elif self.config.get('scheduler') == 'slurm':
+                # Slurm's launcher controls the working directory
+                model_prog.append('--chdir {0}'.format(model.work_path))
 
             # Append any model-specific MPI flags
             model_flags = model.config.get('mpiflags', [])
@@ -533,7 +536,8 @@ class Experiment(object):
 
             model_ncpus = model.config.get('ncpus')
             if model_ncpus:
-                model_prog.append('-np {0}'.format(model_ncpus))
+                #model_prog.append('-np {0}'.format(model_ncpus))
+                model_prog.append('-n {0}'.format(model_ncpus))
 
             model_npernode = model.config.get('npernode')
             # TODO: New Open MPI format?
