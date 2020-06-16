@@ -14,6 +14,7 @@ import subprocess
 from payu.fsops import check_exe_path
 from payu.schedulers.scheduler import Scheduler
 
+
 class Slurm(Scheduler):
     # TODO: __init__
 

@@ -69,6 +69,7 @@ def generate_parser():
 
     return parser
 
+
 def get_model_type(model_type, config):
     """Determine and validate the active model type."""
 

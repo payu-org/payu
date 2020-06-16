@@ -536,8 +536,11 @@ class Experiment(object):
 
             model_ncpus = model.config.get('ncpus')
             if model_ncpus:
-                #model_prog.append('-np {0}'.format(model_ncpus))
-                model_prog.append('-n {0}'.format(model_ncpus))
+                if self.config.get('scheduler') == 'slurm':
+                    model_prog.append('-n {0}'.format(model_ncpus))
+                else:
+                    # Default to preferred mpirun syntax
+                    model_prog.append('-np {0}'.format(model_ncpus))
 
             model_npernode = model.config.get('npernode')
             # TODO: New Open MPI format?

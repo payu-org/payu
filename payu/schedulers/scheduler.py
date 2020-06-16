@@ -7,6 +7,7 @@
 # TODO: This class is currently just a stub.  I would hope that it will be
 # expanded to provide greater functionality in the future.
 
+
 class Scheduler(object):
     """Abstract scheduler class."""
 

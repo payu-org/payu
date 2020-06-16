@@ -50,8 +50,9 @@ class PBS(Scheduler):
             res_flags = []
             res_val = pbs_config.get(res_key)
             if res_val:
-                res_flags.append('{key}={val}'.format(key=res_key, val=res_val))
-
+                res_flags.append(
+                    '{key}={val}'.format(key=res_key, val=res_val)
+                )
             if res_flags:
                 pbs_flags.append('-l {res}'.format(res=','.join(res_flags)))
 
