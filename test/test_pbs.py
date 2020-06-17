@@ -13,7 +13,7 @@ import payu
 
 from payu.fsops import read_config
 from payu.laboratory import Laboratory
-from payu.scheduler import pbs
+from payu.schedulers import pbs
 
 
 from .common import cd, make_random_file, get_manifests
@@ -137,9 +137,9 @@ def test_run():
 
     # Monkey patch pbs_env_init as we don't have a
     # functioning PBS install in travis
-    payu.scheduler.pbs.pbs_env_init = lambda: True
+    payu.schedulers.pbs.pbs_env_init = lambda: True
 
-    payu.scheduler.pbs.check_exe_path = lambda x, y: y
+    payu.schedulers.pbs.check_exe_path = lambda x, y: y
 
     # payu_path = os.path.join(os.environ['PWD'], 'bin')
     payu_path = payudir / 'bin'
