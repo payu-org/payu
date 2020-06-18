@@ -20,8 +20,9 @@ import payu
 import payu.envmod as envmod
 from payu.fsops import is_conda
 from payu.models import index as supported_models
+from payu.schedulers import index as scheduler_index
 import payu.subcommands
-from payu.scheduler.pbs import generate_command
+
 
 # Default configuration
 DEFAULT_CONFIG = 'config.yaml'
@@ -67,6 +68,7 @@ def generate_parser():
             cmd_parser.add_argument(*arg['flags'], **arg['parameters'])
 
     return parser
+
 
 def get_model_type(model_type, config):
     """Determine and validate the active model type."""
@@ -144,8 +146,11 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
 def submit_job(script, config, vars=None):
     """Submit a userscript the scheduler."""
 
-    cmd = generate_command(script, config, vars)
-
+    # TODO: Temporary stub to replicate the old approach
+    sched_name = config.get('scheduler', 'pbs')
+    sched_type = scheduler_index[sched_name]
+    sched = sched_type()
+    cmd = sched.submit(script, config, vars)
     print(cmd)
 
     subprocess.check_call(shlex.split(cmd))
