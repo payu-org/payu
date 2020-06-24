@@ -257,9 +257,12 @@ collate these separated files into a single file. This is only necessary, and
 supported, for some models.
 
 For most jobs, collation is called automatically. But if you need to manually
-collate the ``K``\ th run, type the following::
+collate output from run ``K``, type the following::
 
    payu collate -i K
+
+This will also collate restart ``K-1`` if ``restart: true`` in the ``collate``
+section of the configuration file.
 
 Alternatively you can directly specify a directory name::
 
