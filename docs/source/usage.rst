@@ -261,7 +261,7 @@ collate the ``K``\ th run (counting from zero), type the following::
 
    payu collate -i K
 
-Note that this will collate the ``K-1``th restart (in addition to the ``K``th
+Note that this will collate the ``K-1``\ th restart (in addition to the ``K``\ th
 output) if ``restart: true`` in the ``collate`` section of the configuration file.
 
 Alternatively you can directly specify a directory name::
