@@ -257,7 +257,7 @@ collate these separated files into a single file. This is only necessary, and
 supported, for some models.
 
 For most jobs, collation is called automatically. But if you need to manually
-collate the ``K``\ th run, type the following::
+collate the ``K``\ th run (i.e. output``K`` and restart``K-1``, counting from zero), type the following::
 
    payu collate -i K
 
