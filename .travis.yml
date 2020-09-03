@@ -1,6 +1,8 @@
 language: python
 python:
-    - "2.7"
+# Disabled python2 testing due to package installation issues and python2 being
+# deprecated
+#    - "2.7"
     - "3.6"
     - "3.7"
 # Disabling Torque setup until we can get this working on Travis
