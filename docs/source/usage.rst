@@ -85,7 +85,7 @@ Populate laboratory directories
 
    You will want a unique name for each input directory.
 
-Create experiment
+Clone experiment
 -----------------
 
 The payu control directory is maintained under version control using 
@@ -100,6 +100,10 @@ For example::
       cd ${HOME}/${MODEL}
       git clone https://github.com/payu-org/mom-example.git my_expt
       cd my_expt
+
+
+Create experiment
+-----------------
 
 If a suitable experiment does not already exist it will have to be
 created manually:
@@ -149,7 +153,7 @@ Running your experiment
 =======================
 
 Once the laboratory has been created and the experiment has been configured, as 
-an optioal step you can check that the paths have been correctly specified by 
+an optional step you can check that the paths have been correctly specified by 
 running::
 
     payu  setup
@@ -164,6 +168,12 @@ directory. The manifest files track the executable, input and restart files used
 in each run. When running at NCI the manifest file must be present as it is
 scanned for storage points in order to correctly specify the argument to the
 ```-l storage=``` option when submitting a PBS job.
+
+It is possible to create an experiment configuration such that the input
+and executable manifests are correct if the experiment is run on the same
+system. In such a case the ``manifest`` options need to be set correctly
+to always reuse those manifests and it should be possible to run the 
+experiment immediately.
 
 Once you are satisfied the configuration is correct, and there is no existing
 ```work``` directory, run the experiment by typing the following::
@@ -217,6 +227,11 @@ The reproduce option can be useful to be able to re-run a simulation for the
 purposes of checking reproducibility when compute infrastructure changes, or when
 spinning off a perturbation run to ensure consistency with a control run before
 applying modifications.
+
+To run from an existing model run, also called a warm start, set the
+``restart`` option to point to the folder containing the restart files
+from a previous matching experiment.
+
 
 Cleaning up 
 ===========
