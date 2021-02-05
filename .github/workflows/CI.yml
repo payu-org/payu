@@ -55,10 +55,10 @@ jobs:
       - name: Make docs
         run: cd docs && make html
 
-    - name: Coveralls
-      uses: AndreMiras/coveralls-python-action@develop
-      with:
-        parallel: true
+      - name: Coveralls
+        uses: AndreMiras/coveralls-python-action@develop
+        with:
+          parallel: true
 
   coveralls_finish:
     needs: build
