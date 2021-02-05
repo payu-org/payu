@@ -49,8 +49,6 @@ jobs:
       - name: Run tests
         run: |
           PYTHONPATH=. pytest --cov=payu -s test;
-          ls -la
-          ls -lRa test
 
       - name: Coveralls
         uses: AndreMiras/coveralls-python-action@develop
