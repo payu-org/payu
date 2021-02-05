@@ -49,8 +49,10 @@ jobs:
       - name: Run tests
         run: PYTHONPATH=. pytest --cov=payu -s test;
 
-      - name: Run coverage
-        run: coveralls
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Make docs
         run: cd docs && make html
