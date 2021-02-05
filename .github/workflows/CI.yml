@@ -47,7 +47,10 @@ jobs:
         run: pylint --extension-pkg-whitelist=netCDF4 -E payu
 
       - name: Run tests
-        run: PYTHONPATH=. pytest --cov=payu -s test;
+        run: |
+          PYTHONPATH=. pytest --cov=payu -s test;
+          ls -l
+          ls -lR test
 
       - name: Coveralls
         uses: coverallsapp/github-action@master
