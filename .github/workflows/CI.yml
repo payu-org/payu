@@ -49,8 +49,8 @@ jobs:
       - name: Run tests
         run: |
           PYTHONPATH=. pytest --cov=payu -s test;
-          ls -l
-          ls -lR test
+          ls -la
+          ls -lRa test
 
       - name: Coveralls
         uses: coverallsapp/github-action@master
