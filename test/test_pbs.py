@@ -158,6 +158,7 @@ def test_run():
         config['storage']['test'] = ['x00']
         config['storage']['/f/data'] = ['x00']
 
+        config['control'] = '/f/data/xyz999'
         config['laboratory'] = '/f/data/c000/blah'
         config['shortpath'] = '/f/data/y00'
 
@@ -204,7 +205,7 @@ def test_run():
             assert(resources_found[resource] == str(config[resource]))
 
         assert(resources_found['storage'] ==
-               'fdata/a000+fdata/c000+fdata/m000+fdata/x00+fdata/y00+test/x00')
+               'fdata/a000+fdata/c000+fdata/m000+fdata/x00+fdata/y00+fdata/xyz999+test/x00')
 
         # Check other auto-added resources are present
         for resource in other_resources:
