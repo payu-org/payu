@@ -210,8 +210,8 @@ def test_run():
             assert(resources_found[resource] == str(config[resource]))
 
         assert(resources_found['storage'] ==
-               ('fdata/a000+fdata/c000+fdata/m000+fdata/x00+'+
-                 'fdata/xyz999+fdata/y00+test/x00'))
+               ('fdata/a000+fdata/c000+fdata/m000+fdata/x00+' +
+                'fdata/xyz999+fdata/y00+test/x00'))
 
         # Check other auto-added resources are present
         for resource in other_resources:
