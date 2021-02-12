@@ -285,8 +285,8 @@ class Experiment(object):
 
     def set_expt_pathnames(self):
 
-        # Local "control" path
-        self.control_path = self.config.get('control', os.getcwd())
+        # Local "control" path used to be set here, now
+        # set in read_config
 
         # Experiment name
         self.name = self.config.get('experiment',

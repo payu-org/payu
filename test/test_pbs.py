@@ -158,7 +158,7 @@ def test_run():
         config['storage']['test'] = ['x00']
         config['storage']['/f/data'] = ['x00']
 
-        config['control'] = '/f/data/xyz999'
+        config['control_path'] = '/f/data/xyz999/experiment'
         config['laboratory'] = '/f/data/c000/blah'
         config['shortpath'] = '/f/data/y00'
 

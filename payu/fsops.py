@@ -90,6 +90,10 @@ def read_config(config_fname=None):
 
     config['collate'] = collate_config
 
+    # Local "control" path. Must be set here so it can be 
+    # scanned for storage points
+    config["control_path"] = config.get('control', os.getcwd())
+
     return config
 
 

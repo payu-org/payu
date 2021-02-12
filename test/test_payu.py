@@ -127,6 +127,10 @@ def test_read_config():
     config_path = os.path.join('test', 'config_mom5.yaml')
     config = payu.fsops.read_config(config_path)
 
+    # Test control_path is not set in read_config
+    assert('control_path' in config)
+    assert(config['control_path'] == os.path.dirname(config_path))
+
     # Raise a non-ENOENT error (e.g. EACCES)
     config_tmp = 'config_tmp.yaml'
     config_file = open(config_tmp, 'w')
