@@ -96,10 +96,11 @@ class PBS(Scheduler):
 
         payu_path = pbs_vars.get('PAYU_PATH', os.path.dirname(sys.argv[0]))
         pbs_script = check_exe_path(payu_path, pbs_script)
+        ctrl_path = pbs_config.get('control_path')
 
         # Check for storage paths that might need to be mounted in the
         # python and script paths
-        extra_search_paths = [python_exe, payu_path, pbs_script]
+        extra_search_paths = [python_exe, payu_path, pbs_script, ctrl_path]
 
         laboratory_path = pbs_config.get('laboratory', None)
         if laboratory_path is not None:
