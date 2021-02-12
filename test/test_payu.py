@@ -129,7 +129,8 @@ def test_read_config():
 
     # Test control_path is not set in read_config
     assert('control_path' in config)
-    assert(config['control_path'] == os.path.dirname(config_path))
+    assert(config['control_path'] == os.path.dirname(
+                                         os.path.abspath(config_path)))
 
     # Raise a non-ENOENT error (e.g. EACCES)
     config_tmp = 'config_tmp.yaml'
