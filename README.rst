@@ -1,8 +1,8 @@
 Payu
 ====
 
-.. image:: https://travis-ci.org/payu-org/payu.svg?branch=master
-    :target: https://travis-ci.org/payu-org/payu
+.. image:: https://github.com/COSIMA/libaccessom2/workflows/CI/badge.svg
+    :target: https://github.com/payu-org/payu/actions?query=workflow%3ACI
 .. image:: https://coveralls.io/repos/github/payu-org/payu/badge.svg?branch=master&killcache=1
     :target: https://coveralls.io/github/payu-org/payu?branch=master
 .. image:: https://readthedocs.org/projects/docs/badge/?version=latest
