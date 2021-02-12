@@ -92,7 +92,7 @@ def read_config(config_fname=None):
 
     # Local "control" path. Must be set here so it can be 
     # scanned for storage points
-    config["control_path"] = config.get('control', os.getcwd())
+    config["control_path"] = config.get('control', os.path.abspath(config_file))
 
     return config
 
