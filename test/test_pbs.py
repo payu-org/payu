@@ -14,7 +14,7 @@ import payu
 from payu.fsops import read_config
 from payu.laboratory import Laboratory
 from payu.schedulers import pbs
-
+from payu.schedulers import index as scheduler_index
 
 from .common import cd, make_random_file, get_manifests
 from .common import tmpdir, ctrldir, labdir, workdir, payudir
@@ -135,6 +135,11 @@ def test_find_mounts():
 
 def test_run():
 
+    # Use new mechanism to return a scheduler
+    sched_name = config.get('scheduler', 'pbs')
+    sched_type = scheduler_index[sched_name]
+    sched = sched_type()
+
     # Monkey patch pbs_env_init as we don't have a
     # functioning PBS install in travis
     payu.schedulers.pbs.pbs_env_init = lambda: True
@@ -158,10 +163,11 @@ def test_run():
         config['storage']['test'] = ['x00']
         config['storage']['/f/data'] = ['x00']
 
+        config['control_path'] = '/f/data/xyz999/experiment'
         config['laboratory'] = '/f/data/c000/blah'
         config['shortpath'] = '/f/data/y00'
 
-        cmd = pbs.generate_command(payu_cmd, config, pbs_vars, python_exe)
+        cmd = sched.submit(payu_cmd, config, pbs_vars, python_exe)
 
         print(cmd)
 
@@ -204,7 +210,8 @@ def test_run():
             assert(resources_found[resource] == str(config[resource]))
 
         assert(resources_found['storage'] ==
-               'fdata/a000+fdata/c000+fdata/m000+fdata/x00+fdata/y00+test/x00')
+               ('fdata/a000+fdata/c000+fdata/m000+fdata/x00+' +
+                'fdata/xyz999+fdata/y00+test/x00'))
 
         # Check other auto-added resources are present
         for resource in other_resources:
