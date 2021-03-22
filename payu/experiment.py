@@ -784,7 +784,8 @@ class Experiment(object):
             os.environ['LD_LIBRARY_PATH'] = ':'.join([py_libpath, ld_libpaths])
 
         collate_config = self.config.get('collate', {})
-        if collate_config.get('enable', True):
+        collating = collate_config.get('enable', True)
+        if collating:
             cmd = '{python} {payu} collate -i {expt}'.format(
                 python=sys.executable,
                 payu=self.payu_path,
@@ -803,6 +804,10 @@ class Experiment(object):
         archive_script = self.userscripts.get('archive')
         if archive_script:
             self.run_userscript(archive_script)
+
+        # Ensure postprocess runs if model not collating
+        if not collating and self.postscript:
+            self.postprocess()
 
     def collate(self):
         for model in self.models:
