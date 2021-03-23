@@ -44,7 +44,7 @@ jobs:
         run: payu list
 
       - name: Lint
-        run: pylint --extension-pkg-whitelist=netCDF4,backports -E payu
+        run: pylint --extension-pkg-whitelist=netCDF4 --ignored-modules=backports -E payu
 
       - name: Run tests
         run: |
