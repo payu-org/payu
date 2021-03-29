@@ -140,8 +140,11 @@ def test_read_config():
     with pytest.raises(IOError):
         payu.fsops.read_config(config_tmp)
 
-    os.chmod(config_tmp, stat.S_IWUSR)
+    os.chmod(config_tmp, stat.S_IWUSR | stat.S_IREAD)
     config_file.close()
+
+    assert( payu.fsops.read_config(config_tmp) == { 'collate': {} } )
+
     os.remove(config_tmp)
 
 
