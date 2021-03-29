@@ -143,7 +143,11 @@ def test_read_config():
     os.chmod(config_tmp, stat.S_IWUSR | stat.S_IREAD)
     config_file.close()
 
-    assert( payu.fsops.read_config(config_tmp) == { 'collate': {} } )
+    config = payu.fsops.read_config(config_tmp)
+
+    assert(config.pop('collate') == {})
+    assert(config.pop('control_path') == os.getcwd())
+    assert(config == {})
 
     os.remove(config_tmp)
 
