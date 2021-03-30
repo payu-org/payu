@@ -167,8 +167,7 @@ def test_run():
         config['laboratory'] = '/f/data/c000/blah'
         config['shortpath'] = '/f/data/y00'
 
-
-        mail = dict( address='person@organisation.domainname' )
+        mail = dict(address='person@organisation.domainname')
 
         config['mail'] = mail
 

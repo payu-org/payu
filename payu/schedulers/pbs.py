@@ -97,18 +97,18 @@ class PBS(Scheduler):
 
         n_runs_per_submit = pbs_config.get('runspersub', 1)
 
-        if (pbs_vars['PAYU_CURRENT_RUN'] + (n_runs_per_submit - 1) 
-                        >= pbs_vars.get('PAYU_N_RUNS',1)):
+        if (pbs_vars['PAYU_CURRENT_RUN'] + (n_runs_per_submit - 1)
+                >= pbs_vars.get('PAYU_N_RUNS', 1)):
             # This will be the last PBS submit, so modify
             # mail flags if required
             mail_config = pbs_config.get('mail', {})
             if mail_config.get('final', True):
                 email_address = mail_config.get('address', None)
                 if email_address is None:
-                    #TODO move domain to platform specific module
+                    # TODO move domain to platform specific module
                     address = "{user}@{domain}".format(
-                        user = pwd.getpwuid(os.getuid()).pw_name,
-                        domain = 'nci.org.au',
+                        user=pwd.getpwuid(os.getuid()).pw_name,
+                        domain='nci.org.au',
                     )
                 pbs_flags.append("-m e")
                 pbs_flags.append("-M {}".format(email_address))
