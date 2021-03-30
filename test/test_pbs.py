@@ -150,7 +150,7 @@ def test_run():
     payu_path = payudir / 'bin'
     # create new path for payu_path to check a000 picked up as storage
     payu_path = Path('/f/data/a000/some/path')
-    pbs_vars = {'PAYU_PATH': str(payu_path)}
+    pbs_vars = {'PAYU_PATH': str(payu_path), 'PAYU_CURRENT_RUN': 1}
     # A pretend python interpreter string
     python_exe = '/f/data/m000/python/bin/python'
 
@@ -167,6 +167,11 @@ def test_run():
         config['laboratory'] = '/f/data/c000/blah'
         config['shortpath'] = '/f/data/y00'
 
+
+        mail = dict( address='person@organisation.domainname' )
+
+        config['mail'] = mail
+
         cmd = sched.submit(payu_cmd, config, pbs_vars, python_exe)
 
         print(cmd)
@@ -178,9 +183,10 @@ def test_run():
         parser.add_argument('-q', type=str, required=True)
         parser.add_argument('-P', type=str, required=True)
         parser.add_argument('-N', type=str, required=True)
-        parser.add_argument('-v', metavar='KEY-VALUE',
-                            nargs='+', required=True)
+        parser.add_argument('-v', type=str, required=True)
         parser.add_argument('-j', type=str, required=True)
+        parser.add_argument('-m', type=str, required=True)
+        parser.add_argument('-M', type=str, required=True)
         parser.add_argument('-l', metavar='KEY=VALUE',
                             nargs='+', action='append', required=True)
         parser.add_argument('remaining', nargs=argparse.REMAINDER)
@@ -190,6 +196,8 @@ def test_run():
         assert(args.N == config['jobname'])
         assert(args.P == config['project'])
         assert(args.q == config['queue'])
+        assert(args.m == 'e')
+        assert(args.M == config['mail']['address'])
 
         resources = []
         for resource in args.l:
@@ -218,12 +226,13 @@ def test_run():
             assert(other_resources[resource] == resources_found[resource])
 
         env = {}
-        for env_var in args.v:
+        for env_var in args.v.split(','):
             k, v = env_var.split('=')
             env[k] = v
 
-        assert('PAYU_PATH' in env)
-        assert(env['PAYU_PATH'] == str(payu_path))
+        assert(env.pop('PAYU_PATH') == str(payu_path))
+        assert(env.pop('PAYU_CURRENT_RUN') == '1')
+        assert(env == {})
 
         assert(args.remaining[-2].endswith('python'))
         assert(args.remaining[-1].endswith(payu_cmd))
