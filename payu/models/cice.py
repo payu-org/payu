@@ -213,8 +213,6 @@ class Cice(Model):
             # The total time in seconds since the beginning of the experiment
             total_runtime = prior_setup_nml['istep0'] + prior_setup_nml['npt']
             total_runtime = total_runtime * prior_setup_nml['dt']
-            run_start_date = cal.date_plus_seconds(init_date, total_runtime,
-                                                   caltype)
         else:
             # Locate and link any restart files (if required)
             if not setup_nml['ice_ic'] in ('none', 'default'):
@@ -225,10 +223,11 @@ class Cice(Model):
 
             # Initialise runtime
             total_runtime = 0
-            run_start_date = init_date
 
         # Set runtime for this run.
         if self.expt.runtime:
+            run_start_date = cal.date_plus_seconds(init_date, total_runtime,
+                                                   caltype)
             run_runtime = cal.runtime_from_date(
                 run_start_date,
                 self.expt.runtime['years'],
