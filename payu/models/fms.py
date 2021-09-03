@@ -64,12 +64,12 @@ class Fms(Model):
 
         # Generate collated file list and identify the first tile
         tile_fnames = [f for f in Path(dir).iterdir()
-                       if f.suffixes[0] == '.nc' and 
+                       if f.suffixes[0] == '.nc' and
                        f.suffixes[1][1:].isdigit()]
 
         # Sort numerically according to the number in the suffix and strip off
         # path information
-        return [f.name for f 
+        return [f.name for f
                 in sorted(tile_fnames, key=lambda e: int(e.suffixes[1][1:]))]
 
     def archive(self, **kwargs):
