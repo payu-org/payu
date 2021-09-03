@@ -6,6 +6,7 @@
 from __future__ import print_function
 
 from collections import defaultdict
+from pathlib import Path
 import multiprocessing
 import os
 import resource as res
@@ -62,12 +63,14 @@ class Fms(Model):
             return []
 
         # Generate collated file list and identify the first tile
-        tile_fnames = [f for f in os.listdir(dir)
-                       if f[-4:].isdigit() and f[-8:-4] == '.nc.']
+        tile_fnames = [f for f in Path(dir).iterdir()
+                       if f.suffixes[0] == '.nc' and
+                       f.suffixes[1][1:].isdigit()]
 
-        # print("dir: ",tile_fnames)
-        tile_fnames.sort()
-        return tile_fnames
+        # Sort numerically according to the number in the suffix and strip off
+        # path information
+        return [f.name for f
+                in sorted(tile_fnames, key=lambda e: int(e.suffixes[1][1:]))]
 
     def archive(self, **kwargs):
         super(Fms, self).archive()
