@@ -63,7 +63,7 @@ class Fms(Model):
             return []
 
         # Generate collated file list and identify the first tile
-        tile_fnames = [f for f in Path(dir).iterdir()
+        tile_fnames = [f for f in Path(dir).glob('*.nc.*')
                        if f.suffixes[0] == '.nc' and
                        f.suffixes[1][1:].isdigit()]
 

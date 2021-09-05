@@ -51,6 +51,12 @@ def make_tiles(begin, end):
         p = tmpdir / "tile.nc.{0:06d}".format(n)
         p.touch()
         files.append(str(p.name))
+    
+    # Make a random non-conforming filename
+    (tmpdir / "log.out").touch()
+
+    # Make a random already collated file
+    (tmpdir / "collated.nc").touch()
 
     return files
 
