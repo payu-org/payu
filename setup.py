@@ -43,7 +43,7 @@ setup(
         'PyYAML',
         'requests[security]',
         'python-dateutil',
-        'tenacity==7.0.0',
+        'tenacity!=7.0.0',
     ],
     tests_require=[
         'pytest',
