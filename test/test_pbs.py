@@ -227,3 +227,9 @@ def test_run():
 
         assert(args.remaining[-2].endswith('python'))
         assert(args.remaining[-1].endswith(payu_cmd))
+
+
+def test_tenacity():
+
+    # This should fail and do nothing
+    pbs.get_qstat_info()
