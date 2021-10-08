@@ -35,7 +35,7 @@ setup(
         'requests',
         'yamanifest',
         'dateutil',
-        'tenacity==7.0.0',
+        'tenacity',
     ],
     install_requires=[
         'f90nml >= 0.16',
