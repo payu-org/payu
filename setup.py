@@ -35,7 +35,7 @@ setup(
         'requests',
         'yamanifest',
         'dateutil',
-        'tenacity',
+        'tenacity==7.0.0',
     ],
     install_requires=[
         'f90nml >= 0.16',
@@ -43,7 +43,7 @@ setup(
         'PyYAML',
         'requests[security]',
         'python-dateutil',
-        'tenacity',
+        'tenacity==7.0.0',
     ],
     tests_require=[
         'pytest',
