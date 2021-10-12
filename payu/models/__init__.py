@@ -1,6 +1,7 @@
 from payu.models.access import Access
 from payu.models.accessom2 import AccessOm2
 from payu.models.cesm_cmeps import AccessOm3
+from payu.models.cable import Cable
 from payu.models.cice import Cice
 from payu.models.cice5 import Cice5
 from payu.models.gold import Gold
@@ -36,6 +37,7 @@ index = {
     'ww3':        WW3,
     'mom6':       Mom6,
     'qgcm':       Qgcm,
+    'cable':      Cable,
 
     # Default
     'default':    Model,
