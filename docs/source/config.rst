@@ -419,3 +419,8 @@ Miscellaneous
 ``repeat``
    Ignore any restart files and repeat the initial run upon resubmission. This
    is generally only used for testing purposes, such as bit reproducibility.
+
+``runspersub``
+   Define the maximum number of runs per PBS job submit. The actual number of
+   runs per PBS submit will be the minimum of ``runspersub`` and the total
+   number of runs set with the ``-n`` command-line flag.
