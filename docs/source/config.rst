@@ -421,6 +421,7 @@ Miscellaneous
    is generally only used for testing purposes, such as bit reproducibility.
 
 ``runspersub``
-   Define the maximum number of runs per PBS job submit. The actual number of
-   runs per PBS submit will be the minimum of ``runspersub`` and the total
-   number of runs set with the ``-n`` command-line flag.
+   Define the maximum number of runs per PBS job submit. The default is 1. 
+   The actual number of runs per PBS submit will be the minimum of 
+   ``runspersub`` and the total number of runs set with the ``-n`` 
+   command-line flag. 
