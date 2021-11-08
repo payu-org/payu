@@ -148,7 +148,7 @@ class UnifiedModel(Model):
            and os.path.exists(restart_calendar_path):
 
             with open(restart_calendar_path, 'r') as restart_file:
-                restart_info = yaml.load(restart_file)
+                restart_info = yaml.safe_load(restart_file)
 
             run_start_date = restart_info['end_date']
 

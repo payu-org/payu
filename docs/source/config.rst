@@ -416,6 +416,13 @@ Miscellaneous
    *Note:* ``unlimited`` *works without any issues, but explicit stacksize
    values may not be correctly communicated across raijin nodes.*
 
+``runspersub``
+   Define the maximum number of runs per PBS job submit. The default is 1. 
+   The actual number of runs per PBS submit will be the minimum of 
+   ``runspersub`` and the total number of runs set with the ``-n`` 
+   command-line flag. 
+
 ``repeat``
    Ignore any restart files and repeat the initial run upon resubmission. This
    is generally only used for testing purposes, such as bit reproducibility.
+
