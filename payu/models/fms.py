@@ -64,13 +64,13 @@ class Fms(Model):
 
         # Generate collated file list and identify the first tile
         tile_fnames = [f for f in Path(dir).glob('*.nc.*')
-                       if f.suffixes[0] == '.nc' and
-                       f.suffixes[1][1:].isdigit()]
+                       if f.suffixes[-2] == '.nc' and
+                       f.suffixes[-1][1:].isdigit()]
 
         # Sort numerically according to the number in the suffix and strip off
         # path information
         return [f.name for f
-                in sorted(tile_fnames, key=lambda e: int(e.suffixes[1][1:]))]
+                in sorted(tile_fnames, key=lambda e: int(e.suffixes[-1][1:]))]
 
     def archive(self, **kwargs):
         super(Fms, self).archive()
