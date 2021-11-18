@@ -16,14 +16,17 @@ from test.common import tmpdir
 
 verbose = False
 
+
 def rmtmp():
     try:
         shutil.rmtree(tmpdir)
     except FileNotFoundError:
         pass
 
+
 def mktmp():
     tmpdir.mkdir()
+
 
 def setup_module(module):
     """
@@ -35,6 +38,7 @@ def setup_module(module):
     rmtmp()
     mktmp()
 
+
 def teardown_module(module):
     """
     Put any test-wide teardown code in here, e.g. removing test outputs
@@ -44,14 +48,15 @@ def teardown_module(module):
 
     rmtmp()
 
-def make_tiles(begin, end):
+
+def make_tiles(begin, end, prefix='tile'):
 
     files = []
-    for n in range(begin, end): 
-        p = tmpdir / "tile.nc.{0:06d}".format(n)
+    for n in range(begin, end):
+        p = tmpdir / "{}.nc.{:06d}".format(prefix, n)
         p.touch()
         files.append(str(p.name))
-    
+
     # Make a random non-conforming filename
     (tmpdir / "log.out").touch()
 
@@ -60,42 +65,84 @@ def make_tiles(begin, end):
 
     return files
 
+
 def rm_tiles():
 
     for f in tmpdir.iterdir():
         f.unlink()
 
+
 def test_get_uncollated_files():
 
-    files = make_tiles(9900,9999)
+    files = make_tiles(9900, 9999)
 
     mncfiles = Fms.get_uncollated_files(tmpdir)
 
     assert len(mncfiles) == len(files)
-    assert all(a == b for a,b in zip(mncfiles, files))
+    assert all(a == b for a, b in zip(mncfiles, files))
 
-    files = make_tiles(9900,10100)
+    files = make_tiles(9900, 10100)
 
     mncfiles = Fms.get_uncollated_files(tmpdir)
 
     assert len(mncfiles) == len(files)
-    assert all(a == b for a,b in zip(mncfiles, files))
+    assert all(a == b for a, b in zip(mncfiles, files))
 
     rm_tiles()
 
-    files = make_tiles(0,99)
+    files = make_tiles(0, 99)
 
     mncfiles = Fms.get_uncollated_files(tmpdir)
 
     assert len(mncfiles) == len(files)
-    assert all(a == b for a,b in zip(mncfiles, files))
+    assert all(a == b for a, b in zip(mncfiles, files))
 
     rm_tiles()
 
     # Make sure still sorts once over the six-figure zero-padding
-    files = make_tiles(999997,1000010)
+    files = make_tiles(999997, 1000010)
 
     mncfiles = Fms.get_uncollated_files(tmpdir)
 
     assert len(mncfiles) == len(files)
-    assert all(a == b for a,b in zip(mncfiles, files))
+    assert all(a == b for a, b in zip(mncfiles, files))
+
+
+def test_get_uncollated_restart_files():
+
+    rm_tiles()
+
+    prefix = "tile.res"
+
+    files = make_tiles(9900, 9999, prefix)
+
+    mncfiles = Fms.get_uncollated_files(tmpdir)
+
+    assert len(mncfiles) == len(files)
+    assert all(a == b for a, b in zip(mncfiles, files))
+
+    files = make_tiles(9900, 10100, prefix)
+
+    mncfiles = Fms.get_uncollated_files(tmpdir)
+
+    assert len(mncfiles) == len(files)
+    assert all(a == b for a, b in zip(mncfiles, files))
+
+    rm_tiles()
+
+    files = make_tiles(0, 99, prefix)
+
+    mncfiles = Fms.get_uncollated_files(tmpdir)
+
+    assert len(mncfiles) == len(files)
+    assert all(a == b for a, b in zip(mncfiles, files))
+
+    rm_tiles()
+
+    # Make sure still sorts once over the six-figure zero-padding
+    files = make_tiles(999997, 1000010, prefix)
+
+    mncfiles = Fms.get_uncollated_files(tmpdir)
+
+    assert len(mncfiles) == len(files)
+    assert all(a == b for a, b in zip(mncfiles, files))
