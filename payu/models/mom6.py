@@ -73,4 +73,7 @@ class Mom6(Fms):
             input_type = 'r'
         input_nml['MOM_input_nml']['input_filename'] = input_type
 
+        if 'SIS_input_nml' in input_nml:
+            input_nml['SIS_input_nml']['input_filename'] = input_type
+
         f90nml.write(input_nml, input_fpath, force=True)
