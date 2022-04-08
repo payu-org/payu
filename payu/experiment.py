@@ -34,7 +34,7 @@ from payu.manifest import Manifest
 
 # Environment module support on vayu
 # TODO: To be removed
-core_modules = ['python', 'payu']
+core_modules = ['python', 'payu', 'modules']
 
 # Default payu parameters
 default_archive_url = 'dc.nci.org.au'
@@ -368,7 +368,7 @@ class Experiment(object):
 
     def build_model(self):
 
-        self.load_modules()
+        # self.load_modules()
 
         for model in self.models:
             model.get_codebase()
@@ -454,7 +454,7 @@ class Experiment(object):
         # XXX: This was previously done in reversion
         envmod.setup()
 
-        self.load_modules()
+        # self.load_modules()
 
         f_out = open(self.stdout_fname, 'w')
         f_err = open(self.stderr_fname, 'w')
@@ -778,10 +778,11 @@ class Experiment(object):
                     shutil.rmtree(res_path)
 
         # Ensure dynamic library support for subsequent python calls
-        ld_libpaths = os.environ['LD_LIBRARY_PATH']
-        py_libpath = sysconfig.get_config_var('LIBDIR')
-        if py_libpath not in ld_libpaths.split(':'):
-            os.environ['LD_LIBRARY_PATH'] = ':'.join([py_libpath, ld_libpaths])
+        ld_libpaths = os.environ.get('LD_LIBRARY_PATH', None)
+        if ld_libpaths is not None:
+            py_libpath = sysconfig.get_config_var('LIBDIR')
+            if py_libpath not in ld_libpaths.split(':'):
+                os.environ['LD_LIBRARY_PATH'] = ':'.join([py_libpath, ld_libpaths])
 
         collate_config = self.config.get('collate', {})
         collating = collate_config.get('enable', True)

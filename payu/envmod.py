@@ -100,8 +100,11 @@ def lib_update(bin_path, lib_name):
 
     # TODO: Use objdump instead of ldd
     cmd = 'ldd {0}'.format(bin_path)
-    ldd_output = subprocess.check_output(shlex.split(cmd)).decode('ascii')
-    slibs = ldd_output.split('\n')
+    try:
+        ldd_output = subprocess.check_output(shlex.split(cmd)).decode('ascii')
+        slibs = ldd_output.split('\n')
+    except:
+        return ''
 
     for lib_entry in slibs:
         if lib_name in lib_entry:
