@@ -36,6 +36,9 @@ class Slurm(Scheduler):
         pbs_script = check_exe_path(payu_path, pbs_script)
 
         pbs_flags = []
+
+        pbs_project = pbs_config.get('project', os.environ['PROJECT'])
+        pbs_flags.append('-A {project}'.format(project=pbs_project))
         pbs_flags.append('--time={}'.format(pbs_config.get('walltime')))
         pbs_flags.append('--ntasks={}'.format(pbs_config.get('ncpus')))
 
