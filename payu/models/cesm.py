@@ -21,6 +21,27 @@ import multiprocessing
 from payu.fsops import mkdir_p
 from payu.models.model import Model
 
+component_config_files = {
+    "mom6": [
+        "input.nml",
+        "MOM_input",
+        "diag_table",
+    ],
+    "cice6": ["ice_in"],
+    "ww3": ["wav_in"],
+    "datm": [
+        "datm_in",
+        "datm.streams.xml",
+    ],
+    "drof": [
+        "drof_in",
+        "drof.streams.xml"
+    ]
+}
+
+component_optional_config_files = {
+    "mom6": ["MOM_override"]
+}
 
 class Cesm(Model):
 
@@ -30,33 +51,34 @@ class Cesm(Model):
         self.model_type = 'Cesm'
         self.default_exec = 'cesm'
 
-        # Hardcoded by driver
+        # Hardcoded by CMEPS driver
         self.restart_template = ".*.r.*.nc"
         self.restart_pointer_template = "rpointer.*"
 
-        self.config_files = [
-            'datm_in',
-            'datm.streams.xml',
-            
-            'drof_in',
-            'drof.streams.xml',
+        self.config_files, self.optional_config_files = self.get_component_config_files()
 
-            'input.nml',
-            'MOM_input',
-            'diag_table',
+    def get_component_config_files(self):
+        components = self.expt.config.get('components')
 
-            'ice_in',
+        assert components is not None, "Model components must be specified when running cesm"
 
-            'drv_in',
-            'fd.yaml',
-            'nuopc.runconfig',
-            'nuopc.runseq'
+        # Driver config files always present
+        config_files = [
+            "drv_in",
+            "fd.yaml",
+            "nuopc.runconfig",
+            "nuopc.runseq"
         ]
+        optional_config_files = []
+        for component in components:
+            config_files.extend(component_config_files[component])
+            try:
+                optional_config_files.extend(component_optional_config_files[component])
+            except KeyError:
+                pass
 
-        self.optional_config_files = [
-            'MOM_override'
-        ]
-        
+        return config_files, optional_config_files
+
     def set_model_pathnames(self):
 
         super(Cesm, self).set_model_pathnames()
@@ -108,6 +130,20 @@ class Cesm(Model):
         mkdir_p(os.path.join(self.work_path, 'timing'))
 
         runconfig.write()
+
+        # TODO: Need a better way to do this
+        # The mod_def input file needs to be in work_path and called mod_def.ww3
+        if "ww3" in self.expt.config.get("components"):
+            files =  glob.glob(
+                os.path.join(self.work_input_path, "*mod_def.ww3*"),
+                recursive=False
+            )
+            if files:
+                assert len(files) == 1, "Multiple mod_def.ww3 files found in input directory"
+                f_dst = os.path.join(self.work_path, "mod_def.ww3")
+                shutil.copy(files[0], f_dst)
+            else:
+                print('payu: error: Unable to find mod_def.ww3 file in input directory')
 
     def archive(self):
         super(Cesm, self).archive()
