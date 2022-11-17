@@ -302,6 +302,7 @@ class Experiment(object):
         self.archive_sym_path = os.path.join(self.control_path, 'archive')
 
         for model in self.models:
+            print(f"Setting pathnames on {model}")
             model.set_model_pathnames()
             model.set_local_pathnames()
 

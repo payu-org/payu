@@ -1,5 +1,6 @@
 from payu.models.access import Access
 from payu.models.accessom2 import AccessOm2
+from payu.models.cesm import Cesm
 from payu.models.cice import Cice
 from payu.models.cice5 import Cice5
 from payu.models.gold import Gold
@@ -20,6 +21,7 @@ from payu.models.model import Model
 index = {
     'access':     Access,
     'access-om2': AccessOm2,
+    'cesm':     Cesm,
     'cice':     Cice,
     'cice5':    Cice5,
     'gold':     Gold,
