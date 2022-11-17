@@ -18,7 +18,7 @@ import shutil
 import multiprocessing
 
 # Local
-from payu.fsops import mkdir_p, make_symlink
+from payu.fsops import mkdir_p
 from payu.models.model import Model
 
 
