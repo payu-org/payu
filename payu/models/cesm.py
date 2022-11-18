@@ -21,26 +21,38 @@ import multiprocessing
 from payu.fsops import mkdir_p
 from payu.models.model import Model
 
-component_config_files = {
-    "mom6": [
-        "input.nml",
-        "MOM_input",
-        "diag_table",
-    ],
-    "cice6": ["ice_in"],
-    "ww3": ["wav_in"],
-    "datm": [
-        "datm_in",
-        "datm.streams.xml",
-    ],
-    "drof": [
-        "drof_in",
-        "drof.streams.xml"
-    ]
-}
-
-component_optional_config_files = {
-    "mom6": ["MOM_override"]
+component_info = {
+    "mom6": {
+        "realm": "ocn",
+        "config_files": [
+            "input.nml",
+            "MOM_input",
+            "diag_table",
+        ],
+        "optional_config_files" : ["MOM_override"]
+    },
+    "cice6": {
+        "realm": "ice",
+        "config_files": ["ice_in"],
+    },
+    "ww3": {
+        "realm": "wav",
+        "config_files": ["wav_in"],
+    },
+    "datm": {
+        "realm": "atm",
+        "config_files": [
+            "datm_in",
+            "datm.streams.xml",
+        ],
+    },
+    "drof": {
+        "realm": "rof",
+        "config_files": [
+            "drof_in",
+            "drof.streams.xml"
+        ]
+    },
 }
 
 class Cesm(Model):
@@ -51,16 +63,16 @@ class Cesm(Model):
         self.model_type = 'Cesm'
         self.default_exec = 'cesm'
 
-        # Hardcoded by CMEPS driver
-        self.restart_template = ".*.r.*.nc"
-        self.restart_pointer_template = "rpointer.*"
+        self.components = self.expt.config.get('components')
+        self.realms = ["cpl"] + [
+            component_info[component]["realm"] for component in self.components
+            ]
 
         self.config_files, self.optional_config_files = self.get_component_config_files()
 
     def get_component_config_files(self):
-        components = self.expt.config.get('components')
 
-        assert components is not None, "Model components must be specified when running cesm"
+        assert self.components is not None, "Model components must be specified when running cesm"
 
         # Driver config files always present
         config_files = [
@@ -70,10 +82,12 @@ class Cesm(Model):
             "nuopc.runseq"
         ]
         optional_config_files = []
-        for component in components:
-            config_files.extend(component_config_files[component])
+        for component in self.components:
+            config_files.extend(component_info[component]["config_files"])
             try:
-                optional_config_files.extend(component_optional_config_files[component])
+                optional_config_files.extend(
+                    component_info[component]["optional_config_files"]
+                    )
             except KeyError:
                 pass
 
@@ -96,28 +110,40 @@ class Cesm(Model):
             start_type = 'continue'
 
             # Overwrite restart pointer symlinks with copies
-            pointers = glob.glob(
+            pointer_files = [
                 os.path.join(
-                    self.work_path, 
-                    self.restart_pointer_template,
-                    )
-                )
-            for f_dst in pointers:
+                    self.work_path, f"rpointer.{realm}",
+                    ) for realm in self.realms
+            ]
+            for f_dst in pointer_files:
                 f_src = os.readlink(f_dst)
                 os.remove(f_dst)
                 shutil.copy(f_src, f_dst)
+
+            # # ww3 restart needs to be called restart.ww3
+            # if "ww3" in self.components:
+            #     pointer = os.path.join(
+            #         self.work_path, "rpointer.wav",
+            #         )
+            #     with open(pointer, "r") as f:
+            #         restart = f.readline().rstrip('\n')
+            #     os.rename(
+            #         os.path.join(self.work_path, restart), 
+            #         os.path.join(self.work_path, "restart.ww3")
+            #         )
         else:
             start_type = 'startup'
+
             
         runconfig.set("ALLCOMP_attributes", "start_type", start_type)
 
         # Check pelayout makes sense
-        components = ["atm", "cpl", "glc", "ice", "lnd", "ocn", "rof", "wav"]
+        all_realms = ["atm", "cpl", "glc", "ice", "lnd", "ocn", "rof", "wav"]
         cpucount = int(
             self.expt.config.get('ncpus', multiprocessing.cpu_count())
             )
-        for comp in components:
-            ntasks = int(runconfig.get("PELAYOUT_attributes", f"{comp}_ntasks"))
+        for realm in all_realms:
+            ntasks = int(runconfig.get("PELAYOUT_attributes", f"{realm}_ntasks"))
             assert cpucount >= ntasks, "Insufficient cpus for the pelayout in nuopc.runconfig"
         
         # Ensure that restarts will be written at the end of each run
@@ -132,8 +158,8 @@ class Cesm(Model):
         runconfig.write()
 
         # TODO: Need a better way to do this
-        # The mod_def input file needs to be in work_path and called mod_def.ww3
-        if "ww3" in self.expt.config.get("components"):
+        # The ww3 mod_def input needs to be in work_path and called mod_def.ww3
+        if "ww3" in self.components:
             files =  glob.glob(
                 os.path.join(self.work_input_path, "*mod_def.ww3*"),
                 recursive=False
@@ -143,6 +169,7 @@ class Cesm(Model):
                 f_dst = os.path.join(self.work_path, "mod_def.ww3")
                 shutil.copy(files[0], f_dst)
             else:
+                # TODO: copied this from other models. Surely we want to exit here or something
                 print('payu: error: Unable to find mod_def.ww3 file in input directory')
 
     def archive(self):
@@ -150,24 +177,46 @@ class Cesm(Model):
 
         mkdir_p(self.restart_path)
 
-        restart_files = glob.glob(
-            os.path.join(
-                self.work_path, 
-                f"{self.case_name}{self.restart_template}"
+        # WW3 doesn't generate a rpointer file. Write one so that all components can be generally
+        # handled in the same way.
+        # Note, I don't actually know how WW3 knows what restart to use. The normal approach to
+        # providing restarts to WW3 is to add a restart.ww3 file to the run directory. However, here
+        # WW3 looks for a <case_name>.ww3.r.<date> file despite this not  being specified in wav_in.
+        # I guess the driver specifies this somewhere based on the cpl restart file name?
+        if "ww3" in self.components:
+            cpl_pointer = os.path.join(
+                self.work_path, f"rpointer.cpl",
                 )
-            )
-        restart_pointers = glob.glob(
-            os.path.join(
-                self.work_path, 
-                self.restart_pointer_template,
+            with open(cpl_pointer, "r") as f:
+                cpl_restart = f.readline().rstrip('\n')
+                wav_restart = cpl_restart.replace("cpl", "ww3").removesuffix(".nc")
+            wav_pointer = os.path.join(
+                self.work_path, f"rpointer.wav",
                 )
-            )
-        if not restart_files:
-            print('payu: error: Model has not produced any restart files')
-        if not restart_pointers:
-            print('payu: error: Model has not produced any restart pointer files')
+            with open(wav_pointer, 'w') as f:
+                f.write(wav_restart)
+
+        # Get names of restarts from restart pointer files
+        pointer_files = [
+                os.path.join(
+                    self.work_path, f"rpointer.{realm}",
+                    ) for realm in self.realms
+            ]
+        restart_files = []
+        for pointer in pointer_files:
+            try:
+                with open(pointer,"r") as f:
+                    restart = f.readline().rstrip('\n')
+                    restart_files.append(
+                        os.path.join(
+                            self.work_path, restart,
+                            )
+                        )
+            except FileNotFoundError:
+                # TODO: copied this from other models. Surely we want to exit here or something
+                print(f"payu: error: Model has not produced pointer file {pointer}")
         
-        for f_src in restart_files + restart_pointers:
+        for f_src in restart_files + pointer_files:
             name = os.path.basename(f_src)
             f_dst = os.path.join(self.restart_path, name)
             shutil.move(f_src, f_dst)
@@ -210,4 +259,3 @@ class Runconfig:
     def write(self):
         with open(self.file, 'w') as f:
             f.write(self.contents)
-    
