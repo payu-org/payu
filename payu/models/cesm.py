@@ -175,7 +175,7 @@ class Cesm(Model):
                 self.work_path, f"rpointer.cpl",
                 )
             with open(cpl_pointer, "r") as f:
-                cpl_restart = f.readline().rstrip('\n')
+                cpl_restart = f.readline().rstrip()
                 wav_restart = cpl_restart.replace("cpl", "ww3").removesuffix(".nc")
             wav_pointer = os.path.join(
                 self.work_path, f"rpointer.wav",
@@ -193,7 +193,7 @@ class Cesm(Model):
         for pointer in pointer_files:
             try:
                 with open(pointer,"r") as f:
-                    restart = f.readline().rstrip('\n')
+                    restart = f.readline().rstrip()
                     restart_files.append(
                         os.path.join(
                             self.work_path, restart,
