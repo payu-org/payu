@@ -119,22 +119,9 @@ class Cesm(Model):
                 f_src = os.readlink(f_dst)
                 os.remove(f_dst)
                 shutil.copy(f_src, f_dst)
-
-            # # ww3 restart needs to be called restart.ww3
-            # if "ww3" in self.components:
-            #     pointer = os.path.join(
-            #         self.work_path, "rpointer.wav",
-            #         )
-            #     with open(pointer, "r") as f:
-            #         restart = f.readline().rstrip('\n')
-            #     os.rename(
-            #         os.path.join(self.work_path, restart), 
-            #         os.path.join(self.work_path, "restart.ww3")
-            #         )
         else:
             start_type = 'startup'
 
-            
         runconfig.set("ALLCOMP_attributes", "start_type", start_type)
 
         # Check pelayout makes sense
