@@ -46,6 +46,13 @@ component_info = {
             "datm.streams.xml",
         ],
     },
+    "docn": {
+        "realm": "ocn",
+        "config_files": [
+            "docn_in",
+            "docn.streams.xml",
+        ],
+    },
     "drof": {
         "realm": "rof",
         "config_files": [
