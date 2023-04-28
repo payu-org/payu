@@ -426,3 +426,19 @@ Miscellaneous
    Ignore any restart files and repeat the initial run upon resubmission. This
    is generally only used for testing purposes, such as bit reproducibility.
 
+``modules``
+   Specify a list of environment modules to load at the start of the PBS job,
+   for example::
+
+      modules:
+         - netcdf-c-4.9.0-intel-2021.6.0-t5vmcra
+         - parallel-netcdf-1.12.3-intel-2021.6.0-xty6sc5
+         - xerces-c-3.2.3-intel-2021.6.0-z57iwgl
+
+   This is seldom needed, because payu is good at automatically determining
+   the environment modules required by model executables. If the modules
+   require `module use` inorder to be found, do this prior to `payu run`,
+   e.g.::
+
+      module use /g/data/v45/aek156/spack/share/spack/modules/linux-rocky8-cascadelake
+      payu run
