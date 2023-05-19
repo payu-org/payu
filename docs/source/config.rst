@@ -431,9 +431,9 @@ Miscellaneous
    for example::
 
       modules:
-         - netcdf-c-4.9.0-intel-2021.6.0-t5vmcra
-         - parallel-netcdf-1.12.3-intel-2021.6.0-xty6sc5
-         - xerces-c-3.2.3-intel-2021.6.0-z57iwgl
+         - netcdf-c-4.9.0
+         - parallel-netcdf-1.12.3
+         - xerces-c-3.2.3
 
    This is seldom needed, because payu is good at automatically determining
    the environment modules required by model executables. If the modules
