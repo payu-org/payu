@@ -440,5 +440,5 @@ Miscellaneous
    require `module use` inorder to be found, do this prior to `payu run`,
    e.g.::
 
-      module use /g/data/v45/aek156/spack/share/spack/modules/linux-rocky8-cascadelake
+      module use /path/to/module/directory
       payu run
