@@ -7,3 +7,4 @@ MANIFEST
 /docs/build
 /docs/_build
 .coverage
+.ipynb_checkpoints

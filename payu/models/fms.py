@@ -40,22 +40,12 @@ def cmdthread(cmd, cwd):
     return returncode, output
 
 
-class Fms(Model):
-
-    def __init__(self, expt, name, config):
-
-        # payu initialisation
-        super(Fms, self).__init__(expt, name, config)
-
-    def set_model_pathnames(self):
-
-        super(Fms, self).set_model_pathnames()
-
-        # Define local FMS directories
-        self.work_restart_path = os.path.join(self.work_path, 'RESTART')
-        self.work_input_path = os.path.join(self.work_path, 'INPUT')
-        self.work_init_path = self.work_input_path
-
+class FmsCollateMixin:
+    """
+    Mixin class to prvide FMS collate functionality. This has been broken out from the Fms class
+    so that it can be used elsewhere (e.g. in cesm_cmeps model classes).
+    """
+    
     @staticmethod
     def get_uncollated_files(dir):
 
@@ -71,18 +61,6 @@ class Fms(Model):
         # path information
         return [f.name for f
                 in sorted(tile_fnames, key=lambda e: int(e.suffixes[-1][1:]))]
-
-    def archive(self, **kwargs):
-        super(Fms, self).archive()
-
-        # Remove the 'INPUT' path
-        shutil.rmtree(self.work_input_path, ignore_errors=True)
-
-        # Archive restart files before processing model output
-        if os.path.isdir(self.restart_path):
-            os.rmdir(self.restart_path)
-
-        shutil.move(self.work_restart_path, self.restart_path)
 
     def collate(self):
 
@@ -240,3 +218,32 @@ class Fms(Model):
                     print(' Error message:', file=sys.stderr)
                     print(op.decode(), file=sys.stderr)
             sys.exit(-1)
+
+
+class Fms(Model, FmsCollateMixin):
+
+    def __init__(self, expt, name, config):
+
+        # payu initialisation
+        super(Fms, self).__init__(expt, name, config)
+
+    def set_model_pathnames(self):
+
+        super(Fms, self).set_model_pathnames()
+
+        # Define local FMS directories
+        self.work_restart_path = os.path.join(self.work_path, 'RESTART')
+        self.work_input_path = os.path.join(self.work_path, 'INPUT')
+        self.work_init_path = self.work_input_path
+
+    def archive(self, **kwargs):
+        super(Fms, self).archive()
+
+        # Remove the 'INPUT' path
+        shutil.rmtree(self.work_input_path, ignore_errors=True)
+
+        # Archive restart files before processing model output
+        if os.path.isdir(self.restart_path):
+            os.rmdir(self.restart_path)
+
+        shutil.move(self.work_restart_path, self.restart_path)
