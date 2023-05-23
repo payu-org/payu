@@ -1,9 +1,9 @@
 # coding: utf-8
 """
-The payu interface for CESM model configurations using CMEPS/NUOPC
--------------------------------------------------------------------------------
+The payu interface for CESM model configurations using CMEPS and the CESM CMEPS driver
+--------------------------------------------------------------------------------------
 Contact: Marshall Ward <marshall.ward@anu.edu.au>
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------
 Distributed as part of Payu, Copyright 2011 Marshall Ward
 Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
@@ -22,6 +22,7 @@ from payu.fsops import mkdir_p
 from payu.models.model import Model
 from payu.models.fms import fms_collate
 
+# Add as needed
 component_info = {
     "mom6": {
         "realm": "ocn",
