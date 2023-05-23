@@ -20,6 +20,7 @@ import multiprocessing
 # Local
 from payu.fsops import mkdir_p
 from payu.models.model import Model
+from payu.models.fms import FmsCollateMixin
 
 component_info = {
     "mom6": {
@@ -62,24 +63,22 @@ component_info = {
     },
 }
 
-class Cesm(Model):
+class CesmCmepsBase(Model):
 
-    def __init__(self, expt, name, config):
-        super(Cesm, self).__init__(expt, name, config)
+    def __init__(self, components, **kwargs):
+        super().__init__(**kwargs)
 
-        self.model_type = 'Cesm'
-        self.default_exec = 'cesm'
+        self.model_type = 'cesm-cmeps'
 
-        self.components = self.expt.config.get('components')
+        self.components = components
         self.realms = ["cpl"] + [
             component_info[component]["realm"] for component in self.components
             ]
-
         self.config_files, self.optional_config_files = self.get_component_config_files()
 
     def get_component_config_files(self):
 
-        assert self.components is not None, "Model components must be specified when running cesm"
+        assert self.components is not None, "Model components must be specified for CesmCmepsBase"
 
         # Driver config files always present
         config_files = [
@@ -102,12 +101,12 @@ class Cesm(Model):
 
     def set_model_pathnames(self):
 
-        super(Cesm, self).set_model_pathnames()
+        super().set_model_pathnames()
 
         self.work_input_path = os.path.join(self.work_path, 'input')
         
     def setup(self):
-        super(Cesm, self).setup()
+        super().setup()
 
         runconfig = Runconfig(os.path.join(self.work_path, 'nuopc.runconfig'))
 
@@ -167,7 +166,7 @@ class Cesm(Model):
                 print('payu: error: Unable to find mod_def.ww3 file in input directory')
 
     def archive(self):
-        super(Cesm, self).archive()
+        super().archive()
 
         mkdir_p(self.restart_path)
 
@@ -214,6 +213,15 @@ class Cesm(Model):
             name = os.path.basename(f_src)
             f_dst = os.path.join(self.restart_path, name)
             shutil.move(f_src, f_dst)
+
+
+class AccessOm3(CesmCmepsBase, FmsCollateMixin):
+
+    def __init__(self, expt, name, config):
+
+        components = ["mom6", "cice6", "ww3", "datm", "drof"]
+        
+        super().__init__(components, expt, name, config)
 
 
 class Runconfig:
