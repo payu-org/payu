@@ -251,4 +251,4 @@ class Fms(Model):
         shutil.move(self.work_restart_path, self.restart_path)
 
     def collate(self):
-        _fms_collate(self)
+        fms_collate(self)
