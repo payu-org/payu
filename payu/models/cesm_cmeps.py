@@ -20,7 +20,7 @@ import multiprocessing
 # Local
 from payu.fsops import mkdir_p
 from payu.models.model import Model
-from payu.models.fms import FmsCollateMixin
+from payu.models.fms import fms_collate
 
 component_info = {
     "mom6": {
@@ -65,8 +65,8 @@ component_info = {
 
 class CesmCmepsBase(Model):
 
-    def __init__(self, components, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, components, expt, name, config):
+        super().__init__(expt, name, config)
 
         self.model_type = 'cesm-cmeps'
 
@@ -215,13 +215,16 @@ class CesmCmepsBase(Model):
             shutil.move(f_src, f_dst)
 
 
-class AccessOm3(CesmCmepsBase, FmsCollateMixin):
+class AccessOm3(CesmCmepsBase):
 
     def __init__(self, expt, name, config):
 
         components = ["mom6", "cice6", "ww3", "datm", "drof"]
         
         super().__init__(components, expt, name, config)
+
+    def collate(self):
+        fms_collate(self)
 
 
 class Runconfig:
