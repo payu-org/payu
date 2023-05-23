@@ -120,7 +120,7 @@ def fms_collate(model):
 
     # Generate collated file list and identify the first tile
     tile_fnames = {}
-    fnames = Fms._get_uncollated_files(model.output_path)
+    fnames = get_uncollated_files(model.output_path)
     tile_fnames[model.output_path] = fnames
 
     print(tile_fnames)
@@ -128,7 +128,7 @@ def fms_collate(model):
     if (collate_config.get('restart', False) and
             model.prior_restart_path is not None):
         # Add uncollated restart files
-        fnames = Fms._get_uncollated_files(model.prior_restart_path)
+        fnames = get_uncollated_files(model.prior_restart_path)
         tile_fnames[model.prior_restart_path] = fnames
 
     # mnc_tiles = defaultdict(list)
