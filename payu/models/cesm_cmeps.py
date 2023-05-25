@@ -73,14 +73,15 @@ class CesmCmeps(Model):
         ]
 
         self.realms = ["ocn", "ice", "wav", "atm", "rof", "cpl"]
-        self.runconfig = None # nuopc.runconfig. Cna't read this yet as work_path hasn't been set
+        self.runconfig = None # nuopc.runconfig. Can't read this yet as paths haven't necessarily been set
         self.components = {} # To be read from nuopc.runconfig
         self.rpointers = [] # To be inferred from nuopc.runconfig
 
+    def get_runconfig(self, path):
+        self.runconfig = Runconfig(os.path.join(path, 'nuopc.runconfig'))
+        
     def get_components(self):
         """Get components from nuopc.runconfig"""
-
-        self.runconfig = Runconfig(os.path.join(self.work_path, 'nuopc.runconfig'))
 
         self.components = {}
         self.rpointers = ["rpointer.cpl"]
@@ -113,6 +114,7 @@ class CesmCmeps(Model):
         super().setup()
 
         # Read components from nuopc.runconfig and copy component configuration files
+        self.get_runconfig(self.work_path)
         self.get_components()
         for f_name in self.config_files:
             f_path = os.path.join(self.control_path, f_name)
@@ -233,6 +235,7 @@ class CesmCmeps(Model):
     def collate(self):
         
         # .setup is not run when collate is called so need to get components
+        self.get_runconfig(self.output_path)
         self.get_components()
         
         if "mom" in self.components.values():
