@@ -426,3 +426,19 @@ Miscellaneous
    Ignore any restart files and repeat the initial run upon resubmission. This
    is generally only used for testing purposes, such as bit reproducibility.
 
+``modules``
+   Specify a list of environment modules to load at the start of the PBS job,
+   for example::
+
+      modules:
+         - netcdf-c-4.9.0
+         - parallel-netcdf-1.12.3
+         - xerces-c-3.2.3
+
+   This is seldom needed, because payu is good at automatically determining
+   the environment modules required by model executables. If the modules
+   require `module use` inorder to be found, do this prior to `payu run`,
+   e.g.::
+
+      module use /path/to/module/directory
+      payu run
