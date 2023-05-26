@@ -10,7 +10,7 @@ import yaml
 
 import payu
 
-from payu.models.fms import Fms
+from payu.models.fms import get_uncollated_files
 
 from test.common import tmpdir
 
@@ -76,14 +76,14 @@ def test_get_uncollated_files():
 
     files = make_tiles(9900, 9999)
 
-    mncfiles = Fms.get_uncollated_files(tmpdir)
+    mncfiles = get_uncollated_files(tmpdir)
 
     assert len(mncfiles) == len(files)
     assert all(a == b for a, b in zip(mncfiles, files))
 
     files = make_tiles(9900, 10100)
 
-    mncfiles = Fms.get_uncollated_files(tmpdir)
+    mncfiles = get_uncollated_files(tmpdir)
 
     assert len(mncfiles) == len(files)
     assert all(a == b for a, b in zip(mncfiles, files))
@@ -92,7 +92,7 @@ def test_get_uncollated_files():
 
     files = make_tiles(0, 99)
 
-    mncfiles = Fms.get_uncollated_files(tmpdir)
+    mncfiles = get_uncollated_files(tmpdir)
 
     assert len(mncfiles) == len(files)
     assert all(a == b for a, b in zip(mncfiles, files))
@@ -102,7 +102,7 @@ def test_get_uncollated_files():
     # Make sure still sorts once over the six-figure zero-padding
     files = make_tiles(999997, 1000010)
 
-    mncfiles = Fms.get_uncollated_files(tmpdir)
+    mncfiles = get_uncollated_files(tmpdir)
 
     assert len(mncfiles) == len(files)
     assert all(a == b for a, b in zip(mncfiles, files))
@@ -116,14 +116,14 @@ def test_get_uncollated_restart_files():
 
     files = make_tiles(9900, 9999, prefix)
 
-    mncfiles = Fms.get_uncollated_files(tmpdir)
+    mncfiles = get_uncollated_files(tmpdir)
 
     assert len(mncfiles) == len(files)
     assert all(a == b for a, b in zip(mncfiles, files))
 
     files = make_tiles(9900, 10100, prefix)
 
-    mncfiles = Fms.get_uncollated_files(tmpdir)
+    mncfiles = get_uncollated_files(tmpdir)
 
     assert len(mncfiles) == len(files)
     assert all(a == b for a, b in zip(mncfiles, files))
@@ -132,7 +132,7 @@ def test_get_uncollated_restart_files():
 
     files = make_tiles(0, 99, prefix)
 
-    mncfiles = Fms.get_uncollated_files(tmpdir)
+    mncfiles = get_uncollated_files(tmpdir)
 
     assert len(mncfiles) == len(files)
     assert all(a == b for a, b in zip(mncfiles, files))
@@ -142,7 +142,7 @@ def test_get_uncollated_restart_files():
     # Make sure still sorts once over the six-figure zero-padding
     files = make_tiles(999997, 1000010, prefix)
 
-    mncfiles = Fms.get_uncollated_files(tmpdir)
+    mncfiles = get_uncollated_files(tmpdir)
 
     assert len(mncfiles) == len(files)
     assert all(a == b for a, b in zip(mncfiles, files))

@@ -1,5 +1,6 @@
 from payu.models.access import Access
 from payu.models.accessom2 import AccessOm2
+from payu.models.cesm_cmeps import AccessOm3
 from payu.models.cice import Cice
 from payu.models.cice5 import Cice5
 from payu.models.gold import Gold
@@ -20,22 +21,23 @@ from payu.models.model import Model
 index = {
     'access':     Access,
     'access-om2': AccessOm2,
-    'cice':     Cice,
-    'cice5':    Cice5,
-    'gold':     Gold,
-    'matm':     Matm,
-    'yatm':     Yatm,
-    'mitgcm':   Mitgcm,
-    'mom':      Mom,
-    'nemo':     Nemo,
-    'oasis':    Oasis,
-    'test':     Test,
-    'um':       UnifiedModel,
-    'ww3':      WW3,
-    'mom6':     Mom6,
-    'qgcm':     Qgcm,
+    'access-om3': AccessOm3,
+    'cice':       Cice,
+    'cice5':      Cice5,
+    'gold':       Gold,
+    'matm':       Matm,
+    'yatm':       Yatm,
+    'mitgcm':     Mitgcm,
+    'mom':        Mom,
+    'nemo':       Nemo,
+    'oasis':      Oasis,
+    'test':       Test,
+    'um':         UnifiedModel,
+    'ww3':        WW3,
+    'mom6':       Mom6,
+    'qgcm':       Qgcm,
 
     # Default
-    'default':  Model,
-    'model':    Model,
+    'default':    Model,
+    'model':      Model,
 }
