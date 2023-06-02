@@ -1,10 +1,10 @@
 package:
     name: payu
-    version: {{ GIT_DESCRIBE_TAG }}
+    version: 1.0.27 # GIT_DESCRIBE_TAG }}
 
 build:
     noarch: python
-    number: {{ GIT_DESCRIBE_NUMBER }}
+    number: 0 # GIT_DESCRIBE_NUMBER }}
     script: "{{ PYTHON }}  -m pip install . --no-deps"
     entry_points:
         - payu = payu.cli:parse
