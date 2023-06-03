@@ -6,6 +6,7 @@
 
 # Standard library
 import os
+import pwd
 import re
 import sys
 import shlex
@@ -93,6 +94,23 @@ class PBS(Scheduler):
         pbs_flags_extend = pbs_config.get('qsub_flags')
         if pbs_flags_extend:
             pbs_flags.append(pbs_flags_extend)
+
+        n_runs_per_submit = pbs_config.get('runspersub', 1)
+
+        if (n_runs_per_submit >= pbs_vars.get('PAYU_N_RUNS', 1)):
+            # This will be the last PBS submit, so modify
+            # mail flags if required
+            mail_config = pbs_config.get('mail', {})
+            if mail_config.get('final', False):
+                email_address = mail_config.get('address', None)
+                if email_address is None:
+                    # TODO move domain to platform specific module
+                    email_address = "{user}@{domain}".format(
+                        user=pwd.getpwuid(os.getuid()).pw_name,
+                        domain='nci.org.au',
+                    )
+                pbs_flags.append("-m e")
+                pbs_flags.append("-M {}".format(email_address))
 
         payu_path = pbs_vars.get('PAYU_PATH', os.path.dirname(sys.argv[0]))
         pbs_script = check_exe_path(payu_path, pbs_script)
