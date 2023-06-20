@@ -23,7 +23,7 @@ Control Path
 Laboratory Path
    This is the top-level directory for a particular model, and contains the
    model executables, input data, and model output for all experiments using
-   this model. The default directory is ``/short/${PROJECT}/${USER}/${MODEL}``.
+   this model. The default directory is ``/scratch/${PROJECT}/${USER}/${MODEL}``.
 
 Herein, ``${LAB}`` refers to the laboratory path.
 
