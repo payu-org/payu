@@ -27,22 +27,31 @@ class Slurm(Scheduler):
         if pbs_vars is None:
             pbs_vars = {}
 
+        # Set all environment variables which are propagated to the job
+        os.environ.update(
+            dict(map(lambda kv: (kv[0], str(kv[1])), pbs_vars.items()))
+        )
+
         payu_path = pbs_vars.get('PAYU_PATH', os.path.dirname(sys.argv[0]))
         pbs_script = check_exe_path(payu_path, pbs_script)
 
         pbs_flags = []
+
+        pbs_project = pbs_config.get('project', os.environ['PROJECT'])
+        pbs_flags.append('-A {project}'.format(project=pbs_project))
         pbs_flags.append('--time={}'.format(pbs_config.get('walltime')))
         pbs_flags.append('--ntasks={}'.format(pbs_config.get('ncpus')))
 
         # Flags which need to be addressed
-        pbs_flags.append('--qos=debug')
-        pbs_flags.append('--cluster=c4')
+        # pbs_flags.append('--qos=debug')
+        # pbs_flags.append('--cluster=c4')
 
         # Construct job submission command
-        cmd = 'sbatch {flags} --wrap="{python} {script}"'.format(
+        cmd = 'sbatch {flags} --wrap="{python} {script}" --export="{envs}"'.format(
             flags=' '.join(pbs_flags),
             python=python_exe,
-            script=pbs_script
+            script=pbs_script,
+            envs=",".join(["{}={}".format(k, v) for k, v in pbs_vars.items()])
         )
 
         return cmd
