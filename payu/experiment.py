@@ -521,12 +521,17 @@ class Experiment(object):
 
             model_prog = []
 
-            if mpi_module.startswith('openmpi'):
-                # Our MPICH wrapper does not support a working directory flag
-                model_prog.append('-wdir {0}'.format(model.work_path))
-            elif self.config.get('scheduler') == 'slurm':
-                # Slurm's launcher controls the working directory
-                model_prog.append('--chdir {0}'.format(model.work_path))
+            # Our MVAPICH wrapper does not support working directories
+            if mpi_module is not None and mpi_module.startswith('mvapich'):
+                curdir = os.getcwd()
+                os.chdir(self.work_path)
+            else:
+                curdir = None
+                wdir_arg = '-wdir'
+                if self.config.get('scheduler') == 'slurm':
+                    # Slurm's launcher controls the working directory
+                    wdir_arg = '--chdir'
+                model_prog.append(f'{wdir_arg} {model.work_path}')
 
             # Append any model-specific MPI flags
             model_flags = model.config.get('mpiflags', [])
