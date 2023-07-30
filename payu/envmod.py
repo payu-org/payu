@@ -104,7 +104,8 @@ def lib_update(bin_path, lib_name):
     slibs = ldd_output.split('\n')
 
     for lib_entry in slibs:
-        if lib_name in lib_entry:
+        if lib_name in lib_entry and 'spack' not in lib_entry:
+            # Only load enviroment modules available - assuming spack built libs includes 'spack' in full path of library
             lib_path = lib_entry.split()[2]
 
             # pylint: disable=unbalanced-tuple-unpacking
@@ -112,7 +113,3 @@ def lib_update(bin_path, lib_name):
 
             module('unload', mod_name)
             module('load', os.path.join(mod_name, mod_version))
-            return '{0}/{1}'.format(mod_name, mod_version)
-
-    # If there are no libraries, return an empty string
-    return ''

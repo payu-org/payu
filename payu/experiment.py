@@ -514,24 +514,18 @@ class Experiment(object):
             # Update MPI library module (if not explicitly set)
             # TODO: Check for MPI library mismatch across multiple binaries
             if mpi_module is None:
-                mpi_module = envmod.lib_update(
+                envmod.lib_update(
                     model.exec_path_local,
                     'libmpi.so'
                 )
 
             model_prog = []
 
-            # Our MVAPICH wrapper does not support working directories
-            if mpi_module is not None and mpi_module.startswith('mvapich'):
-                curdir = os.getcwd()
-                os.chdir(self.work_path)
-            else:
-                curdir = None
-                wdir_arg = '-wdir'
-                if self.config.get('scheduler') == 'slurm':
-                    # Slurm's launcher controls the working directory
-                    wdir_arg = '--chdir'
-                model_prog.append(f'{wdir_arg} {model.work_path}')
+            wdir_arg = '-wdir'
+            if self.config.get('scheduler') == 'slurm':
+                # Slurm's launcher controls the working directory
+                wdir_arg = '--chdir'
+            model_prog.append(f'{wdir_arg} {model.work_path}')
 
             # Append any model-specific MPI flags
             model_flags = model.config.get('mpiflags', [])
@@ -595,13 +589,6 @@ class Experiment(object):
         if self.config.get('coredump', False):
             enable_core_dump()
 
-        # Our MVAPICH wrapper does not support working directories
-        if mpi_module.startswith('mvapich'):
-            curdir = os.getcwd()
-            os.chdir(self.work_path)
-        else:
-            curdir = None
-
         # Dump out environment
         with open(self.env_fname, 'w') as file:
             file.write(yaml.dump(dict(os.environ), default_flow_style=False))
@@ -621,10 +608,6 @@ class Experiment(object):
             rc = proc.returncode
         else:
             rc = sp.call(shlex.split(cmd), stdout=f_out, stderr=f_err)
-
-        # Return to control directory
-        if curdir:
-            os.chdir(curdir)
 
         f_out.close()
         f_err.close()
