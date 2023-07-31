@@ -12,6 +12,8 @@ import errno
 import os
 import shutil
 import sys
+import shlex
+import subprocess
 
 # Extensions
 import yaml
@@ -171,3 +173,28 @@ def is_conda():
     """Return True if python interpreter is in a conda environment"""
 
     return os.path.exists(os.path.join(sys.prefix, 'conda-meta'))
+
+
+def parse_ldd_output(ldd_output):
+    """Parses the string output from ldd and returns a dictionary of lib filename and fullpath pairs"""
+    needed_libs = {}
+    for line in ldd_output.split("\n"):
+        word_list = line.split()
+        if len(word_list) >= 3 and word_list[1] == '=>':
+            needed_libs[word_list[0]] = word_list[2]
+    return needed_libs
+
+
+def required_libs(bin_path):
+    """
+    Runs ldd command and parses the output.
+    This function should only be called once per binary
+    i.e. Use a singleton pattern in the caller object.
+    PARAMETERS:
+        string bin_path: full path to the binary
+    RETURN:
+        dict: {filename-of-lib: fullpath-of-file}
+    """
+    cmd = 'ldd {0}'.format(bin_path)
+    ldd_out = subprocess.check_output(shlex.split(cmd)).decode('ascii')
+    return parse_ldd_output(ldd_out)

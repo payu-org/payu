@@ -25,7 +25,7 @@ import yaml
 
 # Local
 from payu import envmod
-from payu.fsops import mkdir_p, make_symlink, read_config, movetree
+from payu.fsops import mkdir_p, make_symlink, read_config, movetree, required_libs
 from payu.schedulers.pbs import get_job_info, pbs_env_init, get_job_id
 from payu.models import index as model_index
 import payu.profilers
@@ -137,6 +137,10 @@ class Experiment(object):
         self.models = []
 
         submodels = self.config.get('submodels', [])
+
+        # Inject information about required dynamically loaded libraries into submodel configuration
+        for sm in submodels:
+            sm['required_libs'] = required_libs(sm['exe'])
 
         solo_model = self.config.get('model')
         if not solo_model:
@@ -515,7 +519,7 @@ class Experiment(object):
             # TODO: Check for MPI library mismatch across multiple binaries
             if mpi_module is None:
                 envmod.lib_update(
-                    model.exec_path_local,
+                    model.config.get('required_libs'),
                     'libmpi.so'
                 )
 

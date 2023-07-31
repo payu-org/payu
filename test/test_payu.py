@@ -10,6 +10,7 @@ import sys
 import payu
 import payu.fsops
 import payu.laboratory
+import payu.envmod
 
 from .common import testdir, tmpdir, ctrldir, labdir, workdir
 from .common import make_exe, make_inputs, make_restarts, make_all_files
@@ -214,3 +215,30 @@ def test_lab_new():
     sys.stdout = StringIO()
     lab = payu.laboratory.Laboratory('model')
     sys.stdout = sys.__stdout__
+
+
+def test_parse_ldd_output():
+    ldd_output_path = os.path.join('test', 'resources', 'sample_ldd_output.txt')
+    with open(ldd_output_path, 'r') as f:
+        ldd_output = f.read()
+    required_libs = payu.fsops.parse_ldd_output(ldd_output)
+    assert(len(required_libs), 4) 
+    assert(required_libs['libmpi.so.40'], '/apps/openmpi/4.0.2/lib/libmpi.so.40')
+
+
+def test_lib_update_lib_if_required():
+    required_libs_dict = {
+        'libmpi.so.40': '/apps/openmpi/4.0.2/lib/libmpi.so.40',
+        'libmpi_usempif08_Intel.so.40': '/apps/openmpi/4.0.2/lib/libmpi_usempif08_Intel.so.40'
+    }
+    result = payu.envmod.lib_update(required_libs_dict, 'libmpi.so')
+    assert(result == 'openmpi/4.0.2')
+
+
+def test_lib_update_if_nci_module_not_required():
+    required_libs_dict = {
+         'libmpi.so.40': '/$HOME/spack-microarchitectures.git/opt/spack/linux-rocky8-cascadelake/intel-2019.5.281/openmpi-4.1.5-ooyg5wc7sa3tvmcpazqqb44pzip3wbyo/lib/libmpi.so.40', 
+         'libmpi_usempif08.so.40': '/$HOME/exe/spack-microarchitectures.git/opt/spack/linux-rocky8-cascadelake/intel-2019.5.281/openmpi-4.1.5-ooyg5wc7sa3tvmcpazqqb44pzip3wbyo/lib/libmpi_usempif08.so.40',
+    }
+    result = payu.envmod.lib_update(required_libs_dict, 'libmpi.so')
+    assert(result == '')

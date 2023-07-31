@@ -9,3 +9,4 @@ MANIFEST
 .coverage
 .ipynb_checkpoints
 .vscode
+/test/tmp/
