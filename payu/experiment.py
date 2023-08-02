@@ -527,7 +527,7 @@ class Experiment(object):
 
             wdir_arg = '-wdir'
             if self.config.get('scheduler') == 'slurm':
-                # Slurm's launcher controls the working directory
+                # Option to set the working directory differs in slurm
                 wdir_arg = '--chdir'
             model_prog.append(f'{wdir_arg} {model.work_path}')
 
