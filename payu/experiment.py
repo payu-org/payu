@@ -258,7 +258,7 @@ class Experiment(object):
             envmod.module('load', mod)
 
         # User-defined modules
-        user_modules = self.config.get('modules', [])
+        user_modules = self.config.get('modules', {}).get('load', [])
         for mod in user_modules:
             envmod.module('load', mod)
 
@@ -457,6 +457,10 @@ class Experiment(object):
 
         # XXX: This was previously done in reversion
         envmod.setup()
+        
+        # Add any user-defined module dir(s) to MODULEPATH
+        for module_dir in self.config.get('modules', {}).get('use', []):
+            envmod.module('use', module_dir) 
 
         self.load_modules()
 
