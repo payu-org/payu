@@ -25,7 +25,7 @@ import yaml
 
 # Local
 from payu import envmod
-from payu.fsops import mkdir_p, make_symlink, read_config, movetree
+from payu.fsops import mkdir_p, make_symlink, read_config, movetree, required_libs
 from payu.schedulers.pbs import get_job_info, pbs_env_init, get_job_id
 from payu.models import index as model_index
 import payu.profilers
@@ -137,6 +137,10 @@ class Experiment(object):
         self.models = []
 
         submodels = self.config.get('submodels', [])
+
+        # Inject information about required dynamically loaded libraries into submodel configuration
+        for sm in submodels:
+            sm['required_libs'] = required_libs(sm['exe'])
 
         solo_model = self.config.get('model')
         if not solo_model:
@@ -514,19 +518,18 @@ class Experiment(object):
             # Update MPI library module (if not explicitly set)
             # TODO: Check for MPI library mismatch across multiple binaries
             if mpi_module is None:
-                mpi_module = envmod.lib_update(
-                    model.exec_path_local,
+                envmod.lib_update(
+                    model.config.get('required_libs'),
                     'libmpi.so'
                 )
 
             model_prog = []
 
-            if mpi_module.startswith('openmpi'):
-                # Our MPICH wrapper does not support a working directory flag
-                model_prog.append('-wdir {0}'.format(model.work_path))
-            elif self.config.get('scheduler') == 'slurm':
-                # Slurm's launcher controls the working directory
-                model_prog.append('--chdir {0}'.format(model.work_path))
+            wdir_arg = '-wdir'
+            if self.config.get('scheduler') == 'slurm':
+                # Option to set the working directory differs in slurm
+                wdir_arg = '--chdir'
+            model_prog.append(f'{wdir_arg} {model.work_path}')
 
             # Append any model-specific MPI flags
             model_flags = model.config.get('mpiflags', [])
@@ -590,13 +593,6 @@ class Experiment(object):
         if self.config.get('coredump', False):
             enable_core_dump()
 
-        # Our MVAPICH wrapper does not support working directories
-        if mpi_module.startswith('mvapich'):
-            curdir = os.getcwd()
-            os.chdir(self.work_path)
-        else:
-            curdir = None
-
         # Dump out environment
         with open(self.env_fname, 'w') as file:
             file.write(yaml.dump(dict(os.environ), default_flow_style=False))
@@ -616,10 +612,6 @@ class Experiment(object):
             rc = proc.returncode
         else:
             rc = sp.call(shlex.split(cmd), stdout=f_out, stderr=f_err)
-
-        # Return to control directory
-        if curdir:
-            os.chdir(curdir)
 
         f_out.close()
         f_err.close()

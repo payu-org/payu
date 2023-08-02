@@ -19,6 +19,7 @@ import fnmatch
 
 from payu.models.model import Model
 from payu import envmod
+from payu.fsops import required_libs
 
 # There is a limit on the number of command line arguments in a forked
 # MPI process. This applies only to mppnccombine-fast. The limit is higher
@@ -109,7 +110,7 @@ def fms_collate(model):
         # and mppnccombine-fast uses an explicit -o flag to specify
         # the output
         collate_flags = " ".join([collate_flags, '-o'])
-        envmod.lib_update(mppnc_path, 'libmpi.so')
+        envmod.lib_update(required_libs(mppnc_path), 'libmpi.so')
 
     # Import list of collated files to ignore
     collate_ignore = collate_config.get('ignore')

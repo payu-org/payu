@@ -92,21 +92,15 @@ def module(command, *args):
     exec(envs)
 
 
-def lib_update(bin_path, lib_name):
+def lib_update(required_libs, lib_name):
     # Local import to avoid reversion interference
     # TODO: Bad design, fixme!
     # NOTE: We may be able to move this now that reversion is going away
     from payu import fsops
 
-    # TODO: Use objdump instead of ldd
-    cmd = 'ldd {0}'.format(bin_path)
-    ldd_output = subprocess.check_output(shlex.split(cmd)).decode('ascii')
-    slibs = ldd_output.split('\n')
-
-    for lib_entry in slibs:
-        if lib_name in lib_entry:
-            lib_path = lib_entry.split()[2]
-
+    for lib_filename, lib_path in required_libs.items():
+        if lib_filename.startswith(lib_name) and lib_path.startswith('/apps/'): 
+            # Load nci's /apps/ version of module if required 
             # pylint: disable=unbalanced-tuple-unpacking
             mod_name, mod_version = fsops.splitpath(lib_path)[2:4]
 

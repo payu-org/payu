@@ -8,3 +8,5 @@ MANIFEST
 /docs/_build
 .coverage
 .ipynb_checkpoints
+.vscode
+/test/tmp/
