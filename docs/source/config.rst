@@ -427,17 +427,21 @@ Miscellaneous
    is generally only used for testing purposes, such as bit reproducibility.
 
 ``modules``
-   Specify a list of environment modules to load at the start of the PBS job,
-   for example::
+   Specify lists of environment modules and/or directories
+   to load/use at the start of the PBS job, for example::
 
       modules:
-         - netcdf-c-4.9.0
-         - parallel-netcdf-1.12.3
-         - xerces-c-3.2.3
+         use:
+            - /path/to/module/directory
+         load:
+            - netcdf-c-4.9.0
+            - parallel-netcdf-1.12.3
+            - xerces-c-3.2.3
 
    This is seldom needed, because payu is good at automatically determining
    the environment modules required by model executables. If the modules
-   require `module use` inorder to be found, do this prior to `payu run`,
+   require `module use` in order to be found, this command can also be run
+   prior to `payu run` instead of listing the directory under the `use` option,
    e.g.::
 
       module use /path/to/module/directory

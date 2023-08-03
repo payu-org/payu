@@ -125,7 +125,7 @@ def test_movetree():
 
 
 def test_read_config():
-    config_path = os.path.join('test', 'config_mom5.yaml')
+    config_path = os.path.join('test', 'resources', 'config_mom5.yaml')
     config = payu.fsops.read_config(config_path)
 
     # Test control_path is not set in read_config
@@ -148,9 +148,32 @@ def test_read_config():
 
     assert(config.pop('collate') == {})
     assert(config.pop('control_path') == os.getcwd())
+    assert(config.pop('modules') == {})
     assert(config == {})
 
     os.remove(config_tmp)
+
+
+def test_read_config_modules_legacy_option():
+    # Test transform legacy modules option
+    config_path = os.path.join('test', 'resources', 'config_legacy_modules.yaml')
+
+    config = payu.fsops.read_config(config_path)
+    modules_config = config.get('modules', {})
+
+    assert(modules_config.get('load', []) == ['module_1', 'module_2'])
+    assert(modules_config.get('use', []) == [])
+
+
+def test_read_config_modules_option():
+    # Test modules with load/use options is unchanged
+    config_path = os.path.join('test', 'resources', 'config_modules.yaml')
+
+    config = payu.fsops.read_config(config_path)
+    modules_config = config.get('modules', {})
+
+    assert(modules_config.get('load', []) == ['module_1', 'module_2'])
+    assert(modules_config.get('use', []) == ['path/to/module/dir/1', 'path/to/module/dir/2'])
 
 
 def test_make_symlink():
@@ -222,8 +245,8 @@ def test_parse_ldd_output():
     with open(ldd_output_path, 'r') as f:
         ldd_output = f.read()
     required_libs = payu.fsops.parse_ldd_output(ldd_output)
-    assert(len(required_libs), 4) 
-    assert(required_libs['libmpi.so.40'], '/apps/openmpi/4.0.2/lib/libmpi.so.40')
+    assert(len(required_libs) == 4)
+    assert(required_libs['libmpi.so.40'] == '/apps/openmpi/4.0.2/lib/libmpi.so.40')
 
 
 def test_lib_update_lib_if_required():

@@ -1,0 +1,7 @@
+modules: 
+  use:
+    - path/to/module/dir/1
+    - path/to/module/dir/2
+  load:
+    - module_1
+    - module_2
