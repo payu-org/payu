@@ -245,8 +245,8 @@ def test_parse_ldd_output():
     with open(ldd_output_path, 'r') as f:
         ldd_output = f.read()
     required_libs = payu.fsops.parse_ldd_output(ldd_output)
-    assert(len(required_libs), 4)
-    assert(required_libs['libmpi.so.40'], '/apps/openmpi/4.0.2/lib/libmpi.so.40')
+    assert(len(required_libs) == 4)
+    assert(required_libs['libmpi.so.40'] == '/apps/openmpi/4.0.2/lib/libmpi.so.40')
 
 
 def test_lib_update_lib_if_required():
