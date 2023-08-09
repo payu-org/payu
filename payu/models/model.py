@@ -11,7 +11,7 @@ import sys
 import subprocess as sp
 
 from payu import envmod
-from payu.fsops import mkdir_p
+from payu.fsops import mkdir_p, required_libs
 
 
 class Model(object):
@@ -51,6 +51,8 @@ class Model(object):
 
         self.build_exec_path = None
         self.build_path = None
+
+        self.required_libs = None
 
         # Control flags
         self.copy_restarts = False
@@ -291,6 +293,9 @@ class Model(object):
                     self.exec_path_local,
                     self.exec_path
                 )
+        
+            # Populate information about required dynamically loaded libraries
+            self.required_libs = required_libs(self.exec_path)
 
         timestep = self.config.get('timestep')
         if timestep:
