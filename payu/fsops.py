@@ -202,5 +202,9 @@ def required_libs(bin_path):
         dict: {filename-of-lib: fullpath-of-file}
     """
     cmd = 'ldd {0}'.format(bin_path)
-    ldd_out = subprocess.check_output(shlex.split(cmd)).decode('ascii')
+    try: 
+        ldd_out = subprocess.check_output(shlex.split(cmd)).decode('ascii')
+    except:
+        print("payu: error running ldd command on exe path: ", bin_path)
+        return {}
     return parse_ldd_output(ldd_out)

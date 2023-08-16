@@ -167,6 +167,9 @@ def test_run():
         config['laboratory'] = '/f/data/c000/blah'
         config['shortpath'] = '/f/data/y00'
 
+        config['modules'] = {}
+        config['modules']['use'] = ['/f/data/mm01', '/f/data/mm02/test/modules']
+
         cmd = sched.submit(payu_cmd, config, pbs_vars, python_exe)
 
         print(cmd)
@@ -210,8 +213,8 @@ def test_run():
             assert(resources_found[resource] == str(config[resource]))
 
         assert(resources_found['storage'] ==
-               ('fdata/a000+fdata/c000+fdata/m000+fdata/x00+' +
-                'fdata/xyz999+fdata/y00+test/x00'))
+               ('fdata/a000+fdata/c000+fdata/m000+fdata/mm01+fdata/mm02+' +
+                'fdata/x00+fdata/xyz999+fdata/y00+test/x00'))
 
         # Check other auto-added resources are present
         for resource in other_resources:

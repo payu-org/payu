@@ -138,17 +138,9 @@ class Experiment(object):
 
         submodels = self.config.get('submodels', [])
 
-        # Inject information about required dynamically loaded libraries into submodel configuration
-        for sm in submodels:
-            sm['required_libs'] = required_libs(sm['exe'])
-
-        solo_model = self.config.get('model')
-        if not solo_model:
-            sys.exit('payu: error: Unknown model configuration.')
-
         submodel_config = dict((f, self.config[f]) for f in model_fields
                                if f in self.config)
-        submodel_config['name'] = solo_model
+        submodel_config['name'] = self.model_name
 
         submodels.append(submodel_config)
 
@@ -521,9 +513,9 @@ class Experiment(object):
 
             # Update MPI library module (if not explicitly set)
             # TODO: Check for MPI library mismatch across multiple binaries
-            if mpi_module is None:
+            if mpi_module is None and model.required_libs is not None:
                 envmod.lib_update(
-                    model.config.get('required_libs'),
+                    model.required_libs,
                     'libmpi.so'
                 )
 
