@@ -126,3 +126,27 @@ force_prune_restarts = {
                     archive, ignoring changes made to configuration.',
     }
 }
+
+# Specify a remote directory to sync output to
+sync_path = {
+    'flags': {'--syncdir', '-s'},
+    'parameters': {
+        'action':   'store',
+        'dest':     'sync_path',
+        'default':  None,
+        'help':     'The remote directory to sync output to, this will over-ride the \
+                     value given in config.yaml',
+    }
+}
+
+# Flag for enabling syncing restarts
+sync_restarts = {
+    'flags': {'--restarts', '-R'},
+    'parameters': {
+        'action':   'store_true',
+        'dest':     'sync_restarts',
+        'default':  False,
+        'help':     'Sync restarts to remote directory, this will over-ride the \
+                     value given in config.yaml',
+    }
+}

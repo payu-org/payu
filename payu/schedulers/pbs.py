@@ -108,9 +108,15 @@ class PBS(Scheduler):
         short_path = pbs_config.get('shortpath', None)
         if short_path is not None:
             extra_search_paths.append(short_path)
+        
         module_use_paths = pbs_config.get('modules', {}).get('use', [])
         extra_search_paths.extend(module_use_paths)
 
+        remote_sync_directory = pbs_vars.get('PAYU_SYNC_PATH', None)
+        if remote_sync_directory is None:
+            remote_sync_directory = pbs_config.get('sync', {}).get('directory', None)
+        if remote_sync_directory is not None:
+            extra_search_paths.append(remote_sync_directory)
         storages.update(find_mounts(extra_search_paths, mounts))
         storages.update(find_mounts(get_manifest_paths(), mounts))
 
