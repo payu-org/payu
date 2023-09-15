@@ -36,6 +36,7 @@ setup(
         'yamanifest',
         'dateutil',
         'tenacity',
+        'cftime'
     ],
     install_requires=[
         'f90nml >= 0.16',
@@ -44,6 +45,7 @@ setup(
         'requests[security]',
         'python-dateutil',
         'tenacity!=7.0.0',
+        'cftime'
     ],
     tests_require=[
         'pytest',

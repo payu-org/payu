@@ -10,6 +10,8 @@ import subprocess
 
 import f90nml
 import payu.envmod
+import cftime 
+
 from payu.models.fms import Fms
 from payu.fsops import mkdir_p, make_symlink
 
@@ -224,3 +226,25 @@ class Mom(Fms):
             land_cells = int(fmask.readline())
 
         return land_cells
+
+
+    def get_restart_datetime(self, restart_path):
+        """Given a restart path, parse the restart files and return a cftime datetime (for date-based restart pruning)"""
+        ocean_solo_path = os.path.join(restart_path, 'ocean_solo.res')
+        with open(ocean_solo_path, 'r') as ocean_solo:
+            lines = ocean_solo.readlines()
+            
+        calendar_int = int(lines[0].split()[0])
+        cftime_calendars = {
+            1: "360_day",
+            2: "julian",
+            3: "gregorian",
+            4: "noleap"
+        }
+        calendar = cftime_calendars[calendar_int]
+        
+        last_date_line = lines[-1].split()
+        year, month, day, hour, minute, second = [int(i) for i in last_date_line[:6]]
+        return cftime.datetime(year=year, month=month, day=day, hour=hour, minute=minute, second=second, 
+                                calendar=calendar)
+        

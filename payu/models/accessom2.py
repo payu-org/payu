@@ -86,3 +86,11 @@ class AccessOm2(Model):
 
     def collate(self):
         pass
+
+    def get_restart_datetime(self, restart_path):
+        for model in self.expt.models:
+            if model.model_type == 'mom':
+                mom_restart_path = os.path.join(restart_path, model.name)
+                return model.get_restart_datetime(mom_restart_path)
+        
+        raise NotImplementedError('access-om2 date-based restart pruning currently only uses the mom sub-model to find restart dates')

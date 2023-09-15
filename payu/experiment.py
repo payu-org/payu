@@ -32,6 +32,7 @@ from payu.models import index as model_index
 import payu.profilers
 from payu.runlog import Runlog
 from payu.manifest import Manifest
+from payu.calendar import parse_date_offset
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -742,27 +743,12 @@ class Experiment(object):
 
         movetree(self.work_path, self.output_path)
 
-        # Remove old restart files
-        # TODO: Move to subroutine
-        restart_freq = self.config.get('restart_freq', default_restart_freq)
-        restart_history = self.config.get('restart_history',
-                                          default_restart_history)
-
         # Remove any outdated restart files
-        prior_restart_dirs = self.list_output_dirs(output_type="restart")
-
-        for res_dir in prior_restart_dirs:
-
-            res_idx = int(res_dir.lstrip('restart'))
-            if (self.repeat_run or
-                    (not res_idx % restart_freq == 0 and
-                     res_idx <= (self.counter - restart_history))):
-
-                res_path = os.path.join(self.archive_path, res_dir)
-
-                # Only delete real directories; ignore symbolic restart links
-                if (os.path.isdir(res_path) and not os.path.islink(res_path)):
-                    shutil.rmtree(res_path)
+        restarts_to_prune = self.prune_restarts()
+        for restart_path in restarts_to_prune:
+            # Only delete real directories; ignore symbolic restart links
+            if (os.path.isdir(restart_path) and not os.path.islink(restart_path)):
+                shutil.rmtree(restart_path)
 
         # Ensure dynamic library support for subsequent python calls
         ld_libpaths = os.environ.get('LD_LIBRARY_PATH', None)
@@ -996,6 +982,56 @@ class Experiment(object):
         if os.path.islink(self.work_sym_path):
             print('Removing symlink {0}'.format(self.work_sym_path))
             os.remove(self.work_sym_path)
+    
+    def prune_restarts(self, from_n_restart=0, to_n_restart=None):
+        """Returns a list of restart directories that can be pruned"""
+        restart_freq = self.config.get('restart_freq', 5)
+        restart_history = self.config.get('restart_history', default_restart_history)
+
+        # All restarts directories
+        restarts = [d for d in os.listdir(self.archive_path)
+                                if d.startswith('restart')]
+        # Sort restarts based on counter - in increasing date order
+        restarts.sort(key=lambda d: int(d.lstrip('restart')))
+
+        # Note: from_n_restart and to_end_restart could be useful for inspecting only the more recent restarts
+        if to_n_restart is None:
+            # Keep restart_history n restarts 
+            to_n_restart = -restart_history
+        restarts = restarts[from_n_restart:to_n_restart] 
+
+        restarts_to_prune = []
+        if self.repeat_run:
+            # TODO: Previous logic was to prune all restarts if self.repeat_run - is that still the case?
+            restarts_to_prune = [os.path.join(self.archive_path, restart) for restart in restarts]
+        elif isinstance(restart_freq, int):
+            # Using integer frequency to prune restarts 
+            for restart in restarts:
+                restart_idx = int(restart.lstrip('restart'))
+                if not restart_idx % restart_freq == 0:
+                    restart_path = os.path.join(self.archive_path, restart)
+                    restarts_to_prune.append(restart_path)
+        else:
+            # Using date-based frequency to prune restarts
+            try:
+                date_offset = parse_date_offset(restart_freq)
+
+                next_datetime = None
+                for restart in restarts:
+                    restart_path = os.path.join(self.archive_path, restart)
+                    
+                    # Use model-driver to parse restart files for a datetime
+                    restart_datetime = self.model.get_restart_datetime(restart_path) 
+                    
+                    if next_datetime is not None and restart_datetime < next_datetime:
+                        restarts_to_prune.append(restart_path)
+                    else:
+                        # Keep the earliest datetime and use last kept datetime as point of reference when adding the next time interval
+                        next_datetime = date_offset.add_to_datetime(restart_datetime)
+            except Exception as e:
+                print("payu: error occured during date-based restart pruning:", e)
+        
+        return restarts_to_prune
 
 
 def enable_core_dump():
