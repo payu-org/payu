@@ -13,12 +13,16 @@ from payu.subcommands.init_cmd import runcmd as payu_init
 from payu.subcommands.setup_cmd import runcmd as payu_setup_orignal
 from payu.subcommands.sweep_cmd import runcmd as payu_sweep
 
+ctrldir_basename = 'ctrl'
+
 testdir = Path().cwd() / Path('test')
 tmpdir = testdir / 'tmp'
-ctrldir = tmpdir / 'ctrl'
+ctrldir = tmpdir / ctrldir_basename
 labdir = tmpdir / 'lab'
 workdir = ctrldir / 'work'
 payudir = tmpdir / 'payu'
+
+expt_workdir = labdir / 'work' / ctrldir_basename
 
 print('tmpdir: {}'.format(tmpdir))
 
@@ -42,6 +46,7 @@ config = {
                                         }
                         }
             }
+
 
 @contextmanager
 def cd(directory):

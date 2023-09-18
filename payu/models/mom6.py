@@ -10,6 +10,7 @@
 
 # Standard library
 import os
+import shutil
 
 # Extensions
 import f90nml
@@ -59,6 +60,7 @@ class Mom6(Fms):
         super(Mom6, self).setup()
 
         self.init_config()
+        self.add_parameter_config_files()
 
     def init_config(self):
         """Patch input.nml as a new or restart run."""
@@ -78,3 +80,31 @@ class Mom6(Fms):
             input_nml['SIS_input_nml']['input_filename'] = input_type
 
         f90nml.write(input_nml, input_fpath, force=True)
+
+    def add_parameter_config_files(self):
+        """Check that the parameter files listed in input.nml are in the
+        model's configuration files"""
+        input_nml = f90nml.read(os.path.join(self.work_path, 'input.nml'))
+
+        # Set of all configuration files
+        config_files = set(self.config_files).union(self.optional_config_files)
+
+        for input in ['MOM_input_nml', 'SIS_input_nml']:
+            input_namelist = input_nml.get(input, {})
+            parameter_files = input_namelist.get('parameter_filename', [])
+
+            if isinstance(parameter_files, str):
+                parameter_files = [parameter_files]
+
+            for filename in parameter_files:
+                if filename not in config_files:
+                    print(f"payu: warning: parameter file {filename} "
+                          f"listed under {input} in input.nml is not in "
+                          "mom6's configuration files")
+
+                    # Extend config files
+                    self.config_files.append(filename)
+
+                    # Copy parameter file from control path to work path
+                    file_path = os.path.join(self.control_path, filename)
+                    shutil.copy(file_path, self.work_path)
