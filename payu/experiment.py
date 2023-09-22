@@ -13,6 +13,7 @@ import datetime
 import errno
 import getpass
 import os
+import re
 import resource
 import sys
 import shlex
@@ -172,40 +173,38 @@ class Experiment(object):
 
         # Initialize counter if unset
         if self.counter is None:
-            # TODO: this logic can probably be streamlined
-            try:
-                restart_dirs = [d for d in os.listdir(self.archive_path)
-                                if d.startswith('restart')]
-            except EnvironmentError as exc:
-                if exc.errno == errno.ENOENT:
-                    restart_dirs = None
-                else:
-                    raise
-
-            # First test for restarts
-            if restart_dirs:
-                self.counter = 1 + max([int(d.lstrip('restart'))
-                                        for d in restart_dirs
-                                        if d.startswith('restart')])
+            # Check for restart index
+            max_restart_index = self.max_output_index(output_type="restart")
+            if max_restart_index:
+                self.counter = 1 + max_restart_index
             else:
-                # repeat runs do not generate restart files, so check outputs
-                try:
-                    output_dirs = [d for d in os.listdir(self.archive_path)
-                                   if d.startswith('output')]
-                except EnvironmentError as exc:
-                    if exc.errno == errno.ENOENT:
-                        output_dirs = None
-                    else:
-                        raise
-
-                # First test for restarts
-                # Now look for output directories
-                if output_dirs:
-                    self.counter = 1 + max([int(d.lstrip('output'))
-                                            for d in output_dirs
-                                            if d.startswith('output')])
+                # Now look for output directories,
+                # as repeat runs do not generate restart files.
+                max_output_index = self.max_output_index()
+                if max_output_index:
+                    self.counter = 1 + max_output_index
                 else:
                     self.counter = 0
+
+    def max_output_index(self, output_type="output"):
+        """Given a output directory type (output or restart),
+        return the maximum index of output directories found"""
+        try:
+            output_dirs = self.list_output_dirs(output_type)
+        except EnvironmentError as exc:
+            if exc.errno == errno.ENOENT:
+                output_dirs = None
+            else:
+                raise
+
+        if output_dirs and len(output_dirs):
+            return max([int(d.lstrip(output_type)) for d in output_dirs])
+
+    def list_output_dirs(self, output_type="output"):
+        """Return a list of restart or output directories in archive"""
+        naming_pattern = re.compile(fr"^{output_type}[0-9][0-9][0-9]$")
+        return [d for d in os.listdir(self.archive_path)
+                if naming_pattern.match(d)]       
 
     def set_stacksize(self, stacksize):
 
@@ -749,8 +748,7 @@ class Experiment(object):
                                           default_restart_history)
 
         # Remove any outdated restart files
-        prior_restart_dirs = [d for d in os.listdir(self.archive_path)
-                              if d.startswith('restart')]
+        prior_restart_dirs = self.list_output_dirs(output_type="restart")
 
         for res_dir in prior_restart_dirs:
 
@@ -766,10 +764,12 @@ class Experiment(object):
                     shutil.rmtree(res_path)
 
         # Ensure dynamic library support for subsequent python calls
-        ld_libpaths = os.environ['LD_LIBRARY_PATH']
+        ld_libpaths = os.environ.get('LD_LIBRARY_PATH', None)
         py_libpath = sysconfig.get_config_var('LIBDIR')
-        if py_libpath not in ld_libpaths.split(':'):
-            os.environ['LD_LIBRARY_PATH'] = ':'.join([py_libpath, ld_libpaths])
+        if ld_libpaths is None:
+            os.environ['LD_LIBRARY_PATH'] = py_libpath
+        elif py_libpath not in ld_libpaths.split(':'):
+            os.environ['LD_LIBRARY_PATH'] = f'{py_libpath}:{ld_libpaths}'
 
         collate_config = self.config.get('collate', {})
         collating = collate_config.get('enable', True)

@@ -286,6 +286,12 @@ class Model(object):
             # If have exe manifest this implies exe reproduce is True. Do not
             # want to overwrite exe manifest in this case
             if not self.expt.manifest.have_manifest['exe']:
+                # Check whether executable path exists
+                if not os.path.isfile(self.exec_path):
+                    raise FileNotFoundError(
+                        f'Executable for {self.name} model '
+                        f'not found on path: {self.exec_path}')
+
                 # Add to exe manifest (this is always done so any change in exe
                 # path will be picked up)
                 self.expt.manifest.add_filepath(
