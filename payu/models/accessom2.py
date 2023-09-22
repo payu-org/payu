@@ -88,9 +88,13 @@ class AccessOm2(Model):
         pass
 
     def get_restart_datetime(self, restart_path):
+        """Given a restart path, parse the restart files and
+        return a cftime datetime (for date-based restart pruning)"""
         for model in self.expt.models:
             if model.model_type == 'mom':
                 mom_restart_path = os.path.join(restart_path, model.name)
                 return model.get_restart_datetime(mom_restart_path)
-        
-        raise NotImplementedError('access-om2 date-based restart pruning currently only uses the mom sub-model to find restart dates')
+
+        raise NotImplementedError(
+            'Cannot find mom sub-model: access-om2 date-based restart pruning '
+            'requires the mom sub-model to determine restart dates')

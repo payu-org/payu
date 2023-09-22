@@ -145,7 +145,7 @@ class Model(object):
 
         if input_dirs is None:
             input_dirs = []
-        elif type(input_dirs) == str:
+        elif isinstance(input_dirs, str):
             input_dirs = [input_dirs]
 
         self.input_paths = []
@@ -470,8 +470,8 @@ class Model(object):
                          if f.endswith('.cubex')][0]
             cmd = 'scorep-score {0}'.format(cube_path)
             sp.check_call(shlex.split(cmd))
-   
+
     def get_restart_datetime(self, restart_path):
-        """Given a restart path, parse the restart files and return a cftime or standard datetime object to be used for 
-        date-based restart pruning"""
+        """Given a restart path, parse the restart files and return a cftime
+        datetime (currently used for date-based restart pruning)"""
         raise NotImplementedError

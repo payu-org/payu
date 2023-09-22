@@ -20,8 +20,7 @@ def int_to_date(date):
 
 
 def date_to_int(date):
-
-    return (date.year * 10**4 + date.month * 10**2 + date.day)
+    return date.year * 10**4 + date.month * 10**2 + date.day
 
 
 def runtime_from_date(start_date, years, months, days, seconds, caltype):
@@ -31,8 +30,9 @@ def runtime_from_date(start_date, years, months, days, seconds, caltype):
     Ignores Feb 29 for caltype == NOLEAP.
     """
 
-    end_date = start_date + relativedelta(years=years, months=months,
-                                          days=days)
+    end_date = start_date + relativedelta(
+        years=years, months=months, days=days
+    )
     runtime = end_date - start_date
 
     if caltype == NOLEAP:
@@ -70,7 +70,6 @@ def get_leapdays(init_date, final_date):
     leap_days = 0
 
     while curr_date != final_date:
-
         if curr_date.month == 2 and curr_date.day == 29:
             leap_days += 1
 
@@ -91,107 +90,109 @@ def calculate_leapdays(init_date, final_date):
     return datetime.timedelta(days=leap_days)
 
 
-def add_year_offset_to_datetime(initial_dt, n):
-    """Return a datetime n years from the initial datetime"""
-    if isinstance(initial_dt, datetime.datetime):  # Standard datetime Calendar
-        return initial_dt + relativedelta(years=n)
-    
-    if isinstance(initial_dt, cftime.datetime):  # Non-standard Calendars
-        return initial_dt.replace(year=initial_dt.year + n)
-
-
 def add_year_start_offset_to_datetime(initial_dt, n):
-    """Return a datetime at the start of the year - n years from the initial datetime"""
-    if isinstance(initial_dt, datetime.datetime):
-        return initial_dt + relativedelta(years=n, month=1, day=1, hour=0, minute=0, second=0)
-    
-    if isinstance(initial_dt, cftime.datetime):
-        return initial_dt.replace(year=initial_dt.year + n, month=1, day=1, hour=0, minute=0, second=0)
+    """Return a cftime datetime at the start of the year, that is n years
+    from the initial datetime"""
+    return cftime.datetime(
+        year=initial_dt.year + n,
+        month=1,
+        day=1,
+        hour=0,
+        minute=0,
+        second=0,
+        calendar=initial_dt.calendar,
+    )
 
 
 def add_month_start_offset_to_datetime(initial_dt, n):
-    """Return a datetime of the start of the month - n months from the initial datetime"""
-    if isinstance(initial_dt, datetime.datetime):
-        return initial_dt + relativedelta(months=n, day=1, hour=0, minute=0, second=0)
-    
-    if isinstance(initial_dt, cftime.datetime):
-        year = initial_dt.year + ((initial_dt.month + n - 1) // 12)
-        month = (initial_dt.month + n - 1) % 12 + 1
-        
-        return initial_dt.replace(year=year, month=month, day=1, hour=0, minute=0, second=0)
+    """Return a cftime datetime of the start of the month, that is n months
+    from the initial datetime"""
+    years_to_add = (initial_dt.month + n - 1) // 12
+    months_to_add = n - years_to_add * 12
 
+    return cftime.datetime(
+        year=initial_dt.year + years_to_add,
+        month=initial_dt.month + months_to_add,
+        day=1,
+        hour=0,
+        minute=0,
+        second=0,
+        calendar=initial_dt.calendar,
+    )
 
-def add_month_offset_to_datetime(initial_dt, n):
-    """Return a datetime n months from the initial datetime"""
-    if isinstance(initial_dt, datetime.datetime):
-        return initial_dt + relativedelta(months=n)
-    
-    if isinstance(initial_dt, cftime.datetime):
-        year = initial_dt.year + ((initial_dt.month + n - 1) // 12)
-        month = (initial_dt.month + n - 1) % 12 + 1
-        day = initial_dt.day
-        
-        max_day_in_month = {1: 31, 2: 28, 3: 31, 4: 30, 5: 31, 6: 30, 7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31}
-        if initial_dt.calendar == "noleap":
-            day = initial_dt.day if initial_dt.day <= max_day_in_month[month] else max_day_in_month[month]
-        
-        if initial_dt.calendar == "all_leap":
-            max_day_in_month[2] = 29 # Every year is a leap year
-            day = initial_dt.day if initial_dt.day <= max_day_in_month[month] else max_day_in_month[month]
-        
-        return initial_dt.replace(year=year, month=month, day=day)
-        
 
 def add_timedelta_fn(timedelta):
-    """Returns a function that adds a timedelta - n times to an initial datetime"""
-    # Standard and cftime datetimes supports timedelta operations
+    """Returns a function that takes initial datetime and multiplier n,
+    and returns a datetime that is n * offset from the initial datetime"""
+    # cftime datetimes supports timedelta operations
     return lambda initial_dt, n: initial_dt + n * timedelta
 
 
 class DatetimeOffset:
-    
+    """A utility class for adding various time offsets to cftime datetimes.
+
+    Parameters:
+        unit (str): The unit of the time offset. Supported units are:
+            - "YS" for years (start of the year)
+            - "MS" for months (start of the month)
+            - "W" for weeks
+            - "D" for days
+            - "H" for hours
+            - "T" for minutes
+            - "S" for seconds
+        magnitude (int): The magnitude of the time offset.
+
+    Methods:
+        - `add_to_datetime(initial_dt: cftime.datetime) -> cftime.datetime`:
+          Adds the specified time offset to the given cftime datetime and
+          returns the resulting datetime.
+
+    Attributes:
+        - unit (str): The unit of the time offset.
+        - magnitude (int): The magnitude of the time offset.
+    """
+
     def __init__(self, unit, magnitude):
-        # Dictionary of 'offset units' to functions which takes an initial_dt (Standard or cftime datetime)
-        # and n (multiplier of the offset unit), and returns the next datetime with the offset added
         supported_datetime_offsets = {
-            'Y': add_year_offset_to_datetime,
-            'YS': add_year_start_offset_to_datetime,
-            'M': add_month_offset_to_datetime,
-            'MS': add_month_start_offset_to_datetime,
-            'W': add_timedelta_fn(datetime.timedelta(weeks=1)),
-            'D': add_timedelta_fn(datetime.timedelta(days=1)),
-            'H': add_timedelta_fn(datetime.timedelta(hours=1)),
-            'T': add_timedelta_fn(datetime.timedelta(minutes=1)),
-            'S': add_timedelta_fn(datetime.timedelta(seconds=1))
+            "YS": add_year_start_offset_to_datetime,
+            "MS": add_month_start_offset_to_datetime,
+            "W": add_timedelta_fn(datetime.timedelta(weeks=1)),
+            "D": add_timedelta_fn(datetime.timedelta(days=1)),
+            "H": add_timedelta_fn(datetime.timedelta(hours=1)),
+            "T": add_timedelta_fn(datetime.timedelta(minutes=1)),
+            "S": add_timedelta_fn(datetime.timedelta(seconds=1)),
         }
-        assert unit in supported_datetime_offsets, f"payu: error: unsupported datetime offset: {unit}"
+        if unit not in supported_datetime_offsets:
+            raise ValueError(
+                f"Unsupported datetime offset: {unit}. "
+                "Supported offsets: YS, MS, W, D, H, T, S"
+            )
         self.unit = unit
         self.magnitude = magnitude
-        self.add_offset_to_datetime = supported_datetime_offsets[unit]
-
+        self._add_offset_to_datetime = supported_datetime_offsets[unit]
 
     def add_to_datetime(self, initial_dt):
-        """Takes a datetime object (standard or cftime datetime),
-        and returns a datetime with the offset added if possible, returns None otherwise"""
+        """Takes an initial cftime datetime,
+        and returns a datetime with the offset added"""
 
-        if self.unit in ['M', 'Y'] and isinstance(initial_dt, cftime.datetime):    
-            if initial_dt.datetime_compatible:
-                # Transform cftime datetime to standard datetime
-                initial_dt = datetime.datetime(initial_dt.year, initial_dt.month, initial_dt.day,
-                                        initial_dt.hour, initial_dt.minute, initial_dt.second)
-            elif initial_dt.calendar not in ["360_day", "noleap", "all_leap"]:
-                raise ValueError(f"Calendar type {initial_dt.calendar} is unsupported for given date offset {self.unit}")
-        
-        if not (isinstance(initial_dt, cftime.datetime) or isinstance(initial_dt, datetime.datetime)):
-            raise TypeError(f"Invalid initial datetime type: {type(initial_dt)}. Expected types: cftime.datetime or datetime.datetime")
+        if not (isinstance(initial_dt, cftime.datetime)):
+            raise TypeError(
+                f"Invalid initial datetime type: {type(initial_dt)}. "
+                "Expected type: cftime.datetime"
+            )
 
-        return self.add_offset_to_datetime(initial_dt=initial_dt, n=self.magnitude)
+        return self._add_offset_to_datetime(
+            initial_dt=initial_dt, n=self.magnitude
+        )
 
 
 def parse_date_offset(offset):
-    """Parse a given string date offset string, and returns an DatetimeOffset"""
-    match = re.search('[0-9]+', offset)
-    assert match is not None, f"payu: error: no numerical value given for offset: {offset}"
+    """Parse a given string date offset string and return an DatetimeOffset"""
+    match = re.search("[0-9]+", offset)
+    if match is None:
+        raise ValueError(
+            f"No numerical value given for offset: {offset}"
+        )
     n = match.group()
     unit = offset.lstrip(n)
     return DatetimeOffset(unit=unit, magnitude=int(n))

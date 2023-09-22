@@ -192,13 +192,23 @@ configuration.
    Specifies the rate of saved restart files. For the default rate of 5, we
    keep the restart files for every fifth run (``restart004``, ``restart009``,
    ``restart014``, etc.).
+   Using ``restart_freq: 1`` will save all restart files.
+   
+   For both integer and date-based restart frequency, the first restart and,
+   by default, the 5 latest restarts are saved.
+   
+   To use a date-based restart frequency, specify a number with a time unit.
+   The supported time units are  ``YS`` - year-start, ``MS`` - month-start,
+   ``W`` - week, ``D`` - day, ``H`` - hour, ``T`` - minute and ``S`` - second.
+   For example, ``restart_freq: 10YS`` would save earliest restart of the year,
+   10 years from the last permanently saved restart's datetime.
 
-   Intermediate restarts are not deleted until a permanently archived restart
-   has been produced. For example, if we have just completed run ``11``, then
-   we keep ``restart004``, ``restart009``, ``restart010``, and ``restart011``.
-   Restarts 10 through 13 are not deleted until ``restart014`` has been saved.
+   Please note that currently, only ACCESS-OM2 and MOM models support
+   date-based restart frequency, as it depends the payu model driver being
+   able to parse restarts files for a datetime.
 
-   ``restart_freq: 1`` saves all restart files.
+``restart_history`` (*Default:* ``5``)
+    Specifies the number of latest restart files to save
 
 *The following model-based tags are typically not configured*
 

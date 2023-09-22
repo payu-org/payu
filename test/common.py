@@ -2,6 +2,8 @@ from contextlib import contextmanager
 import os
 import stat
 from pathlib import Path
+import re
+import shutil
 
 import yaml
 
@@ -22,6 +24,8 @@ labdir = tmpdir / 'lab'
 workdir = ctrldir / 'work'
 payudir = tmpdir / 'payu'
 
+archive_dir = labdir / 'archive'
+expt_archive_dir = archive_dir / ctrldir_basename
 expt_workdir = labdir / 'work' / ctrldir_basename
 
 print('tmpdir: {}'.format(tmpdir))
@@ -46,6 +50,7 @@ config = {
                                         }
                         }
             }
+
 
 
 @contextmanager
@@ -158,6 +163,45 @@ def make_restarts(fnames=None):
         fnames = ['restart_00{i}.bin'.format(i=i) for i in range(1, 4)]
     for i, fname in enumerate(fnames):
         make_random_file(restartdir/fname, 5000**2 + i)
+
+
+def make_expt_archive_dirs(dir_type, num_dirs=5, additional_path=None):
+    """Make experiment archive directories of given type (i.e. "restart" or
+     "output")"""
+    created_dirs = []
+    for i in range(num_dirs):
+        dir_path = os.path.join(expt_archive_dir, f'{dir_type}{i:03d}')
+        if additional_path:
+            dir_path = os.path.join(dir_path, additional_path)
+
+        os.makedirs(dir_path)
+        created_dirs.append(dir_path)
+    return created_dirs
+
+
+def list_expt_archive_dirs(dir_type='restart', full_path=True):
+    """Return a list of output/restart paths in experiment archive
+     path"""
+    dirs = []
+    if os.path.exists(expt_archive_dir):
+        if os.path.isdir(expt_archive_dir):
+            naming_pattern = re.compile(fr"^{dir_type}[0-9][0-9][0-9]$")
+            dirs = [d for d in os.listdir(expt_archive_dir)
+                    if naming_pattern.match(d)]
+
+            if full_path:
+                dirs = [os.path.join(expt_archive_dir, d) for d in dirs]
+    return dirs
+
+
+def remove_expt_archive_dirs(dir_type='restart'):
+    """Remove experiment archive directories of the given type (i.e. "restart"
+    or "output"). Useful for cleaning up archive between tests"""
+    for dir_path in list_expt_archive_dirs(dir_type):
+        try:
+            shutil.rmtree(dir_path)
+        except Exception as e:
+            print(e)
 
 
 def make_all_files():
