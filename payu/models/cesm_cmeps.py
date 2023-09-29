@@ -168,17 +168,15 @@ class CesmCmeps(Model):
 
         self.runconfig.write()
 
-        # TODO: Should have a better way to do this
+        # Horrible hack to make a link to the mod_def.ww3 input in the work directory
         # The ww3 mod_def input needs to be in work_path and called mod_def.ww3
         if "ww3dev" in self.components.values():
-            files =  glob.glob(
-                os.path.join(self.work_input_path, "*mod_def.ww3*"),
-                recursive=False
-            )
-            if files:
-                assert len(files) == 1, "Multiple mod_def.ww3 files found in input directory"
-                f_dst = os.path.join(self.work_path, "mod_def.ww3")
-                shutil.copy(files[0], f_dst)
+            f_name = "mod_def.ww3"
+            f_src = os.path.join(self.work_input_path, f_name)
+            f_dst = os.path.join(self.work_path, f_name)
+
+            if os.path.isfile(f_src):
+                make_symlink(f_src, f_dst)
             else:
                 # TODO: copied this from other models. Surely we want to exit here or something
                 print('payu: error: Unable to find mod_def.ww3 file in input directory')
