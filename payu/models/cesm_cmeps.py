@@ -168,7 +168,8 @@ class CesmCmeps(Model):
 
         self.runconfig.write()
 
-        # Horrible hack to make a link to the mod_def.ww3 input in the work directory
+        # Horrible hack to make a link to the mod_def.ww3 input in the work
+        # directory
         # The ww3 mod_def input needs to be in work_path and called mod_def.ww3
         if "ww3dev" in self.components.values():
             f_name = "mod_def.ww3"
