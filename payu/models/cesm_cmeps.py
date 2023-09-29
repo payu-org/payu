@@ -17,7 +17,7 @@ import glob
 import shutil
 import multiprocessing
 
-from payu.fsops import mkdir_p
+from payu.fsops import mkdir_p, make_symlink
 from payu.models.model import Model
 from payu.models.fms import fms_collate
 
