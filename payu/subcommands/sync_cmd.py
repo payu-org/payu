@@ -4,7 +4,7 @@
 import argparse
 import os
 
-# Local 
+# Local
 from payu import cli
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
@@ -14,24 +14,22 @@ from payu import fsops
 title = 'sync'
 parameters = {'description': 'Sync model output to a remote directory'}
 
-arguments = [args.model, args.config, args.initial, args.laboratory,
-             args.dir_path, args.sync_path, args.sync_restarts]
+arguments = [args.model, args.config, args.laboratory, args.dir_path,
+             args.sync_restarts, args.sync_ignore_last]
 
-def runcmd(model_type, config_path, init_run, lab_path, dir_path, sync_path, sync_restarts):
+
+def runcmd(model_type, config_path, lab_path, dir_path, sync_restarts,
+           sync_ignore_last):
 
     pbs_config = fsops.read_config(config_path)
 
-    #TODO: Setting script args as env variables vs appending them at the end of qsub call after payu-sync? 
-    # Went with setting env variables as thats whats done elsewhere
-    # Though with PBSPro can pass arguments after script name and then could be able to pass arguments directly to expt.sync()?
-    pbs_vars = cli.set_env_vars(init_run=init_run,
-                                lab_path=lab_path,
+    pbs_vars = cli.set_env_vars(lab_path=lab_path,
                                 dir_path=dir_path,
-                                sync_path=sync_path,
-                                sync_restarts=sync_restarts)
+                                sync_restarts=sync_restarts,
+                                sync_ignore_last=sync_ignore_last)
 
     sync_config = pbs_config.get('sync', {})
-    
+
     default_ncpus = 1
     default_queue = 'copyq'
     default_mem = '2GB'
@@ -60,7 +58,7 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path, sync_path, syn
     if walltime:
         pbs_config['walltime'] = walltime
     else:
-        # Remove the model walltime if set
+        # Remove walltime if set
         try:
             pbs_config.pop('walltime')
         except KeyError:
@@ -85,22 +83,20 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path, sync_path, syn
 
 
 def runscript():
-    # Currently these run_args are only ever set running `payu-sync` with args directly rather than `payu sync`
     parser = argparse.ArgumentParser()
     for arg in arguments:
         parser.add_argument(*arg['flags'], **arg['parameters'])
 
     run_args = parser.parse_args()
 
-    pbs_vars = cli.set_env_vars(init_run=run_args.init_run,
-                                lab_path=run_args.lab_path,
+    pbs_vars = cli.set_env_vars(lab_path=run_args.lab_path,
                                 dir_path=run_args.dir_path,
-                                sync_path=run_args.sync_path,
-                                sync_restarts=run_args.sync_restarts)
+                                sync_restarts=run_args.sync_restarts,
+                                sync_ignore_last=run_args.sync_ignore_last)
 
     for var in pbs_vars:
         os.environ[var] = str(pbs_vars[var])
-    
+
     lab = Laboratory(run_args.model_type,
                      run_args.config_path,
                      run_args.lab_path)

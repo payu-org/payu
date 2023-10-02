@@ -127,26 +127,25 @@ force_prune_restarts = {
     }
 }
 
-# Specify a remote directory to sync output to
-sync_path = {
-    'flags': {'--syncdir', '-s'},
-    'parameters': {
-        'action':   'store',
-        'dest':     'sync_path',
-        'default':  None,
-        'help':     'The remote directory to sync output to, this will over-ride the \
-                     value given in config.yaml',
-    }
-}
-
-# Flag for enabling syncing restarts
+# Flag for syncing all restarts
 sync_restarts = {
-    'flags': {'--restarts', '-R'},
+    'flags': {'--sync-restarts'},
     'parameters': {
         'action':   'store_true',
         'dest':     'sync_restarts',
         'default':  False,
-        'help':     'Sync restarts to remote directory, this will over-ride the \
-                     value given in config.yaml',
+        'help':     'Sync all restarts in archive to remote directory.',
+    }
+}
+
+# Flag for ignoring the latest outputs during syncing
+sync_ignore_last = {
+    'flags': {'--sync-ignore-last'},
+    'parameters': {
+        'action':   'store_true',
+        'dest':     'sync_ignore_last',
+        'default':  False,
+        'help':     'Ignore the latest outputs and restarts in archive during \
+                     syncing.',
     }
 }

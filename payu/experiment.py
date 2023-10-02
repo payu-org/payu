@@ -39,7 +39,6 @@ from payu.calendar import parse_date_offset
 core_modules = ['python', 'payu']
 
 # Default payu parameters
-default_archive_url = 'dc.nci.org.au'
 default_restart_freq = 5
 
 
@@ -200,13 +199,16 @@ class Experiment(object):
         if output_dirs and len(output_dirs):
             return int(output_dirs[-1].lstrip(output_type))
 
-    def list_output_dirs(self, output_type="output"):
+    def list_output_dirs(self, output_type="output", full_path=False):
         """Return a sorted list of restart or output directories in archive"""
         naming_pattern = re.compile(fr"^{output_type}[0-9][0-9][0-9]+$")
         dirs = [d for d in os.listdir(self.archive_path)
                 if naming_pattern.match(d)]
         dirs.sort(key=lambda d: int(d.lstrip(output_type)))
-        return dirs 
+
+        if full_path:
+            dirs = [os.path.join(self.archive_path, d) for d in dirs]
+        return dirs
 
     def set_stacksize(self, stacksize):
 
@@ -808,6 +810,7 @@ class Experiment(object):
 
     def postprocess(self):
         """Submit any postprocessing scripts or remote syncing if enabled"""
+        # First submit postprocessing script
         if self.postscript:
             envmod.setup()
             envmod.module('load', 'pbs')
@@ -815,200 +818,150 @@ class Experiment(object):
             cmd = 'qsub {script}'.format(script=self.postscript)
 
             cmd = shlex.split(cmd)
-            rc = sp.call(cmd)
-            assert rc == 0, 'Postprocessing script submission failed.'
-        
+            sp.check_call(cmd)
+
+        # Submit a sync script if remote syncing is enabled
         sync_config = self.config.get('sync', {})
         syncing = sync_config.get('enable', False)
-        if syncing: 
-            cmd = '{python} {payu} sync -i {expt}'.format(
+        if syncing:
+            cmd = '{python} {payu} sync'.format(
                 python=sys.executable,
-                payu=self.payu_path,
-                expt=self.counter
+                payu=self.payu_path
             )
 
-            # Add any hard-coded envt variables
-            dir_path = os.environ.get('PAYU_DIR_PATH')
-            if dir_path:
-                cmd += f' -d {dir_path}'
-            lab_path = os.environ.get('PAYU_LAB_PATH')
-            if lab_path:
-                cmd += f' -l {lab_path}'
-            sync_path = os.environ.get('PAYU_SYNC')
-            if sync_path:
-                cmd += f' --syncdir {sync_path}'        
-            sync_restarts = os.environ.get('PAYU_SYNC_RESTARTS')
-            if sync_restarts:
-                cmd += f' --restarts'
+            if self.postscript:
+                print('payu: warning: postscript is configured, so by default '
+                      'the lastest outputs will not be synced. To sync the '
+                      'latest output, after the postscript job has completed '
+                      'run:\n'
+                      '    payu sync')
+                cmd += f' --sync-ignore-last'
 
             sp.check_call(shlex.split(cmd))
 
-
-    def sync(self, max_rsync_attempts=1):
-        """Sync archive to remote directory"""
-        #TODO: Could automate directory to sync outputs to e.g. /g/data/{project}/{user}/{experimentname}/archive/?
-
+    def get_archive_paths_to_sync(self):
+        """Returns a list of dirs/files in archive to sync to remote archive"""
         sync_config = self.config.get('sync', {})
 
-        # Directory to sync output to 
-        sync_path = os.environ.get('PAYU_SYNC_PATH', None)
-        if not sync_path:
-            sync_path = sync_config.get('directory', None)
-        
-        assert sync_path, "no directory to sync outputs configured"
-        print("remote archive sync path: ", sync_path)
+        # Get sorted lists of outputs and restarts in archive
+        outputs = self.list_output_dirs(output_type='output', full_path=True)
+        restarts = self.list_output_dirs(output_type='restart', full_path=True)
 
-        # Syncing restarts flag 
-        restarts_config = sync_config.get('restarts', {})
-        sync_restarts = os.environ.get('PAYU_SYNC_RESTARTS', False)
-        if not sync_restarts:
-            sync_restarts = restarts_config.get('enable', False)
+        # Ignore the latest output/restart if flagged
+        ignore_last_outputs = os.environ.get('PAYU_SYNC_IGNORE_LAST', False)
+        if ignore_last_outputs:
+            if len(outputs) > 0:
+                outputs.pop()
+            if len(restarts) > 0:
+                restarts.pop()
 
-        # Additional Rsync flags 
-        rsync_flags = sync_config.get('rsync_flags', '')
-        exclude = sync_config.get('exclude', '')
+        # Add outputs to rsync paths
+        src_paths = outputs
 
-        # RUN user scripts before syncing archive - any postprocessing
-        pre_sync_script = self.userscripts.get('sync')
-        if pre_sync_script:
-            self.run_userscript(pre_sync_script)
+        # Get auto-sync restart flag
+        syncing_restarts = sync_config.get('restarts', False)
+        syncing_all_restarts = os.environ.get('PAYU_SYNC_RESTARTS', False)
 
-        restart_freq = self.config.get('restart_freq', default_restart_freq)
-        def syncing_restart(restart_path, counter):
-            """Return True if syncing restarts is enabled and restart can be archived permanently"""
-            # TODO: Also use date based restart frequency if implemented
-            return sync_restarts and (counter % restart_freq) == 0 and os.path.isdir(restart_path)
+        # Add restarts to rsync paths
+        if syncing_all_restarts:
+            # Sync all restarts
+            src_paths.extend(restarts)
+        elif syncing_restarts:
+            # Only sync restarts that will be permanently archived
+            restarts_to_prune = self.get_restarts_to_prune(
+                ignore_intermediate_restarts=True)
+            for restart_path in restarts:
+                restart = os.path.basename(restart_path)
+                if restart not in restarts_to_prune:
+                    src_paths.append(restart_path)
 
-        # Add output to rsync
-        src_paths = []
-        syncing_output = True
-
-        # Check whether output path has been hard-coded
-        if os.environ.get('PAYU_DIR_PATH'):
-            # Check whether output path is actually a restart dir
-            # e.g. when running `payu collate -d archive/restart<num>`
-            basename = os.path.basename(self.output_path)
-            if basename.startswith('restart'):
-                counter = int(basename.lstrip('restart'))
-                syncing_output = syncing_restart(self.output_path, counter)
-                sync_restarts = False # Do not attempt syncing restarts later
-        
-        if syncing_output:
-            src_paths.append(self.output_path)
-
-        # Add restart to rsync, if enabled
-        if sync_restarts:
-            collate_config = self.config.get('collate', {})
-            collated = collate_config.get('enable', True)
-            restart_path = None
-            if collated:
-                collated_prior_restart = collate_config.get('restart', False)
-                if collated_prior_restart:
-                    # Sync prior restarts as latest restarts aren't collated automatically 
-                    restart_path = self.prior_restart_path
-            else:
-                restart_path = self.restart_path
-
-            if restart_path and syncing_restart(restart_path, self.counter - 1):
-                src_paths.append(self.prior_restart_path)
-        
         # Add pbs and error logs to rsync
         for log_type in ['error_logs', 'pbs_logs']:
             log_path = os.path.join(self.archive_path, log_type)
             if os.path.isdir(log_path):
                 src_paths.append(log_path)
 
+        return src_paths
+
+    def sync(self):
+        """Sync archive to remote directory"""
+        # RUN any user scripts before syncing archive
+        pre_sync_script = self.userscripts.get('sync')
+        if pre_sync_script:
+            self.run_userscript(pre_sync_script)
+
+        sync_config = self.config.get('sync', {})
+
+        # Remote archive user
+        default_user = getpass.getuser()
+        remote_user = sync_config.get('user', default_user)
+
+        # Remote archive url
+        remote_url = sync_config.get('url', None)
+        # Flag if syncing to remote machine
+        remote_syncing = remote_url is not None
+
+        # Remote path to sync output to
+        dest_path = sync_config.get('path', None)
+        if not remote_syncing:
+            if dest_path is None:
+                # Automate destination path to:
+                # /g/data/{project}/{user}/{experiment_name}/archive
+                project = self.config.get('project', os.environ['PROJECT'])
+                dest_path = os.path.join('/', 'g', 'data', project,
+                                         remote_user, self.name, 'archive')
+
+            # Create destination directory
+            mkdir_p(dest_path)
+
         # Build rsync commands
-        rsync_cmd = f'rsync -vrltoD --safe-links {rsync_flags}'
-        rsync_calls = []
-        for src in src_paths:
-            run_cmd = f'{rsync_cmd} {exclude} {src} {sync_path}'
-            rsync_calls.append(run_cmd)
+        rsync_cmd = f'rsync -vrltoD --safe-links'
 
-        # Execute rsync commands
-        for cmd in rsync_calls:
-            print(cmd)
-            cmd = shlex.split(cmd)
+        # Add any additional rsync flags, e.g. more exclusions
+        additional_rsync_flags = sync_config.get('rsync_flags', None)
+        if additional_rsync_flags:
+            rsync_cmd += f' {additional_rsync_flags}'
 
-            for rsync_attempt in range(max_rsync_attempts):
-                rc = sp.Popen(cmd).wait()
-                if rc == 0:
-                    break
-                else:
-                    print('rsync failed, reattempting')
-            assert rc == 0
+        # Add exclusion for uncollated files
+        ignore_uncollated_files = sync_config.get('ignore_uncollated', True)
+        if ignore_uncollated_files:
+            rsync_cmd += ' --exclude *.nc.*'
 
-
-    def remote_archive(self, config_name, archive_url=None,
-                       max_rsync_attempts=1, rsync_protocol=None):
-
-        if not archive_url:
-            archive_url = default_archive_url
-
-        archive_address = '{usr}@{url}'.format(usr=getpass.getuser(),
-                                               url=archive_url)
-
-        ssh_key_path = os.path.join(os.getenv('HOME'), '.ssh',
-                                    'id_rsa_file_transfer')
-
-        # Top-level path is implicitly set by the SSH key
-        # (Usually /projects/[group])
-
-        # Remote mkdir is currently not possible, so any new subdirectories
-        # must be created before auto-archival
-
-        remote_path = os.path.join(self.model_name, config_name, self.name)
-        remote_url = '{addr}:{path}'.format(addr=archive_address,
-                                            path=remote_path)
-
-        # Rsync ouput and restart files
-        rsync_cmd = ('rsync -a --safe-links -e "ssh -i {key}" '
-                     ''.format(key=ssh_key_path))
-
+        # Add rsync protocol, if defined
+        rsync_protocol = sync_config.get('rsync_protocol', None)
         if rsync_protocol:
-            rsync_cmd += '--protocol={0} '.format(rsync_protocol)
+            rsync_cmd += f' --protocol={rsync_protocol}'
 
-        run_cmd = rsync_cmd + '{src} {dst}'.format(src=self.output_path,
-                                                   dst=remote_url)
-        rsync_calls = [run_cmd]
+        # Add remote host rsync options
+        if remote_syncing:
+            ssh_key_path = os.path.join(os.getenv('HOME'), '.ssh',
+                                        'id_rsa_file_transfer')
+            rsync_cmd += f' -e "ssh -i {ssh_key_path}"'
+            # TODO: Below comments from previous remote_archive- Need to verify
+            # Top-level path is implicitly set by the SSH key
+            # (Usually /projects/[group])
 
-        if (self.counter % 5) == 0 and os.path.isdir(self.restart_path):
-            # Tar restart files before rsyncing
-            restart_tar_path = self.restart_path + '.tar.gz'
+            # Remote mkdir is currently not possible, so any new subdirectories
+            # must be created before auto-archival
+            # TODO: If so, need to add instructions to create archive to docs
+            if dest_path is None:
+                # TODO: What should be the default path for remote archive
+                os.path.join(self.model_name, self.name)
+            dest_path = f'{remote_user}@{remote_url}:{dest_path}'
 
-            cmd = ('tar -C {0} -czf {1} {2}'
-                   ''.format(self.archive_path, restart_tar_path,
-                             os.path.basename(self.restart_path)))
-            sp.check_call(shlex.split(cmd))
+        # Get archive source paths to sync
+        src_paths = self.get_archive_paths_to_sync()
 
-            restart_cmd = ('{0} {1} {2}'
-                           ''.format(rsync_cmd, restart_tar_path, remote_url))
-            rsync_calls.append(restart_cmd)
-        else:
-            res_tar_path = None
+        # Run rsync commands
+        for src_path in src_paths:
+            run_cmd = f'{rsync_cmd} {src_path} {dest_path}'
+            cmd = shlex.split(run_cmd)
 
-        for model in self.models:
-            for input_path in self.model.input_paths:
-                # Using explicit path separators to rename the input directory
-                input_cmd = rsync_cmd + '{0} {1}'.format(
-                    input_path + os.path.sep,
-                    os.path.join(remote_url, 'input') + os.path.sep)
-                rsync_calls.append(input_cmd)
-
-        for cmd in rsync_calls:
-            cmd = shlex.split(cmd)
-
-            for rsync_attempt in range(max_rsync_attempts):
-                rc = sp.Popen(cmd).wait()
-                if rc == 0:
-                    break
-                else:
-                    print('rsync failed, reattempting')
-            assert rc == 0
-
-        # TODO: Temporary; this should be integrated with the rsync call
-        if res_tar_path and os.path.exists(res_tar_path):
-            os.remove(res_tar_path)
+            rc = sp.Popen(cmd).wait()
+            if rc != 0:
+                raise sp.CalledProcessError(
+                    'payu: Error syncing archive to remote directory: ',
+                    f'rsync failed after with command: {cmd}')
 
     def resubmit(self):
         next_run = self.counter + 1
@@ -1065,9 +1018,9 @@ class Experiment(object):
         short_job_name = str(self.config.get('jobname', default_job_name))[:15]
 
         log_filenames = [short_job_name + '.o', short_job_name + '.e']
-        for postfix in ['_c.o', '_c.e', '_p.o', '_p.e', '_s.o', '_s.e']: 
+        for postfix in ['_c.o', '_c.e', '_p.o', '_p.e', '_s.o', '_s.e']:
             log_filenames.append(short_job_name[:13] + postfix)
-        
+
         logs = [
             f for f in os.listdir(os.curdir) if os.path.isfile(f) and (
                 f.startswith(tuple(log_filenames))
