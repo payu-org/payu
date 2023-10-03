@@ -72,57 +72,47 @@ def teardown():
             print(e)
 
 
-def make_config_files(parameter_files):
-    """Make config files in control directory"""
-    for file in parameter_files:
+@pytest.mark.parametrize(
+        "input_nml, expected_files_added",
+        [
+            (
+                {
+                    "MOM_input_nml": {
+                        "parameter_filename": "MOM_Input"
+                    }
+                },
+                ["MOM_Input"]
+            ),
+            (
+                {
+                    "SIS_input_nml": {
+                        "parameter_filename": "SIS_Input"
+                    }
+                },
+                ["SIS_Input"]
+            ),
+            (
+                {
+                    "MOM_input_nml": {
+                        "parameter_filename": ["MOM_Input", "MOM_override"]
+                    },
+                    "SIS_input_nml": {
+                        "output_directory": '.'
+                    }
+                },
+                ["MOM_Input", "MOM_override"]
+            )
+        ])
+def test_add_config_files(input_nml,
+                          expected_files_added):
+    # Create config files in control directory
+    for file in expected_files_added:
         filename = os.path.join(ctrldir, file)
         make_random_file(filename, 8)
 
-
-def make_input_nml_file(mom_parameter_files, sis_parameter_files=None):
-    """Create an input.nml in expt work directory"""
-    input_nml = {
-        'MOM_input_nml': {
-            'parameter_filename': mom_parameter_files,
-        }
-    }
-    if sis_parameter_files:
-        input_nml['SIS_input_nml'] = {
-            'parameter_filename': sis_parameter_files,
-        }
+    # Create config.nml
     input_nml_fp = os.path.join(expt_workdir, 'input.nml')
     f90nml.write(input_nml, input_nml_fp)
-
-
-@pytest.mark.parametrize(
-    "mom_parameter_files, sis_parameter_files, expected_files_added",
-    [
-        (
-            ['MOM_input'],
-            ['SIS_input', 'SIS_layout'],
-            []
-        ),
-        (
-            ['MOM_input', 'MOM_layout'],
-            ['SIS_input', 'New_SIS_file'],
-            ['New_SIS_file']
-        ),
-        (
-            ['New_MOM_file', 'MOM_input'],
-            None,
-            ['New_MOM_file']
-        )
-    ])
-def test_add_parameter_config_files(mom_parameter_files,
-                                    sis_parameter_files,
-                                    expected_files_added):
-    # Create config files in control directory
-    make_config_files(mom_parameter_files)
-    if sis_parameter_files:
-        make_config_files(sis_parameter_files)
-
-    # Create config.nml
-    make_input_nml_file(mom_parameter_files, sis_parameter_files)
 
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
@@ -132,7 +122,7 @@ def test_add_parameter_config_files(mom_parameter_files,
     prior_config_files = model.config_files[:]
 
     # Function to test
-    model.add_parameter_config_files()
+    model.add_config_files()
 
     # Check files are added to config_files
     added_files = set(model.config_files).difference(prior_config_files)
