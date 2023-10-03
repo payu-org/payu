@@ -204,7 +204,7 @@ class Experiment(object):
         """Return a list of restart or output directories in archive"""
         naming_pattern = re.compile(fr"^{output_type}[0-9][0-9][0-9]$")
         return [d for d in os.listdir(self.archive_path)
-                if naming_pattern.match(d)]       
+                if naming_pattern.match(d)]
 
     def set_stacksize(self, stacksize):
 
