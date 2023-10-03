@@ -561,7 +561,7 @@ class Experiment(object):
 
             for prof in self.profilers:
                 if prof.runscript:
-                    model_prog = model_prog.append(prof.runscript)
+                    model_prog.append(prof.runscript)
 
             model_prog.append(model.exec_prefix)
 
