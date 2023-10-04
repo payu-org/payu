@@ -124,7 +124,6 @@ def add_month_start_offset_to_datetime(initial_dt, n):
 def add_timedelta_fn(timedelta):
     """Returns a function that takes initial datetime and multiplier n,
     and returns a datetime that is n * offset from the initial datetime"""
-    # cftime datetimes supports timedelta operations
     return lambda initial_dt, n: initial_dt + n * timedelta
 
 

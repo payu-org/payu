@@ -13,7 +13,7 @@ from test.common import config as config_orig
 from test.common import write_config
 from test.common import make_all_files
 from test.common import list_expt_archive_dirs
-from test.common import make_expt_archive_dirs, remove_expt_archive_dirs
+from test.common import make_expt_archive_dir, remove_expt_archive_dirs
 
 
 verbose = True
@@ -43,6 +43,11 @@ def setup_module(module):
     except Exception as e:
         print(e)
 
+    # Write config
+    test_config = config
+    test_config['model'] = 'mom'
+    write_config(test_config)
+
 
 def teardown_module(module):
     """
@@ -64,43 +69,39 @@ def teardown():
     yield
 
     # Remove any created restart files
-    remove_expt_archive_dirs(dir_type='restart')
+    remove_expt_archive_dirs(type='restart')
 
 
-def make_ocean_restart_files(init_dt_array,
-                             run_dt_arrays,
-                             calendar,
-                             additional_path=None):
-    restart_paths = make_expt_archive_dirs(dir_type='restart',
-                                           num_dirs=len(run_dt_arrays),
-                                           additional_path=additional_path)
+def make_ocean_restart_dir(start_dt,
+                           run_dt,
+                           calendar,
+                           restart_index=0,
+                           additional_path=None):
+    """Create tests restart directory with ocean_solo.res file"""
+    # Create restart directory
+    restart_path = make_expt_archive_dir(type='restart',
+                                         index=restart_index,
+                                         additional_path=additional_path)
 
-    for index, run_dt_array in enumerate(run_dt_arrays):
-        # Create ocean_solo.res file
-        make_ocean_solo_file(restart_paths[index],
-                             init_dt_array,
-                             run_dt_array,
-                             calendar)
-
-
-def make_ocean_solo_file(restart_path, init_dt_array, run_dt_array, calendar):
-    "Create test ocean_solo.res files in restart directories"
+    # Create ocean_solo.res file
     lines = (f"{calendar:6d}        "
              "(Calendar: no_calendar=0, thirty_day_months=1, julian=2, "
              "gregorian=3, noleap=4)\n")
 
     init_dt_desc = "Model start time:   year, month, day, hour, minute, second"
-    lines += format_ocean_solo_datetime_line(init_dt_array, init_dt_desc)
+    lines += format_ocean_solo_datetime_line(start_dt, init_dt_desc)
 
     run_dt_desc = "Current model time: year, month, day, hour, minute, second"
-    lines += format_ocean_solo_datetime_line(run_dt_array, run_dt_desc)
+    lines += format_ocean_solo_datetime_line(run_dt, run_dt_desc)
 
     ocean_solo_path = os.path.join(restart_path, "ocean_solo.res")
     with open(ocean_solo_path, "w") as ocean_solo_file:
         ocean_solo_file.write(lines)
 
 
-def format_ocean_solo_datetime_line(dt_array, description):
+def format_ocean_solo_datetime_line(dt_string, description):
+    """Format datetime string to match actual output files"""
+    dt_array = convert_date_string_to_array(dt_string)
     year, month, day, hour, minute, second = dt_array
     return (
         f"{year:6d}{month:6d}{day:6d}{hour:6d}{minute:6d}{second:6d}"
@@ -108,43 +109,49 @@ def format_ocean_solo_datetime_line(dt_array, description):
     )
 
 
+def convert_date_string_to_array(dt_string):
+    """Convert string of YYYY-MM-DD hh:mm:ss to array of integers of
+    [year, month, day, hour, minute, second] format"""
+    date, time = dt_string.split(' ')
+    year, month, day = map(int, date.split('-'))
+    hour, minute, second = map(int, time.split(':'))
+    return [year, month, day, hour, minute, second]
+
+
 @pytest.mark.parametrize(
-    "run_dt_arrays, calendar, expected_cftimes",
+    "run_dt, calendar, expected_cftime",
     [
         (
-            [[1900, 2, 1, 0, 0, 0], [1900, 3, 1, 0, 0, 0]],
+            "1900-02-01 00:00:00",
             4,
-            [
-                cftime.datetime(1900, 2, 1, calendar="noleap"),
-                cftime.datetime(1900, 3, 1, calendar="noleap"),
-            ],
+            cftime.datetime(1900, 2, 1, calendar="noleap")
         ),
         (
-            [[1900, 6, 1, 0, 0, 0], [1901, 1, 1, 0, 0, 0]],
+            "1900-06-01 00:00:00",
             3,
-            [
-                cftime.datetime(1900, 6, 1, calendar="proleptic_gregorian"),
-                cftime.datetime(1901, 1, 1, calendar="proleptic_gregorian"),
-            ],
-        )
+            cftime.datetime(1900, 6, 1, calendar="proleptic_gregorian")
+        ),
+        (
+            "1000-11-12 12:23:34",
+            2,
+            cftime.datetime(1000, 11, 12, 12, 23, 34,
+                            calendar="julian")
+        ),
+        (
+            "1900-02-30 00:00:00",
+            1,
+            cftime.datetime(1900, 2, 30, calendar="360_day")
+        ),
     ])
-def test_mom_get_restart_datetime(run_dt_arrays, calendar, expected_cftimes):
-    # Create mom restart files
-    init_dt_array = [1900, 1, 1, 0, 0, 0]
-    make_ocean_restart_files(init_dt_array, run_dt_arrays, calendar)
-
-    # Write config
-    test_config = config
-    test_config['model'] = 'mom'
-    write_config(test_config)
+def test_mom_get_restart_datetime(run_dt, calendar, expected_cftime):
+    # Create 1 mom restart directory
+    start_dt = "1900-01-01 00:00:00"
+    make_ocean_restart_dir(start_dt, run_dt, calendar)
 
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, reproduce=False)
 
-    restart_paths = list_expt_archive_dirs(dir_type='restart')
-
-    for index, expected_cftime in enumerate(expected_cftimes):
-        restart_path = restart_paths[index]
-        run_dt = expt.model.get_restart_datetime(restart_path)
-        assert run_dt == expected_cftime
+    restart_path = list_expt_archive_dirs()[0]
+    parsed_run_dt = expt.model.get_restart_datetime(restart_path)
+    assert parsed_run_dt == expected_cftime

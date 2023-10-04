@@ -132,6 +132,7 @@ def test_parse_run():
     assert args.pop('force') is False
     assert args.pop('init_run') is None
     assert args.pop('n_runs') is None
+    assert args.pop('force_prune_restarts') is False
 
     assert len(args) == 0
 
@@ -143,7 +144,8 @@ def test_parse_run():
                             '--force '
                             '--initial 99 '
                             '--nruns 999 '
-                            '--reproduce'.format(cmd=cmd))
+                            '--reproduce '
+                            '--force-prune-restarts'.format(cmd=cmd))
 
     args = vars(parser.parse_args(arguments[1:]))
 
@@ -158,6 +160,7 @@ def test_parse_run():
     assert args.pop('force') is True
     assert args.pop('init_run') == '99'
     assert args.pop('n_runs') == '999'
+    assert args.pop('force_prune_restarts') is True
 
     assert len(args) == 0
 
@@ -169,7 +172,8 @@ def test_parse_run():
                             '-f '
                             '-i 99 '
                             '-n 999 '
-                            '-r'.format(cmd=cmd))
+                            '-r '
+                            '-F'.format(cmd=cmd))
 
     args = vars(parser.parse_args(arguments[1:]))
 
@@ -184,6 +188,7 @@ def test_parse_run():
     assert args.pop('force') is True
     assert args.pop('init_run') == '99'
     assert args.pop('n_runs') == '999'
+    assert args.pop('force_prune_restarts') is True
 
     assert len(args) == 0
 
