@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import os
+import stat
 from pathlib import Path
 
 import yaml
@@ -120,9 +121,10 @@ def make_exe():
     # Create a fake executable file
     bindir = labdir / 'bin'
     bindir.mkdir(parents=True, exist_ok=True)
-    exe = config['exe']
+    exe_path = bindir / config['exe']
     exe_size = 199
-    make_random_file(bindir/exe, exe_size)
+    make_random_file(exe_path, exe_size)
+    exe_path.chmod(exe_path.stat().st_mode | stat.S_IEXEC)
 
 
 def make_payu_exe():

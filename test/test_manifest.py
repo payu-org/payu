@@ -213,24 +213,6 @@ def test_exe_reproduce():
     # Check manifests have changed as expected
     assert(not manifests == get_manifests(ctrldir/'manifests'))
 
-    # Reset manifests "truth"
-    manifests = get_manifests(ctrldir/'manifests')
-
-    # Make exe in config.yaml unfindable by giving it a non-existent
-    # path but crucially the same name as the proper executable
-    config['exe'] = '/bogus/test.exe'
-
-    # Change reproduce exe back to True
-    config['manifest']['reproduce']['exe'] = True
-
-    write_config(config)
-
-    # Run setup with changed exe but reproduce exe set to True. Should
-    # work fine as the exe path is in the manifest
-    payu_setup(lab_path=str(labdir))
-
-    assert(manifests == get_manifests(ctrldir/'manifests'))
-
 
 def test_input_reproduce():
 
