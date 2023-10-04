@@ -88,6 +88,7 @@ class Experiment(object):
         self.set_expt_pathnames()
         self.set_counters()
 
+
         for model in self.models:
             model.set_input_paths()
 
@@ -175,13 +176,13 @@ class Experiment(object):
         if self.counter is None:
             # Check for restart index
             max_restart_index = self.max_output_index(output_type="restart")
-            if max_restart_index:
+            if max_restart_index is not None:
                 self.counter = 1 + max_restart_index
             else:
                 # Now look for output directories,
                 # as repeat runs do not generate restart files.
                 max_output_index = self.max_output_index()
-                if max_output_index:
+                if max_output_index is not None:
                     self.counter = 1 + max_output_index
                 else:
                     self.counter = 0
