@@ -10,6 +10,7 @@
 
 # Standard library
 import os
+import shutil
 
 # Extensions
 import f90nml
@@ -31,27 +32,12 @@ class Mom6(Fms):
 
         self.config_files = [
             'input.nml',
-            'MOM_input',
             'diag_table',
         ]
 
-        # TODO: Need to figure out what's going on here with MOM6
         self.optional_config_files = [
             'data_table',
-            'data_table.MOM6',
-            'data_table.OM4',
-            'data_table.SIS',
-            'data_table.icebergs',
-
-            'field_table',
-
-            'MOM_override',
-            'MOM_layout',
-            'MOM_saltrestore',
-
-            'SIS_input',
-            'SIS_override',
-            'SIS_layout',
+            'field_table'
         ]
 
     def setup(self):
@@ -59,6 +45,7 @@ class Mom6(Fms):
         super(Mom6, self).setup()
 
         self.init_config()
+        self.add_config_files()
 
     def init_config(self):
         """Patch input.nml as a new or restart run."""
@@ -78,3 +65,47 @@ class Mom6(Fms):
             input_nml['SIS_input_nml']['input_filename'] = input_type
 
         f90nml.write(input_nml, input_fpath, force=True)
+
+    def add_config_files(self):
+        """Add to model configuration files"""
+
+        # Add parameter config files
+        config_files_to_add = self.get_parameter_files()
+
+        # Set of all configuration files
+        all_config_files = set(self.config_files).union(
+            self.optional_config_files)
+
+        for filename in config_files_to_add:
+            if filename not in all_config_files:
+                # Extend config files
+                self.config_files.append(filename)
+                all_config_files.add(filename)
+
+                # Copy file from control path to work path
+                file_path = os.path.join(self.control_path, filename)
+                shutil.copy(file_path, self.work_path)
+
+    def get_parameter_files(self):
+        """Return a list of parameter config files defined in input.nml"""
+        input_nml = f90nml.read(os.path.join(self.work_path, 'input.nml'))
+
+        input_namelists = ['MOM_input_nml']
+        if 'SIS_input_nml' in input_nml:
+            input_namelists.append('SIS_input_nml')
+
+        parameter_files = []
+        for input in input_namelists:
+            input_namelist = input_nml.get(input, {})
+            filenames = input_namelist.get('parameter_filename', [])
+
+            if filenames == []:
+                print("payu: warning: MOM6: There are no parameter files "
+                      f"listed under {input} in input.nml")
+
+            if isinstance(filenames, str):
+                parameter_files.append(filenames)
+            else:
+                parameter_files.extend(filenames)
+
+        return parameter_files
