@@ -198,13 +198,15 @@ class Experiment(object):
                 raise
 
         if output_dirs and len(output_dirs):
-            return max([int(d.lstrip(output_type)) for d in output_dirs])
+            return int(output_dirs[-1].lstrip(output_type))
 
     def list_output_dirs(self, output_type="output"):
-        """Return a list of restart or output directories in archive"""
-        naming_pattern = re.compile(fr"^{output_type}[0-9][0-9][0-9]$")
-        return [d for d in os.listdir(self.archive_path)
+        """Return a sorted list of restart or output directories in archive"""
+        naming_pattern = re.compile(fr"^{output_type}[0-9][0-9][0-9]+$")
+        dirs = [d for d in os.listdir(self.archive_path)
                 if naming_pattern.match(d)]
+        dirs.sort(key=lambda d: int(d.lstrip(output_type)))
+        return dirs 
 
     def set_stacksize(self, stacksize):
 
@@ -1003,9 +1005,8 @@ class Experiment(object):
         if not os.path.exists(self.archive_path):
             return []
 
-        # List all and sort restart directories in archive
+        # List all restart directories in archive
         restarts = self.list_output_dirs(output_type='restart')
-        restarts.sort(key=lambda d: int(d.lstrip('restart')))
 
         # TODO: Previous logic was to prune all restarts if self.repeat_run
         # Still need to figure out what should happen in this case
@@ -1043,15 +1044,15 @@ class Experiment(object):
                 restart_path = os.path.join(self.archive_path, restart)
                 try:
                     restart_dt = self.model.get_restart_datetime(restart_path)
-                except NotImplementedError as e:
+                except NotImplementedError:
                     print('payu: error: Date-based restart pruning is not '
                           f'implemented for the {self.model.model_type} '
                           'model. To use integer based restart pruning, '
                           'set restart_freq to an integer value.')
                     raise
-                except Exception as e:
+                except Exception:
                     print('payu: error: Error parsing restart directory ',
-                          f'{restart} for a datetime. Error: {e}')
+                          f'{restart} for a datetime to prune restarts.')
                     raise
 
                 if (next_dt is not None and restart_dt < next_dt):

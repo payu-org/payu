@@ -211,7 +211,7 @@ configuration.
    able to parse restarts files for a datetime.
 
 ``restart_history``
-    Specifies the number of latest restart files to save
+    Specifies how many of the most recent restart files to retain regardless of `restart_freq`
 
 *The following model-based tags are typically not configured*
 
