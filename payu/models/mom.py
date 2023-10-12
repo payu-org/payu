@@ -9,7 +9,7 @@ import shutil
 import subprocess
 
 import f90nml
-import payu.envmod
+
 from payu.models.fms import Fms
 from payu.fsops import mkdir_p, make_symlink
 
@@ -101,7 +101,7 @@ class Mom(Fms):
                 os.remove(mask_path)
 
             # Reference mask table
-            assert('layout' in input_nml['ocean_model_nml'])
+            assert ('layout' in input_nml['ocean_model_nml'])
             nx, ny = input_nml['ocean_model_nml'].get('layout')
             n_masked_cpus = nx * ny - self.config.get('ncpus')
 

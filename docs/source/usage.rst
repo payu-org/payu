@@ -232,6 +232,12 @@ To run from an existing model run, also called a warm start, set the
 ``restart`` option to point to the folder containing the restart files
 from a previous matching experiment.
 
+If restart pruning configuration has changed, there may be warnings if 
+many restarts will be pruned as a result. If this is desired, at the next 
+run use ``-F/--force-prune-restarts`` flag:
+
+  payu run --force-prune-restarts
+
 
 Cleaning up 
 ===========

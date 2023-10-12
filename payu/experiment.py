@@ -26,12 +26,13 @@ import yaml
 
 # Local
 from payu import envmod
-from payu.fsops import mkdir_p, make_symlink, read_config, movetree, required_libs
+from payu.fsops import mkdir_p, make_symlink, read_config, movetree
 from payu.schedulers.pbs import get_job_info, pbs_env_init, get_job_id
 from payu.models import index as model_index
 import payu.profilers
 from payu.runlog import Runlog
 from payu.manifest import Manifest
+from payu.calendar import parse_date_offset
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -40,7 +41,6 @@ core_modules = ['python', 'payu']
 # Default payu parameters
 default_archive_url = 'dc.nci.org.au'
 default_restart_freq = 5
-default_restart_history = 5
 
 
 class Experiment(object):
@@ -87,7 +87,6 @@ class Experiment(object):
         # TODO: Move to run/collate/sweep?
         self.set_expt_pathnames()
         self.set_counters()
-
 
         for model in self.models:
             model.set_input_paths()
@@ -199,13 +198,15 @@ class Experiment(object):
                 raise
 
         if output_dirs and len(output_dirs):
-            return max([int(d.lstrip(output_type)) for d in output_dirs])
+            return int(output_dirs[-1].lstrip(output_type))
 
     def list_output_dirs(self, output_type="output"):
-        """Return a list of restart or output directories in archive"""
-        naming_pattern = re.compile(fr"^{output_type}[0-9][0-9][0-9]$")
-        return [d for d in os.listdir(self.archive_path)
+        """Return a sorted list of restart or output directories in archive"""
+        naming_pattern = re.compile(fr"^{output_type}[0-9][0-9][0-9]+$")
+        dirs = [d for d in os.listdir(self.archive_path)
                 if naming_pattern.match(d)]
+        dirs.sort(key=lambda d: int(d.lstrip(output_type)))
+        return dirs 
 
     def set_stacksize(self, stacksize):
 
@@ -344,7 +345,7 @@ class Experiment(object):
         user_restart_dir = self.config.get('restart')
         if (self.counter == 0 or self.repeat_run) and user_restart_dir:
             # TODO: Some user friendliness needed...
-            assert(os.path.isdir(user_restart_dir))
+            assert (os.path.isdir(user_restart_dir))
             self.prior_restart_path = user_restart_dir
         else:
             prior_restart_dir = 'restart{0:03}'.format(self.counter - 1)
@@ -445,14 +446,19 @@ class Experiment(object):
             # Testing
             prof.setup()
 
+        # Check restart pruning for valid configuration values and
+        # warns user if more restarts than expected would be pruned
+        if self.config.get('archive', True):
+            self.get_restarts_to_prune()
+
     def run(self, *user_flags):
 
         # XXX: This was previously done in reversion
         envmod.setup()
-        
+
         # Add any user-defined module dir(s) to MODULEPATH
         for module_dir in self.config.get('modules', {}).get('use', []):
-            envmod.module('use', module_dir) 
+            envmod.module('use', module_dir)
 
         self.load_modules()
 
@@ -487,7 +493,7 @@ class Experiment(object):
             mpi_flags = self.config.get('mpirun', [])
             # TODO: Legacy config removal warning
 
-        if type(mpi_flags) != list:
+        if not isinstance(mpi_flags, list):
             mpi_flags = [mpi_flags]
 
         # TODO: More uniform support needed here
@@ -711,7 +717,7 @@ class Experiment(object):
         if run_script:
             self.run_userscript(run_script)
 
-    def archive(self):
+    def archive(self, force_prune_restarts=False):
         if not self.config.get('archive', True):
             print('payu: not archiving due to config.yaml setting.')
             return
@@ -742,27 +748,21 @@ class Experiment(object):
 
         movetree(self.work_path, self.output_path)
 
-        # Remove old restart files
-        # TODO: Move to subroutine
-        restart_freq = self.config.get('restart_freq', default_restart_freq)
-        restart_history = self.config.get('restart_history',
-                                          default_restart_history)
-
         # Remove any outdated restart files
-        prior_restart_dirs = self.list_output_dirs(output_type="restart")
+        try:
+            restarts_to_prune = self.get_restarts_to_prune(
+                force=force_prune_restarts)
+        except Exception as e:
+            print(e)
+            print("payu: error: Skipping pruning restarts")
+            restarts_to_prune = []
 
-        for res_dir in prior_restart_dirs:
-
-            res_idx = int(res_dir.lstrip('restart'))
-            if (self.repeat_run or
-                    (not res_idx % restart_freq == 0 and
-                     res_idx <= (self.counter - restart_history))):
-
-                res_path = os.path.join(self.archive_path, res_dir)
-
-                # Only delete real directories; ignore symbolic restart links
-                if (os.path.isdir(res_path) and not os.path.islink(res_path)):
-                    shutil.rmtree(res_path)
+        for restart in restarts_to_prune:
+            restart_path = os.path.join(self.archive_path, restart)
+            # Only delete real directories; ignore symbolic restart links
+            if (os.path.isdir(restart_path) and
+                    not os.path.islink(restart_path)):
+                shutil.rmtree(restart_path)
 
         # Ensure dynamic library support for subsequent python calls
         ld_libpaths = os.environ.get('LD_LIBRARY_PATH', None)
@@ -996,6 +996,126 @@ class Experiment(object):
         if os.path.islink(self.work_sym_path):
             print('Removing symlink {0}'.format(self.work_sym_path))
             os.remove(self.work_sym_path)
+
+    def get_restarts_to_prune(self,
+                              ignore_intermediate_restarts=False,
+                              force=False):
+        """Returns a list of restart directories that can be pruned"""
+        # Check if archive path exists
+        if not os.path.exists(self.archive_path):
+            return []
+
+        # List all restart directories in archive
+        restarts = self.list_output_dirs(output_type='restart')
+
+        # TODO: Previous logic was to prune all restarts if self.repeat_run
+        # Still need to figure out what should happen in this case
+        if self.repeat_run:
+            return [os.path.join(self.archive_path, restart)
+                    for restart in restarts]
+
+        # Use restart_freq to decide what restarts to prune
+        restarts_to_prune = []
+        intermediate_restarts, previous_intermediate_restarts = [], []
+        restart_freq = self.config.get('restart_freq', default_restart_freq)
+        if isinstance(restart_freq, int):
+            # Using integer frequency to prune restarts
+            for restart in restarts:
+                restart_idx = int(restart.lstrip('restart'))
+                if not restart_idx % restart_freq == 0:
+                    intermediate_restarts.append(restart)
+                else:
+                    # Add any intermediate restarts to restarts to prune
+                    restarts_to_prune.extend(intermediate_restarts)
+                    previous_intermediate_restarts = intermediate_restarts
+                    intermediate_restarts = []
+        else:
+            # Using date-based frequency to prune restarts
+            try:
+                date_offset = parse_date_offset(restart_freq)
+            except ValueError as e:
+                print('payu: error: Invalid configuration for restart_freq:',
+                      restart_freq)
+                raise
+
+            next_dt = None
+            for restart in restarts:
+                # Use model-driver to parse restart directory for a datetime
+                restart_path = os.path.join(self.archive_path, restart)
+                try:
+                    restart_dt = self.model.get_restart_datetime(restart_path)
+                except NotImplementedError:
+                    print('payu: error: Date-based restart pruning is not '
+                          f'implemented for the {self.model.model_type} '
+                          'model. To use integer based restart pruning, '
+                          'set restart_freq to an integer value.')
+                    raise
+                except Exception:
+                    print('payu: error: Error parsing restart directory ',
+                          f'{restart} for a datetime to prune restarts.')
+                    raise
+
+                if (next_dt is not None and restart_dt < next_dt):
+                    intermediate_restarts.append(restart)
+                else:
+                    # Keep the earliest datetime and use last kept datetime
+                    # as point of reference when adding the next time interval
+                    next_dt = date_offset.add_to_datetime(restart_dt)
+
+                    # Add intermediate restarts to restarts to prune
+                    restarts_to_prune.extend(intermediate_restarts)
+                    previous_intermediate_restarts = intermediate_restarts
+                    intermediate_restarts = []
+
+        if ignore_intermediate_restarts:
+            # Return all restarts that'll eventually be pruned
+            restarts_to_prune.extend(intermediate_restarts)
+            return restarts_to_prune
+
+        if not force:
+            # check environment for --force-prune-restarts flag
+            force = os.environ.get('PAYU_FORCE_PRUNE_RESTARTS', False)
+
+        # Flag to check whether more restarts than expected will be deleted
+        is_unexpected = restarts_to_prune != previous_intermediate_restarts
+
+        # Restart_history override
+        restart_history = self.config.get('restart_history', None)
+        if restart_history is not None:
+            if not isinstance(restart_history, int):
+                raise ValueError("payu: error: restart_history is not an "
+                                 f"integer value: {restart_history}")
+
+            # Keep restart_history latest restarts, in addition to the
+            # permanently saved restarts defined by restart_freq
+            restarts_to_prune.extend(intermediate_restarts)
+            max_index = self.max_output_index(output_type="restart")
+            index_bound = max_index - restart_history
+            restarts_to_prune = [res for res in restarts_to_prune
+                                 if int(res.lstrip('restart')) <= index_bound]
+
+            # Only expect at most 1 restart to be pruned with restart_history
+            is_unexpected = len(restarts_to_prune) > 1
+
+        # Log out warning if more restarts than expected will be deleted
+        if not force and is_unexpected:
+            config_info = (f'restart pruning frequency of {restart_freq}')
+            if restart_history:
+                config_info += f' and restart history of {restart_history}'
+
+            print(f'payu: warning: Current {config_info} would result in '
+                  'following restarts being pruned: '
+                  f'{" ".join(restarts_to_prune)}\n'
+                  'If this is expected, use --force-prune-restarts flag at '
+                  'next run or archive (if running archive manually), e.g.:\n'
+                  '     payu run --force-prune-restarts, or\n'
+                  '     payu archive --force-prune-restarts\n'
+                  'Otherwise, no restarts will be pruned')
+
+            # Return empty list to prevent restarts being pruned
+            restarts_to_prune = []
+
+        return restarts_to_prune
 
 
 def enable_core_dump():

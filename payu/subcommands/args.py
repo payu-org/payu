@@ -114,3 +114,15 @@ force = {
         'help':     'Force run to proceed, overwriting existing directories',
     }
 }
+
+# Force restarts to be pruned despite changes to configuration
+force_prune_restarts = {
+    'flags': ('--force-prune-restarts', '-F'),
+    'parameters': {
+        'action':   'store_true',
+        'dest':     'force_prune_restarts',
+        'default':  False,
+        'help':     'Force outdated restart directories to be pruned during \
+                    archive, ignoring changes made to configuration.',
+    }
+}
