@@ -33,12 +33,15 @@ def runcmd(model_type, config_path, lab_path, dir_path, sync_restarts,
     default_ncpus = 1
     default_queue = 'copyq'
     default_mem = '2GB'
+    default_walltime = '10:00:00'
 
     pbs_config['queue'] = sync_config.get('queue', default_queue)
 
     pbs_config['ncpus'] = sync_config.get('ncpus', default_ncpus)
 
     pbs_config['mem'] = sync_config.get('mem', default_mem)
+
+    pbs_config['walltime'] = sync_config.get('walltime', default_walltime)
 
     sync_jobname = sync_config.get('jobname')
     if not sync_jobname:
@@ -53,31 +56,7 @@ def runcmd(model_type, config_path, lab_path, dir_path, sync_restarts,
 
     pbs_config['jobname'] = sync_jobname[:15]
 
-    # Replace (or remove) walltime
-    walltime = sync_config.get('walltime')
-    if walltime:
-        pbs_config['walltime'] = walltime
-    else:
-        # Remove walltime if set
-        try:
-            pbs_config.pop('walltime')
-        except KeyError:
-            pass
-
-    # Disable hyperthreading
-    qsub_flags = []
-    iflags = iter(pbs_config.get('qsub_flags', '').split())
-    for flag in iflags:
-        if flag == '-l':
-            try:
-                flag += ' ' + next(iflags)
-            except StopIteration:
-                break
-
-        if 'hyperthread' not in flag:
-            qsub_flags.append(flag)
-
-    pbs_config['qsub_flags'] = ' '.join(qsub_flags)
+    pbs_config['qsub_flags'] = sync_config.get('qsub_flags', '')
 
     cli.submit_job('payu-sync', pbs_config, pbs_vars)
 

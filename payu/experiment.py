@@ -11,7 +11,6 @@ from __future__ import print_function
 # Standard Library
 import datetime
 import errno
-import getpass
 import os
 import re
 import resource
@@ -33,6 +32,7 @@ import payu.profilers
 from payu.runlog import Runlog
 from payu.manifest import Manifest
 from payu.calendar import parse_date_offset
+from payu.sync import SyncToRemoteArchive
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -839,129 +839,15 @@ class Experiment(object):
 
             sp.check_call(shlex.split(cmd))
 
-    def get_archive_paths_to_sync(self):
-        """Returns a list of dirs/files in archive to sync to remote archive"""
-        sync_config = self.config.get('sync', {})
-
-        # Get sorted lists of outputs and restarts in archive
-        outputs = self.list_output_dirs(output_type='output', full_path=True)
-        restarts = self.list_output_dirs(output_type='restart', full_path=True)
-
-        # Ignore the latest output/restart if flagged
-        ignore_last_outputs = os.environ.get('PAYU_SYNC_IGNORE_LAST', False)
-        if ignore_last_outputs:
-            if len(outputs) > 0:
-                outputs.pop()
-            if len(restarts) > 0:
-                restarts.pop()
-
-        # Add outputs to rsync paths
-        src_paths = outputs
-
-        # Get auto-sync restart flag
-        syncing_restarts = sync_config.get('restarts', False)
-        syncing_all_restarts = os.environ.get('PAYU_SYNC_RESTARTS', False)
-
-        # Add restarts to rsync paths
-        if syncing_all_restarts:
-            # Sync all restarts
-            src_paths.extend(restarts)
-        elif syncing_restarts:
-            # Only sync restarts that will be permanently archived
-            restarts_to_prune = self.get_restarts_to_prune(
-                ignore_intermediate_restarts=True)
-            for restart_path in restarts:
-                restart = os.path.basename(restart_path)
-                if restart not in restarts_to_prune:
-                    src_paths.append(restart_path)
-
-        # Add pbs and error logs to rsync
-        for log_type in ['error_logs', 'pbs_logs']:
-            log_path = os.path.join(self.archive_path, log_type)
-            if os.path.isdir(log_path):
-                src_paths.append(log_path)
-
-        return src_paths
-
     def sync(self):
-        """Sync archive to remote directory"""
         # RUN any user scripts before syncing archive
+        envmod.setup()
         pre_sync_script = self.userscripts.get('sync')
         if pre_sync_script:
             self.run_userscript(pre_sync_script)
 
-        sync_config = self.config.get('sync', {})
-
-        # Remote archive user
-        default_user = getpass.getuser()
-        remote_user = sync_config.get('user', default_user)
-
-        # Remote archive url
-        remote_url = sync_config.get('url', None)
-        # Flag if syncing to remote machine
-        remote_syncing = remote_url is not None
-
-        # Remote path to sync output to
-        dest_path = sync_config.get('path', None)
-        if not remote_syncing:
-            if dest_path is None:
-                # Automate destination path to:
-                # /g/data/{project}/{user}/{experiment_name}/archive
-                project = self.config.get('project', os.environ['PROJECT'])
-                dest_path = os.path.join('/', 'g', 'data', project,
-                                         remote_user, self.name, 'archive')
-
-            # Create destination directory
-            mkdir_p(dest_path)
-
-        # Build rsync commands
-        rsync_cmd = f'rsync -vrltoD --safe-links'
-
-        # Add any additional rsync flags, e.g. more exclusions
-        additional_rsync_flags = sync_config.get('rsync_flags', None)
-        if additional_rsync_flags:
-            rsync_cmd += f' {additional_rsync_flags}'
-
-        # Add exclusion for uncollated files
-        ignore_uncollated_files = sync_config.get('ignore_uncollated', True)
-        if ignore_uncollated_files:
-            rsync_cmd += ' --exclude *.nc.*'
-
-        # Add rsync protocol, if defined
-        rsync_protocol = sync_config.get('rsync_protocol', None)
-        if rsync_protocol:
-            rsync_cmd += f' --protocol={rsync_protocol}'
-
-        # Add remote host rsync options
-        if remote_syncing:
-            ssh_key_path = os.path.join(os.getenv('HOME'), '.ssh',
-                                        'id_rsa_file_transfer')
-            rsync_cmd += f' -e "ssh -i {ssh_key_path}"'
-            # TODO: Below comments from previous remote_archive- Need to verify
-            # Top-level path is implicitly set by the SSH key
-            # (Usually /projects/[group])
-
-            # Remote mkdir is currently not possible, so any new subdirectories
-            # must be created before auto-archival
-            # TODO: If so, need to add instructions to create archive to docs
-            if dest_path is None:
-                # TODO: What should be the default path for remote archive
-                os.path.join(self.model_name, self.name)
-            dest_path = f'{remote_user}@{remote_url}:{dest_path}'
-
-        # Get archive source paths to sync
-        src_paths = self.get_archive_paths_to_sync()
-
-        # Run rsync commands
-        for src_path in src_paths:
-            run_cmd = f'{rsync_cmd} {src_path} {dest_path}'
-            cmd = shlex.split(run_cmd)
-
-            rc = sp.Popen(cmd).wait()
-            if rc != 0:
-                raise sp.CalledProcessError(
-                    'payu: Error syncing archive to remote directory: ',
-                    f'rsync failed after with command: {cmd}')
+        # Run rsync commmands
+        SyncToRemoteArchive(self).run()
 
     def resubmit(self):
         next_run = self.counter + 1
