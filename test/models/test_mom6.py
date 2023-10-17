@@ -64,54 +64,42 @@ def teardown():
     # Run test
     yield
 
-    # Remove any files in expt work directory
-    for file in os.listdir(expt_workdir):
-        try:
-            os.remove(os.path.join(expt_workdir, file))
-        except Exception as e:
-            print(e)
-
 
 @pytest.mark.parametrize(
-        "input_nml, expected_files_added",
-        [
-            (
-                {
-                    "MOM_input_nml": {
-                        "parameter_filename": "MOM_Input"
-                    }
+    "input_nml, expected_files_added",
+    [
+        (
+            {
+                "MOM_input_nml": {
+                    "parameter_filename": "MOM_Input"
+                }
+            },
+            ["MOM_Input"]
+        ),
+        (
+            {
+                "SIS_input_nml": {
+                    "parameter_filename": "SIS_Input"
+                }
+            },
+            ["SIS_Input"]
+        ),
+        (
+            {
+                "MOM_input_nml": {
+                    "parameter_filename": ["MOM_Input", "MOM_override"]
                 },
-                ["MOM_Input"]
-            ),
-            (
-                {
-                    "SIS_input_nml": {
-                        "parameter_filename": "SIS_Input"
-                    }
-                },
-                ["SIS_Input"]
-            ),
-            (
-                {
-                    "MOM_input_nml": {
-                        "parameter_filename": ["MOM_Input", "MOM_override"]
-                    },
-                    "SIS_input_nml": {
-                        "output_directory": '.'
-                    }
-                },
-                ["MOM_Input", "MOM_override"]
-            )
-        ])
-def test_add_config_files(input_nml,
-                          expected_files_added):
-    # Create config files in control directory
-    for file in expected_files_added:
-        filename = os.path.join(ctrldir, file)
-        make_random_file(filename, 8)
-
+                "SIS_input_nml": {
+                    "output_directory": '.'
+                }
+            },
+            ["MOM_Input", "MOM_override"]
+        )
+    ])
+def test_mom6_add_parameter_files(input_nml,
+                                  expected_files_added):
     # Create config.nml
-    input_nml_fp = os.path.join(expt_workdir, 'input.nml')
+    input_nml_fp = os.path.join(ctrldir, 'input.nml')
     f90nml.write(input_nml, input_nml_fp)
 
     with cd(ctrldir):
@@ -122,13 +110,11 @@ def test_add_config_files(input_nml,
     prior_config_files = model.config_files[:]
 
     # Function to test
-    model.add_config_files()
+    payu.models.mom6.mom6_add_parameter_files(model)
 
     # Check files are added to config_files
     added_files = set(model.config_files).difference(prior_config_files)
     assert added_files == set(expected_files_added)
 
-    # Check the extra files are moved to model's work path
-    ctrl_path_files = os.listdir(model.work_path)
-    for file in expected_files_added:
-        assert file in ctrl_path_files
+    # Tidy up input.nml
+    os.remove(input_nml_fp)
