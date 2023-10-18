@@ -199,16 +199,9 @@ class Model(object):
             print("No prior restart files found: {error}".format(error=str(e)))
             return []
 
-    def setup(self):
-
-        print("Setting up {model}".format(model=self.name))
-        # Create experiment directory structure
-        mkdir_p(self.work_init_path)
-        mkdir_p(self.work_input_path)
-        mkdir_p(self.work_restart_path)
-        mkdir_p(self.work_output_path)
-
-        # Copy configuration files from control path
+    def setup_configuration_files(self):
+        """Copy configuration and optional configuration files from control
+         path to work path"""
         for f_name in self.config_files:
             f_path = os.path.join(self.control_path, f_name)
             shutil.copy(f_path, self.work_path)
@@ -222,6 +215,18 @@ class Model(object):
                     pass
                 else:
                     raise
+
+    def setup(self):
+
+        print("Setting up {model}".format(model=self.name))
+        # Create experiment directory structure
+        mkdir_p(self.work_init_path)
+        mkdir_p(self.work_input_path)
+        mkdir_p(self.work_restart_path)
+        mkdir_p(self.work_output_path)
+
+        # Copy configuration files from control path
+        self.setup_configuration_files()
 
         # Add restart files from prior run to restart manifest
         if (not self.expt.manifest.have_manifest['restart'] and

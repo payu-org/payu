@@ -20,16 +20,19 @@ import multiprocessing
 from payu.fsops import mkdir_p, make_symlink
 from payu.models.model import Model
 from payu.models.fms import fms_collate
+from payu.models.mom6 import mom6_add_parameter_files
 
 # Add as needed
 component_info = {
     "mom": {
         "config_files": [
             "input.nml",
-            "MOM_input",
             "diag_table",
         ],
-        "optional_config_files" : ["MOM_override"]
+        "optional_config_files": [
+            "field_table",
+            "data_table",
+        ],
     },
     "cice": {
         "config_files": ["ice_in"],
@@ -114,23 +117,17 @@ class CesmCmeps(Model):
     def setup(self):
         super().setup()
 
-        # Read components from nuopc.runconfig and copy component configuration files
+        # Read components from nuopc.runconfig
         self.get_runconfig(self.work_path)
         self.get_components()
-        for f_name in self.config_files:
-            f_path = os.path.join(self.control_path, f_name)
-            shutil.copy(f_path, self.work_path)
 
-        for f_name in self.optional_config_files:
-            f_path = os.path.join(self.control_path, f_name)
-            try:
-                shutil.copy(f_path, self.work_path)
-            except IOError as exc:
-                if exc.errno == errno.ENOENT:
-                    pass
-                else:
-                    raise
-        
+        if "mom" in self.components.values():
+            # Read mom6 parameter files and add to configuration files
+            mom6_add_parameter_files(self)
+
+        # Copy configuration files from control path to work path
+        self.setup_configuration_files()
+
         if self.prior_restart_path and not self.expt.repeat_run:
             start_type = 'continue'
 
