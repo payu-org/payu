@@ -1050,6 +1050,10 @@ class Experiment(object):
                           'model. To use integer based restart pruning, '
                           'set restart_freq to an integer value.')
                     raise
+                except FileNotFoundError as e:
+                    print(f'payu: warning: Ignoring {restart} from date-based '
+                          f'restart pruning. Error: {e}')
+                    continue
                 except Exception:
                     print('payu: error: Error parsing restart directory ',
                           f'{restart} for a datetime to prune restarts.')

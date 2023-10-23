@@ -17,6 +17,7 @@ import f90nml
 
 # Local
 from payu.models.fms import Fms
+from payu.models.mom_mixin import MomMixin
 
 
 def mom6_add_parameter_files(model):
@@ -42,7 +43,7 @@ def mom6_add_parameter_files(model):
             model.config_files.extend(filenames)
 
 
-class Mom6(Fms):
+class Mom6(MomMixin, Fms):
     """Interface to GFDL's MOM6 ocean model."""
 
     def __init__(self, expt, name, config):

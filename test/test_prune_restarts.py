@@ -10,8 +10,8 @@ from test.common import tmpdir, ctrldir, labdir
 from test.common import config as config_orig
 from test.common import write_config
 from test.common import make_all_files
-from test.common import remove_expt_archive_dirs
-from test.models.test_mom import make_ocean_restart_dir
+from test.common import remove_expt_archive_dirs, make_expt_archive_dir
+from test.models.test_mom_mixin import make_ocean_restart_dir
 
 verbose = True
 
@@ -222,3 +222,38 @@ def test_prune_restarts(restarts,
     ]
 
     assert restarts_to_prune_indices == expected_restart_indices
+
+
+def test_prune_restarts_ignores_empty_restart_dirs():
+    # Test that in date-based restart pruning ignores any empty restart dirs
+
+    write_test_config(restart_freq='1YS')
+
+    # Create restart files
+    restart_datetimes = [(4, "1903-01-01 00:00:00"),
+                         (5, "1903-06-01 00:00:00"),
+                         (6, "1905-01-01 00:00:00")]
+    for index, datetime in restart_datetimes:
+        make_ocean_restart_dir(start_dt="1900-01-01 00:00:00",
+                               run_dt=datetime,
+                               calendar=4,
+                               restart_index=index,
+                               additional_path='ocean')
+
+    # Create empty restart dirs
+    make_expt_archive_dir(type='restart', index=0)
+    make_expt_archive_dir(type='restart', index=2)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+
+        # Function to test
+        restarts_to_prune = expt.get_restarts_to_prune()
+
+    # Extract out index
+    restarts_to_prune_indices = [
+        int(restart.lstrip('restart')) for restart in restarts_to_prune
+    ]
+
+    assert restarts_to_prune_indices == [5]
