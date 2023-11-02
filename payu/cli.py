@@ -89,7 +89,8 @@ def get_model_type(model_type, config):
 
 
 def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
-                 reproduce=False, force=False, force_prune_restarts=False):
+                 reproduce=False, force=False, force_prune_restarts=False,
+                 sync_restarts=False, sync_ignore_last=False):
     """Construct the environment variables used by payu for resubmissions."""
     payu_env_vars = {}
 
@@ -133,6 +134,12 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
 
     if force:
         payu_env_vars['PAYU_FORCE'] = force
+
+    if sync_restarts:
+        payu_env_vars['PAYU_SYNC_RESTARTS'] = sync_restarts
+
+    if sync_ignore_last:
+        payu_env_vars['PAYU_SYNC_IGNORE_LAST'] = sync_ignore_last
 
     if force_prune_restarts:
         payu_env_vars['PAYU_FORCE_PRUNE_RESTARTS'] = force_prune_restarts

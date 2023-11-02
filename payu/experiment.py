@@ -11,7 +11,6 @@ from __future__ import print_function
 # Standard Library
 import datetime
 import errno
-import getpass
 import os
 import re
 import resource
@@ -33,13 +32,13 @@ import payu.profilers
 from payu.runlog import Runlog
 from payu.manifest import Manifest
 from payu.calendar import parse_date_offset
+from payu.sync import SyncToRemoteArchive
 
 # Environment module support on vayu
 # TODO: To be removed
 core_modules = ['python', 'payu']
 
 # Default payu parameters
-default_archive_url = 'dc.nci.org.au'
 default_restart_freq = 5
 
 
@@ -200,13 +199,16 @@ class Experiment(object):
         if output_dirs and len(output_dirs):
             return int(output_dirs[-1].lstrip(output_type))
 
-    def list_output_dirs(self, output_type="output"):
+    def list_output_dirs(self, output_type="output", full_path=False):
         """Return a sorted list of restart or output directories in archive"""
         naming_pattern = re.compile(fr"^{output_type}[0-9][0-9][0-9]+$")
         dirs = [d for d in os.listdir(self.archive_path)
                 if naming_pattern.match(d)]
         dirs.sort(key=lambda d: int(d.lstrip(output_type)))
-        return dirs 
+
+        if full_path:
+            dirs = [os.path.join(self.archive_path, d) for d in dirs]
+        return dirs
 
     def set_stacksize(self, stacksize):
 
@@ -794,8 +796,8 @@ class Experiment(object):
         if archive_script:
             self.run_userscript(archive_script)
 
-        # Ensure postprocess runs if model not collating
-        if not collating and self.postscript:
+        # Ensure postprocessing runs if model not collating
+        if not collating:
             self.postprocess()
 
     def collate(self):
@@ -807,87 +809,45 @@ class Experiment(object):
             model.profile()
 
     def postprocess(self):
-        """Submit a postprocessing script after collation"""
-        assert self.postscript
-        envmod.setup()
-        envmod.module('load', 'pbs')
+        """Submit any postprocessing scripts or remote syncing if enabled"""
+        # First submit postprocessing script
+        if self.postscript:
+            envmod.setup()
+            envmod.module('load', 'pbs')
 
-        cmd = 'qsub {script}'.format(script=self.postscript)
+            cmd = 'qsub {script}'.format(script=self.postscript)
 
-        cmd = shlex.split(cmd)
-        rc = sp.call(cmd)
-        assert rc == 0, 'Postprocessing script submission failed.'
+            cmd = shlex.split(cmd)
+            sp.check_call(cmd)
 
-    def remote_archive(self, config_name, archive_url=None,
-                       max_rsync_attempts=1, rsync_protocol=None):
+        # Submit a sync script if remote syncing is enabled
+        sync_config = self.config.get('sync', {})
+        syncing = sync_config.get('enable', False)
+        if syncing:
+            cmd = '{python} {payu} sync'.format(
+                python=sys.executable,
+                payu=self.payu_path
+            )
 
-        if not archive_url:
-            archive_url = default_archive_url
+            if self.postscript:
+                print('payu: warning: postscript is configured, so by default '
+                      'the lastest outputs will not be synced. To sync the '
+                      'latest output, after the postscript job has completed '
+                      'run:\n'
+                      '    payu sync')
+                cmd += f' --sync-ignore-last'
 
-        archive_address = '{usr}@{url}'.format(usr=getpass.getuser(),
-                                               url=archive_url)
-
-        ssh_key_path = os.path.join(os.getenv('HOME'), '.ssh',
-                                    'id_rsa_file_transfer')
-
-        # Top-level path is implicitly set by the SSH key
-        # (Usually /projects/[group])
-
-        # Remote mkdir is currently not possible, so any new subdirectories
-        # must be created before auto-archival
-
-        remote_path = os.path.join(self.model_name, config_name, self.name)
-        remote_url = '{addr}:{path}'.format(addr=archive_address,
-                                            path=remote_path)
-
-        # Rsync ouput and restart files
-        rsync_cmd = ('rsync -a --safe-links -e "ssh -i {key}" '
-                     ''.format(key=ssh_key_path))
-
-        if rsync_protocol:
-            rsync_cmd += '--protocol={0} '.format(rsync_protocol)
-
-        run_cmd = rsync_cmd + '{src} {dst}'.format(src=self.output_path,
-                                                   dst=remote_url)
-        rsync_calls = [run_cmd]
-
-        if (self.counter % 5) == 0 and os.path.isdir(self.restart_path):
-            # Tar restart files before rsyncing
-            restart_tar_path = self.restart_path + '.tar.gz'
-
-            cmd = ('tar -C {0} -czf {1} {2}'
-                   ''.format(self.archive_path, restart_tar_path,
-                             os.path.basename(self.restart_path)))
             sp.check_call(shlex.split(cmd))
 
-            restart_cmd = ('{0} {1} {2}'
-                           ''.format(rsync_cmd, restart_tar_path, remote_url))
-            rsync_calls.append(restart_cmd)
-        else:
-            res_tar_path = None
+    def sync(self):
+        # RUN any user scripts before syncing archive
+        envmod.setup()
+        pre_sync_script = self.userscripts.get('sync')
+        if pre_sync_script:
+            self.run_userscript(pre_sync_script)
 
-        for model in self.models:
-            for input_path in self.model.input_paths:
-                # Using explicit path separators to rename the input directory
-                input_cmd = rsync_cmd + '{0} {1}'.format(
-                    input_path + os.path.sep,
-                    os.path.join(remote_url, 'input') + os.path.sep)
-                rsync_calls.append(input_cmd)
-
-        for cmd in rsync_calls:
-            cmd = shlex.split(cmd)
-
-            for rsync_attempt in range(max_rsync_attempts):
-                rc = sp.Popen(cmd).wait()
-                if rc == 0:
-                    break
-                else:
-                    print('rsync failed, reattempting')
-            assert rc == 0
-
-        # TODO: Temporary; this should be integrated with the rsync call
-        if res_tar_path and os.path.exists(res_tar_path):
-            os.remove(res_tar_path)
+        # Run rsync commmands
+        SyncToRemoteArchive(self).run()
 
     def resubmit(self):
         next_run = self.counter + 1
@@ -943,14 +903,13 @@ class Experiment(object):
         default_job_name = os.path.basename(os.getcwd())
         short_job_name = str(self.config.get('jobname', default_job_name))[:15]
 
+        log_filenames = [short_job_name + '.o', short_job_name + '.e']
+        for postfix in ['_c.o', '_c.e', '_p.o', '_p.e', '_s.o', '_s.e']:
+            log_filenames.append(short_job_name[:13] + postfix)
+
         logs = [
             f for f in os.listdir(os.curdir) if os.path.isfile(f) and (
-                f.startswith(short_job_name + '.o') or
-                f.startswith(short_job_name + '.e') or
-                f.startswith(short_job_name[:13] + '_c.o') or
-                f.startswith(short_job_name[:13] + '_c.e') or
-                f.startswith(short_job_name[:13] + '_p.o') or
-                f.startswith(short_job_name[:13] + '_p.e')
+                f.startswith(tuple(log_filenames))
             )
         ]
 

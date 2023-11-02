@@ -126,3 +126,26 @@ force_prune_restarts = {
                     archive, ignoring changes made to configuration.',
     }
 }
+
+# Flag for syncing all restarts
+sync_restarts = {
+    'flags': {'--sync-restarts'},
+    'parameters': {
+        'action':   'store_true',
+        'dest':     'sync_restarts',
+        'default':  False,
+        'help':     'Sync all restarts in archive to remote directory.',
+    }
+}
+
+# Flag for ignoring the latest outputs during syncing
+sync_ignore_last = {
+    'flags': {'--sync-ignore-last'},
+    'parameters': {
+        'action':   'store_true',
+        'dest':     'sync_ignore_last',
+        'default':  False,
+        'help':     'Ignore the latest outputs and restarts in archive during \
+                     syncing.',
+    }
+}

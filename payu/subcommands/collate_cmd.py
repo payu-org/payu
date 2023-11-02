@@ -109,5 +109,4 @@ def runscript():
                      run_args.lab_path)
     expt = Experiment(lab)
     expt.collate()
-    if expt.postscript:
-        expt.postprocess()
+    expt.postprocess()

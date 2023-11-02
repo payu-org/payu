@@ -211,7 +211,8 @@ configuration.
    able to parse restarts files for a datetime.
 
 ``restart_history``
-    Specifies how many of the most recent restart files to retain regardless of `restart_freq`
+    Specifies how many of the most recent restart files to retain regardless of 
+    ``restart_freq``.
 
 *The following model-based tags are typically not configured*
 
@@ -382,11 +383,87 @@ Postprocessing
    ``error``
       User-defined command to be called if model does not run correctly and
       returns an error code. Useful for automatic error postmortem.
+   
+   ``sync``
+      User-defined command to be called at the start of the ``sync`` pbs job.
+      This is useful for any post-processing before syncing files to a remote
+      archive.
 
 ``postscript``
    This is an older, less user-friendly, method to submit a script after ``payu
    collate`` has completed. Unlike the ``userscripts``, it does not support
    user commands. These scripts are always re-submitted via ``qsub``.
+
+``sync`` 
+   Sync archive to a remote directory using rsync. Make sure that the 
+   configured path to sync output to, i.e. ``path``, is the correct location 
+   before enabling automatic syncing or before running ``payu sync``.
+
+   If postscript is also configured, the latest output and restart files will
+   not be automatically synced after a run.
+
+   ``enable`` (*Default:* ``False``):
+      Controls whether or not a sync job is submitted either after the archive or 
+      collation job, if collation is enabled.
+
+   ``queue`` (*Default:* ``copyq``)
+      PBS queue used to submit the sync job.
+
+   ``walltime`` (*Default:* ``10:00:00``)
+      Time required to run the job.
+
+   ``mem`` (*Default:* ``2GB``)
+      Memory required for the job. 
+
+   ``ncpus`` (*Default:* ``1``)
+      Number of ncpus required for the job.
+
+   ``path``
+      Destination path to sync archive outputs to. This must be a unique 
+      absolute path for your experiment, otherwise, outputs will be 
+      overwritten.
+
+   ``restarts`` (*Default:* ``False``)
+      Sync permanently archived restarts, which are determined by 
+      ``restart_freq``.
+
+   ``rsync_flags`` (*Default:* ``-vrltoD --safe-links``)
+      Additional flags to add to rsync commands used for syncing files.
+
+   ``exclude``
+      Patterns to exclude from rsync commands. This is equivalent to rsync's 
+      ``--exclude PATTERN``. This can be a single pattern or a list of
+      patterns. If a pattern includes any special characters,
+      e.g. ``.*+?|[]{}()``, it will need to be quoted. For example::
+         
+         exclude:
+            - 'iceh.????-??-??.nc'
+            - '*-IN-PROGRESS'
+
+   ``exclude_uncollated`` (*Default:* ``True`` if collation is enabled)
+      Flag to exclude uncollated files from being synced. This is equivalent 
+      to adding ``--exclude *.nc.*``.
+
+   ``extra_paths``
+      List of ``glob`` patterns which match extra paths to sync to remote 
+      archive. This can be a single pattern or a list of patterns. 
+      Note that these paths will be protected against any local delete options.
+
+   ``remove_local_files`` (*Default:* ``False``)
+      Remove local files once they are successfully synced to the remote 
+      archive. Files in protected paths will not be deleted. Protected paths 
+      include the ``extra_paths`` (if defined), last output, the last saved 
+      restart (determined by ``restart_freq``), and any subsequent restarts.
+    
+   ``remove_local_dirs`` (*Default:* ``False``)
+      Remove local directories once a directory has been successfully synced. 
+      This will delete any files in local directories that were excluded from
+      syncing. Similarly to ``remove_local_files``, protected paths will not be 
+      deleted.
+
+   ``runlog`` (*Default:* ``True``)
+      Create or update a bare git repository clone of the run history, called 
+      ``git-runlog``, in the remote archive directory.
 
 
 Miscellaneous

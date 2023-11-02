@@ -292,3 +292,16 @@ Alternatively you can directly specify a directory name::
 This is useful when the data files have been moved out of the payu
 directory structure, or if you need to collate restart files, which is
 necessary when changing processor layout.
+
+To manually sync experiment output files to a remote archive, firstly ensure
+that ``path`` in the ``sync`` namespace in ``config.yaml``, 
+is correctly configured as it may overwrite any pre-exisiting outputs. 
+Then run::
+
+   payu sync
+
+By default ``payu sync`` will not sync the latest restarts that may be pruned 
+at a later date. To sync all restarts including the latest restarts, use the 
+``--sync-restarts`` flag::
+
+   payu sync  --sync-restarts
