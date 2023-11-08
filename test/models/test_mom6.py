@@ -9,15 +9,10 @@ import payu
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, expt_workdir
-from test.common import config as config_orig
 from test.common import write_config
-from test.common import make_random_file, make_inputs
+from test.common import make_random_file, make_inputs, make_exe
 
 verbose = True
-
-# Global config
-config = copy.deepcopy(config_orig)
-config["model"] = "mom6"
 
 
 def setup_module(module):
@@ -42,7 +37,14 @@ def setup_module(module):
     except Exception as e:
         print(e)
 
+    config = {
+            'laboratory': 'lab',
+            'jobname': 'testrun',
+            'model': 'mom6',
+            'exe': 'test.exe'
+    }
     write_config(config)
+    make_exe()
 
 
 def teardown_module(module):
@@ -118,3 +120,47 @@ def test_mom6_add_parameter_files(input_nml,
 
     # Tidy up input.nml
     os.remove(input_nml_fp)
+
+
+def test_setup():
+    input_nml = {
+        "MOM_input_nml": {
+            "input_filename": 'F',
+            "parameter_filename": ["MOM_input", "MOM_override"]
+        },
+        "SIS_input_nml": {
+            "parameter_filename": "SIS_input"
+        }
+    }
+
+    expected_files_added = {'input.nml', 'diag_table',
+                            'MOM_input', 'MOM_override', 'SIS_input'}
+
+    # Create config files in control directory
+    for file in expected_files_added:
+        if file != 'input.nml':
+            filename = os.path.join(ctrldir, file)
+            make_random_file(filename, 8)
+
+    # Create config.nml
+    input_nml_fp = os.path.join(ctrldir, 'input.nml')
+    f90nml.write(input_nml, input_nml_fp)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+    # Function to test
+    model.setup()
+
+    # Check config files are moved to model's work path
+    work_path_files = os.listdir(model.work_path)
+    for file in expected_files_added:
+        assert file in work_path_files
+
+    # Check input.nml was patched as new run
+    work_input_fpath = os.path.join(model.work_path, 'input.nml')
+    input_nml = f90nml.read(work_input_fpath)
+    assert input_nml['MOM_input_nml']['input_filename'] == 'n'
+    assert input_nml['SIS_input_nml']['input_filename'] == 'n'

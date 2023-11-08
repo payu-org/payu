@@ -10,7 +10,6 @@
 
 # Standard library
 import os
-import shutil
 
 # Extensions
 import f90nml
@@ -67,11 +66,13 @@ class Mom6(Fms):
         # FMS initialisation
         super(Mom6, self).setup()
 
-        self.init_config()
-
-        # Add parameter files to config files and copy files over to work path
+        # Add parameter files to config files
         mom6_add_parameter_files(self)
+
+        # Copy configuration files over to work path
         self.setup_configuration_files()
+
+        self.init_config()
 
     def init_config(self):
         """Patch input.nml as a new or restart run."""
