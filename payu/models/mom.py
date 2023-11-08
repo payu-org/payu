@@ -11,10 +11,11 @@ import subprocess
 import f90nml
 
 from payu.models.fms import Fms
+from payu.models.mom_mixin import MomMixin
 from payu.fsops import mkdir_p, make_symlink
 
 
-class Mom(Fms):
+class Mom(MomMixin, Fms):
 
     def __init__(self, expt, name, config):
 
