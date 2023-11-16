@@ -33,6 +33,7 @@ from payu.runlog import Runlog
 from payu.manifest import Manifest
 from payu.calendar import parse_date_offset
 from payu.sync import SyncToRemoteArchive
+from payu.metadata import Metadata
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -54,6 +55,10 @@ class Experiment(object):
             self.force = force
 
         self.start_time = datetime.datetime.now()
+
+        # Initialise experiment metadata - uuid and experiment name
+        self.metadata = Metadata(lab)
+        self.metadata.setup()
 
         # TODO: replace with dict, check versions via key-value pairs
         self.modules = set()
@@ -289,8 +294,7 @@ class Experiment(object):
         self.control_path = self.config.get('control_path')
 
         # Experiment name
-        self.name = self.config.get('experiment',
-                                    os.path.basename(self.control_path))
+        self.name = self.metadata.experiment_name
 
         # Experiment subdirectories
         self.archive_path = os.path.join(self.lab.archive_path, self.name)
@@ -452,6 +456,10 @@ class Experiment(object):
         # warns user if more restarts than expected would be pruned
         if self.config.get('archive', True):
             self.get_restarts_to_prune()
+
+        # Commit any changes to metadata
+        if self.runlog.enabled:
+            self.metadata.commit_file()
 
     def run(self, *user_flags):
 

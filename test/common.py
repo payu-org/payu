@@ -28,6 +28,8 @@ archive_dir = labdir / 'archive'
 expt_archive_dir = archive_dir / ctrldir_basename
 expt_workdir = labdir / 'work' / ctrldir_basename
 
+config_path = ctrldir / 'config.yaml'
+
 print('tmpdir: {}'.format(tmpdir))
 
 config = {
@@ -48,9 +50,9 @@ config = {
                                         'input': False,
                                         'exe': False
                                         }
-                        }
+                        },
+            'runlog': False
             }
-
 
 
 @contextmanager
@@ -122,8 +124,8 @@ def payu_setup(model_type=None,
                            force)
 
 
-def write_config(config):
-    with (ctrldir / 'config.yaml').open('w') as file:
+def write_config(config, path=config_path):
+    with path.open('w') as file:
         file.write(yaml.dump(config, default_flow_style=False))
 
 

@@ -149,3 +149,108 @@ sync_ignore_last = {
                      syncing.',
     }
 }
+
+# Clone Repository
+repository = {
+    'flags': [],
+    'parameters': {
+        'dest': 'repository',
+        'help': 'The repository to clone from. This can be either a local \
+                 path or git url'
+    }
+}
+
+# Clone to directory
+local_directory = {
+    'flags': [],
+    'parameters': {
+        'dest': 'local_directory',
+        'help': 'The directory to clone into'
+    }
+}
+
+# Clone uuid flag
+keep_uuid = {
+    'flags': ('-k', '--keep-uuid'),
+    'parameters': {
+        'action':   'store_true',
+        'default':  False,
+        'dest': 'keep_uuid',
+        'help': 'If the cloned experiment uuid exists, leave it \
+                 unchanged'
+    }
+}
+
+# Clone branch
+clone_branch = {
+    'flags': ('--branch', '-B'),
+    'parameters': {
+        'action':   'store',
+        'dest':     'branch',
+        'default':  None,
+        'help': 'Clone and checkout this branch'
+    }
+}
+
+# Clone create branch
+new_branch_name = {
+    'flags': ('--new-branch', '-b'),
+    'parameters': {
+        'action':   'store',
+        'dest':  'new_branch_name',
+        'default': None,
+        'help': 'The name of the git branch to create and checkout'
+    }
+}
+
+# Branch name
+branch_name = {
+    'flags': [],
+    'parameters': {
+        'dest': 'branch_name',
+        'help': 'The name of the git branch to create/checkout'
+    }
+}
+
+# Branch start point
+start_point = {
+    'flags': [],
+    'parameters': {
+        'nargs': '?',
+        'dest': 'start_point',
+        'help': 'The new branch head will point to this commit'
+    }
+}
+
+
+# Branch start restart
+restart_path = {
+    'flags': ('--start-from-restart', '-s'),
+    'parameters': {
+        'dest': 'restart_path',
+        'action': 'store',
+        'help': 'The absolute restart path from which to start the model run'
+    }
+}
+
+# Checkout new branch flag
+new_branch = {
+    'flags': ['-b'],
+    'parameters': {
+        'dest': 'new_branch',
+        'action': 'store_true',
+        'default':  False,
+        'help': 'Create new branch'
+    }
+}
+
+# Legacy experiment
+legacy_experiment = {
+    'flags': ['--legacy'],
+    'parameters': {
+        'dest': 'legacy_experiment',
+        'action': 'store_true',
+        'default':  False,
+        'help': 'Flag to opt out of branch-uuid aware experiment names'
+    }
+}

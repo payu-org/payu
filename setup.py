@@ -36,7 +36,10 @@ setup(
         'yamanifest',
         'dateutil',
         'tenacity',
-        'cftime'
+        'cftime',
+        'shortuuid',
+        'GitPython',
+        'ruamel.yaml'
     ],
     install_requires=[
         'f90nml >= 0.16',
@@ -45,7 +48,10 @@ setup(
         'requests[security]',
         'python-dateutil',
         'tenacity!=7.0.0',
-        'cftime'
+        'cftime',
+        'shortuuid >= 1.0.11',
+        'GitPython >= 3.1.40',
+        'ruamel.yaml >= 0.18.5'
     ],
     tests_require=[
         'pytest',
