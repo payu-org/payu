@@ -117,11 +117,18 @@ class CesmCmeps(Model):
 
         self.work_input_path = os.path.join(self.work_path, 'input')
         
+        # MOM restarts are dealt with via pointer files (see below). Use work_restart_path
+        # for additional restarts (e.g. generic tracer flux restarts)
+        self.get_runconfig(self.control_path)
+        additional_restart_dir = self.runconfig.get(
+            "ALLCOMP_attributes", "additional_restart_dir", "RESTART/"
+        )
+        self.work_restart_path = os.path.join(self.work_path, additional_restart_dir)
+
     def setup(self):
         super().setup()
 
         # Read components from nuopc.runconfig
-        self.get_runconfig(self.work_path)
         self.get_components()
 
         if "mom" in self.components.values():
@@ -167,7 +174,7 @@ class CesmCmeps(Model):
         mkdir_p(os.path.join(self.work_path, 'log'))
         mkdir_p(os.path.join(self.work_path, 'timing'))
 
-        self.runconfig.write()
+        self.runconfig.write(os.path.join(self.work_path, 'nuopc.runconfig'))
 
         # Horrible hack to make a link to the mod_def.ww3 input in the work
         # directory
@@ -232,6 +239,13 @@ class CesmCmeps(Model):
             f_dst = os.path.join(self.restart_path, name)
             shutil.move(f_src, f_dst)
 
+        # Archive any additional restarts in work_restart_path
+        for name in os.listdir(self.work_restart_path):
+            f_src = os.path.join(self.work_restart_path, name)
+            f_dst = os.path.join(self.restart_path, name)
+            shutil.move(f_src, f_dst)
+        os.rmdir(self.work_restart_path)
+
     def collate(self):
         
         # .setup is not run when collate is called so need to get components
@@ -273,26 +287,44 @@ class Runconfig:
             self.contents,
             re.DOTALL,
         )
-        assert m is not None, f"Cannot find section {section} in nuopc.runconfig"
-        section_start = m.start(1)
-        section_end = m.end(1)
-        m = re.search(
-            r"{}\s*=\s*(.*)".format(variable),
-            self.contents[section_start:section_end],
-        )
-        assert m is not None, (
-            f"Cannot find variable {variable} in section {section} in nuopc.runconfig"
-        )
-        return section_start + m.start(1), section_start + m.end(1)
+        if m is not None:
+            section_start = m.start(1)
+            section_end = m.end(1)
+            m = re.search(
+                r"{}\s*=\s*(.*)".format(variable),
+                self.contents[section_start:section_end],
+            )
+            if m is not None:
+                return section_start + m.start(1), section_start + m.end(1)
 
-    def get(self, section, variable):
-        start, end = self._get_variable_span(section, variable)
-        return self.contents[start:end]
+    def get(self, section, variable, value=None):
+        """
+        Get the value of a variable, returning `value` if the variable does not exist
+        """
+        span = self._get_variable_span(section, variable)
+        if span:
+            return self.contents[span[0]:span[1]]
+        else:
+            return value
 
     def set(self, section, variable, new_value):
-        start, end = self._get_variable_span(section, variable)
-        self.contents = self.contents[:start] + new_value + self.contents[end:]
+        """
+        Overwrite the value of any existing variable
+        """
+        span = self._get_variable_span(section, variable)
+        if span:
+            self.contents = self.contents[:span[0]] + new_value + self.contents[span[1]:]
+        else:
+            raise NotImplementedError(
+                "Cannot set value of variable that does not already exist in nuopc.runconfig"
+            )
 
-    def write(self):
-        with open(self.file, 'w') as f:
+    def write(self, file=None):
+        """
+        Write the nuopc.runconfig to a file. If no file is provided, overwrite existing
+        file
+        """
+        file = file or self.file
+        with open(file, 'w') as f:
             f.write(self.contents)
+
