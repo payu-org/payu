@@ -30,6 +30,7 @@ def runcmd(model_type, config_path, lab_path, new_branch,
 
     config_path = transform_strings_to_path(config_path)
     lab_path = transform_strings_to_path(lab_path)
+    restart_path = transform_strings_to_path(restart_path)
 
     checkout_branch(lab=lab,
                     is_new_branch=new_branch,

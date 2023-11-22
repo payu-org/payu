@@ -13,11 +13,13 @@ from pathlib import Path
 from typing import Optional
 
 from ruamel.yaml import YAML
+import git
 
 from payu.fsops import read_config, DEFAULT_CONFIG_FNAME
 from payu.laboratory import Laboratory
 from payu.metadata import Metadata
 from payu.git_utils import git_checkout_branch, git_clone, get_git_branch
+from payu.git_utils import _get_git_repository
 
 
 def add_restart_to_config(restart_path: Path,
@@ -151,3 +153,48 @@ def clone(repository: str,
 
     # Change back to previous directory
     os.chdir(previous_directory)
+
+
+def print_metadata_info(branch: git.Head, verbose: bool = False):
+    """Print uuid for each branch. If verbose is true, it will print all 
+    the metadata in metadata.yaml"""
+    contains_metadata = False
+    # Note: Blobs are files
+    for blob in branch.commit.tree.blobs:
+        if blob.name == 'metadata.yaml':
+            contains_metadata = True
+
+            # Read file contents
+            content = blob.data_stream.read().decode('utf-8')
+            if verbose:
+                for line in content.splitlines():
+                    print(f'    {line}')
+            else:
+                # Print uuid
+                metadata = YAML().load(content)
+                uuid = metadata.get('uuid', None)
+                if uuid is not None:
+                    print(f"    uuid: {uuid}")
+                else:
+                    print(f"    No uuid in metadata file")
+
+    if not contains_metadata:
+        print("    No metadata file found")
+
+
+def list_branches(config_path, verbose: bool = False):
+    """Print out summary of metadata on each branch"""
+    # Note: Control path is set in read_config 
+    config = read_config(config_path)
+    control_path = Path(config.get('control_path'))
+
+    repo = _get_git_repository(control_path)
+
+    current_branch = repo.active_branch
+    print(f"* Current Branch: {current_branch.name}")
+    print_metadata_info(current_branch, verbose)
+
+    for branch in repo.heads:
+        if branch != current_branch:
+            print(f"Branch: {branch.name}")
+            print_metadata_info(branch, verbose)

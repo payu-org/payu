@@ -225,7 +225,7 @@ start_point = {
 
 # Branch start restart
 restart_path = {
-    'flags': ('--start-from-restart', '-s'),
+    'flags': ('--restart', '-r'),
     'parameters': {
         'dest': 'restart_path',
         'action': 'store',
@@ -252,5 +252,16 @@ legacy_experiment = {
         'action': 'store_true',
         'default':  False,
         'help': 'Flag to opt out of branch-uuid aware experiment names'
+    }
+}
+
+# List branches - verbose 
+verbose = {
+    'flags': ['--verbose', '-v'],
+    'parameters': {
+        'dest': 'verbose',
+        'action': 'store_true',
+        'default':  False,
+        'help': 'Flag to display all contents of metadata file'
     }
 }
