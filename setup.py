@@ -65,6 +65,9 @@ setup(
             'payu-collate = payu.subcommands.collate_cmd:runscript',
             'payu-profile = payu.subcommands.profile_cmd:runscript',
             'payu-sync = payu.subcommands.sync_cmd:runscript',
+            'payu-branch = payu.subcommands.branch_cmd:runscript',
+            'payu-clone = payu.subcommands.clone_cmd:runscript',
+            'payu-checkout = payu.subcommands.checkout_cmd:runscript'
         ]
     },
     classifiers=[

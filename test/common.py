@@ -29,6 +29,7 @@ expt_archive_dir = archive_dir / ctrldir_basename
 expt_workdir = labdir / 'work' / ctrldir_basename
 
 config_path = ctrldir / 'config.yaml'
+metadata_path = ctrldir / 'metadata.yaml'
 
 print('tmpdir: {}'.format(tmpdir))
 
@@ -53,6 +54,11 @@ config = {
                         },
             'runlog': False
             }
+
+metadata = {
+    "uuid": "testUuid",
+    "experiment": ctrldir_basename
+}
 
 
 @contextmanager
@@ -203,7 +209,13 @@ def remove_expt_archive_dirs(type='restart'):
             print(e)
 
 
+def write_metadata(metadata=metadata, path=metadata_path):
+    with path.open('w') as file:
+        file.write(yaml.dump(metadata, default_flow_style=False))
+
+
 def make_all_files():
     make_inputs()
     make_exe()
     make_restarts()
+    write_metadata()

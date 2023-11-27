@@ -4,8 +4,9 @@ import subprocess
 import git
 import pytest
 
-from payu.git_utils import _get_git_repository, get_git_user_info
-from payu.git_utils import git_checkout_branch, PayuBranchError
+from payu.git_utils import get_git_repository, get_git_user_info
+from payu.git_utils import git_checkout_branch
+from payu.git_utils import PayuBranchError, PayuGitWarning
 
 from test.common import tmpdir
 
@@ -46,7 +47,7 @@ def add_file_and_commit(repo, file_path, commit_no=0):
 def test_get_git_repo_invalid_repo_initialise():
     invalid_repo_path = tmpdir / "invalidRepo"
     invalid_repo_path.mkdir()
-    repo = _get_git_repository(invalid_repo_path, initialise=True)
+    repo = get_git_repository(invalid_repo_path, initialise=True)
     assert not repo.bare
 
 
@@ -55,18 +56,18 @@ def test_get_git_repo_invalid_repo_catch_error():
     invalid_path.mkdir()
     expected_warning_msg = "Path is not a valid git repository: "
     expected_warning_msg += str(invalid_path)
-    with pytest.warns(UserWarning, match=expected_warning_msg):
-        repo = _get_git_repository(invalid_path, catch_error=True)
+    with pytest.warns(PayuGitWarning, match=expected_warning_msg):
+        repo = get_git_repository(invalid_path, catch_error=True)
         assert repo is None
 
 
 def test_get_git_user_info_no_config_set():
-    # Testing this is tricky as don't want to remove any global configs for 
-    # name or email. Instead using assumption that key 'testKey-c9hCC' is not
-    # defined in the 'user' namespace. 
+    # Testing this is tricky as don't want to remove any global configs for
+    # name or email. Instead using assumption that key 'testKey-54321' is not
+    # defined in the 'user' namespace.
     repo_path = tmpdir / "test_repo"
     create_new_repo(repo_path)
-    value = get_git_user_info(repo_path, 'testKey-c9hCC', 'test_value')
+    value = get_git_user_info(repo_path, 'testKey-54321', 'test_value')
     assert value is None
 
 
@@ -74,7 +75,7 @@ def test_get_git_user_info_config_set():
     repo_path = tmpdir / "test_repo"
     create_new_repo(repo_path)
     try:
-        # Set config that is local to repository only
+        # Set config that is local to temporary test repository only
         subprocess.run('git config user.name "TestUserName"',
                        check=True,
                        shell=True,
@@ -151,7 +152,7 @@ def test_git_checkout_non_existent_branch():
     repo_path = tmpdir / 'remoteRepo'
     create_new_repo(repo_path)
 
-    # Test create branch with existing branch
+    # Test create branch with  non-existent branch
     with pytest.raises(PayuBranchError):
         git_checkout_branch(repo_path, "Gibberish")
 

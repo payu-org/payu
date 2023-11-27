@@ -26,18 +26,17 @@ def transform_strings_to_path(path_str=None):
 def runcmd(model_type, config_path, lab_path, new_branch,
            branch_name, start_point, restart_path):
     """Execute the command."""
-    lab = Laboratory(model_type, config_path, lab_path)
-
     config_path = transform_strings_to_path(config_path)
     lab_path = transform_strings_to_path(lab_path)
     restart_path = transform_strings_to_path(restart_path)
 
-    checkout_branch(lab=lab,
-                    is_new_branch=new_branch,
+    checkout_branch(is_new_branch=new_branch,
                     branch_name=branch_name,
                     start_point=start_point,
                     restart_path=restart_path,
-                    config_path=config_path)
+                    config_path=config_path,
+                    lab_path=lab_path,
+                    model_type=model_type)
 
 
 runscript = runcmd

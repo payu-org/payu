@@ -5,7 +5,7 @@ Using the GitPython library for interacting with Git
 
 import warnings
 from pathlib import Path
-from typing import Optional, Union, List, Dict
+from typing import Optional, Union, List, Dict, Set
 
 import git
 import configparser
@@ -15,9 +15,13 @@ class PayuBranchError(Exception):
     """Custom exception for payu branch operations"""
 
 
-def _get_git_repository(repo_path: Union[Path, str],
-                        initialise: bool = False,
-                        catch_error: bool = False) -> Optional[git.Repo]:
+class PayuGitWarning(Warning):
+    """Custom warning class - useful for testing"""
+
+
+def get_git_repository(repo_path: Union[Path, str],
+                       initialise: bool = False,
+                       catch_error: bool = False) -> Optional[git.Repo]:
     """Return a PythonGit repository object at given path. If initialise is
     true, it will attempt to initialise a repository if it does not exist.
     Otherwise, if catch_error is true, it will return None"""
@@ -31,7 +35,8 @@ def _get_git_repository(repo_path: Union[Path, str],
             return repo
 
         warnings.warn(
-            f"Path is not a valid git repository: {repo_path}"
+            f"Path is not a valid git repository: {repo_path}",
+            PayuGitWarning
         )
         if catch_error:
             return None
@@ -41,7 +46,7 @@ def _get_git_repository(repo_path: Union[Path, str],
 def get_git_branch(repo_path: Union[Path, str]) -> Optional[str]:
     """Return the current git branch or None if repository path is not a git
     repository"""
-    repo = _get_git_repository(repo_path, catch_error=True)
+    repo = get_git_repository(repo_path, catch_error=True)
     if repo:
         return str(repo.active_branch)
 
@@ -51,7 +56,7 @@ def get_git_user_info(repo_path: Union[Path, str],
                       example_value: str) -> Optional[str]:
     """Return git config user info, None otherwise. Used for retrieving
     name and email saved in git"""
-    repo = _get_git_repository(repo_path, catch_error=True)
+    repo = get_git_repository(repo_path, catch_error=True)
     if repo is None:
         return
 
@@ -72,7 +77,7 @@ def git_commit(repo_path: Union[Path, str],
     """Add a git commit of changes to paths"""
     # Get/Create git repository - initialise is true as adding a commit
     # directly after
-    repo = _get_git_repository(repo_path, initialise=True)
+    repo = get_git_repository(repo_path, initialise=True)
 
     # Un-stage any pre-existing changes
     repo.index.reset()
@@ -82,7 +87,7 @@ def git_commit(repo_path: Union[Path, str],
     untracked_files = [Path(repo_path) / path for path in repo.untracked_files]
     for path in paths_to_commit:
         if repo.git.diff(None, path) or path in untracked_files:
-            repo.index.add(paths_to_commit)
+            repo.index.add([path])
             changes = True
 
     # Run commit if there's changes
@@ -91,19 +96,22 @@ def git_commit(repo_path: Union[Path, str],
         print(commit_message)
 
 
-def list_local_branches(repo: git.Repo) -> List[str]:
-    """List all local branches"""
-    return [head.name for head in repo.heads]
+def local_branches_dict(repo: git.Repo) -> Dict[str, git.Head]:
+    """Return a dictionary mapping local branch names to git.Head objects"""
+    branch_names_dict = {}
+    for head in repo.heads:
+        branch_names_dict[head.name] = head
+    return branch_names_dict
 
 
-def remote_branches_dict(repo: git.Repo) -> Dict[str, git.Commit]:
-    """Return a dictionary mapping remote branch names to commits"""
-    branch_to_commits = {}
+def remote_branches_dict(repo: git.Repo) -> Dict[str, git.Head]:
+    """Return a dictionary mapping remote branch names to git.Head objects"""
+    branch_names_dict = {}
     for remote in repo.remotes:
         remote.fetch()
         for ref in remote.refs:
-            branch_to_commits[ref.remote_head] = ref.commit
-    return branch_to_commits
+            branch_names_dict[ref.remote_head] = ref
+    return branch_names_dict
 
 
 def git_checkout_branch(repo_path: Union[Path, str],
@@ -112,12 +120,12 @@ def git_checkout_branch(repo_path: Union[Path, str],
                         start_point: Optional[str] = None) -> None:
     """Checkout branch and create branch if specified"""
     # Get git repository
-    repo = _get_git_repository(repo_path)
+    repo = get_git_repository(repo_path)
 
     # Existing branches
-    local_branches = list_local_branches(repo)
+    local_branches = local_branches_dict(repo).keys()
     remote_branches = remote_branches_dict(repo)
-    all_branches = local_branches + list(remote_branches.keys())
+    all_branches = local_branches | set(remote_branches.keys())
 
     # Create new branch, if specified
     if new_branch:
@@ -132,7 +140,7 @@ def git_checkout_branch(repo_path: Union[Path, str],
             if (start_point not in local_branches and
                     start_point in remote_branches):
                 # Use hash for remote start point -local branch names work fine
-                start_point = remote_branches[start_point]
+                start_point = remote_branches[start_point].commit
             branch = repo.create_head(branch_name, commit=start_point)
         else:
             branch = repo.create_head(branch_name)

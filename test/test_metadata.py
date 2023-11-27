@@ -1,18 +1,17 @@
-import os
 import copy
 import shutil
 
 import pytest
+from unittest.mock import patch
 
 import payu
 from payu.metadata import Metadata
 
 from test.common import cd
-from test.common import tmpdir, ctrldir, labdir, expt_archive_dir
+from test.common import tmpdir, ctrldir, labdir
 from test.common import config as config_orig
 from test.common import write_config
-from test.common import make_all_files, make_random_file
-from test.common import make_expt_archive_dir
+from test.common import make_all_files
 
 verbose = True
 
@@ -58,69 +57,109 @@ def teardown_module(module):
         print(e)
 
 
+def mocked_get_git_user_info(repo_path, config_key, example_value):
+    if config_key == 'name':
+        return 'mockUser'
+    elif config_key == 'email':
+        return 'mock@email.com'
+    else:
+        return None
+
+
 @pytest.mark.parametrize(
-    "uuid, experiment, previous_uuid, previous_metadata, expected_metadata",
+    "uuid, experiment, previous_metadata, expected_metadata",
     [
         (
             "A012345678910",
             "test_experiment-test_branch-A012345",
+            """contact: TestUser
+email: Test@email.com
+description: |-
+  Test description etc
+  More description
+keywords:
+- test
+- testKeyword
+# Test Comment
+uuid: A012345678910
+experiment: test_experiment-test_branch-A012345
+""",
+            """contact: TestUser
+email: Test@email.com
+description: |-
+  Test description etc
+  More description
+keywords:
+- test
+- testKeyword
+# Test Comment
+uuid: A012345678910
+experiment: test_experiment-test_branch-A012345
+"""
+        ),
+        (
+            "A012345678910",
+            "test_experiment-test_branch-A012345",
             None,
-            (
-                "contact: TestName",
-                "email: test@email.com",
-                "created: 2023-11-15",
-                "description: |-",
-                "  Test description etc",
-                "  More description",
-                "notes: |-",
-                "  Test notes",
-                "  More notes",
-                "keywords:",
-                "- test",
-                "- testKeyword"
-            ),
-            (
-                "contact: TestName",
-                "email: test@email.com",
-                "created: 2023-11-15",
-                "description: |-",
-                "  Test description etc",
-                "  More description",
-                "notes: |-",
-                "  Test notes",
-                "  More notes",
-                "keywords:",
-                "- test",
-                "- testKeyword",
-                "uuid: A012345678910",
-                "experiment: test_experiment-test_branch-A012345\n"
-            )
-
+            """uuid: A012345678910
+experiment: test_experiment-test_branch-A012345
+contact: mockUser
+email: mock@email.com
+"""
+        ),
+        (
+            "NewUuid",
+            "NewExperimentName",
+            """uuid: PreviousUuid
+experiment: PreviousExperimentName
+contact: Add your name here
+email: Add your email address here
+""",
+            """uuid: NewUuid
+experiment: NewExperimentName
+contact: mockUser
+email: mock@email.com
+previous_uuid: PreviousUuid
+"""
+        ),
+        (
+            "NewUuid",
+            "NewExperimentName",
+            """
+contact: AdD Your nAme hEre
+email: #
+""",
+            """contact: mockUser
+email: mock@email.com #
+uuid: NewUuid
+experiment: NewExperimentName
+"""
         )
     ]
 )
 def test_update_file(uuid,
                      experiment,
-                     previous_uuid,
                      previous_metadata,
                      expected_metadata):
     # Create pre-existing metadata file
     metadata_path = ctrldir / 'metadata.yaml'
     if previous_metadata is not None:
-        previous_metadata = '\n'.join(previous_metadata)
         metadata_path.write_text(previous_metadata)
-    expected_metadata = '\n'.join(expected_metadata)
 
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         metadata = Metadata(lab)
 
     metadata.uuid = uuid
-    metadata.previous_uuid = previous_uuid
     metadata.experiment_name = experiment
 
     # Function to test
-    metadata.update_file()
+    with patch('payu.metadata.get_git_user_info',
+               side_effect=mocked_get_git_user_info):
+        metadata.update_file()
 
     assert metadata_path.exists and metadata_path.is_file
     assert metadata_path.read_text() == expected_metadata
+
+    # Remove metadata file
+    metadata_path.unlink()

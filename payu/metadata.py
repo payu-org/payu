@@ -19,37 +19,35 @@ from payu.fsops import read_config
 from payu.laboratory import Laboratory
 from payu.git_utils import get_git_branch, get_git_user_info, git_commit
 
-# Short uuid is used for experiment names (for work and archive directories)
-SHORT_UUID_LENGTH = 7
+# A truncated uuid is used for branch-uuid aware experiment names
+TRUNCATED_UUID_LENGTH = 5
 METADATA_FILENAME = 'metadata.yaml'
 
 USAGE_HELP = """
-If this is a new experiment, either:
- - Create a new git branch, by running:
-        payu checkout -b NEW_BRANCH_NAME
-    where NEW_BRANCH_NAME is name of the new branch
- - Or generate a new experiment uuid on the current git branch, by running:
-        payu uuid
-Both of the above will generate a new uuid, a branch-uuid aware experiment
-name, and update and commit changes to the metadata file.
-Note: Experiment names will be of the format:
-    {CONTROL_DIR}-{BRANCH_NAME}-{SHORTENED_UUID}
-
-If this an older experiment, or if wanting to opt out of branch-uuid aware
-experiment names, run:
-        payu uuid --legacy
-This will generate a new uuid, set the experiment name to be the name of
-the control directory (default) or the set 'experiment' value in the
-configuration file. This command will also update and commit changes to the
+If this is a new experiment, create a new git branch by running:
+    payu checkout -b NEW_BRANCH_NAME
+where NEW_BRANCH_NAME is name of the new branch. This will generate a new
+uuid, a branch-uuid aware experiment name and commit changes to the
 metadata file.
+
+Alternatively to generate a new uuid or experiment name on the current git
+branch at the next payu setup or run command, remove the pre-existing 'uuid' or
+'experiment' fields from the metadata file.
+
+Note: Experiment names are the name used for work and archive directories
+in the laboratory directory.
 """
 
 
 class ExperimentMetadataError(Exception):
-    """Class for metadata processing exceptions"""
+    """Class for experiment name exceptions"""
     def __init__(self, message="Invalid experiment name in metadata"):
         super().__init__(message)
         print(USAGE_HELP)
+
+
+class MetadataWarning(Warning):
+    pass
 
 
 class Metadata:
@@ -83,8 +81,6 @@ class Metadata:
         self.control_path = control_path
         self.filepath = self.control_path / METADATA_FILENAME
 
-        if branch is None:
-            branch = get_git_branch(control_path)
         self.branch = branch
 
         self.base_experiment_name = self.config.get('experiment',
@@ -104,13 +100,16 @@ class Metadata:
         return metadata
 
     def setup(self) -> None:
-        """To be run at experiment initialisation"""
+        """Create/update metadata if no uuid or experiment name, otherwise run
+        checks on existing metadata"""
         if self.uuid is None:
-            warnings.warn("No experiment uuid found. Generating a new uuid")
+            warnings.warn("No experiment uuid found in metadata. "
+                          "Generating a new uuid", MetadataWarning)
             self.update_metadata()
         elif self.experiment_name is None:
             # Add an experiment name back into metadata
-            warnings.warn("No experiment name found in metadata")
+            warnings.warn("No experiment name found in metadata. "
+                          "Generating a new experiment name.", MetadataWarning)
             self.update_metadata(set_only_experiment_name=True)
 
         self.check_experiment_name()
@@ -123,11 +122,12 @@ class Metadata:
 
         if archive_path.exists():
             warnings.warn(
-                f"Pre-existing archive found at: {archive_path}"
-                f"Experiment name will remain: {self.base_experiment_name}"
+                f"Pre-existing archive found at: {archive_path}. "
+                f"Experiment name will remain: {self.base_experiment_name}",
+                MetadataWarning
             )
             if set_only_experiment_name:
-                self.base_experiment_name = self.base_experiment_name
+                self.set_new_experiment_name(legacy=True)
             else:
                 self.set_new_uuid(legacy=True)
         else:
@@ -141,10 +141,9 @@ class Metadata:
 
     def check_experiment_name(self) -> None:
         """Check experiment name in metadata file"""
-        truncated_uuid = self.uuid[:SHORT_UUID_LENGTH]
+        truncated_uuid = self.uuid[:TRUNCATED_UUID_LENGTH]
         if self.experiment_name.endswith(truncated_uuid):
-            # Check whether on the same branch or control directory as
-            # using the experiment name in metadata.yaml
+            # Branch-uuid aware experiment name
             metadata_experiment = self.experiment_name
             self.set_new_experiment_name()
             if self.experiment_name != metadata_experiment:
@@ -153,12 +152,12 @@ class Metadata:
                     "configured 'experiment' value has changed.\n"
                     f"Experiment name in {METADATA_FILENAME}: "
                     f"{metadata_experiment}\nGenerated experiment name: "
-                    f"{self.experiment_name}."
+                    f"{self.experiment_name}.",
+                    MetadataWarning
                 )
                 raise ExperimentMetadataError()
         else:
-            # Legacy experiment name: Check metadata's experiment name matches
-            # base experiment name
+            # Legacy experiment name
             if self.experiment_name != self.base_experiment_name:
                 msg = f"Experiment name in {METADATA_FILENAME} does not match"
                 if 'experiment' in self.config:
@@ -166,19 +165,23 @@ class Metadata:
                 else:
                     msg += " the control directory base name."
                 warnings.warn(msg + f"{self.experiment_name} does not equal "
-                              "{self.base_experiment_name}")
+                              f"{self.base_experiment_name}",
+                              MetadataWarning)
                 raise ExperimentMetadataError()
 
-    def set_new_experiment_name(self, legacy=False) -> None:
-        """Set a new experiment name - this the name used  work
-        and archive directories"""
+    def set_new_experiment_name(self, legacy: bool = False) -> None:
+        """Set a new experiment name - this is used for work and archive
+        directories"""
         if legacy:
             # Experiment remains base experiment name
             self.experiment_name = self.base_experiment_name
             return
 
+        if self.branch is None:
+            self.branch = get_git_branch(self.control_path)
+
         # Add branch and a truncated uuid to experiment name
-        truncated_uuid = self.uuid[:SHORT_UUID_LENGTH]
+        truncated_uuid = self.uuid[:TRUNCATED_UUID_LENGTH]
         if self.branch is None or self.branch in ('main', 'master'):
             suffix = f'-{truncated_uuid}'
         else:
@@ -186,7 +189,7 @@ class Metadata:
 
         self.experiment_name = self.base_experiment_name + suffix
 
-    def set_new_uuid(self, legacy=False) -> None:
+    def set_new_uuid(self, legacy: bool = False) -> None:
         """Create a new uuid and set experiment name"""
         # Generate new uuid and experiment name
         self.uuid = generate_uuid()
@@ -239,12 +242,15 @@ class Metadata:
                          config_key: str, filler_values=List[str]):
         """Add user email/name to metadata - if defined and not already set
         in metadata"""
+        example_value = filler_values[0]
+        filler_values = {value.casefold() for value in filler_values}
         if (metadata_key not in metadata
-                or metadata[metadata_key] in filler_values):
+                or metadata[metadata_key] is None
+                or metadata[metadata_key].casefold() in filler_values):
             # Get config value from git
             value = get_git_user_info(repo_path=self.control_path,
                                       config_key=config_key,
-                                      example_value=filler_values[0])
+                                      example_value=example_value)
             if value is not None:
                 metadata[metadata_key] = value
 

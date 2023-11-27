@@ -176,8 +176,7 @@ keep_uuid = {
         'action':   'store_true',
         'default':  False,
         'dest': 'keep_uuid',
-        'help': 'If the cloned experiment uuid exists, leave it \
-                 unchanged'
+        'help': 'If an experiment uuid exists, leave it unchanged'
     }
 }
 
@@ -223,7 +222,7 @@ start_point = {
 }
 
 
-# Branch start restart
+# Branch starting restart
 restart_path = {
     'flags': ('--restart', '-r'),
     'parameters': {
@@ -244,24 +243,24 @@ new_branch = {
     }
 }
 
-# Legacy experiment
-legacy_experiment = {
-    'flags': ['--legacy'],
-    'parameters': {
-        'dest': 'legacy_experiment',
-        'action': 'store_true',
-        'default':  False,
-        'help': 'Flag to opt out of branch-uuid aware experiment names'
-    }
-}
-
-# List branches - verbose 
+# List branches verbose flag
 verbose = {
     'flags': ['--verbose', '-v'],
     'parameters': {
         'dest': 'verbose',
         'action': 'store_true',
         'default':  False,
-        'help': 'Flag to display all contents of metadata file'
+        'help': 'Display all contents of metadata file'
+    }
+}
+
+# List remote branches flag
+remote = {
+    'flags': ['--remote', '-r'],
+    'parameters': {
+        'dest': 'remote',
+        'action': 'store_true',
+        'default':  False,
+        'help': 'Display metadata of branches in remote directory'
     }
 }
