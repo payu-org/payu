@@ -29,6 +29,7 @@ requirements:
         - python-dateutil
         - tenacity
         - requests
+        - cftime
         # The following two requirements are from the security
         # extra for the pypi package
         - pyOpenSSL >=0.14

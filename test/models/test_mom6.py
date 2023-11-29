@@ -151,8 +151,8 @@ def test_setup():
         expt = payu.experiment.Experiment(lab, reproduce=False)
         model = expt.models[0]
 
-    # Function to test
-    model.setup()
+        # Function to test
+        model.setup()
 
     # Check config files are moved to model's work path
     work_path_files = os.listdir(model.work_path)
