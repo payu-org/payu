@@ -166,8 +166,9 @@ def test_exe_reproduce():
     local_exe_path = list(manifests['exe.yaml'].keys())[0]
 
     assert(manifests == get_manifests(ctrldir/'manifests'))
-    assert( (ctrldir / local_exe_path).exists() )
-    assert( Path(manifests['exe.yaml'][local_exe_path]['fullpath']) == (ctrldir / local_exe_path).resolve() )
+    assert((ctrldir / local_exe_path).exists())
+    assert(Path(manifests['exe.yaml'][local_exe_path]['fullpath']) == 
+           (ctrldir / local_exe_path).resolve())
 
     bindir = labdir / 'bin'
     exe = config['exe']
