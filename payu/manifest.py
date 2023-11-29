@@ -359,7 +359,7 @@ class Manifest(object):
             if self.have_manifest[mf]:
                 # Don't make links for inputs when scaninputs is True
                 if mf == 'input' and self.scaninputs:
-                    break
+                    continue
                 print('Making {} links'.format(mf))
                 self.manifests[mf].make_links()
             else:

@@ -154,6 +154,8 @@ def test_exe_reproduce():
 
     # Set reproduce exe to True
     config['manifest']['reproduce']['exe'] = True
+    # Also set scaninputs to True to catch bug #388
+    config['manifest']['scaninputs'] = True
     write_config(config)
     manifests = get_manifests(ctrldir/'manifests')
 
@@ -161,7 +163,11 @@ def test_exe_reproduce():
     # Should run without error
     payu_setup(lab_path=str(labdir))
 
+    local_exe_path = list(manifests['exe.yaml'].keys())[0]
+
     assert(manifests == get_manifests(ctrldir/'manifests'))
+    assert( (ctrldir / local_exe_path).exists() )
+    assert( Path(manifests['exe.yaml'][local_exe_path]['fullpath']) == (ctrldir / local_exe_path).resolve() )
 
     bindir = labdir / 'bin'
     exe = config['exe']
@@ -222,6 +228,8 @@ def test_input_reproduce():
     # Set reproduce input to True
     config['manifest']['reproduce']['exe'] = False
     config['manifest']['reproduce']['input'] = True
+    # Set back to false
+    config['manifest']['scaninputs'] = False
     config['exe'] = config_orig['exe']
     write_config(config)
     manifests = get_manifests(ctrldir/'manifests')
@@ -266,8 +274,8 @@ def test_input_reproduce():
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         payu_setup(lab_path=str(labdir))
 
-        assert pytest_wrapped_e.type == SystemExit
-        assert pytest_wrapped_e.value.code == 1
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 1
 
     # Change reproduce input back to False
     config['manifest']['reproduce']['input'] = False
