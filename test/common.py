@@ -25,6 +25,8 @@ workdir = ctrldir / 'work'
 payudir = tmpdir / 'payu'
 
 archive_dir = labdir / 'archive'
+
+# Note: These are using a fixed archive name which is set in config.yaml
 expt_archive_dir = archive_dir / ctrldir_basename
 expt_workdir = labdir / 'work' / ctrldir_basename
 
@@ -52,12 +54,12 @@ config = {
                                         'exe': False
                                         }
                         },
-            'runlog': False
+            'runlog': False,
+            "experiment": ctrldir_basename
             }
 
 metadata = {
-    "uuid": "testUuid",
-    "experiment": ctrldir_basename
+    "experiment_uuid": "testUuid",
 }
 
 

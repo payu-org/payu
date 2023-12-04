@@ -17,7 +17,7 @@ import git
 
 from payu.fsops import read_config, DEFAULT_CONFIG_FNAME
 from payu.laboratory import Laboratory
-from payu.metadata import Metadata
+from payu.metadata import Metadata, UUID_FIELD
 from payu.git_utils import git_checkout_branch, git_clone, get_git_branch
 from payu.git_utils import get_git_repository
 from payu.git_utils import remote_branches_dict, local_branches_dict
@@ -25,7 +25,7 @@ from payu.git_utils import remote_branches_dict, local_branches_dict
 NO_CONFIG_FOUND_MESSAGE = """No configuration file found on this branch.
 Skipping adding new metadata file and creating archive/work symlinks.
 
-To find a branch that has config file, you can:
+To try find a branch that has config file, you can:
     - Display local branches by running:
         payu branch
     - Or display remote branches by running:
@@ -85,13 +85,39 @@ def check_config_path(config_path: Optional[Path] = None) -> Optional[Path]:
 def checkout_branch(branch_name: str,
                     is_new_branch: bool = False,
                     is_new_experiment: bool = False,
+                    keep_uuid: bool = False,
                     start_point: Optional[str] = None,
                     restart_path: Optional[Path] = None,
                     config_path: Optional[Path] = None,
                     control_path: Optional[Path] = None,
                     model_type: Optional[str] = None,
-                    lab_path: Optional[Path] = None,) -> None:
-    """Checkout branch"""
+                    lab_path: Optional[Path] = None) -> None:
+    """Checkout branch, setup metadata and add symlinks
+
+    Parameters
+    ----------
+    branch_name : str
+        Name of branch to checkout/create
+    is_new_branch: bool, default False
+        Create new branch and mark as new experiment
+    is_new_experiment: bool, default False
+        Create new uuid for this experiment
+    keep_uuid: bool, default False
+        Keep UUID unchanged, if it exists - this overrides is_new_experiment
+        if there is a pre-existing UUID
+    start_point: Optional[str], default None
+        Branch name or commit hash to start new branch from
+    restart_path: Optional[Path], default None
+        Absolute restart path to start experiment from
+    config_path: Optional[Path], default None
+        Path to configuration file - config.yaml
+    control_path: Optional[Path], default None
+        Path to control directory - defaults to current working directory
+    model_type: Optional[str], default None
+        Type of model - used for creating a Laboratory
+    lab_path: Optional[Path], default None
+        Path to laboratory directory
+    """
     if control_path is None:
         control_path = get_control_path(config_path)
 
@@ -103,16 +129,13 @@ def checkout_branch(branch_name: str,
 
     # Initialise Lab and Metadata
     lab = Laboratory(model_type, config_path, lab_path)
-    metadata = Metadata(lab, branch=branch_name, config_path=config_path)
+    metadata = Metadata(Path(lab.archive_path),
+                        branch=branch_name,
+                        config_path=config_path)
 
-    if is_new_branch or is_new_experiment:
-        # Create new uuid, experiment name, update and commit metadata file
-        metadata.setup_new_experiment()
-    else:
-        # Create/update metadata if no uuid, otherwise run checks on existing
-        # metadata and commit any changes
-        metadata.setup()
-        metadata.commit_file()
+    # Setup Metadata
+    is_new_experiment = is_new_experiment or is_new_branch
+    metadata.setup(keep_uuid=keep_uuid, is_new_experiment=is_new_experiment)
 
     # Add restart option to config
     if restart_path:
@@ -145,14 +168,41 @@ def switch_symlink(lab_dir_path: Path, control_path: Path,
 
 def clone(repository: str,
           directory: Path,
-          branch: Optional[Path] = None,
+          branch: Optional[str] = None,
           new_branch_name: Optional[str] = None,
           keep_uuid: bool = False,
           model_type: Optional[str] = None,
           config_path: Optional[Path] = None,
           lab_path: Optional[Path] = None,
           restart_path: Optional[Path] = None) -> None:
-    """Clone an experiment control repo"""
+    """Clone an experiment control repository.
+
+    Parameters:
+        repository: str
+            Git URL or path to Git repository to clone
+        directory: Path
+            The control directory where the repository will be cloned
+        branch: Optional[str]
+            Name of branch to clone and checkout
+        new_branch_name: Optional[str]
+            Name of new branch to create and checkout.
+            If branch is also defined, the new branch will start from the
+            latest commit of the branch.
+        keep_uuid: bool, default False
+            Keep UUID unchanged, if it exists
+        config_path: Optional[Path]
+            Path to configuration file - config.yaml
+        control_path: Optional[Path]
+            Path to control directory - defaults to current working directory
+        model_type: Optional[str]
+            Type of model - used for creating a Laboratory
+        lab_path: Optional[Path]
+            Path to laboratory directory
+        restart_path: Optional[Path]
+            Absolute restart path to start experiment from
+
+    Returns: None
+    """
     # git clone the repository
     git_clone(repository, directory, branch)
 
@@ -168,6 +218,7 @@ def clone(repository: str,
         if new_branch_name is not None:
             # Create and checkout new branch
             checkout_branch(is_new_branch=True,
+                            keep_uuid=keep_uuid,
                             branch_name=new_branch_name,
                             restart_path=restart_path,
                             config_path=config_path,
@@ -181,13 +232,12 @@ def clone(repository: str,
 
             checkout_branch(branch_name=branch,
                             config_path=config_path,
-                            is_new_experiment=not keep_uuid,
+                            keep_uuid=keep_uuid,
                             restart_path=restart_path,
                             control_path=control_path,
                             model_type=model_type,
-                            lab_path=lab_path)
-            # Note: is_new_experiment ensures new uuid and metadata is created
-            # Otherwise uuid is generated only if there's no pre-existing uuid
+                            lab_path=lab_path,
+                            is_new_experiment=True)
     finally:
         # Change back to original working directory
         os.chdir(owd)
@@ -196,8 +246,19 @@ def clone(repository: str,
 
 
 def print_branch_metadata(branch: git.Head, verbose: bool = False):
-    """Print uuid for each branch. If verbose is true, it will print all lines
-    of the metadata file"""
+    """Display given Git branch UUID, or if config.yaml or metadata.yaml does
+    not exist.
+
+    Parameters:
+        branch: git.Head
+            Branch object to parse commit tree.
+        verbose: bool, default False
+            Display entire metadata files
+        remote: bool, default False
+            Display remote Git branches
+
+    Returns: None
+    """
     contains_config = False
     metadata_content = None
     # Note: Blobs are files in the commit tree
@@ -221,17 +282,25 @@ def print_branch_metadata(branch: git.Head, verbose: bool = False):
         else:
             # Print uuid
             metadata = YAML().load(metadata_content)
-            uuid = metadata.get('uuid', None)
+            uuid = metadata.get(UUID_FIELD, None)
             if uuid is not None:
-                print(f"    uuid: {uuid}")
+                print(f"    {UUID_FIELD}: {uuid}")
             else:
-                print(f"    No uuid in metadata file")
+                print(f"    No UUID in metadata file")
 
 
 def list_branches(config_path: Optional[Path] = None,
                   verbose: bool = False,
                   remote: bool = False):
-    """Print uuid, or metadata if verbose, for each branch in control repo"""
+    """Display local Git branches UUIDs.
+
+    Parameters:
+        verbose: bool, default False
+            Display entire metadata files
+        remote: bool, default False
+            Display remote Git branches
+
+    Returns: None"""
     control_path = get_control_path(config_path)
     repo = get_git_repository(control_path)
 

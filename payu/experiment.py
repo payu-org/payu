@@ -19,6 +19,7 @@ import shlex
 import shutil
 import subprocess as sp
 import sysconfig
+from pathlib import Path
 
 # Extensions
 import yaml
@@ -57,7 +58,7 @@ class Experiment(object):
         self.start_time = datetime.datetime.now()
 
         # Initialise experiment metadata - uuid and experiment name
-        self.metadata = Metadata(lab)
+        self.metadata = Metadata(Path(lab.archive_path))
         self.metadata.setup()
 
         # TODO: replace with dict, check versions via key-value pairs
@@ -456,10 +457,6 @@ class Experiment(object):
         # warns user if more restarts than expected would be pruned
         if self.config.get('archive', True):
             self.get_restarts_to_prune()
-
-        # Commit any changes to metadata
-        if self.runlog.enabled:
-            self.metadata.commit_file()
 
     def run(self, *user_flags):
 

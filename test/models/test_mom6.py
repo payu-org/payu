@@ -8,7 +8,7 @@ import f90nml
 import payu
 
 from test.common import cd
-from test.common import tmpdir, ctrldir, labdir, expt_workdir
+from test.common import tmpdir, ctrldir, labdir, expt_workdir, ctrldir_basename
 from test.common import write_config, write_metadata
 from test.common import make_random_file, make_inputs, make_exe
 
@@ -43,7 +43,8 @@ def setup_module(module):
             'laboratory': 'lab',
             'jobname': 'testrun',
             'model': 'mom6',
-            'exe': 'test.exe'
+            'exe': 'test.exe',
+            'experiment': ctrldir_basename
     }
     write_config(config)
 

@@ -73,11 +73,15 @@ def get_git_user_info(repo_path: Union[Path, str],
 
 def git_commit(repo_path: Union[Path, str],
                commit_message: str,
-               paths_to_commit: List[Union[Path, str]]) -> None:
+               paths_to_commit: List[Union[Path, str]],
+               initialise_repo: bool = True) -> None:
     """Add a git commit of changes to paths"""
-    # Get/Create git repository - initialise is true as adding a commit
-    # directly after
-    repo = get_git_repository(repo_path, initialise=True)
+    # Get/Create git repository
+    repo = get_git_repository(repo_path,
+                              catch_error=True,
+                              initialise=initialise_repo)
+    if repo is None:
+        return
 
     # Un-stage any pre-existing changes
     repo.index.reset()

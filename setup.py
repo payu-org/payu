@@ -37,7 +37,6 @@ setup(
         'dateutil',
         'tenacity',
         'cftime',
-        'shortuuid',
         'GitPython',
         'ruamel.yaml'
     ],
@@ -49,7 +48,6 @@ setup(
         'python-dateutil',
         'tenacity!=7.0.0',
         'cftime',
-        'shortuuid >= 1.0.11',
         'GitPython >= 3.1.40',
         'ruamel.yaml >= 0.18.5'
     ],
