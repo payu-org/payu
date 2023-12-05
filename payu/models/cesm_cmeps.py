@@ -39,7 +39,10 @@ component_info = {
     },
     "ww3dev": {
         "config_files": ["wav_in"],
-        "optional_config_files" : ["ww3_shel.nml"]
+        "optional_config_files" : [
+            "ww3_shel.nml",
+            "ww3_points.list",
+        ],
     },
     "datm": {
         "config_files": [
