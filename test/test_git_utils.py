@@ -4,8 +4,7 @@ import subprocess
 import git
 import pytest
 
-from payu.git_utils import get_git_repository, get_git_user_info
-from payu.git_utils import git_checkout_branch
+from payu.git_utils import get_git_repository, GitRepository
 from payu.git_utils import PayuBranchError, PayuGitWarning
 
 from test.common import tmpdir
@@ -67,7 +66,8 @@ def test_get_git_user_info_no_config_set():
     # defined in the 'user' namespace.
     repo_path = tmpdir / "test_repo"
     create_new_repo(repo_path)
-    value = get_git_user_info(repo_path, 'testKey-54321', 'test_value')
+    repo = GitRepository(repo_path)
+    value = repo.get_user_info('testKey-54321')
     assert value is None
 
 
@@ -84,7 +84,8 @@ def test_get_git_user_info_config_set():
     except subprocess.CalledProcessError as e:
         print(f"Error setting user name: {e}")
 
-    value = get_git_user_info(repo_path, 'name', 'test_value')
+    repo = GitRepository(repo_path)
+    value = repo.get_user_info('name')
 
     assert value == 'TestUserName'
 
@@ -123,10 +124,10 @@ def test_git_checkout_new_branch_from_remote_ref(ref):
         expected_hash = main_branch_hash
 
     # Test startpoint being remote branch/hash/None
-    git_checkout_branch(cloned_repo_path,
-                        'branch-2',
-                        new_branch=True,
-                        start_point=start_point)
+    repo = GitRepository(cloned_repo_path)
+    repo.checkout_branch('branch-2',
+                         new_branch=True,
+                         start_point=start_point)
 
     current_branch = cloned_repo.active_branch
     current_hash = current_branch.object.hexsha
@@ -141,10 +142,10 @@ def test_git_checkout_new_branch_existing():
     existing_branch = repo.active_branch
 
     # Test create branch with existing branch
+    repo = GitRepository(repo_path)
     with pytest.raises(PayuBranchError):
-        git_checkout_branch(repo_path,
-                            str(existing_branch),
-                            new_branch=True)
+        repo.checkout_branch(str(existing_branch),
+                             new_branch=True)
 
 
 def test_git_checkout_non_existent_branch():
@@ -153,8 +154,9 @@ def test_git_checkout_non_existent_branch():
     create_new_repo(repo_path)
 
     # Test create branch with  non-existent branch
+    repo = GitRepository(repo_path)
     with pytest.raises(PayuBranchError):
-        git_checkout_branch(repo_path, "Gibberish")
+        repo.checkout_branch("Gibberish")
 
 
 def test_git_checkout_existing_branch():
@@ -177,8 +179,8 @@ def test_git_checkout_existing_branch():
     cloned_repo = remote_repo.clone(cloned_repo_path)
 
     # Test checkout existing remote branch
-    git_checkout_branch(cloned_repo_path,
-                        'branch-1')
+    repo = GitRepository(cloned_repo_path)
+    repo.checkout_branch('branch-1')
 
     current_branch = cloned_repo.active_branch
     current_hash = current_branch.object.hexsha

@@ -228,7 +228,7 @@ restart_path = {
     'parameters': {
         'dest': 'restart_path',
         'action': 'store',
-        'help': 'The absolute restart path from which to start the model run'
+        'help': 'The restart path from which to start the model run'
     }
 }
 

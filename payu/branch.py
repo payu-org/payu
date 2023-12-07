@@ -10,6 +10,7 @@ specified configuration in config.yaml and updates work/archive symlinks
 import os
 import warnings
 from pathlib import Path
+import re
 from typing import Optional
 
 from ruamel.yaml import YAML
@@ -18,9 +19,8 @@ import git
 from payu.fsops import read_config, DEFAULT_CONFIG_FNAME
 from payu.laboratory import Laboratory
 from payu.metadata import Metadata, UUID_FIELD
-from payu.git_utils import git_checkout_branch, git_clone, get_git_branch
-from payu.git_utils import get_git_repository
-from payu.git_utils import remote_branches_dict, local_branches_dict
+from payu.git_utils import GitRepository, git_clone
+
 
 NO_CONFIG_FOUND_MESSAGE = """No configuration file found on this branch.
 Skipping adding new metadata file and creating archive/work symlinks.
@@ -36,18 +36,49 @@ To checkout an existing branch, run:
 Where BRANCH_NAME is the name of the branch"""
 
 
-def add_restart_to_config(restart_path: Path,
-                          config_path: Path) -> None:
+def archive_contains_restarts(archive_path: Path) -> bool:
+    """Return True if there's pre-existing restarts in archive"""
+    pattern = re.compile(r"^restart[0-9][0-9][0-9]+$")
+    if not archive_path.exists():
+        return False
+
+    for path in archive_path.iterdir():
+        real_path = path.resolve()
+        if real_path.is_dir() and pattern.match(path.name):
+            return True
+    return False
+
+
+def check_restart(restart_path: Optional[Path],
+                  archive_path: Path) -> Optional[Path]:
+    """Checks for valid prior restart path. Returns resolved restart path
+    if valid, otherwise returns None"""
+    if restart_path is None:
+        return
+
+    # Check for valid path
+    if not restart_path.exists():
+        warnings.warn((f"Given restart path {restart_path} does not "
+                       f"exist. Skipping setting 'restart' in config file"))
+        return
+
+    # Resolve to absolute path
+    restart_path = restart_path.resolve()
+
+    # Check for pre-existing restarts in archive
+    if archive_contains_restarts(archive_path):
+        warnings.warn((
+            f"Pre-existing restarts found in archive: {archive_path}."
+            f"Skipping adding 'restart: {restart_path}' to config file"))
+        return
+
+    return restart_path
+
+
+def add_restart_to_config(restart_path: Path, config_path: Path) -> None:
     """Takes restart path and config path, and add 'restart' flag to the
     config file - which is used to start a run if there isn't a pre-existing
     restart in archive"""
-
-    # Check for valid paths
-    if not restart_path.exists() or not restart_path.is_dir():
-        warnings.warn((f"Given restart directory {restart_path} does not "
-                       f"exist. Skipping adding 'restart: {restart_path}' "
-                       "to config file"))
-        return
 
     # Default ruamel yaml preserves comments and multiline strings
     yaml = YAML()
@@ -105,24 +136,25 @@ def checkout_branch(branch_name: str,
     keep_uuid: bool, default False
         Keep UUID unchanged, if it exists - this overrides is_new_experiment
         if there is a pre-existing UUID
-    start_point: Optional[str], default None
+    start_point: Optional[str]
         Branch name or commit hash to start new branch from
-    restart_path: Optional[Path], default None
+    restart_path: Optional[Path]
         Absolute restart path to start experiment from
-    config_path: Optional[Path], default None
+    config_path: Optional[Path]
         Path to configuration file - config.yaml
-    control_path: Optional[Path], default None
+    control_path: Optional[Path]
         Path to control directory - defaults to current working directory
-    model_type: Optional[str], default None
+    model_type: Optional[str]
         Type of model - used for creating a Laboratory
-    lab_path: Optional[Path], default None
+    lab_path: Optional[Path]
         Path to laboratory directory
     """
     if control_path is None:
         control_path = get_control_path(config_path)
 
     # Checkout branch
-    git_checkout_branch(control_path, branch_name, is_new_branch, start_point)
+    repo = GitRepository(control_path)
+    repo.checkout_branch(branch_name, is_new_branch, start_point)
 
     # Check config file exists on checked out branch
     config_path = check_config_path(config_path)
@@ -135,11 +167,20 @@ def checkout_branch(branch_name: str,
 
     # Setup Metadata
     is_new_experiment = is_new_experiment or is_new_branch
-    metadata.setup(keep_uuid=keep_uuid, is_new_experiment=is_new_experiment)
+    metadata.setup(keep_uuid=keep_uuid,
+                   is_new_experiment=is_new_experiment)
+
+    # Gets valid prior restart path
+    prior_restart_path = check_restart(restart_path=restart_path,
+                                       archive_path=metadata.archive_path)
+
+    # Create/update and commit metadata file
+    metadata.write_metadata(set_template_values=True,
+                            restart_path=prior_restart_path)
 
     # Add restart option to config
-    if restart_path:
-        add_restart_to_config(restart_path, config_path=config_path)
+    if prior_restart_path:
+        add_restart_to_config(prior_restart_path, config_path=config_path)
 
     # Switch/Remove/Add archive and work symlinks
     experiment = metadata.experiment_name
@@ -203,11 +244,11 @@ def clone(repository: str,
 
     Returns: None
     """
-    # git clone the repository
-    git_clone(repository, directory, branch)
-
     # Resolve directory to an absolute path
     control_path = directory.resolve()
+
+    # git clone the repository
+    repo = git_clone(repository, control_path, branch)
 
     owd = os.getcwd()
     try:
@@ -228,7 +269,7 @@ def clone(repository: str,
         else:
             # Checkout branch
             if branch is None:
-                branch = get_git_branch(control_path)
+                branch = repo.get_branch_name()
 
             checkout_branch(branch_name=branch,
                             config_path=config_path,
@@ -302,17 +343,17 @@ def list_branches(config_path: Optional[Path] = None,
 
     Returns: None"""
     control_path = get_control_path(config_path)
-    repo = get_git_repository(control_path)
+    git_repo = GitRepository(control_path)
 
-    current_branch = repo.active_branch
+    current_branch = git_repo.repo.active_branch
     print(f"* Current Branch: {current_branch.name}")
     print_branch_metadata(current_branch, verbose)
 
     if remote:
-        branches = remote_branches_dict(repo)
+        branches = git_repo.remote_branches_dict()
         label = "Remote Branch"
     else:
-        branches = local_branches_dict(repo)
+        branches = git_repo.local_branches_dict()
         label = "Branch"
 
     for branch_name, branch in branches.items():

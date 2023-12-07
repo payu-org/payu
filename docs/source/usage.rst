@@ -21,47 +21,6 @@ simultaneously that can share common executables and input data. It also
 allows the flexibility to have the relatively small control directories
 in a location that is continuously backed up.
 
-Experiment names and metadata
------------------------------
-
-The *laboratory* contains the following subdirectories:
-
-* ``work``, which is where the model is run. This contains a temporary directory
-  for each experiment which is removed after a successful run.
-
-* ``archive``, which contains the output of completed runs for each 
-  experiment.
-
-An experiment name is used identify the experiment inside the ``work`` and 
-``archive`` sub-directories. This is stored in a metadata file, 
-``metadata.yaml``, in the *control directory*. 
-The experiment name and a UUID, to uniquely identify the experiment, 
-is set in ``metadata.yaml`` when:
-
-* Using payu to clone a pre-existing git_ repository of the *control directory*
-
-* Using payu to create and checkout a new git branch in the *control directory*
-
-* Or, it is set automatically when setting up an experiment run if there is 
-  not a pre-existing metadata file.
-
-The experiment name historically would default to the name of the *control 
-directory* or the configured ``experiment`` value (see :ref:`config`). This is 
-still supported for experiments with a pre-existing archived outputs. To support 
-git branches and ensure uniqueness in shared archives, the branch name and 
-a short version of the experiment UUID are added to new experiment names. 
-For example, given a control directory named ``my_expt`` and a UUID of 
-``9fAsTc4sNYsH2ZBQGYK9TG``, the experiment name would be:
-
-* ``my_expt-perturb-9fAsT`` - if running an experiment on a branch named 
-  ``perturb``.
-
-* ``my_expt-9fAsT`` - if the control directory was not a git repository or 
-  running experiments from the ``main`` or ``master`` branch.
-
-* or ``my_expt`` - if running an older experiment that has a pre-existing 
-  archive.
-
 Using a git repository for the experiment
 -----------------------------------------
 
@@ -144,7 +103,8 @@ This is the best way to copy an experiment as it guarantees that only the
 required files are copied to a new control directory, and maintains a link 
 to the original experiment through the shared git history. To clone the 
 repository, you can use ``git clone`` or ``payu clone`` which is a wrapper 
-around ``git clone`` which additionally creates or updates the metadata file.
+around ``git clone`` which additionally creates or updates the metadata file 
+which gets copied to the experiment archive directory (see :ref:`usage-metadata`).
 
 For example::
     
@@ -172,8 +132,7 @@ run::
       payu clone --help
 
 Alternatively to creating and checking out branches in ``payu clone``, 
-``payu checkout`` can be used instead (see :ref:`Switching between 
-related experiments`). 
+``payu checkout`` can be used instead (see :ref:`usage-metadata`). 
 
 
 Create experiment
@@ -380,14 +339,68 @@ at a later date. To sync all restarts including the latest restarts, use the
 
    payu sync  --sync-restarts
 
+.. _usage-metadata:
+
+Metadata and Related Experiments
+================================
+
+Metadata files
+--------------
+
+Each experiment has a metadata file, called ``metadata.yaml`` in the *control
+directory*. This contains high-level metadata about the experiment and uses 
+the ACCESS-NRI experiment schema_. An important field is the ``experiment_uuid``
+which uniquely identifies the experiment. Payu generates a new UUID when:
+
+* Using payu to clone a pre-existing git_ repository of the *control directory*
+
+* Using payu to create and checkout a new git branch in the *control directory*
+
+* Or, when setting up an experiment run if there is not a pre-existing metadata 
+  file, UUID, or experiment ``archive`` directory.
+
+For new experiments, payu may generate some additional metadata fields. This 
+includes an experiment name, creation date, contact, and email if defined in 
+the git configuration. This also includes parent experiment UUID and git commit hashes 
+so the history of the experiment can be tracked. These metadata files are also 
+copied to the directory that stores the archived experiment outputs. 
+
+.. _schema: https://github.com/ACCESS-NRI/schema/blob/main/experiment_asset.json
+
+Experiment names
+----------------
+
+An experiment name is used to identify the experiment inside the ``work`` and 
+``archive`` sub-directories inside the *laboratory*.
+
+The experiment name historically would default to the name of the *control 
+directory*. This is still supported for experiments with a pre-existing
+archived outputs. To support git branches and ensure uniqueness in shared 
+archives, the branch name and a short version of the experiment UUID are 
+added to new experiment names. For example, given a control directory named 
+``my_expt`` and a UUID of ``416af8c6-d299-4ee6-9d77-4aefa8a9ebcb``, 
+the experiment name would be:
+
+* ``my_expt-perturb-416af8c6`` - if running an experiment on a branch named 
+  ``perturb``.
+
+* ``my_expt-416af8c6`` - if the control directory was not a git repository or 
+  experiments was run from the ``main`` or ``master`` branch.
+
+* ``my_expt`` - if running an older experiment that has a pre-existing 
+  archive.
+
+* ``set_expt_name`` - if the ``experiment`` value is configured to 
+  ``set_expt_name``(see :ref:`config`). Note that to use branches in one control 
+  repository, this would need each configured experiment value to be unique. 
 
 Switching between related experiments
-=====================================
+-------------------------------------
 
 To be able to run related experiments from the same control directory 
 using git branches, you can use ``payu checkout`` which is a wrapper around 
-``git checkout``. Creating new branches will generate a new UUID and 
-branch-UUID-aware experiment name in the metadata file. 
+``git checkout``. Creating new branches will generate a new UUID, update metadata
+files, and create a branch-UUID-aware experiment name in ``archive``. 
 Switching branches will change ``work`` and ``archive`` symlinks in the control 
 directory to point to directories in *laboratory* if they exist.
 
@@ -396,22 +409,22 @@ For example, to create and checkout a new branch called ``perturb1``, run::
 
       payu checkout -b perturb1
 
-To branch a new experiment from an existing branch, specify the branch name 
+To create a new experiment from an existing branch, specify the branch name 
 or a commit hash after the new branch name. For example, 
 the following creates a new experiment branch called ``perturb2`` 
 that starts from ``perturb1``:: 
 
       payu checkout -b perturb2 perturb1
 
-To specify a restart path to start from using the ``--restart``/ ``-r`` flag, 
+To specify a restart path to start from, use the ``--restart``/ ``-r`` flag, 
 for example::
 
       payu checkout -b perturb --restart path/to/restart
 
 Note: This can also be achieved by configuring ``restart`` (see :ref:`config`).
 
-To checkout an existing branch and experiment. For example, 
-the following checks out the ``perturb1`` branch:: 
+To checkout and switch to an existing branch and experiment, omit the ``-b`` flag. 
+For example, the following checks out the ``perturb1`` branch:: 
 
       payu checkout perturb1
 

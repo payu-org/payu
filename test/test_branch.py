@@ -7,7 +7,7 @@ import git
 from ruamel.yaml import YAML
 from unittest.mock import patch
 
-from payu.branch import add_restart_to_config, switch_symlink
+from payu.branch import add_restart_to_config, check_restart, switch_symlink
 from payu.branch import checkout_branch, clone, list_branches
 from payu.metadata import MetadataWarning
 from payu.fsops import read_config
@@ -90,7 +90,7 @@ restart: {0}
 )
 def test_add_restart_to_config(test_config, expected_config):
     """Test adding restart: path/to/restart to configuration file"""
-    restart_path = labdir / "archive" / "tmpRestart"
+    restart_path = tmpdir / "archive" / "tmpRestart"
     restart_path.mkdir(parents=True)
 
     expected_config = expected_config.format(restart_path)
@@ -109,24 +109,40 @@ def test_add_restart_to_config(test_config, expected_config):
     assert updated_config == expected_config
 
 
-def test_add_restart_to_config_invalid_restart_path():
+def test_check_restart_with_non_existent_restart():
     """Test restart path that does not exist raises a warning"""
     restart_path = tmpdir / "restartDNE"
 
-    config_content = "# Test config content"
-    with config_path.open("w") as file:
-        file.write(config_content)
-
-    expected_msg = f"Given restart directory {restart_path} does not exist. "
-    expected_msg += f"Skipping adding 'restart: {restart_path}' to config file"
+    expected_msg = (f"Given restart path {restart_path} does not exist. "
+                    f"Skipping setting 'restart' in config file")
 
     with cd(ctrldir):
         with pytest.warns(UserWarning, match=expected_msg):
-            add_restart_to_config(restart_path, config_path)
+            restart_path = check_restart(restart_path, labdir / "archive")
 
-    # Test config unchanged
-    with config_path.open("r") as file:
-        assert file.read() == config_content
+    assert restart_path is None
+
+
+def test_check_restart_with_pre_existing_restarts_in_archive():
+    """Test pre-existing restarts in archive raises a warning"""
+    # Create pre-existing restart in archive
+    archive_path = labdir / "archive"
+    (archive_path / "restart000").mkdir(parents=True)
+
+    # Create restart path in different archive
+    restart_path = labdir / "different_archive" / "restart000"
+    restart_path.mkdir(parents=True)
+
+    expected_msg = (
+        f"Pre-existing restarts found in archive: {archive_path}."
+        f"Skipping adding 'restart: {restart_path}' to config file"
+    )
+
+    with cd(ctrldir):
+        with pytest.warns(UserWarning, match=expected_msg):
+            restart_path = check_restart(restart_path, archive_path)
+
+    assert restart_path is None
 
 
 def test_switch_symlink_when_symlink_and_archive_exists():
@@ -199,9 +215,7 @@ def check_metadata(expected_uuid,
     # Assert archive exists for experiment name
     assert (archive_dir / expected_experiment / "metadata.yaml").exists()
     copied_metadata = YAML().load(metadata_file)
-    assert copied_metadata.get("experiment_uuid", None) == expected_uuid
-    parent_uuid = copied_metadata.get("parent_experiment", None)
-    assert parent_uuid == expected_parent_uuid
+    assert copied_metadata == metadata
 
 
 def check_branch_metadata(repo,
@@ -264,8 +278,7 @@ def test_checkout_branch(mock_uuid):
     check_branch_metadata(repo,
                           expected_uuid=uuid2,
                           expected_current_branch="Branch2",
-                          expected_experiment=branch2_experiment_name,
-                          expected_parent_uuid=uuid1)
+                          expected_experiment=branch2_experiment_name)
 
     # Mock uuid3 value
     uuid3 = "98c99f06-260e-42cc-a23f-f113fae825e5"
@@ -283,8 +296,11 @@ def test_checkout_branch(mock_uuid):
     check_branch_metadata(repo,
                           expected_uuid=uuid3,
                           expected_current_branch="Branch3",
-                          expected_experiment=branch3_experiment_name,
-                          expected_parent_uuid=uuid1)
+                          expected_experiment=branch3_experiment_name)
+
+    # Check second to last commit was last commit on branch 1
+    second_latest_commit = list(repo.iter_commits(max_count=2))[1]
+    assert second_latest_commit.hexsha == branch_1_commit_hash
 
     with cd(ctrldir):
         # Test checkout existing branch with existing metadata
@@ -410,6 +426,57 @@ def test_checkout_branch_with_no_config():
 
 
 @patch("uuid.uuid4")
+def test_checkout_branch_with_restart_path(mock_uuid):
+    # Make experiment archive restart - starting with no metadata
+    restart_path = tmpdir / "remote_archive" / "restart0123"
+    restart_path.mkdir(parents=True)
+
+    # Setup repo
+    repo = setup_control_repository()
+
+    # Mock uuid1 value
+    uuid1 = "df050eaf-c8bb-4b10-9998-e0202a1eabd2"
+    mock_uuid.return_value = uuid1
+
+    with cd(ctrldir):
+        # Test checkout with restart path with no metadata
+        checkout_branch(is_new_branch=True,
+                        branch_name="Branch1",
+                        lab_path=labdir,
+                        restart_path=restart_path)
+
+    # Check metadata
+    experiment1_name = f"{ctrldir_basename}-Branch1-df050eaf"
+    check_branch_metadata(repo,
+                          expected_current_branch='Branch1',
+                          expected_uuid=uuid1,
+                          expected_experiment=experiment1_name)
+
+    # Create restart directory in Branch1 archive
+    restart_path = archive_dir / experiment1_name / 'restart0123'
+    restart_path.mkdir()
+
+    # Mock uuid2 value
+    uuid2 = "9cc04c9b-f13d-4f1d-8a35-87146a4381ef"
+    mock_uuid.return_value = uuid2
+
+    with cd(ctrldir):
+        # Test checkout with restart path with metadata
+        checkout_branch(is_new_branch=True,
+                        branch_name="Branch2",
+                        lab_path=labdir,
+                        restart_path=restart_path)
+
+    # Check metadta - Check parent experiment is experment 1 UUID
+    experiment2_name = f"{ctrldir_basename}-Branch2-9cc04c9b"
+    check_branch_metadata(repo,
+                          expected_current_branch='Branch2',
+                          expected_uuid=uuid2,
+                          expected_experiment=experiment2_name,
+                          expected_parent_uuid=uuid1)
+
+
+@patch("uuid.uuid4")
 def test_clone(mock_uuid):
     # Create a repo to clone
     source_repo_path = tmpdir / "sourceRepo"
@@ -427,7 +494,7 @@ def test_clone(mock_uuid):
 
     # Test clone
     cloned_repo_path = tmpdir / "clonedRepo"
-    clone(source_repo_path, cloned_repo_path, lab_path=labdir)
+    clone(str(source_repo_path), cloned_repo_path, lab_path=labdir)
 
     # Check new commit added and expected metadata
     cloned_repo = git.Repo(cloned_repo_path)
@@ -437,6 +504,7 @@ def test_clone(mock_uuid):
                           expected_uuid=uuid1,
                           expected_experiment="clonedRepo-Branch1-9cc04c9b",
                           metadata_file=metadata_file)
+    branch_1_commit_hash = cloned_repo.active_branch.object.hexsha
 
     cloned_repo.git.checkout(source_main_branch)
 
@@ -446,7 +514,7 @@ def test_clone(mock_uuid):
 
     # Run clone
     with cd(tmpdir):
-        clone(cloned_repo_path, Path("clonedRepo2"),
+        clone(str(cloned_repo_path), Path("clonedRepo2"),
               lab_path=labdir, new_branch_name="Branch2", branch="Branch1")
 
     # Check new commit added and expected metadata
@@ -456,8 +524,11 @@ def test_clone(mock_uuid):
                           expected_current_branch="Branch2",
                           expected_uuid=uuid2,
                           expected_experiment="clonedRepo2-Branch2-fd7b4804",
-                          expected_parent_uuid=uuid1,
                           metadata_file=metadata_file)
+
+    # Check branched from Branch1
+    second_latest_commit = list(cloned_repo2.iter_commits(max_count=2))[1]
+    assert second_latest_commit.hexsha == branch_1_commit_hash
 
     # Check local branches
     assert [head.name for head in cloned_repo2.heads] == ["Branch1", "Branch2"]

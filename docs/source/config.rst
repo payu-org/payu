@@ -229,10 +229,10 @@ configuration.
    The control path for the experiment. The default setting is the path of the
    current working directory.
 
-``experiment`` (*Default: current directory*)
-   The experiment name used for archival. The default setting uses the
-   ``control`` directory name.
-
+``experiment``
+   The experiment name used for archival. This will override the experiment
+   name generated using metadata and existing archives 
+   (see :ref:`usage-metadata`).
 
 Manifests
 ---------

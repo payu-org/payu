@@ -5,7 +5,7 @@ Using the GitPython library for interacting with Git
 
 import warnings
 from pathlib import Path
-from typing import Optional, Union, List, Dict, Set
+from typing import Optional, Union, List, Dict
 
 import git
 import configparser
@@ -43,138 +43,148 @@ def get_git_repository(repo_path: Union[Path, str],
         raise
 
 
-def get_git_branch(repo_path: Union[Path, str]) -> Optional[str]:
-    """Return the current git branch or None if repository path is not a git
-    repository"""
-    repo = get_git_repository(repo_path, catch_error=True)
-    if repo:
-        return str(repo.active_branch)
+class GitRepository:
+    """Simple wrapper around git python's repo and methods"""
 
+    def __init__(self,
+                 repo_path: Union[Path, str],
+                 repo: Optional[git.Repo] = None,
+                 catch_error: bool = False):
+        self.repo_path = repo_path
 
-def get_git_user_info(repo_path: Union[Path, str],
-                      config_key: str,
-                      example_value: str) -> Optional[str]:
-    """Return git config user info, None otherwise. Used for retrieving
-    name and email saved in git"""
-    repo = get_git_repository(repo_path, catch_error=True)
-    if repo is None:
-        return
+        # Initialise git repository object
+        if repo is None:
+            repo = get_git_repository(repo_path, catch_error=catch_error)
+        self.repo = repo
 
-    try:
-        user_value = repo.config_reader().get_value('user', config_key)
-        return user_value
-    except (configparser.NoSectionError, configparser.NoOptionError):
-        print(
-            f'No git config set for user.{config_key}. '
-            'To set run the following inside the control repository:\n'
-            f'    git config user.{config_key} "{example_value}"'
-        )
+    def get_branch_name(self) -> Optional[str]:
+        """Return the current git branch or None if repository path is
+        not a git repository"""
+        if self.repo:
+            return str(self.repo.active_branch)
 
+    def get_hash(self) -> Optional[str]:
+        """Return the current git commit hash or None if repository path is
+          not a git repository"""
+        if self.repo:
+            return self.repo.active_branch.object.hexsha
 
-def git_commit(repo_path: Union[Path, str],
+    def get_origin_url(self) -> Optional[str]:
+        """Return url of remote origin if it exists"""
+        if self.repo and self.repo.remotes and self.repo.remotes.origin:
+            return self.repo.remotes.origin.url
+
+    def get_user_info(self, config_key: str) -> Optional[str]:
+        """Return git config user info, None otherwise. Used for retrieving
+        name and email saved in git"""
+        if self.repo is None:
+            return
+
+        try:
+            config_reader = self.repo.config_reader()
+            return config_reader.get_value('user', config_key)
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            # No git config set for user.$config_key
+            return
+
+    def commit(self,
                commit_message: str,
-               paths_to_commit: List[Union[Path, str]],
-               initialise_repo: bool = True) -> None:
-    """Add a git commit of changes to paths"""
-    # Get/Create git repository
-    repo = get_git_repository(repo_path,
-                              catch_error=True,
-                              initialise=initialise_repo)
-    if repo is None:
-        return
+               paths_to_commit: List[Union[Path, str]]) -> None:
+        """Add a git commit of changes to paths"""
+        if self.repo is None:
+            return
 
-    # Un-stage any pre-existing changes
-    repo.index.reset()
+        # Un-stage any pre-existing changes
+        self.repo.index.reset()
 
-    # Check if paths to commit have changed, or it is an untracked file
-    changes = False
-    untracked_files = [Path(repo_path) / path for path in repo.untracked_files]
-    for path in paths_to_commit:
-        if repo.git.diff(None, path) or path in untracked_files:
-            repo.index.add([path])
-            changes = True
+        # Check if paths to commit have changed, or it is an untracked file
+        changes = False
+        untracked_files = [Path(self.repo_path) / path
+                           for path in self.repo.untracked_files]
+        for path in paths_to_commit:
+            if self.repo.git.diff(None, path) or path in untracked_files:
+                self.repo.index.add([path])
+                changes = True
 
-    # Run commit if there's changes
-    if changes:
-        repo.index.commit(commit_message)
-        print(commit_message)
+        # Run commit if there's changes
+        if changes:
+            self.repo.index.commit(commit_message)
+            print(commit_message)
 
+    def local_branches_dict(self) -> Dict[str, git.Head]:
+        """Return a dictionary mapping local branch names to git.Head
+        objects"""
+        branch_names_dict = {}
+        for head in self.repo.heads:
+            branch_names_dict[head.name] = head
+        return branch_names_dict
 
-def local_branches_dict(repo: git.Repo) -> Dict[str, git.Head]:
-    """Return a dictionary mapping local branch names to git.Head objects"""
-    branch_names_dict = {}
-    for head in repo.heads:
-        branch_names_dict[head.name] = head
-    return branch_names_dict
+    def remote_branches_dict(self) -> Dict[str, git.Head]:
+        """Return a dictionary mapping remote branch names to git.Head
+        objects"""
+        branch_names_dict = {}
+        for remote in self.repo.remotes:
+            remote.fetch()
+            for ref in remote.refs:
+                branch_names_dict[ref.remote_head] = ref
+        return branch_names_dict
 
-
-def remote_branches_dict(repo: git.Repo) -> Dict[str, git.Head]:
-    """Return a dictionary mapping remote branch names to git.Head objects"""
-    branch_names_dict = {}
-    for remote in repo.remotes:
-        remote.fetch()
-        for ref in remote.refs:
-            branch_names_dict[ref.remote_head] = ref
-    return branch_names_dict
-
-
-def git_checkout_branch(repo_path: Union[Path, str],
+    def checkout_branch(self,
                         branch_name: str,
                         new_branch: bool = False,
                         start_point: Optional[str] = None) -> None:
-    """Checkout branch and create branch if specified"""
-    # Get git repository
-    repo = get_git_repository(repo_path)
+        """Checkout branch and create branch if specified"""
+        # Existing branches
+        local_branches = self.local_branches_dict().keys()
+        remote_branches = self.remote_branches_dict()
+        all_branches = local_branches | set(remote_branches.keys())
 
-    # Existing branches
-    local_branches = local_branches_dict(repo).keys()
-    remote_branches = remote_branches_dict(repo)
-    all_branches = local_branches | set(remote_branches.keys())
+        # Create new branch, if specified
+        if new_branch:
+            if branch_name in all_branches:
+                raise PayuBranchError(
+                    f"A branch named {branch_name} already exists. "
+                    "To checkout this branch, remove the new branch flag '-b' "
+                    "from the checkout command."
+                )
 
-    # Create new branch, if specified
-    if new_branch:
-        if branch_name in all_branches:
+            if start_point is not None:
+                if (start_point not in local_branches and
+                        start_point in remote_branches):
+                    # Use hash for remote start point
+                    start_point = remote_branches[start_point].commit
+                branch = self.repo.create_head(branch_name, commit=start_point)
+            else:
+                branch = self.repo.create_head(branch_name)
+            branch.checkout()
+
+            print(f"Created and checked out new branch: {branch_name}")
+            return
+
+        # Checkout branch
+        if branch_name not in all_branches:
             raise PayuBranchError(
-                f"A branch named {branch_name} already exists. "
-                "To checkout this branch, remove the new branch flag '-b' "
-                "from the checkout command."
+                f"There is no existing branch called {branch_name}. "
+                "To create this branch, add the new branch flag '-b' "
+                "to the checkout command."
             )
 
-        if start_point is not None:
-            if (start_point not in local_branches and
-                    start_point in remote_branches):
-                # Use hash for remote start point -local branch names work fine
-                start_point = remote_branches[start_point].commit
-            branch = repo.create_head(branch_name, commit=start_point)
-        else:
-            branch = repo.create_head(branch_name)
-        branch.checkout()
-
-        print(f"Created and checked out new branch: {branch_name}")
-        return
-
-    # Checkout branch
-    if branch_name not in all_branches:
-        raise PayuBranchError(
-            f"There is no existing branch called {branch_name}. "
-            "To create this branch, add the new branch flag '-b' "
-            "to the checkout command."
-        )
-
-    repo.git.checkout(branch_name)
-    print(f"Checked out branch: {branch_name}")
+        self.repo.git.checkout(branch_name)
+        print(f"Checked out branch: {branch_name}")
 
 
 def git_clone(repository: str,
               directory: Union[str, Path],
-              branch: Optional[str] = None) -> None:
+              branch: Optional[str] = None) -> GitRepository:
     """Clone repository to directory"""
     # Clone the repository
     if branch is not None:
-        git.Repo.clone_from(repository,
-                            to_path=directory,
-                            branch=branch)
+        repo = git.Repo.clone_from(repository,
+                                   to_path=directory,
+                                   branch=branch)
     else:
-        git.Repo.clone_from(repository, to_path=directory)
+        repo = git.Repo.clone_from(repository, to_path=directory)
 
     print(f"Cloned repository from {repository} to directory: {directory}")
+
+    return GitRepository(repo_path=directory, repo=repo)

@@ -7,17 +7,20 @@ metadata
 :license: Apache License, Version 2.0, see LICENSE for details.
 """
 
-import warnings
+import re
+import requests
 import shutil
 import uuid
+import warnings
+from datetime import datetime
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
 from payu.fsops import read_config, mkdir_p
-from payu.git_utils import get_git_branch, get_git_user_info, git_commit
+from payu.git_utils import GitRepository
 
 # A truncated uuid is used for branch-uuid aware experiment names
 TRUNCATED_UUID_LENGTH = 8
@@ -27,7 +30,14 @@ UUID_FIELD = "experiment_uuid"
 PARENT_UUID_FIELD = "parent_experiment"
 CONTACT_FIELD = "contact"
 EMAIL_FIELD = "email"
+NAME_FIELD = "name"
+GIT_URL_FIELD = "url"
+CREATED_FIELD = "created"
+MODEL_FIELD = "model"
 METADATA_FILENAME = "metadata.yaml"
+
+# Metadata Schema
+SCHEMA_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema/main/experiment_asset.json"
 
 
 class MetadataWarning(Warning):
@@ -65,6 +75,8 @@ class Metadata:
         self.control_path = control_path
         self.filepath = self.control_path / METADATA_FILENAME
 
+        self.repo = GitRepository(self.control_path, catch_error=True)
+
         self.branch = branch
         self.branch_uuid_experiment = True
 
@@ -84,32 +96,22 @@ class Metadata:
             metadata = YAML().load(self.filepath)
         return metadata
 
-    def setup(self, keep_uuid: bool = False,
-              is_new_experiment: bool = False) -> None:
-        """Set UUID and experiment name, create/update metadata file,
-        commit any changes and copy metadata file to the experiment archive.
+    def setup(self,
+              is_new_experiment: bool = False,
+              keep_uuid: bool = False) -> None:
+        """Set UUID and experiment name.
 
         Parameters:
             keep_uuid: bool, default False
                 Keep pre-existing UUID, if it exists.
             is_new_experiment: bool, default False
-                If not keep_uuid, generate a new_uuid and a branch-uuid aware
-                experiment name.
+                If not keep_uuid, generate a new UUID and a branch-uuid aware
+                experiment name. This is set in payu.branch.checkout_branch.
         Return: None
 
         Note: Experiment name is the name used for the work and archive
         directories in the Laboratory.
         """
-        self.set_uuid_and_experiment_name(keep_uuid=keep_uuid,
-                                          is_new_experiment=is_new_experiment)
-        self.update_file()
-        self.commit_file()
-        self.copy_to_archive()
-
-    def set_uuid_and_experiment_name(self,
-                                     is_new_experiment: bool = False,
-                                     keep_uuid: bool = False) -> None:
-        """Set experiment name and UUID"""
         if self.uuid is not None and (keep_uuid or not is_new_experiment):
             self.set_experiment_name(keep_uuid=keep_uuid,
                                      is_new_experiment=is_new_experiment)
@@ -119,10 +121,12 @@ class Metadata:
                               "Generating a new uuid", MetadataWarning)
             self.set_new_uuid(is_new_experiment=is_new_experiment)
 
+        self.archive_path = self.lab_archive_path / self.experiment_name
+
     def get_branch_uuid_experiment_name(self) -> Path:
         """Return a Branch-UUID aware experiment name"""
         if self.branch is None:
-            self.branch = get_git_branch(self.control_path)
+            self.branch = self.repo.get_branch_name()
 
         # Add branch and a truncated uuid to control directory name
         truncated_uuid = self.uuid[:TRUNCATED_UUID_LENGTH]
@@ -193,56 +197,110 @@ class Metadata:
                 self.uuid = generate_uuid()
                 self.set_experiment_name(is_new_experiment=is_new_experiment)
 
-    def update_file(self) -> None:
+    def write_metadata(self,
+                       restart_path: Optional[Union[Path, str]] = None,
+                       set_template_values: bool = False) -> None:
+        """Create/update metadata file, commit any changes and
+        copy metadata file to the experiment archive.
+
+        Parameters:
+            restart_path: Optional[Path]
+                Prior restart path - used for finding parent metadata
+            set_template_values: bool, default False
+                Read schema and set metadata template values for new
+                experiments
+
+        Return: None
+        """
+        # Assumes uuid and experiment name has been set
+        restart_path = Path(restart_path) if restart_path else None
+        self.update_file(restart_path=restart_path,
+                         set_template_values=set_template_values)
+        self.commit_file()
+        self.copy_to_archive()
+
+    def update_file(self,
+                    restart_path: Optional[Path] = None,
+                    set_template_values: bool = False) -> None:
         """Write any updates to metadata file"""
         metadata = self.read_file()
 
-        # Update UUID and parent UUID
-        parent_uuid = metadata.get(UUID_FIELD, None)
-        if parent_uuid is not None and parent_uuid != self.uuid:
-            metadata[PARENT_UUID_FIELD] = parent_uuid
+        # Check if UUID has changed
+        uuid_updated = metadata.get(UUID_FIELD, None) != self.uuid
+        if not uuid_updated:
+            # Leave metadata file unchanged
+            return
+
+        # Add UUID field
         metadata[UUID_FIELD] = self.uuid
 
-        # Update email/contact in metadata
-        self.update_user_info(metadata=metadata,
-                              metadata_key=CONTACT_FIELD,
-                              config_key='name',
-                              filler_values=['Your name',
-                                             'Add your name here'])
+        # Update parent UUID field
+        parent_uuid = self.get_parent_experiment(restart_path)
+        if parent_uuid and parent_uuid != self.uuid:
+            metadata[PARENT_UUID_FIELD] = parent_uuid
 
-        self.update_user_info(metadata=metadata,
-                              metadata_key=EMAIL_FIELD,
-                              config_key='email',
-                              filler_values=['you@example.com',
-                                             'Add your email address here'])
+        # Add extra fields if new branch-uuid experiment
+        # so to not over-write fields if it's a pre-existing legacy experiment
+        if self.branch_uuid_experiment:
+            metadata[CREATED_FIELD] = datetime.now().strftime('%Y-%m-%d')
+            metadata[NAME_FIELD] = self.experiment_name
+            metadata[MODEL_FIELD] = self.get_model_name()
+
+            # Add origin git URL, if defined
+            url = self.repo.get_origin_url()
+            if url:
+                metadata[GIT_URL_FIELD] = url
+
+            # Add email + contact if defined in git config
+            contact = self.repo.get_user_info(config_key='name')
+            if contact:
+                metadata[CONTACT_FIELD] = contact
+
+            email = self.repo.get_user_info(config_key="email")
+            if email:
+                metadata[EMAIL_FIELD] = email
+
+        if set_template_values:
+            # Note that retrieving schema requires internet access
+            add_template_metadata_values(metadata)
 
         # Write updated metadata to file
         YAML().dump(metadata, self.filepath)
 
-    def update_user_info(self, metadata: CommentedMap, metadata_key: str,
-                         config_key: str, filler_values=List[str]):
-        """Add user email/name to metadata - if defined and not already set
-        in metadata"""
-        example_value = filler_values[0]
-        filler_values = {value.casefold() for value in filler_values}
-        if (metadata_key not in metadata
-                or metadata[metadata_key] is None
-                or metadata[metadata_key].casefold() in filler_values):
-            # Get config value from git
-            value = get_git_user_info(repo_path=self.control_path,
-                                      config_key=config_key,
-                                      example_value=example_value)
-            if value is not None:
-                metadata[metadata_key] = value
+    def get_model_name(self) -> str:
+        """Get model name from config file"""
+        model_name = self.config.get('model')
+        if model_name == 'access':
+            # TODO: Is access used for anything other than ACCESS-ESM1-5?
+            # If so, won't set anything here.
+            model_name = 'ACCESS-ESM1-5'
+        return model_name.upper()
+
+    def get_parent_experiment(self, prior_restart_path: Path) -> None:
+        """Searches UUID in the metadata in the parent directory that
+        contains the restart"""
+        if prior_restart_path is None:
+            return
+
+        # Resolve to absolute path
+        prior_restart_path = prior_restart_path.resolve()
+
+        # Check for pre-existing metadata file
+        base_output_directory = Path(prior_restart_path).parent
+        metadata_filepath = base_output_directory / METADATA_FILENAME
+        if not metadata_filepath.exists():
+            return
+
+        # Read metadata file
+        parent_metadata = YAML().load(metadata_filepath)
+        return parent_metadata.get(UUID_FIELD, None)
 
     def commit_file(self) -> None:
         """Add a git commit for changes to metadata file, if file has changed
         and if control path is a git repository"""
         commit_message = f"Updated metadata. Experiment UUID: {self.uuid}"
-        git_commit(repo_path=self.control_path,
-                   commit_message=commit_message,
-                   paths_to_commit=[self.filepath],
-                   initialise_repo=False)
+        self.repo.commit(commit_message=commit_message,
+                         paths_to_commit=[self.filepath])
 
     def copy_to_archive(self) -> None:
         """Copy metadata file to archive"""
@@ -251,6 +309,30 @@ class Metadata:
         shutil.copy(self.filepath, archive_path / METADATA_FILENAME)
         # Note: The existence of archive path is also used for determining
         # experiment names and whether to generate a new UUID
+
+
+def get_schema_from_github():
+    """Retrieve metadata schema from github"""
+    response = requests.get(SCHEMA_URL)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Failed to fetch schema from {SCHEMA_URL}")
+    return response.json() if response.status_code == 200 else {}
+
+
+def add_template_metadata_values(metadata: CommentedMap) -> None:
+    """Add in templates for un-set metadata values"""
+    schema = get_schema_from_github()
+
+    for key, value in schema.get('properties', {}).items():
+        if key not in metadata:
+            # Add field with commented description of value
+            description = value.get('description', None)
+            if description is not None:
+                metadata[key] = None
+                metadata.yaml_add_eol_comment(description, key)
 
 
 def generate_uuid() -> str:

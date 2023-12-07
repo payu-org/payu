@@ -98,6 +98,9 @@ class Experiment(object):
 
         self.set_output_paths()
 
+        # Create metadata file and move to archive
+        self.metadata.write_metadata(restart_path=self.prior_restart_path)
+
         if not reproduce:
             # check environment for reproduce flag under PBS
             reproduce = os.environ.get('PAYU_REPRODUCE', False)
@@ -459,7 +462,6 @@ class Experiment(object):
             self.get_restarts_to_prune()
 
     def run(self, *user_flags):
-
         # XXX: This was previously done in reversion
         envmod.setup()
 
