@@ -12,7 +12,7 @@ of this document.
 NCI Users
 =========
 
-Payu is available for all users on Raijin.
+Payu is available for all users on Gadi.
 
 To load payu, load the environment module::
 
