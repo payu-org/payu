@@ -115,7 +115,7 @@ class CesmCmeps(Model):
 
         super().set_model_pathnames()
 
-        self.work_input_path = os.path.join(self.work_path, 'input')
+        self.work_input_path = os.path.join(self.work_path, 'INPUT')
         
         # MOM restarts are dealt with via pointer files (see below). Use work_restart_path
         # for additional restarts (e.g. generic tracer flux restarts)
