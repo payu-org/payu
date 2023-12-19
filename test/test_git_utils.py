@@ -141,7 +141,7 @@ def test_git_checkout_new_branch_existing():
     repo = create_new_repo(repo_path)
     existing_branch = repo.active_branch
 
-    # Test create branch with existing branch
+    # Test checkout branch with existing branch
     repo = GitRepository(repo_path)
     with pytest.raises(PayuBranchError):
         repo.checkout_branch(str(existing_branch),
@@ -153,10 +153,28 @@ def test_git_checkout_non_existent_branch():
     repo_path = tmpdir / 'remoteRepo'
     create_new_repo(repo_path)
 
-    # Test create branch with  non-existent branch
+    # Test checkout branch with non-existent branch
     repo = GitRepository(repo_path)
     with pytest.raises(PayuBranchError):
         repo.checkout_branch("Gibberish")
+
+
+def test_git_checkout_staged_changes():
+    # Setup
+    repo_path = tmpdir / 'remoteRepo'
+    create_new_repo(repo_path)
+
+    repo = GitRepository(repo_path)
+    file_path = repo_path / 'newTestFile.txt'
+    file_path.touch()
+
+    # Test checkout branch works with untracked files
+    repo.checkout_branch(new_branch=True, branch_name="NewBranch")
+
+    # Test checkout raises error with staged changes
+    repo.repo.index.add([file_path])
+    with pytest.raises(PayuBranchError):
+        repo.checkout_branch(new_branch=True, branch_name="NewBranch2")
 
 
 def test_git_checkout_existing_branch():

@@ -55,7 +55,10 @@ config = {
                                         }
                         },
             'runlog': False,
-            "experiment": ctrldir_basename
+            "experiment": ctrldir_basename,
+            "metadata": {
+                "enable": False
+            }
             }
 
 metadata = {
@@ -220,4 +223,3 @@ def make_all_files():
     make_inputs()
     make_exe()
     make_restarts()
-    write_metadata()

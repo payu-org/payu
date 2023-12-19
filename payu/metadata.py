@@ -14,7 +14,7 @@ import uuid
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Union
+from typing import Optional, Union
 
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
@@ -67,15 +67,20 @@ class Metadata:
                  config_path: Optional[Path] = None,
                  branch: Optional[str] = None,
                  control_path: Optional[Path] = None) -> None:
-        self.lab_archive_path = laboratory_archive_path
         self.config = read_config(config_path)
+        self.metadata_config = self.config.get('metadata', {})
 
         if control_path is None:
             control_path = Path(self.config.get("control_path"))
         self.control_path = control_path
         self.filepath = self.control_path / METADATA_FILENAME
+        self.lab_archive_path = laboratory_archive_path
 
-        self.repo = GitRepository(self.control_path, catch_error=True)
+        # Config flag to disable creating metadata files and UUIDs
+        self.enabled = self.metadata_config.get('enable', True)
+
+        if self.enabled:
+            self.repo = GitRepository(self.control_path, catch_error=True)
 
         self.branch = branch
         self.branch_uuid_experiment = True
@@ -83,6 +88,7 @@ class Metadata:
         # Set uuid if in metadata file
         metadata = self.read_file()
         self.uuid = metadata.get(UUID_FIELD, None)
+        self.uuid_updated = False
 
         # Experiment name configuration - this overrides experiment name
         self.config_experiment_name = self.config.get("experiment", None)
@@ -112,10 +118,15 @@ class Metadata:
         Note: Experiment name is the name used for the work and archive
         directories in the Laboratory.
         """
-        if self.uuid is not None and (keep_uuid or not is_new_experiment):
+        if not self.enabled:
+            # Set experiment name only - either configured or includes branch
+            self.set_experiment_name(ignore_uuid=True)
+
+        elif self.uuid is not None and (keep_uuid or not is_new_experiment):
             self.set_experiment_name(keep_uuid=keep_uuid,
                                      is_new_experiment=is_new_experiment)
         else:
+            # Generate new UUID
             if self.uuid is None and not is_new_experiment:
                 warnings.warn("No experiment uuid found in metadata. "
                               "Generating a new uuid", MetadataWarning)
@@ -123,23 +134,25 @@ class Metadata:
 
         self.archive_path = self.lab_archive_path / self.experiment_name
 
-    def get_branch_uuid_experiment_name(self) -> Path:
-        """Return a Branch-UUID aware experiment name"""
+    def new_experiment_name(self, ignore_uuid: bool = False) -> str:
+        """Generate a new experiment name"""
         if self.branch is None:
             self.branch = self.repo.get_branch_name()
 
         # Add branch and a truncated uuid to control directory name
-        truncated_uuid = self.uuid[:TRUNCATED_UUID_LENGTH]
-        if self.branch is None or self.branch in ('main', 'master'):
-            suffix = f'-{truncated_uuid}'
-        else:
-            suffix = f'-{self.branch}-{truncated_uuid}'
+        adding_branch = self.branch not in (None, 'main', 'master')
+        suffix = f'-{self.branch}' if adding_branch else ''
+
+        if not ignore_uuid:
+            truncated_uuid = self.uuid[:TRUNCATED_UUID_LENGTH]
+            suffix += f'-{truncated_uuid}'
 
         return self.control_path.name + suffix
 
     def set_experiment_name(self,
                             is_new_experiment: bool = False,
-                            keep_uuid: bool = False) -> None:
+                            keep_uuid: bool = False,
+                            ignore_uuid: bool = False) -> None:
         """Set experiment name - this is used for work and archive
         sub-directories in the Laboratory"""
         if self.config_experiment_name is not None:
@@ -150,8 +163,13 @@ class Metadata:
                   self.experiment_name)
             return
 
+        if ignore_uuid:
+            # Leave experiment UUID out of experiment name
+            self.experiment_name = self.new_experiment_name(ignore_uuid=True)
+            return
+
         # Branch-UUID experiment name and archive path
-        branch_uuid_experiment_name = self.get_branch_uuid_experiment_name()
+        branch_uuid_experiment_name = self.new_experiment_name()
         archive_path = self.lab_archive_path / branch_uuid_experiment_name
 
         # Legacy experiment name and archive path
@@ -180,6 +198,7 @@ class Metadata:
 
     def set_new_uuid(self, is_new_experiment: bool = False) -> None:
         """Generate a new uuid and set experiment name"""
+        self.uuid_updated = True
         self.uuid = generate_uuid()
         self.set_experiment_name(is_new_experiment=is_new_experiment)
 
@@ -211,12 +230,20 @@ class Metadata:
                 experiments
 
         Return: None
+
+        Note: This assumes setup() has been run to set UUID and experiment name
         """
-        # Assumes uuid and experiment name has been set
-        restart_path = Path(restart_path) if restart_path else None
-        self.update_file(restart_path=restart_path,
-                         set_template_values=set_template_values)
-        self.commit_file()
+        if not self.enabled:
+            # Skip creating/updating/commiting metadata
+            return
+
+        if self.uuid_updated:
+            # Update metadata if UUID has changed
+            restart_path = Path(restart_path) if restart_path else None
+            self.update_file(restart_path=restart_path,
+                             set_template_values=set_template_values)
+            self.commit_file()
+
         self.copy_to_archive()
 
     def update_file(self,
@@ -224,12 +251,6 @@ class Metadata:
                     set_template_values: bool = False) -> None:
         """Write any updates to metadata file"""
         metadata = self.read_file()
-
-        # Check if UUID has changed
-        uuid_updated = metadata.get(UUID_FIELD, None) != self.uuid
-        if not uuid_updated:
-            # Leave metadata file unchanged
-            return
 
         # Add UUID field
         metadata[UUID_FIELD] = self.uuid
@@ -269,11 +290,9 @@ class Metadata:
 
     def get_model_name(self) -> str:
         """Get model name from config file"""
-        model_name = self.config.get('model')
-        if model_name == 'access':
-            # TODO: Is access used for anything other than ACCESS-ESM1-5?
-            # If so, won't set anything here.
-            model_name = 'ACCESS-ESM1-5'
+        # Use model name unless specific model is specified in metadata config
+        default_model_name = self.config.get('model')
+        model_name = self.metadata_config.get('model', default_model_name)
         return model_name.upper()
 
     def get_parent_experiment(self, prior_restart_path: Path) -> None:
@@ -304,10 +323,9 @@ class Metadata:
 
     def copy_to_archive(self) -> None:
         """Copy metadata file to archive"""
-        archive_path = self.lab_archive_path / self.experiment_name
-        mkdir_p(archive_path)
-        shutil.copy(self.filepath, archive_path / METADATA_FILENAME)
-        # Note: The existence of archive path is also used for determining
+        mkdir_p(self.archive_path)
+        shutil.copy(self.filepath, self.archive_path / METADATA_FILENAME)
+        # Note: The existence of an archive is used for determining
         # experiment names and whether to generate a new UUID
 
 

@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pytest
 from unittest.mock import patch, Mock
+from ruamel.yaml import YAML
 
 from payu.metadata import Metadata, MetadataWarning
 
@@ -14,9 +15,13 @@ from test.common import write_config
 
 verbose = True
 
-# Global config
+# Global config - Remove set experiment and metadata config
 config = copy.deepcopy(config_orig)
 config.pop("experiment")
+config.pop("metadata")
+
+pytestmark = pytest.mark.filterwarnings(
+    "ignore::payu.git_utils.PayuGitWarning")
 
 
 def setup_module(module):
@@ -76,82 +81,58 @@ def setup_and_teardown():
 @pytest.mark.parametrize(
     "uuid, legacy_archive_exists, previous_metadata, expected_metadata",
     [
-        # Test metadata file format stays the same when no UUID changed
-        (
-            "0f49f2a0-f45e-4c0b-a3b6-4b0bf21f2b75",
-            False,
-            """contact: TestUser
-email: Test@email.com
-description: |-
-  Test description etc
-  More description
-keywords:
-- test
-- testKeyword
-# Test Comment
-experiment_uuid: 0f49f2a0-f45e-4c0b-a3b6-4b0bf21f2b75
-parent_experiment: b3298c7f-01f6-4f0a-be32-ce5d2cfb9a04
-name: UserDefinedExperimentName
-""",
-            """contact: TestUser
-email: Test@email.com
-description: |-
-  Test description etc
-  More description
-keywords:
-- test
-- testKeyword
-# Test Comment
-experiment_uuid: 0f49f2a0-f45e-4c0b-a3b6-4b0bf21f2b75
-parent_experiment: b3298c7f-01f6-4f0a-be32-ce5d2cfb9a04
-name: UserDefinedExperimentName
-"""
-        ),
         # Test new metadata file created
         (
             "b1f3ce3d-99da-40e4-849a-c8b352948a31",
             False,
             None,
-            """experiment_uuid: b1f3ce3d-99da-40e4-849a-c8b352948a31
-created: '2000-01-01'
-name: DefaultExperimentName
-model: TEST-MODEL
-url: mockUrl
-contact: mockUser
-email: mock@email.com
-"""
+            {
+                "experiment_uuid": "b1f3ce3d-99da-40e4-849a-c8b352948a31",
+                "created": '2000-01-01',
+                "name": "DefaultExperimentName",
+                "model": "TEST-MODEL",
+                "url": "mockUrl",
+                "contact": "mockUser",
+                "email": "mock@email.com"
+            }
         ),
         # Test metadata file updated when new UUID
         (
             "7b90f37c-4619-44f9-a439-f76fdf6ae2bd",
             False,
-            """experiment_uuid: b3298c7f-01f6-4f0a-be32-ce5d2cfb9a04
-contact: Add your name here
-email: Add your email address here
-""",
-            """experiment_uuid: 7b90f37c-4619-44f9-a439-f76fdf6ae2bd
-contact: mockUser
-email: mock@email.com
-created: '2000-01-01'
-name: DefaultExperimentName
-model: TEST-MODEL
-url: mockUrl
-"""
+            {
+                "experiment_uuid": "b3298c7f-01f6-4f0a-be32-ce5d2cfb9a04",
+                "contact": "Add your name here",
+                "email": "Add your email address here",
+                "description": "Add description here",
+            },
+            {
+                "experiment_uuid": "7b90f37c-4619-44f9-a439-f76fdf6ae2bd",
+                "description": "Add description here",
+                "created": '2000-01-01',
+                "name": "DefaultExperimentName",
+                "model": "TEST-MODEL",
+                "url": "mockUrl",
+                "contact": "mockUser",
+                "email": "mock@email.com"
+            }
         ),
         # Test extra fields not added with legacy experiments
         (
             "7b90f37c-4619-44f9-a439-f76fdf6ae2bd",
             True,
-            """contact: TestUser
-email: Test@email.com
-experiment_uuid: 0f49f2a0-f45e-4c0b-a3b6-4b0bf21f2b75
-name: UserDefinedExperimentName
-""",
-            """contact: TestUser
-email: Test@email.com
-experiment_uuid: 7b90f37c-4619-44f9-a439-f76fdf6ae2bd
-name: UserDefinedExperimentName
-"""
+            {
+                "experiment_uuid": "0f49f2a0-f45e-4c0b-a3b6-4b0bf21f2b75",
+                "name": "UserDefinedExperimentName",
+                "contact": "TestUser",
+                "email": "Test@email.com"
+            },
+            {
+                "experiment_uuid": "7b90f37c-4619-44f9-a439-f76fdf6ae2bd",
+                "name": "UserDefinedExperimentName",
+                "contact": "TestUser",
+                "email": "Test@email.com"
+            }
         ),
     ]
 )
@@ -159,8 +140,10 @@ def test_update_file(mock_repo, uuid, legacy_archive_exists,
                      previous_metadata, expected_metadata):
     # Create pre-existing metadata file
     metadata_path = ctrldir / 'metadata.yaml'
+    yaml = YAML()
     if previous_metadata is not None:
-        metadata_path.write_text(previous_metadata)
+        with open(metadata_path, 'w') as file:
+            yaml.dump(previous_metadata, file)
 
     # Add mock git values
     mock_repo.return_value.get_origin_url.return_value = "mockUrl"
@@ -186,7 +169,11 @@ def test_update_file(mock_repo, uuid, legacy_archive_exists,
         metadata.update_file()
 
     assert metadata_path.exists and metadata_path.is_file
-    assert metadata_path.read_text() == expected_metadata
+
+    with open(metadata_path, 'r') as file:
+        metadata = yaml.load(metadata_path)
+
+    assert metadata == expected_metadata
 
 
 @pytest.mark.parametrize(
@@ -299,7 +286,7 @@ def test_set_configured_experiment_name():
      ("master", "ctrl-cb793e91"),
      ("branch", "ctrl-branch-cb793e91")]
 )
-def test_get_branch_uuid_aware_experiment_name(branch, expected_name):
+def test_new_experiment_name(branch, expected_name):
     # Test configured experiment name is the set experiment name
     with cd(ctrldir):
         metadata = Metadata(archive_dir)
@@ -308,7 +295,25 @@ def test_get_branch_uuid_aware_experiment_name(branch, expected_name):
 
     with patch('payu.metadata.GitRepository.get_branch_name') as mock_branch:
         mock_branch.return_value = branch
-        experiment = metadata.get_branch_uuid_experiment_name()
+        experiment = metadata.new_experiment_name()
+
+    assert experiment == expected_name
+
+
+@pytest.mark.parametrize(
+    "branch, expected_name",
+    [(None, "ctrl"),
+     ("main", "ctrl"),
+     ("branch", "ctrl-branch")]
+)
+def test_new_experiment_name_ignore_uuid(branch, expected_name):
+    # Test configured experiment name is the set experiment name
+    with cd(ctrldir):
+        metadata = Metadata(archive_dir)
+
+    with patch('payu.metadata.GitRepository.get_branch_name') as mock_branch:
+        mock_branch.return_value = branch
+        experiment = metadata.new_experiment_name(ignore_uuid=True)
 
     assert experiment == expected_name
 

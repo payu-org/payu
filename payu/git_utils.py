@@ -134,6 +134,14 @@ class GitRepository:
                         new_branch: bool = False,
                         start_point: Optional[str] = None) -> None:
         """Checkout branch and create branch if specified"""
+        # First check for staged changes
+        if self.repo.is_dirty(index=True, working_tree=False):
+            raise PayuBranchError(
+                "There are staged git changes. Please stash or commit them "
+                "before running the checkout command again.\n"
+                "To see what files are staged, run: git status"
+            )
+
         # Existing branches
         local_branches = self.local_branches_dict().keys()
         remote_branches = self.remote_branches_dict()

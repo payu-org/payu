@@ -14,6 +14,7 @@ import subprocess
 
 # Local
 from payu.fsops import mkdir_p
+from payu.metadata import METADATA_FILENAME
 
 
 class SourcePath():
@@ -249,6 +250,12 @@ class SyncToRemoteArchive():
             if os.path.isdir(log_path):
                 self.source_paths.append(SourcePath(path=log_path,
                                                     is_log_file=True))
+
+        # Add metadata path to protected paths, if it exists
+        metadata_path = os.path.join(self.expt.archive_path, METADATA_FILENAME)
+        if os.path.isfile(metadata_path):
+            self.source_paths.append(SourcePath(path=metadata_path,
+                                                protected=True))
 
         # Add any additional paths to protected paths
         self.add_extra_source_paths()

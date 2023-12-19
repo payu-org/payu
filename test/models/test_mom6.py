@@ -44,7 +44,10 @@ def setup_module(module):
             'jobname': 'testrun',
             'model': 'mom6',
             'exe': 'test.exe',
-            'experiment': ctrldir_basename
+            'experiment': ctrldir_basename,
+            'metadata': {
+                'enable': False
+            }
     }
     write_config(config)
 

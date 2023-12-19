@@ -20,10 +20,10 @@ from test.common import config_path, metadata_path
 from test.common import make_expt_archive_dir
 
 
-# Global config
+# Global config - Remove set experiment and metadata config
 config = copy.deepcopy(config_orig)
-# Remove Experiment override name
 config.pop("experiment")
+config.pop("metadata")
 
 
 @pytest.fixture(autouse=True)

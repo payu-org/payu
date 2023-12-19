@@ -27,7 +27,7 @@ Using a git repository for the experiment
 It is recommended to use version control using git_ for the payu 
 *control directory*. This allows the experiment to be easily copied via 
 cloning. There is inbuilt support in payu for an experiment runlog which 
-tracks changes to files between experiment runs. There are payu commands 
+tracks changes to configuration files between experiment runs. There are payu commands 
 for creating and moving between git branches so multiple related experiments 
 can be run from the same control directory.
 
@@ -361,9 +361,12 @@ which uniquely identifies the experiment. Payu generates a new UUID when:
 
 For new experiments, payu may generate some additional metadata fields. This 
 includes an experiment name, creation date, contact, and email if defined in 
-the git configuration. This also includes parent experiment UUID and git commit hashes 
-so the history of the experiment can be tracked. These metadata files are also 
-copied to the directory that stores the archived experiment outputs. 
+the git configuration. This also includes parent experiment UUID if starting 
+from restarts, if it is defined in metadata of the parent directory 
+containing the restart.
+
+Once a metadata file is created or updated, it is copied to the directory 
+that stores the archived experiment outputs. 
 
 .. _schema: https://github.com/ACCESS-NRI/schema/blob/main/experiment_asset.json
 
@@ -390,9 +393,9 @@ the experiment name would be:
 * ``my_expt`` - if running an older experiment that has a pre-existing 
   archive.
 
-* ``set_expt_name`` - if the ``experiment`` value is configured to 
-  ``set_expt_name``(see :ref:`config`). Note that to use branches in one control 
-  repository, this would need each configured experiment value to be unique. 
+* ``set_expt_name`` - if the ``experiment`` value is configured to ``set_expt_name``
+  (see :ref:`config`). Note that to use branches in one control 
+  repository, this would need each configured ``experiment`` value to be unique.
 
 Switching between related experiments
 -------------------------------------

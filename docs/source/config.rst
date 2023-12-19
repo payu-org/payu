@@ -465,6 +465,28 @@ Postprocessing
       Create or update a bare git repository clone of the run history, called 
       ``git-runlog``, in the remote archive directory.
 
+Experiment Tracking
+-------------------
+
+``runlog``
+   Automatically commits changes to configuration files in the 
+   *control directory* when the model runs. This creates a git runlog of the 
+   history of the experiment.
+
+   ``enable`` (*Default:* ``True``)
+   Flag to enable/disable runlog.
+
+``metadata``
+   Generates and updates metadata files and UUIDs. For more details, see 
+   :ref:`usage-metadata`.
+
+   ``enable`` (*Default:* ``True``)
+      Flag to enable/disable creating/updating metadata files and UUIDs.
+      If set to False, the UUID is left out of the experiment name used
+      for archival.
+
+   ``model`` (*Default: The configured model value*)
+      Model name used when generating metadata for new experiments.
 
 Miscellaneous
 =============

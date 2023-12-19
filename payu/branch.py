@@ -13,12 +13,12 @@ from pathlib import Path
 import re
 from typing import Optional
 
-from ruamel.yaml import YAML
+from ruamel.yaml import YAML, CommentedMap
 import git
 
 from payu.fsops import read_config, DEFAULT_CONFIG_FNAME
 from payu.laboratory import Laboratory
-from payu.metadata import Metadata, UUID_FIELD
+from payu.metadata import Metadata, UUID_FIELD, METADATA_FILENAME
 from payu.git_utils import GitRepository, git_clone
 
 
@@ -286,6 +286,25 @@ def clone(repository: str,
     print(f"To change directory to control directory run:\n  cd {directory}")
 
 
+def get_branch_metadata(branch: git.Head) -> Optional[CommentedMap]:
+    """Return dictionary of branch metadata if it exists, None otherwise"""
+    # Note: Blobs are files in the commit tree
+    for blob in branch.commit.tree.blobs:
+        if blob.name == METADATA_FILENAME:
+            # Read file contents
+            metadata_content = blob.data_stream.read().decode('utf-8')
+            return YAML().load(metadata_content)
+
+
+def contains_config(branch: git.Head) -> bool:
+    """Checks if config file in defined in given branch"""
+    contains_config = False
+    for blob in branch.commit.tree.blobs:
+        if blob.name == DEFAULT_CONFIG_FNAME:
+            contains_config = True
+    return contains_config
+
+
 def print_branch_metadata(branch: git.Head, verbose: bool = False):
     """Display given Git branch UUID, or if config.yaml or metadata.yaml does
     not exist.
@@ -300,34 +319,28 @@ def print_branch_metadata(branch: git.Head, verbose: bool = False):
 
     Returns: None
     """
-    contains_config = False
-    metadata_content = None
-    # Note: Blobs are files in the commit tree
-    for blob in branch.commit.tree.blobs:
-        if blob.name == 'config.yaml':
-            contains_config = True
-        if blob.name == 'metadata.yaml':
-            # Read file contents
-            metadata_content = blob.data_stream.read().decode('utf-8')
-
     # Print branch info
-    if not contains_config:
+    if not contains_config(branch):
         print(f"    No config file found")
-    elif metadata_content is None:
+        return
+
+    metadata = get_branch_metadata(branch)
+
+    if metadata is None:
         print("    No metadata file found")
+        return
+
+    if verbose:
+        # Print all metadata
+        for key, value in metadata.items():
+            print(f'    {key}: {value}')
     else:
-        if verbose:
-            # Print all metadata
-            for line in metadata_content.splitlines():
-                print(f'    {line}')
+        # Print uuid
+        uuid = metadata.get(UUID_FIELD, None)
+        if uuid is not None:
+            print(f"    {UUID_FIELD}: {uuid}")
         else:
-            # Print uuid
-            metadata = YAML().load(metadata_content)
-            uuid = metadata.get(UUID_FIELD, None)
-            if uuid is not None:
-                print(f"    {UUID_FIELD}: {uuid}")
-            else:
-                print(f"    No UUID in metadata file")
+            print(f"    No UUID in metadata file")
 
 
 def list_branches(config_path: Optional[Path] = None,
