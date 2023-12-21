@@ -24,10 +24,10 @@ in a location that is continuously backed up.
 Using a git repository for the experiment
 -----------------------------------------
 
-It is recommended to use version control using git_ for the payu 
+It is recommended to use the git_ version control system for the payu 
 *control directory*. This allows the experiment to be easily copied via 
 cloning. There is inbuilt support in payu for an experiment runlog which 
-tracks changes to configuration files between experiment runs. There are payu commands 
+uses git to track changes to configuration files between experiment runs. There are payu commands 
 for creating and moving between git branches so multiple related experiments 
 can be run from the same control directory.
 
@@ -99,13 +99,12 @@ Populate laboratory directories
 Clone experiment
 ----------------
 
-This is the best way to copy an experiment as it guarantees that only the 
+Cloning is the best way to copy an experiment as it guarantees that only the 
 required files are copied to a new control directory, and maintains a link 
 to the original experiment through the shared git history. To clone the 
-repository, you can use ``git clone`` or ``payu clone`` which is a wrapper 
-around ``git clone`` which additionally creates or updates the metadata file 
-which gets copied to the experiment archive directory (see :ref:`usage-metadata`).
-
+repository, you can use ``payu clone``. This is a wrapper around ``git clone`` 
+which additionally creates or updates the metadata file which gets copied to 
+the experiment archive directory (see :ref:`usage-metadata`).
 For example::
     
       mkdir -p ${HOME}/${MODEL}
@@ -131,7 +130,7 @@ run::
 
       payu clone --help
 
-Alternatively to creating and checking out branches in ``payu clone``, 
+As an alternative to creating and checking out branches with ``payu clone``, 
 ``payu checkout`` can be used instead (see :ref:`usage-metadata`). 
 
 
@@ -362,7 +361,7 @@ which uniquely identifies the experiment. Payu generates a new UUID when:
 For new experiments, payu may generate some additional metadata fields. This 
 includes an experiment name, creation date, contact, and email if defined in 
 the git configuration. This also includes parent experiment UUID if starting 
-from restarts, if it is defined in metadata of the parent directory 
+from restarts and the experiment UUID is defined in metadata of the parent directory 
 containing the restart.
 
 Once a metadata file is created or updated, it is copied to the directory 
@@ -377,10 +376,13 @@ An experiment name is used to identify the experiment inside the ``work`` and
 ``archive`` sub-directories inside the *laboratory*.
 
 The experiment name historically would default to the name of the *control 
-directory*. This is still supported for experiments with a pre-existing
+directory*. This is still supported for experiments with pre-existing
 archived outputs. To support git branches and ensure uniqueness in shared 
-archives, the branch name and a short version of the experiment UUID are 
-added to new experiment names. For example, given a control directory named 
+archives, the new default behaviour is to add the branch name and a short 
+version of the experiment UUID to the name of the *control directory* when 
+creating experiment names. 
+
+For example, given a control directory named 
 ``my_expt`` and a UUID of ``416af8c6-d299-4ee6-9d77-4aefa8a9ebcb``, 
 the experiment name would be:
 
@@ -388,14 +390,12 @@ the experiment name would be:
   ``perturb``.
 
 * ``my_expt-416af8c6`` - if the control directory was not a git repository or 
-  experiments was run from the ``main`` or ``master`` branch.
+  experiment was run from the ``main`` or ``master`` git branch.
 
-* ``my_expt`` - if running an older experiment that has a pre-existing 
-  archive.
-
-* ``set_expt_name`` - if the ``experiment`` value is configured to ``set_expt_name``
-  (see :ref:`config`). Note that to use branches in one control 
-  repository, this would need each configured ``experiment`` value to be unique.
+To preserve backwards compatibility, if there's a pre-existing archive under 
+the *control directory* name, this will remain the experiment name (e.g. 
+``my_expt`` in the above example). Similarly, if the ``experiment`` value is
+configured (see :ref:`config`), this will be used for the experiment name.
 
 Switching between related experiments
 -------------------------------------

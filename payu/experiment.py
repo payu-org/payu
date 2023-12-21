@@ -27,6 +27,7 @@ import yaml
 # Local
 from payu import envmod
 from payu.fsops import mkdir_p, make_symlink, read_config, movetree
+from payu.fsops import list_archive_dirs
 from payu.schedulers.pbs import get_job_info, pbs_env_init, get_job_id
 from payu.models import index as model_index
 import payu.profilers
@@ -198,7 +199,8 @@ class Experiment(object):
         """Given a output directory type (output or restart),
         return the maximum index of output directories found"""
         try:
-            output_dirs = self.list_output_dirs(output_type)
+            output_dirs = list_archive_dirs(archive_path=self.archive_path,
+                                            dir_type=output_type)
         except EnvironmentError as exc:
             if exc.errno == errno.ENOENT:
                 output_dirs = None
@@ -207,17 +209,6 @@ class Experiment(object):
 
         if output_dirs and len(output_dirs):
             return int(output_dirs[-1].lstrip(output_type))
-
-    def list_output_dirs(self, output_type="output", full_path=False):
-        """Return a sorted list of restart or output directories in archive"""
-        naming_pattern = re.compile(fr"^{output_type}[0-9][0-9][0-9]+$")
-        dirs = [d for d in os.listdir(self.archive_path)
-                if naming_pattern.match(d)]
-        dirs.sort(key=lambda d: int(d.lstrip(output_type)))
-
-        if full_path:
-            dirs = [os.path.join(self.archive_path, d) for d in dirs]
-        return dirs
 
     def set_stacksize(self, stacksize):
 
@@ -972,7 +963,8 @@ class Experiment(object):
             return []
 
         # List all restart directories in archive
-        restarts = self.list_output_dirs(output_type='restart')
+        restarts = list_archive_dirs(archive_path=self.archive_path,
+                                     dir_type='restart')
 
         # TODO: Previous logic was to prune all restarts if self.repeat_run
         # Still need to figure out what should happen in this case

@@ -7,7 +7,6 @@ metadata
 :license: Apache License, Version 2.0, see LICENSE for details.
 """
 
-import re
 import requests
 import shutil
 import uuid
@@ -218,7 +217,8 @@ class Metadata:
 
     def write_metadata(self,
                        restart_path: Optional[Union[Path, str]] = None,
-                       set_template_values: bool = False) -> None:
+                       set_template_values: bool = False,
+                       parent_experiment: Optional[str] = None) -> None:
         """Create/update metadata file, commit any changes and
         copy metadata file to the experiment archive.
 
@@ -228,6 +228,8 @@ class Metadata:
             set_template_values: bool, default False
                 Read schema and set metadata template values for new
                 experiments
+            parent_experiment: Optional[str]
+                Parent experiment UUID to add to generated metadata
 
         Return: None
 
@@ -241,14 +243,16 @@ class Metadata:
             # Update metadata if UUID has changed
             restart_path = Path(restart_path) if restart_path else None
             self.update_file(restart_path=restart_path,
-                             set_template_values=set_template_values)
+                             set_template_values=set_template_values,
+                             parent_experiment=parent_experiment)
             self.commit_file()
 
         self.copy_to_archive()
 
     def update_file(self,
                     restart_path: Optional[Path] = None,
-                    set_template_values: bool = False) -> None:
+                    set_template_values: bool = False,
+                    parent_experiment: Optional[str] = None) -> None:
         """Write any updates to metadata file"""
         metadata = self.read_file()
 
@@ -256,9 +260,10 @@ class Metadata:
         metadata[UUID_FIELD] = self.uuid
 
         # Update parent UUID field
-        parent_uuid = self.get_parent_experiment(restart_path)
-        if parent_uuid and parent_uuid != self.uuid:
-            metadata[PARENT_UUID_FIELD] = parent_uuid
+        if parent_experiment is None:
+            parent_experiment = self.get_parent_experiment(restart_path)
+        if parent_experiment and parent_experiment != self.uuid:
+            metadata[PARENT_UUID_FIELD] = parent_experiment
 
         # Add extra fields if new branch-uuid experiment
         # so to not over-write fields if it's a pre-existing legacy experiment
@@ -290,10 +295,10 @@ class Metadata:
 
     def get_model_name(self) -> str:
         """Get model name from config file"""
-        # Use model name unless specific model is specified in metadata config
-        default_model_name = self.config.get('model')
+        # Use capitilised model name unless a specific model name is defined
+        default_model_name = self.config.get('model').upper()
         model_name = self.metadata_config.get('model', default_model_name)
-        return model_name.upper()
+        return model_name
 
     def get_parent_experiment(self, prior_restart_path: Path) -> None:
         """Searches UUID in the metadata in the parent directory that

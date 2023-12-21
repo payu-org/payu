@@ -515,7 +515,8 @@ def test_clone(mock_uuid):
     # Run clone
     with cd(tmpdir):
         clone(str(cloned_repo_path), Path("clonedRepo2"),
-              lab_path=labdir, new_branch_name="Branch2", branch="Branch1")
+              lab_path=labdir, new_branch_name="Branch2", branch="Branch1",
+              parent_experiment=uuid1)
 
     # Check new commit added and expected metadata
     cloned_repo2 = git.Repo(tmpdir / "clonedRepo2")
@@ -524,6 +525,7 @@ def test_clone(mock_uuid):
                           expected_current_branch="Branch2",
                           expected_uuid=uuid2,
                           expected_experiment="clonedRepo2-Branch2-fd7b4804",
+                          expected_parent_uuid=uuid1,
                           metadata_file=metadata_file)
 
     # Check branched from Branch1

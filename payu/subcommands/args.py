@@ -202,6 +202,17 @@ new_branch_name = {
     }
 }
 
+# Parent experiment UUID
+parent_experiment = {
+    'flags': ('--parent-experiment', '-p'),
+    'parameters': {
+        'action':   'store',
+        'dest':  'parent_experiment',
+        'default': None,
+        'help': 'The parent experiment UUID to add to generated metadata'
+    }
+}
+
 # Branch name
 branch_name = {
     'flags': [],

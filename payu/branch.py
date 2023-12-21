@@ -10,13 +10,12 @@ specified configuration in config.yaml and updates work/archive symlinks
 import os
 import warnings
 from pathlib import Path
-import re
 from typing import Optional
 
 from ruamel.yaml import YAML, CommentedMap
 import git
 
-from payu.fsops import read_config, DEFAULT_CONFIG_FNAME
+from payu.fsops import read_config, DEFAULT_CONFIG_FNAME, list_archive_dirs
 from payu.laboratory import Laboratory
 from payu.metadata import Metadata, UUID_FIELD, METADATA_FILENAME
 from payu.git_utils import GitRepository, git_clone
@@ -25,7 +24,7 @@ from payu.git_utils import GitRepository, git_clone
 NO_CONFIG_FOUND_MESSAGE = """No configuration file found on this branch.
 Skipping adding new metadata file and creating archive/work symlinks.
 
-To try find a branch that has config file, you can:
+To find a branch that has a config file, you can:
     - Display local branches by running:
         payu branch
     - Or display remote branches by running:
@@ -36,25 +35,10 @@ To checkout an existing branch, run:
 Where BRANCH_NAME is the name of the branch"""
 
 
-def archive_contains_restarts(archive_path: Path) -> bool:
-    """Return True if there's pre-existing restarts in archive"""
-    pattern = re.compile(r"^restart[0-9][0-9][0-9]+$")
-    if not archive_path.exists():
-        return False
-
-    for path in archive_path.iterdir():
-        real_path = path.resolve()
-        if real_path.is_dir() and pattern.match(path.name):
-            return True
-    return False
-
-
 def check_restart(restart_path: Optional[Path],
                   archive_path: Path) -> Optional[Path]:
     """Checks for valid prior restart path. Returns resolved restart path
     if valid, otherwise returns None"""
-    if restart_path is None:
-        return
 
     # Check for valid path
     if not restart_path.exists():
@@ -66,11 +50,12 @@ def check_restart(restart_path: Optional[Path],
     restart_path = restart_path.resolve()
 
     # Check for pre-existing restarts in archive
-    if archive_contains_restarts(archive_path):
-        warnings.warn((
-            f"Pre-existing restarts found in archive: {archive_path}."
-            f"Skipping adding 'restart: {restart_path}' to config file"))
-        return
+    if archive_path.exists():
+        if len(list_archive_dirs(archive_path, dir_type="restart")) > 0:
+            warnings.warn((
+                f"Pre-existing restarts found in archive: {archive_path}."
+                f"Skipping adding 'restart: {restart_path}' to config file"))
+            return
 
     return restart_path
 
@@ -122,7 +107,8 @@ def checkout_branch(branch_name: str,
                     config_path: Optional[Path] = None,
                     control_path: Optional[Path] = None,
                     model_type: Optional[str] = None,
-                    lab_path: Optional[Path] = None) -> None:
+                    lab_path: Optional[Path] = None,
+                    parent_experiment: Optional[str] = None) -> None:
     """Checkout branch, setup metadata and add symlinks
 
     Parameters
@@ -148,6 +134,8 @@ def checkout_branch(branch_name: str,
         Type of model - used for creating a Laboratory
     lab_path: Optional[Path]
         Path to laboratory directory
+    parent_experiment: Optional[str]
+        Parent experiment UUID to add to generated metadata
     """
     if control_path is None:
         control_path = get_control_path(config_path)
@@ -171,12 +159,15 @@ def checkout_branch(branch_name: str,
                    is_new_experiment=is_new_experiment)
 
     # Gets valid prior restart path
-    prior_restart_path = check_restart(restart_path=restart_path,
-                                       archive_path=metadata.archive_path)
+    prior_restart_path = None
+    if restart_path:
+        prior_restart_path = check_restart(restart_path=restart_path,
+                                           archive_path=metadata.archive_path)
 
     # Create/update and commit metadata file
     metadata.write_metadata(set_template_values=True,
-                            restart_path=prior_restart_path)
+                            restart_path=prior_restart_path,
+                            parent_experiment=parent_experiment)
 
     # Add restart option to config
     if prior_restart_path:
@@ -215,7 +206,8 @@ def clone(repository: str,
           model_type: Optional[str] = None,
           config_path: Optional[Path] = None,
           lab_path: Optional[Path] = None,
-          restart_path: Optional[Path] = None) -> None:
+          restart_path: Optional[Path] = None,
+          parent_experiment: Optional[str] = None) -> None:
     """Clone an experiment control repository.
 
     Parameters:
@@ -241,6 +233,8 @@ def clone(repository: str,
             Path to laboratory directory
         restart_path: Optional[Path]
             Absolute restart path to start experiment from
+        parent_experiment: Optional[str]
+            Parent experiment UUID to add to generated metadata
 
     Returns: None
     """
@@ -265,7 +259,8 @@ def clone(repository: str,
                             config_path=config_path,
                             control_path=control_path,
                             model_type=model_type,
-                            lab_path=lab_path)
+                            lab_path=lab_path,
+                            parent_experiment=parent_experiment)
         else:
             # Checkout branch
             if branch is None:
@@ -278,7 +273,8 @@ def clone(repository: str,
                             control_path=control_path,
                             model_type=model_type,
                             lab_path=lab_path,
-                            is_new_experiment=True)
+                            is_new_experiment=True,
+                            parent_experiment=parent_experiment)
     finally:
         # Change back to original working directory
         os.chdir(owd)
@@ -288,7 +284,6 @@ def clone(repository: str,
 
 def get_branch_metadata(branch: git.Head) -> Optional[CommentedMap]:
     """Return dictionary of branch metadata if it exists, None otherwise"""
-    # Note: Blobs are files in the commit tree
     for blob in branch.commit.tree.blobs:
         if blob.name == METADATA_FILENAME:
             # Read file contents
@@ -331,9 +326,10 @@ def print_branch_metadata(branch: git.Head, verbose: bool = False):
         return
 
     if verbose:
-        # Print all metadata
+        # Print all non-null metadata values
         for key, value in metadata.items():
-            print(f'    {key}: {value}')
+            if value:
+                print(f'    {key}: {value}')
     else:
         # Print uuid
         uuid = metadata.get(UUID_FIELD, None)

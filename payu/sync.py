@@ -13,7 +13,7 @@ import subprocess
 
 
 # Local
-from payu.fsops import mkdir_p
+from payu.fsops import mkdir_p, list_archive_dirs
 from payu.metadata import METADATA_FILENAME
 
 
@@ -49,8 +49,10 @@ class SyncToRemoteArchive():
     def add_outputs_to_sync(self):
         """Add paths of outputs in archive to sync. The last output is
         protected"""
-        outputs = self.expt.list_output_dirs(output_type='output',
-                                             full_path=True)
+        outputs = list_archive_dirs(archive_path=self.expt.archive_path,
+                                    dir_type='output')
+        outputs = [os.path.join(self.expt.archive_path, output)
+                   for output in outputs]
         if len(outputs) > 0:
             last_output = outputs.pop()
             if not self.ignore_last:
@@ -70,8 +72,10 @@ class SyncToRemoteArchive():
             return
 
         # Get sorted list of restarts in archive
-        restarts = self.expt.list_output_dirs(output_type='restart',
-                                              full_path=True)
+        restarts = list_archive_dirs(archive_path=self.expt.archive_path,
+                                     dir_type='restart')
+        restarts = [os.path.join(self.expt.archive_path, restart)
+                    for restart in restarts]
         if restarts == []:
             return
 

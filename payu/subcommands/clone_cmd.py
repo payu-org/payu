@@ -17,7 +17,8 @@ parameters = {'description': ('A wrapper around git clone. Clones a '
 arguments = [args.model, args.config, args.laboratory,
              args.keep_uuid, args.clone_branch,
              args.repository, args.local_directory,
-             args.new_branch_name, args.restart_path]
+             args.new_branch_name, args.restart_path,
+             args.parent_experiment]
 
 
 def transform_strings_to_path(path_str=None):
@@ -25,7 +26,8 @@ def transform_strings_to_path(path_str=None):
 
 
 def runcmd(model_type, config_path, lab_path, keep_uuid,
-           branch, repository, local_directory, new_branch_name, restart_path):
+           branch, repository, local_directory, new_branch_name, restart_path,
+           parent_experiment):
     """Execute the command."""
     config_path = transform_strings_to_path(config_path)
     restart_path = transform_strings_to_path(restart_path)
@@ -40,7 +42,8 @@ def runcmd(model_type, config_path, lab_path, keep_uuid,
           config_path=config_path,
           lab_path=lab_path,
           new_branch_name=new_branch_name,
-          restart_path=restart_path)
+          restart_path=restart_path,
+          parent_experiment=parent_experiment)
 
 
 runscript = runcmd

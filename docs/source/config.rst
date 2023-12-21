@@ -469,7 +469,7 @@ Experiment Tracking
 -------------------
 
 ``runlog``
-   Automatically commits changes to configuration files in the 
+   Automatically commits changes to configuration files and manifests in the 
    *control directory* when the model runs. This creates a git runlog of the 
    history of the experiment.
 
@@ -477,7 +477,7 @@ Experiment Tracking
    Flag to enable/disable runlog.
 
 ``metadata``
-   Generates and updates metadata files and UUIDs. For more details, see 
+   Generates and updates metadata files and unique experiment IDs (UUIDs). For more details, see 
    :ref:`usage-metadata`.
 
    ``enable`` (*Default:* ``True``)
