@@ -91,7 +91,6 @@ class Model(object):
                                           self.exec_name)
         else:
             self.exec_path = None
-
         if self.exec_path:
             # Make exec_name consistent for models with fully qualified path.
             # In all cases it will just be the name of the executable without a

@@ -25,8 +25,13 @@ workdir = ctrldir / 'work'
 payudir = tmpdir / 'payu'
 
 archive_dir = labdir / 'archive'
+
+# Note: These are using a fixed archive name which is set in config.yaml
 expt_archive_dir = archive_dir / ctrldir_basename
 expt_workdir = labdir / 'work' / ctrldir_basename
+
+config_path = ctrldir / 'config.yaml'
+metadata_path = ctrldir / 'metadata.yaml'
 
 print('tmpdir: {}'.format(tmpdir))
 
@@ -48,9 +53,17 @@ config = {
                                         'input': False,
                                         'exe': False
                                         }
-                        }
+                        },
+            'runlog': False,
+            "experiment": ctrldir_basename,
+            "metadata": {
+                "enable": False
+            }
             }
 
+metadata = {
+    "experiment_uuid": "testUuid",
+}
 
 
 @contextmanager
@@ -122,8 +135,8 @@ def payu_setup(model_type=None,
                            force)
 
 
-def write_config(config):
-    with (ctrldir / 'config.yaml').open('w') as file:
+def write_config(config, path=config_path):
+    with path.open('w') as file:
         file.write(yaml.dump(config, default_flow_style=False))
 
 
@@ -199,6 +212,11 @@ def remove_expt_archive_dirs(type='restart'):
             shutil.rmtree(dir_path)
         except Exception as e:
             print(e)
+
+
+def write_metadata(metadata=metadata, path=metadata_path):
+    with path.open('w') as file:
+        file.write(yaml.dump(metadata, default_flow_style=False))
 
 
 def make_all_files():

@@ -10,13 +10,18 @@ from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, expt_archive_dir
 from test.common import config as config_orig
 from test.common import write_config
-from test.common import make_all_files, make_random_file
+from test.common import make_all_files, make_random_file, write_metadata
 from test.common import make_expt_archive_dir
 
 verbose = True
 
 # Global config
 config = copy.deepcopy(config_orig)
+
+# Enable metadata
+config.pop('metadata')
+pytestmark = pytest.mark.filterwarnings(
+    "ignore::payu.git_utils.PayuGitWarning")
 
 
 def setup_module(module):
@@ -37,6 +42,7 @@ def setup_module(module):
         labdir.mkdir()
         ctrldir.mkdir()
         make_all_files()
+        write_metadata()
     except Exception as e:
         print(e)
 
@@ -285,7 +291,8 @@ def test_sync():
     sync.run()
 
     expected_dirs_synced = {'output000', 'output001', 'output002',
-                            'output003', 'output004', 'pbs_logs'}
+                            'output003', 'output004',
+                            'pbs_logs', 'metadata.yaml'}
 
     # Test output is moved to remote dir
     assert set(os.listdir(remote_archive)) == expected_dirs_synced

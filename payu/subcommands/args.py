@@ -149,3 +149,129 @@ sync_ignore_last = {
                      syncing.',
     }
 }
+
+# Clone Repository
+repository = {
+    'flags': [],
+    'parameters': {
+        'dest': 'repository',
+        'help': 'The repository to clone from. This can be either a local \
+                 path or git url'
+    }
+}
+
+# Clone to directory
+local_directory = {
+    'flags': [],
+    'parameters': {
+        'dest': 'local_directory',
+        'help': 'The directory to clone into'
+    }
+}
+
+# Clone uuid flag
+keep_uuid = {
+    'flags': ('-k', '--keep-uuid'),
+    'parameters': {
+        'action':   'store_true',
+        'default':  False,
+        'dest': 'keep_uuid',
+        'help': 'If an experiment uuid exists, leave it unchanged'
+    }
+}
+
+# Clone branch
+clone_branch = {
+    'flags': ('--branch', '-B'),
+    'parameters': {
+        'action':   'store',
+        'dest':     'branch',
+        'default':  None,
+        'help': 'Clone and checkout this branch'
+    }
+}
+
+# Clone create branch
+new_branch_name = {
+    'flags': ('--new-branch', '-b'),
+    'parameters': {
+        'action':   'store',
+        'dest':  'new_branch_name',
+        'default': None,
+        'help': 'The name of the git branch to create and checkout'
+    }
+}
+
+# Parent experiment UUID
+parent_experiment = {
+    'flags': ('--parent-experiment', '-p'),
+    'parameters': {
+        'action':   'store',
+        'dest':  'parent_experiment',
+        'default': None,
+        'help': 'The parent experiment UUID to add to generated metadata'
+    }
+}
+
+# Branch name
+branch_name = {
+    'flags': [],
+    'parameters': {
+        'dest': 'branch_name',
+        'help': 'The name of the git branch to create/checkout'
+    }
+}
+
+# Branch start point
+start_point = {
+    'flags': [],
+    'parameters': {
+        'nargs': '?',
+        'dest': 'start_point',
+        'help': 'The new branch head will point to this commit'
+    }
+}
+
+
+# Branch starting restart
+restart_path = {
+    'flags': ('--restart', '-r'),
+    'parameters': {
+        'dest': 'restart_path',
+        'action': 'store',
+        'help': 'The restart path from which to start the model run'
+    }
+}
+
+# Checkout new branch flag
+new_branch = {
+    'flags': ['-b'],
+    'parameters': {
+        'dest': 'new_branch',
+        'action': 'store_true',
+        'default':  False,
+        'help': 'Create new branch'
+    }
+}
+
+# List branches verbose flag
+verbose = {
+    'flags': ['--verbose', '-v'],
+    'parameters': {
+        'dest': 'verbose',
+        'action': 'store_true',
+        'default':  False,
+        'help': 'Display all contents of metadata file'
+    }
+}
+
+# List remote branches flag
+remote = {
+    'flags': ['--remote', '-r'],
+    'parameters': {
+        'dest': 'remote',
+        'action': 'store_true',
+        'default':  False,
+        'help': 'Display metadata of branches in remote directory'
+    }
+}

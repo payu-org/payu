@@ -264,4 +264,40 @@ def test_lib_update_if_nci_module_not_required():
          'libmpi_usempif08.so.40': '/$HOME/exe/spack-microarchitectures.git/opt/spack/linux-rocky8-cascadelake/intel-2019.5.281/openmpi-4.1.5-ooyg5wc7sa3tvmcpazqqb44pzip3wbyo/lib/libmpi_usempif08.so.40',
     }
     result = payu.envmod.lib_update(required_libs_dict, 'libmpi.so')
-    assert(result == '')
+    assert (result == '')
+
+
+def test_list_archive_dirs():
+    # Create archive directories - mix of valid/invalid names
+    archive_dirs = [
+        'output000', 'output1001', 'output023',
+        'output', 'Output001', 'output1',
+        'Restart', 'restart2', 'restart',
+        'restart102932', 'restart021', 'restart001',
+    ]
+    tmp_archive = tmpdir / 'test_archive'
+    for dir in archive_dirs:
+        (tmp_archive / dir).mkdir(parents=True)
+
+    # Add some files
+    (tmp_archive / 'restart005').touch()
+    (tmp_archive / 'output005').touch()
+
+    # Add a restart symlink
+    tmp_archive_2 = tmpdir / 'test_archive_2'
+    source_path = tmp_archive_2 / 'restart999'
+    source_path.mkdir(parents=True)
+    (tmp_archive / 'restart23042').symlink_to(source_path)
+
+    # Test list output dirs and with string archive path
+    outputs = payu.fsops.list_archive_dirs(str(tmp_archive), dir_type="output")
+    assert outputs == ['output000', 'output023', 'output1001']
+
+    # Test list restarts
+    restarts = payu.fsops.list_archive_dirs(tmp_archive, dir_type="restart")
+    assert restarts == ['restart001', 'restart021',
+                        'restart23042', 'restart102932']
+
+    # Clean up test archive
+    shutil.rmtree(tmp_archive)
+    shutil.rmtree(tmp_archive_2)

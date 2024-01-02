@@ -30,7 +30,6 @@ DEFAULT_CONFIG = 'config.yaml'
 
 def parse():
     """Parse the command line inputs and execute the subcommand."""
-
     parser = generate_parser()
 
     # Display help if no arguments are provided

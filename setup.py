@@ -36,7 +36,9 @@ setup(
         'yamanifest',
         'dateutil',
         'tenacity',
-        'cftime'
+        'cftime',
+        'GitPython',
+        'ruamel.yaml'
     ],
     install_requires=[
         'f90nml >= 0.16',
@@ -45,7 +47,9 @@ setup(
         'requests[security]',
         'python-dateutil',
         'tenacity!=7.0.0',
-        'cftime'
+        'cftime',
+        'GitPython >= 3.1.40',
+        'ruamel.yaml >= 0.18.5'
     ],
     tests_require=[
         'pytest',
@@ -59,6 +63,9 @@ setup(
             'payu-collate = payu.subcommands.collate_cmd:runscript',
             'payu-profile = payu.subcommands.profile_cmd:runscript',
             'payu-sync = payu.subcommands.sync_cmd:runscript',
+            'payu-branch = payu.subcommands.branch_cmd:runscript',
+            'payu-clone = payu.subcommands.clone_cmd:runscript',
+            'payu-checkout = payu.subcommands.checkout_cmd:runscript'
         ]
     },
     classifiers=[

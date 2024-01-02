@@ -8,8 +8,8 @@ import f90nml
 import payu
 
 from test.common import cd
-from test.common import tmpdir, ctrldir, labdir, expt_workdir
-from test.common import write_config
+from test.common import tmpdir, ctrldir, labdir, expt_workdir, ctrldir_basename
+from test.common import write_config, write_metadata
 from test.common import make_random_file, make_inputs, make_exe
 
 verbose = True
@@ -34,6 +34,8 @@ def setup_module(module):
         ctrldir.mkdir()
         expt_workdir.mkdir(parents=True)
         make_inputs()
+        make_exe()
+        write_metadata()
     except Exception as e:
         print(e)
 
@@ -41,10 +43,13 @@ def setup_module(module):
             'laboratory': 'lab',
             'jobname': 'testrun',
             'model': 'mom6',
-            'exe': 'test.exe'
+            'exe': 'test.exe',
+            'experiment': ctrldir_basename,
+            'metadata': {
+                'enable': False
+            }
     }
     write_config(config)
-    make_exe()
 
 
 def teardown_module(module):
