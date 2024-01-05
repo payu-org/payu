@@ -1,7 +1,7 @@
 # Run CI tests
 name: CI
 
-# Controls when the action will run. 
+# Controls when the action will run.
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
@@ -14,6 +14,31 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+  conda-build:
+    name: Conda Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup conda environment
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniconda-version: "latest"
+          python-version: 3.11
+          environment-file: conda/environment.yml
+          auto-update-conda: false
+          auto-activate-base: false
+          show-channel-urls: true
+
+      - name: Run conda build
+        shell: bash -el {0}
+        # For the build, these environment variables would usually be set based on repo tags,
+        # but they can be these defaults instead since we don't use the build
+        env:
+          GIT_DESCRIBE_TAG: test
+          GIT_DESCRIBE_NUMBER: 0
+        run: conda build . --no-anaconda-upload
+
   build:
     runs-on: ubuntu-latest
 
@@ -26,7 +51,7 @@ jobs:
     steps:
 
       # Checks-out repository code
-      - name: Checkout code 
+      - name: Checkout code
         uses: actions/checkout@v2
 
       - name: Set up Python ${{ matrix.python-version }}
