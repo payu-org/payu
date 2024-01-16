@@ -52,9 +52,17 @@ payu-checkout = "payu.subcommands.checkout_cmd:runscript"
 build-backend = "setuptools.build_meta"
 requires = [
   "setuptools >= 61.0.0",
+  "versioneer[toml]"
 ]
 
 [tool.setuptools.packages.find]
 include = ["payu*"]
 namespaces = false
 
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "payu/_version.py"
+versionfile_build = "payu/_version.py"
+tag_prefix = "v"
+parentdir_prefix = "payu-"
