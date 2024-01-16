@@ -1,0 +1,60 @@
+[project]
+name = "payu"
+authors = [
+    { name = "Marshall Ward", email = "python@marshallward.org" }
+]
+maintainers = [
+    { name = "ACCESS-NRI", email = "access.nri@anu.edu.au" }
+]
+description = "A climate model workflow manager for supercomputing environments"
+readme = "README.rst"
+license = { text = "Apache-2.0" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Utilities",
+]
+keywords = ["climate model", "workflow"]
+dynamic = ["version"]
+dependencies = [
+    "f90nml >= 0.16",
+    "yamanifest >= 0.3.4",
+    "PyYAML",
+    "requests[security]",
+    "python-dateutil",
+    "tenacity!=7.0.0",
+    "cftime",
+    "GitPython >= 3.1.40",
+    "ruamel.yaml >= 0.18.5"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pylint",
+    "Sphinx"
+]
+mitgcm = ["mnctools>=0.2"]
+
+[project.scripts]
+payu = "payu.cli:parse"
+payu-run = "payu.subcommands.run_cmd:runscript"
+payu-collate = "payu.subcommands.collate_cmd:runscript"
+payu-profile = "payu.subcommands.profile_cmd:runscript"
+payu-sync = "payu.subcommands.sync_cmd:runscript"
+payu-branch = "payu.subcommands.branch_cmd:runscript"
+payu-clone = "payu.subcommands.clone_cmd:runscript"
+payu-checkout = "payu.subcommands.checkout_cmd:runscript"
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+  "setuptools >= 61.0.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["payu*"]
+namespaces = false
+
