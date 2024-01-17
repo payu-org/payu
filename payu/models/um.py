@@ -13,6 +13,7 @@ import datetime
 import fileinput
 import glob
 from importlib.machinery import SourceFileLoader
+from importlib.util import spec_from_loader, module_from_spec
 import os
 import shutil
 import string
@@ -108,10 +109,14 @@ class UnifiedModel(Model):
 
         # Set up environment variables needed to run UM.
         # Look for a python file in the config directory.
-        um_env = SourceFileLoader(
+        loader = SourceFileLoader(
             'um_env',
             os.path.join(self.control_path, 'um_env.py')
-        ).load_module()
+        )
+        um_env = module_from_spec(
+            spec_from_loader(loader.name, loader)
+        )
+        loader.exec_module(um_env)
         um_vars = um_env.vars
 
         # Stage the UM restart file.
