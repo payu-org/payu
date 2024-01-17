@@ -14,7 +14,46 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+  pypa-build:
+    name: PyPA build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - run: |
+          python3 -m pip install --upgrade build && python3 -m build
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: ./dist
+
+  testpypi-publish:
+    needs: ['pypa-build']
+    name: Publish to TestPyPI.org
+    runs-on: ubuntu-latest
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          path: artifact/
+
+      - name: Publish package distributions to TestPyPI
+        # This is version v1.8.10
+        uses: pypa/gh-action-pypi-publish@b7f401de30cb6434a1e19f805ff006643653240e
+        with:
+          packages_dir: artifact/
+          repository_url: https://test.pypi.org/legacy/
+          verbose: true
+
   conda-build:
+    needs: ["testpypi-publish"]
+    if: always() && needs.testpypi-publish.result == 'success'
     name: Conda Build
     runs-on: ubuntu-latest
     steps:
@@ -32,14 +71,12 @@ jobs:
 
       - name: Run conda build
         shell: bash -el {0}
-        # For the build, these environment variables would usually be set based on repo tags,
-        # but they can be these defaults instead since we don't use the build
         env:
-          GIT_DESCRIBE_TAG: test
-          GIT_DESCRIBE_NUMBER: 0
+          PYPI_URL: https://test.pypi.org
         run: conda build . --no-anaconda-upload
 
-  build:
+  test:
+    name: Tests
     runs-on: ubuntu-latest
 
     # Run the job for different versions of python
