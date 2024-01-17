@@ -1,42 +1,32 @@
+{% set data = load_setup_py_data(setup_file='../setup.py') %}
+{% set version = data.get('version') %}
+
 package:
     name: payu
-    version: {{ GIT_DESCRIBE_TAG }}
+    version: "{{ version }}"
 
 build:
     noarch: python
-    number: {{ GIT_DESCRIBE_NUMBER }}
-    script: "{{ PYTHON }}  -m pip install . --no-deps"
-    entry_points:
-        - payu = payu.cli:parse
-        - payu-run = payu.subcommands.run_cmd:runscript
-        - payu-collate = payu.subcommands.collate_cmd:runscript
-        - payu-profile = payu.subcommands.profile_cmd:runscript
-        - payu-sync = payu.subcommands.sync_cmd:runscript
-        - payu-branch = payu.subcommands.branch_cmd:runscript
-        - payu-clone = payu.subcommands.clone_cmd:runscript
-        - payu-checkout = payu.subcommands.checkout_cmd:runscript
+    number: 0
+    script: "{{ PYTHON }}  -m pip install . -vv"
 
 source:
-    git_url: ../
+  url: "https://pypi.io/packages/source/p/payu/payu-{{ version }}.tar.gz"
 
 requirements:
-    build:
-        - python <=3.11
-        - pbr
-        - setuptools
+    host:
+        - python
+        - pip
+        - versioneer
     run:
-        - python <=3.11
+        - python >=3.9
         - f90nml >=0.16
         - yamanifest >=0.3.4
         - PyYAML
+        - requests[security]
         - python-dateutil
-        - tenacity
-        - requests
+        - tenacity!=7.0.0
         - cftime
-        # The following two requirements are from the security
-        # extra for the pypi package
-        - pyOpenSSL >=0.14
-        - cryptography>=1.3.4
         - GitPython >=3.1.40
         - ruamel.yaml >=0.18.5
 
@@ -46,6 +36,9 @@ test:
     commands:
         - payu list
 
-
 about:
     home: https://github.com/payu-org/payu/
+    license: Apache Software
+    license_family: APACHE
+    summary: "A climate model workflow manager for supercomputing environments"
+    doc_url: https://payu.readthedocs.io/en/latest/
