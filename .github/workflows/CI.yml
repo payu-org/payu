@@ -75,7 +75,7 @@ jobs:
           PYPI_URL: https://test.pypi.org
         run: conda build . --no-anaconda-upload
 
-  test:
+  tests:
     name: Tests
     runs-on: ubuntu-latest
 
@@ -121,7 +121,7 @@ jobs:
         run: cd docs && make html
 
   coveralls_finish:
-    needs: build
+    needs: tests
     runs-on: ubuntu-latest
     steps:
     - name: Coveralls Finished
