@@ -18,16 +18,19 @@ classifiers = [
 ]
 keywords = ["climate model", "workflow"]
 dynamic = ["version"]
+# The dependencies here are also used by the conda build and so must follow
+# conda package match specifications, see here:
+# https://docs.conda.io/projects/conda-build/en/stable/resources/package-spec.html#package-match-specifications
 dependencies = [
-    "f90nml >= 0.16",
-    "yamanifest >= 0.3.4",
+    "f90nml >=0.16",
+    "yamanifest >=0.3.4",
     "PyYAML",
-    "requests[security]",
+    "requests",
     "python-dateutil",
-    "tenacity!=7.0.0",
+    "tenacity >=8.0.0",
     "cftime",
-    "GitPython >= 3.1.40",
-    "ruamel.yaml >= 0.18.5"
+    "GitPython >=3.1.40",
+    "ruamel.yaml >=0.18.5"
 ]
 
 [project.optional-dependencies]

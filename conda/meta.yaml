@@ -1,5 +1,7 @@
 {% set data = load_setup_py_data(setup_file='../setup.py', from_recipe_dir=True) %}
 {% set version = data.get('version') %}
+{% set pyproj = load_file_data('../pyproject.toml', from_recipe_dir=True) %}
+{% set project = pyproj.get('project') %}
 
 package:
     name: payu
@@ -21,15 +23,9 @@ requirements:
         - versioneer
     run:
         - python >=3.9
-        - f90nml >=0.16
-        - yamanifest >=0.3.4
-        - PyYAML
-        - requests
-        - python-dateutil
-        - tenacity
-        - cftime
-        - GitPython >=3.1.40
-        - ruamel.yaml >=0.18.5
+        {% for dep in project.get('dependencies', []) %}
+        - {{ dep }}
+        {% endfor %}
 
 test:
     imports:
