@@ -1,6 +1,6 @@
 name: CD
 
-on: push
+on:
   push:
     tags:
       - '*'
