@@ -34,6 +34,7 @@ jobs:
   testpypi-publish:
     needs: ['pypa-build']
     name: Publish to TestPyPI.org
+    if: github.repository == 'payu-org/payu'
     runs-on: ubuntu-latest
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
@@ -121,10 +122,10 @@ jobs:
         run: cd docs && make html
 
   coveralls_finish:
+    name: Coveralls Finished
     needs: tests
     runs-on: ubuntu-latest
     steps:
-    - name: Coveralls Finished
-      uses: AndreMiras/coveralls-python-action@develop
+    - uses: AndreMiras/coveralls-python-action@develop
       with:
         parallel-finished: true

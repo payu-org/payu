@@ -1,11 +1,14 @@
 name: CD
 
-on: [push, pull_request]
+on: push
+  push:
+    tags:
+      - '*'
 
 jobs:
   pypi-build:
     name: Build package for PyPI
-    if: github.repository == 'payu-org/payu' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    if: github.repository == 'payu-org/payu'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +28,7 @@ jobs:
     # Split build and publish to restrict trusted publishing to just this workflow
     needs: ['pypi-build']
     name: Publish to PyPI.org
-    if: github.repository == 'payu-org/payu' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    if: github.repository == 'payu-org/payu'
     runs-on: ubuntu-latest
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
@@ -42,7 +45,7 @@ jobs:
           packages_dir: artifact/
 
   conda:
-    name: build and deploy to conda
+    name: Build with conda and upload
     needs: pypi-publish
     if: always() && needs.pypi-publish.result == 'success'
     runs-on: ubuntu-latest
