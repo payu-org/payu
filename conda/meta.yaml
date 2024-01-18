@@ -11,6 +11,10 @@ build:
     noarch: python
     number: 0
     script: "{{ PYTHON }}  -m pip install . -vv"
+    entry_points:
+        {% for name, script in project.get('scripts', {}).items() %}
+        - {{ name }} = {{ script }}
+        {% endfor %}
 
 source:
     path: ../
