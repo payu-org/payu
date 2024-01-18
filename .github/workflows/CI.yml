@@ -37,7 +37,6 @@ jobs:
     if: github.repository == 'payu-org/payu'
     runs-on: ubuntu-latest
     permissions:
-      # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
     steps:
       - uses: actions/download-artifact@v3
@@ -45,8 +44,7 @@ jobs:
           path: artifact/
 
       - name: Publish package distributions to TestPyPI
-        # This is version v1.8.10
-        uses: pypa/gh-action-pypi-publish@b7f401de30cb6434a1e19f805ff006643653240e
+        uses: pypa/gh-action-pypi-publish@v1.8.11
         with:
           packages_dir: artifact/
           repository_url: https://test.pypi.org/legacy/
