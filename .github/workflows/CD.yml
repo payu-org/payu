@@ -28,7 +28,7 @@ jobs:
     # Split build and publish to restrict trusted publishing to just this workflow
     needs: ['pypi-build']
     name: Publish to PyPI.org
-    if: github.repository == 'payu-org/payu'
+    if: always() && needs.pypi-build.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
@@ -39,15 +39,13 @@ jobs:
           path: artifact/
 
       - name: Publish package distributions to PyPI
-        # This is version v1.8.10
-        uses: pypa/gh-action-pypi-publish@b7f401de30cb6434a1e19f805ff006643653240e
+        uses: pypa/gh-action-pypi-publish@v1.8.11
         with:
-          packages_dir: artifact/
+          packages-dir: artifact/
 
   conda:
     name: Build with conda and upload
-    needs: pypi-publish
-    if: always() && needs.pypi-publish.result == 'success'
+    if: github.repository == 'payu-org/payu'
     runs-on: ubuntu-latest
 
     # Steps represent a sequence of tasks that will be executed as part of the job
@@ -66,8 +64,6 @@ jobs:
           show-channel-urls: true
 
       - name: Build and upload the conda package
-        env:
-          PYPI_URL: https://pypi.io
         uses: uibcdf/action-build-and-upload-conda-packages@v1.2.0
         with:
           meta_yaml_dir: conda

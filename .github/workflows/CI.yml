@@ -31,28 +31,7 @@ jobs:
         with:
           path: ./dist
 
-  testpypi-publish:
-    needs: ['pypa-build']
-    name: Publish to TestPyPI.org
-    if: github.repository == 'payu-org/payu'
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          path: artifact/
-
-      - name: Publish package distributions to TestPyPI
-        uses: pypa/gh-action-pypi-publish@v1.8.11
-        with:
-          packages_dir: artifact/
-          repository_url: https://test.pypi.org/legacy/
-          verbose: true
-
   conda-build:
-    needs: ["testpypi-publish"]
-    if: always() && needs.testpypi-publish.result == 'success'
     name: Conda Build
     runs-on: ubuntu-latest
     steps:
@@ -70,8 +49,6 @@ jobs:
 
       - name: Run conda build
         shell: bash -el {0}
-        env:
-          PYPI_URL: https://test.pypi.org
         run: conda build . --no-anaconda-upload
 
   tests:

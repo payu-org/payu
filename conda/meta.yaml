@@ -11,11 +11,9 @@ build:
     noarch: python
     number: 0
     script: "{{ PYTHON }}  -m pip install . -vv"
-    script_env:
-        - PYPI_URL
 
 source:
-    url: "{{ environ.get('PYPI_URL', 'https://pypi.io') }}/packages/source/p/payu/payu-{{ version }}.tar.gz"
+    path: ../
 
 requirements:
     host:
