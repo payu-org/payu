@@ -20,6 +20,7 @@ requirements:
         - python
         - pip
         - setuptools >=61.0.0
+        - versioneer
     run:
         - python >=3.9
         {% for dep in project.get('dependencies', []) %}
