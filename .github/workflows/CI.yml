@@ -12,6 +12,9 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+env:
+  PY_VERSION: 3.11
+
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   pypa-build:
@@ -22,7 +25,7 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: ${{ vars.PYTHON_VERSION }}
+          python-version: ${{ env.PY_VERSION }}
 
       - run: |
           python3 -m pip install --upgrade build && python3 -m build
@@ -41,7 +44,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@11b562958363ec5770fef326fe8ef0366f8cbf8a # v3.0.1
         with:
           miniconda-version: "latest"
-          python-version: ${{ vars.PYTHON_VERSION }}
+          python-version: ${{ env.PY_VERSION }}
           environment-file: conda/environment.yml
           auto-update-conda: false
           auto-activate-base: false
