@@ -17,7 +17,6 @@ jobs:
   pypa-build:
     name: PyPA build
     runs-on: ubuntu-latest
-    environment: release
     steps:
       - uses: actions/checkout@v4
 
@@ -35,7 +34,6 @@ jobs:
   conda-build:
     name: Conda Build
     runs-on: ubuntu-latest
-    environment: release
     steps:
       - uses: actions/checkout@v4
 

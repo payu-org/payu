@@ -10,7 +10,6 @@ jobs:
     name: Build package for PyPI
     if: github.repository == 'payu-org/payu'
     runs-on: ubuntu-latest
-    environment: release
     steps:
       - uses: actions/checkout@v4
 
@@ -49,7 +48,6 @@ jobs:
     name: Build with conda and upload
     if: github.repository == 'payu-org/payu'
     runs-on: ubuntu-latest
-    environment: release
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Checkout source
