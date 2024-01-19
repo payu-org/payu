@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup conda environment
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@11b562958363ec5770fef326fe8ef0366f8cbf8a # v3.0.1
         with:
           miniconda-version: "latest"
           python-version: 3.11
@@ -89,7 +89,7 @@ jobs:
           PYTHONPATH=. pytest --cov=payu -s test;
 
       - name: Coveralls
-        uses: AndreMiras/coveralls-python-action@develop
+        uses: AndreMiras/coveralls-python-action@f5fd5c309b39d01599fb92c72d4f7409ea78aec9 # v20201129
         with:
           parallel: true
 
@@ -101,6 +101,6 @@ jobs:
     needs: tests
     runs-on: ubuntu-latest
     steps:
-    - uses: AndreMiras/coveralls-python-action@develop
+    - uses: AndreMiras/coveralls-python-action@f5fd5c309b39d01599fb92c72d4f7409ea78aec9 # v20201129
       with:
         parallel-finished: true

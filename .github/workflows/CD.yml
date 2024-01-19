@@ -39,7 +39,7 @@ jobs:
           path: artifact/
 
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.8.11
+        uses: pypa/gh-action-pypi-publish@2f6f737ca5f74c637829c0f5c3acd0e29ea5e8bf # v1.8.11
         with:
           packages-dir: artifact/
 
@@ -54,7 +54,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup conda environment
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@11b562958363ec5770fef326fe8ef0366f8cbf8a # v3.0.1
         with:
           miniconda-version: "latest"
           python-version: 3.11
@@ -64,7 +64,7 @@ jobs:
           show-channel-urls: true
 
       - name: Build and upload the conda package
-        uses: uibcdf/action-build-and-upload-conda-packages@v1.2.0
+        uses: uibcdf/action-build-and-upload-conda-packages@c6e7a90ad5e599d6cde76e130db4ee52ad733ecf # v1.2.0
         with:
           meta_yaml_dir: conda
           python-version: 3.11
