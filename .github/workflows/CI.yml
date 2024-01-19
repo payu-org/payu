@@ -17,12 +17,13 @@ jobs:
   pypa-build:
     name: PyPA build
     runs-on: ubuntu-latest
+    environment: release
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.11
+          python-version: ${{ vars.PY_VERSION }}
 
       - run: |
           python3 -m pip install --upgrade build && python3 -m build
@@ -34,6 +35,7 @@ jobs:
   conda-build:
     name: Conda Build
     runs-on: ubuntu-latest
+    environment: release
     steps:
       - uses: actions/checkout@v4
 
@@ -41,7 +43,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@11b562958363ec5770fef326fe8ef0366f8cbf8a # v3.0.1
         with:
           miniconda-version: "latest"
-          python-version: 3.11
+          python-version: ${{ vars.PY_VERSION }}
           environment-file: conda/environment.yml
           auto-update-conda: false
           auto-activate-base: false
