@@ -31,7 +31,6 @@ jobs:
     # Split build and publish to restrict trusted publishing to just this workflow
     needs: ['pypi-build']
     name: Publish to PyPI.org
-    if: always() && needs.pypi-build.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
