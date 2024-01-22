@@ -23,9 +23,10 @@ jobs:
       - run: |
           python3 -m pip install --upgrade build && python3 -m build
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          path: ./dist
+          name: release
+          path: dist
 
   pypi-publish:
     # Split build and publish to restrict trusted publishing to just this workflow
@@ -36,9 +37,10 @@ jobs:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
-          path: artifact/
+          name: release
+          path: dist
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@2f6f737ca5f74c637829c0f5c3acd0e29ea5e8bf # v1.8.11
