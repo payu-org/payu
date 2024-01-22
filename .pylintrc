@@ -1,0 +1,5 @@
+[MAIN]
+
+# Files or directories to be skipped. They should be base names, not
+# paths.
+ignore=_version.py
