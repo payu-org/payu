@@ -12,11 +12,11 @@ of this document.
 NCI Users
 =========
 
-Payu is available for all users on Raijin.
-
-To load payu, load the environment module::
-
-   module load payu
+Payu is available for all users on Gadi.
+But it needs to access the 'hh5' data in NCI at first, we could use that conda module to work payu functions.
+load the environment module::
+   cd /g/data/hh5/public/modules/
+   module load conda
 
 Local installation
 ------------------
