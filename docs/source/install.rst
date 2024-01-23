@@ -21,7 +21,7 @@ using ACCESS-NRI supported conda environments.
 Local installation
 ------------------
 
-Using `pip`_ it is possible to install payu from PyPI:
+Using `pip`_ it is possible to install payu from PyPI::
 
    pip install payu --user
 

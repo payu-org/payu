@@ -542,7 +542,7 @@ Miscellaneous
    such as ``OMPI_MCA_coll``. The following example below disables "matching
    transport layer" and "collective algorithm" components::
 
-      mpi:
+      env:
          OMPI_MCA_coll: ''
          OMPI_MCA_mtl: ''
 
