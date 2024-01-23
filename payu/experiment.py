@@ -495,7 +495,7 @@ class Experiment(object):
                 mpi_flags = self.config.get('mpirun')
                 print('payu: warning: mpirun config option is deprecated.'
                       '  Use mpi: flags option instead')
-            else: 
+            else:
                 mpi_flags = []
 
 
