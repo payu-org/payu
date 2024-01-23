@@ -59,11 +59,11 @@ def setup(basepath=DEFAULT_BASEPATH):
     # Environment modules with certain characters will cause corruption
     # when MPI jobs get launched on other nodes (possibly a PBS issue).
     #
-    # Bash processes obscure the issue on Raijin, since it occurs in an
+    # Bash processes obscure the issue at NCI, since it occurs in an
     # environment module function, and bash moves those to the end of
     # the environment variable list.
     #
-    # Raijin's mpirun wrapper is a bash script, and therefore "fixes" by doing
+    # NCI's mpirun wrapper is a bash script, and therefore "fixes" by doing
     # the shuffle and limiting the damage to other bash functions, but some
     # wrappers (e.g. OpenMPI 2.1.x) may not be present.  So we manually patch
     # the problematic variable here.  But a more general solution would be nice

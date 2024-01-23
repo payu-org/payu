@@ -526,7 +526,7 @@ Miscellaneous
    setting (and typically required for many models).
 
    *Note:* ``unlimited`` *works without any issues, but explicit stacksize
-   values may not be correctly communicated across raijin nodes.*
+   values may not be correctly communicated across compute nodes.*
 
 ``runspersub``
    Define the maximum number of runs per PBS job submit. The default is 1. 

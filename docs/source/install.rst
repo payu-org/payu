@@ -4,41 +4,37 @@
 Installation
 ============
 
-Payu is currently only supported for users on the NCI computing systems, such
-as Raijin. If you wish to use payu on other systems, see the notes at the end
-of this document.
+Payu is currently only supported for users on the NCI computing systems. If you 
+wish to use payu on other systems, see the notes at the end of this document.
 
 
 NCI Users
 =========
 
-Payu is available for all users on Raijin.
+Payu is made available for users of NCI HPC systems in `conda` environments.
 
-To load payu, load the environment module::
+The ACCESS-Hive `ACCESS-OM models`_ documentation contains instructions for
+using ACCESS-NRI supported conda environments.
 
-   module load payu
+`CLEX CMS`_ also provides `conda environments`_ that support payu.
 
 Local installation
 ------------------
 
-If you want to use the latest version of payu, then you can install it locally
-from the codebase::
+Using `pip`_ it is possible to install payu from PyPI:
 
-   git clone https://github.com/marshallward/payu
+   pip install payu --user
+
+If you want to use the latest version of payu, then you can install directly
+from the repository::
+
+   pip install payu@git+https://github.com/payu-org/payu --user
+   
+or clone the codebase and install from there::
+
+   git clone https://github.com/payu-org/payu
    cd payu
-   python setup.py install --user
-
-Payu depends on the following modules:
-
-   * f90nml_
-   * PyYAML_
-
-.. _f90nml: https://pypi.python.org/pypi/f90nml
-.. _PyYAML: https://pypi.python.org/pypi/PyYAML
-
-If you have a recent version of ``setuptools`` installed, then these will be
-installed automatically.  But older installations, such as based on
-``distutils``, will require a manual installation.
+   pip install . --user
 
 
 General Use
@@ -57,17 +53,21 @@ presumed to be available:
      are currently based around PBSPro conventions.
 
    * `MPI`_: Jobs are submitted via ``mpirun`` and most of the argument flags
-     are based on the OpenMPI implementation. We also rely on Raijin's internal
-     preprocessing scripts for a few tasks.
+     are based on the OpenMPI implementation. 
 
-There are also some additional assumptions based on the architecture of Raijin.
+There are also some additional assumptions based on the architecture of the NCI
+HPC facilities.
 
 Despite these rather strict requirements, there is opportunity for generalising
 payu for other platforms, such as through new drivers for alternative
-schedulers and parallelisation platforms. Please contact the `mailing list`_ if
+schedulers and parallelisation platforms. Please create a `GitHub Issue`_ if
 you are interested in porting payu to your machine.
 
 .. _`Environment Modules`: http://modules.sourceforge.net/
 .. _`PBS scheduler`: http://en.wikipedia.org/wiki/Portable_Batch_System
 .. _`MPI`: http://en.wikipedia.org/wiki/Message_Passing_Interface
-.. _`mailing list`: https://groups.google.com/group/payu-climate
+.. _`GitHub Issue`: https://github.com/payu-org/payu/issues
+.. _`pip`: https://pip.pypa.io/en/stable/cli/pip_install
+.. _`ACCESS-OM models`: https://access-hive.org.au/models/run-a-model/run-access-om/#model-specific-prerequisites
+.. _`conda environments`: https://github.com/coecms/access-esm#quickstart-guide
+.. _`CLEX CMS`: https://github.com/coecms
