@@ -51,7 +51,7 @@ def get_config() -> VersioneerConfig:
     cfg = VersioneerConfig()
     cfg.VCS = "git"
     cfg.style = "pep440"
-    cfg.tag_prefix = "v"
+    cfg.tag_prefix = ""
     cfg.parentdir_prefix = "payu-"
     cfg.versionfile_source = "payu/_version.py"
     cfg.verbose = False
