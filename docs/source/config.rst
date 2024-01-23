@@ -97,6 +97,10 @@ These settings are primarily used by the PBS scheduler.
    This is a generic configuration marker for any unsupported qsub flags. This
    setting is applied to any ``qsub`` calls.
 
+``jobfs``
+   Request a non-default amount of storage that is local to the compute.
+   See `NCI jobfs documentation`_ and the `CLEX blog for details`_.
+
 ``storage``
    On the NCI system gadi all storage mount points must be specified, except
    ``/home`` and ``/scratch/$PROJECT``. By default payu will scan all relevant
@@ -114,6 +118,8 @@ These settings are primarily used by the PBS scheduler.
             scratch:
                   - zz3
 
+.. _`NCI jobfs documentation`: https://opus.nci.org.au/display/Help/PBS+Directives+Explained#PBSDirectivesExplained--ljobfs=%3C10GB%3E
+.. _`CLEX blog for details`: https://climate-cms.org/posts/2022-11-10-jobfs.html#what-is-pbs-jobfs
 
 Model
 -----
@@ -503,22 +509,40 @@ Miscellaneous
    --debug``. At NCI this defaults to a Totalview session. This will probably
    only work for interactive sessions.
 
-``mpirun``
-   Append any unsupported ``mpirun`` arguments to the ``mpirun`` call of the
-   model. This setting supports both single lines and a list of input
-   arguments. Example shown below::
+``mpi``
+   Override default MPI module and add MPI command line arguments.
 
-      mpirun:
-         - -mca mpi_preconnect_mpi 1   # Enable preconnecting
-         - -mca mtl ^mxm               # Disable MXM acceleration
-         - -mca coll ^fca              # Disable FCA acceleration
+   ``runcmd`` (*Default:* ``mpirun``)
+      Specify command to invoke MPI executables.
 
-``ompi``
+   ``modulepath``
+      Set path for environment module to find and load MPI module.
+
+   ``module``
+      Override default MPI module version. Default is determined dynamically
+      by inspecting the model executables. 
+
+   ``flags``
+      Set command line arguments (flags) to the ``mpirun`` call of the
+      model. This setting supports both single lines and a list of input
+      arguments. Example shown below::
+
+         mpi:
+            flags:
+               - -mca mpi_preconnect_mpi 1   # Enable preconnecting
+               - -mca mtl ^mxm               # Disable MXM acceleration
+               - -mca coll ^fca              # Disable FCA acceleration
+
+
+``mpirun`` (**Deprecated**)
+   Replicates ``mpi`` ``flags`` above.
+
+``env``
    Enable any environment variables required by ``mpirun`` during execution,
    such as ``OMPI_MCA_coll``. The following example below disables "matching
    transport layer" and "collective algorithm" components::
 
-      ompi:
+      mpi:
          OMPI_MCA_coll: ''
          OMPI_MCA_mtl: ''
 
