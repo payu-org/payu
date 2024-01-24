@@ -97,6 +97,10 @@ These settings are primarily used by the PBS scheduler.
    This is a generic configuration marker for any unsupported qsub flags. This
    setting is applied to any ``qsub`` calls.
 
+``jobfs``
+   Request a non-default amount of storage that is local to the compute.
+   See `NCI jobfs documentation`_ and the `CLEX blog for details`_.
+
 ``storage``
    On the NCI system gadi all storage mount points must be specified, except
    ``/home`` and ``/scratch/$PROJECT``. By default payu will scan all relevant
@@ -114,6 +118,8 @@ These settings are primarily used by the PBS scheduler.
             scratch:
                   - zz3
 
+.. _`NCI jobfs documentation`: https://opus.nci.org.au/display/Help/PBS+Directives+Explained#PBSDirectivesExplained--ljobfs=%3C10GB%3E
+.. _`CLEX blog for details`: https://climate-cms.org/posts/2022-11-10-jobfs.html#what-is-pbs-jobfs
 
 Model
 -----
@@ -390,9 +396,10 @@ Postprocessing
       archive.
 
 ``postscript``
-   This is an older, less user-friendly, method to submit a script after ``payu
-   collate`` has completed. Unlike the ``userscripts``, it does not support
-   user commands. These scripts are always re-submitted via ``qsub``.
+   This is an older, less user-friendly, method to submit a script after ``payu`` 
+   has completed all steps that might alter the output directory. e.g. collation.
+   Unlike the ``userscripts``, it does not support user commands. These scripts 
+   are always re-submitted via ``qsub``.
 
 ``sync`` 
    Sync archive to a remote directory using rsync. Make sure that the 
@@ -502,22 +509,40 @@ Miscellaneous
    --debug``. At NCI this defaults to a Totalview session. This will probably
    only work for interactive sessions.
 
-``mpirun``
-   Append any unsupported ``mpirun`` arguments to the ``mpirun`` call of the
-   model. This setting supports both single lines and a list of input
-   arguments. Example shown below::
+``mpi``
+   Override default MPI module and add MPI command line arguments.
 
-      mpirun:
-         - -mca mpi_preconnect_mpi 1   # Enable preconnecting
-         - -mca mtl ^mxm               # Disable MXM acceleration
-         - -mca coll ^fca              # Disable FCA acceleration
+   ``runcmd`` (*Default:* ``mpirun``)
+      Specify command to invoke MPI executables.
 
-``ompi``
+   ``modulepath``
+      Set path for environment module to find and load MPI module.
+
+   ``module``
+      Override default MPI module version. Default is determined dynamically
+      by inspecting the model executables. 
+
+   ``flags``
+      Set command line arguments (flags) to the ``mpirun`` call of the
+      model. This setting supports both single lines and a list of input
+      arguments. Example shown below::
+
+         mpi:
+            flags:
+               - -mca mpi_preconnect_mpi 1   # Enable preconnecting
+               - -mca mtl ^mxm               # Disable MXM acceleration
+               - -mca coll ^fca              # Disable FCA acceleration
+
+
+``mpirun`` (**Deprecated**)
+   Replicates ``mpi`` ``flags`` above.
+
+``env``
    Enable any environment variables required by ``mpirun`` during execution,
    such as ``OMPI_MCA_coll``. The following example below disables "matching
    transport layer" and "collective algorithm" components::
 
-      ompi:
+      env:
          OMPI_MCA_coll: ''
          OMPI_MCA_mtl: ''
 
@@ -526,7 +551,7 @@ Miscellaneous
    setting (and typically required for many models).
 
    *Note:* ``unlimited`` *works without any issues, but explicit stacksize
-   values may not be correctly communicated across raijin nodes.*
+   values may not be correctly communicated across compute nodes.*
 
 ``runspersub``
    Define the maximum number of runs per PBS job submit. The default is 1. 

@@ -45,5 +45,4 @@ Contents:
 Support and Development
 =======================
 
-* Mailing List: https://groups.google.com/group/payu-climate
-* Source: https://github.com/marshallward/payu
+Support is coordinated through issues, discussions and pull requests on the GitHub repository https://github.com/payu-org/payu

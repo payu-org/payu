@@ -490,8 +490,14 @@ class Experiment(object):
         # MPI runtime flags
         mpi_flags = mpi_config.get('flags', [])
         if not mpi_flags:
-            mpi_flags = self.config.get('mpirun', [])
-            # TODO: Legacy config removal warning
+            # DEPRECATED: confusing and a duplication of flags config
+            if 'mpirun' in self.config:
+                mpi_flags = self.config.get('mpirun')
+                print('payu: warning: mpirun config option is deprecated.'
+                      '  Use mpi: flags option instead')
+            else:
+                mpi_flags = []
+
 
         if not isinstance(mpi_flags, list):
             mpi_flags = [mpi_flags]

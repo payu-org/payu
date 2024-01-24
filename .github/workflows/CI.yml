@@ -23,9 +23,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PY_VERSION }}
+          cache: 'pip' # caching pip dependencies
 
       - run: |
           python3 -m pip install --upgrade build && python3 -m build
@@ -68,12 +69,13 @@ jobs:
 
       # Checks-out repository code
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip' # caching pip dependencies
 
       - name: Install dependencies
         run: pip install -r test/requirements_test.txt
