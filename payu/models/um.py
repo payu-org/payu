@@ -101,6 +101,11 @@ class UnifiedModel(Model):
                   '{} does not exist.\n'
                   'Check DUMPFREQim in namelists'.format(restart_dump))
 
+        # Now remove restart files from work directory so they're not
+        # unnecessarily archived to output
+        for f_path in glob.glob(os.path.join(self.work_path, 'aiihca.da*')):
+            os.remove(f_path)
+
     def collate(self):
         pass
 
