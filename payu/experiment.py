@@ -498,7 +498,6 @@ class Experiment(object):
             else:
                 mpi_flags = []
 
-
         if not isinstance(mpi_flags, list):
             mpi_flags = [mpi_flags]
 
@@ -968,9 +967,12 @@ class Experiment(object):
         if not os.path.exists(self.archive_path):
             return []
 
-        # List all restart directories in archive
+        # Sorted list of restart directories in archive
         restarts = list_archive_dirs(archive_path=self.archive_path,
                                      dir_type='restart')
+        restart_indices = {}
+        for restart in restarts:
+            restart_indices[restart] = int(restart.lstrip('restart'))
 
         # TODO: Previous logic was to prune all restarts if self.repeat_run
         # Still need to figure out what should happen in this case
@@ -984,9 +986,8 @@ class Experiment(object):
         restart_freq = self.config.get('restart_freq', default_restart_freq)
         if isinstance(restart_freq, int):
             # Using integer frequency to prune restarts
-            for restart in restarts:
-                restart_idx = int(restart.lstrip('restart'))
-                if not restart_idx % restart_freq == 0:
+            for restart, restart_index in restart_indices.items():
+                if not restart_index % restart_freq == 0:
                     intermediate_restarts.append(restart)
                 else:
                     # Add any intermediate restarts to restarts to prune
@@ -1054,16 +1055,18 @@ class Experiment(object):
                 raise ValueError("payu: error: restart_history is not an "
                                  f"integer value: {restart_history}")
 
-            # Keep restart_history latest restarts, in addition to the
-            # permanently saved restarts defined by restart_freq
-            restarts_to_prune.extend(intermediate_restarts)
-            max_index = self.max_output_index(output_type="restart")
-            index_bound = max_index - restart_history
-            restarts_to_prune = [res for res in restarts_to_prune
-                                 if int(res.lstrip('restart')) <= index_bound]
+            if len(restarts) > 0:
+                max_index = restart_indices[restarts[-1]]
+                index_bound = max_index - restart_history
 
-            # Only expect at most 1 restart to be pruned with restart_history
-            is_unexpected = len(restarts_to_prune) > 1
+                # Keep restart_history latest restarts, in addition to the
+                # permanently saved restarts defined by restart_freq
+                restarts_to_prune.extend(intermediate_restarts)
+                restarts_to_prune = [res for res in restarts_to_prune
+                                     if restart_indices[res] <= index_bound]
+
+                # Expect at most 1 restart to be pruned with restart_history
+                is_unexpected = len(restarts_to_prune) > 1
 
         # Log out warning if more restarts than expected will be deleted
         if not force and is_unexpected:
