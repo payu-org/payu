@@ -6,7 +6,7 @@ import pytest
 import payu
 
 from test.common import cd
-from test.common import tmpdir, ctrldir, labdir
+from test.common import tmpdir, ctrldir, labdir, expt_archive_dir
 from test.common import config as config_orig
 from test.common import write_config
 from test.common import make_all_files
@@ -63,6 +63,9 @@ def teardown():
     # Remove any created restart files
     remove_expt_archive_dirs(type='restart')
 
+    # Remove experiment archive
+    expt_archive_dir.rmdir()
+
 
 def create_test_2Y_1_month_frequency_restarts():
     """Create 2 years + 1 month worth of mom restarts directories
@@ -88,14 +91,15 @@ def create_test_2Y_1_month_frequency_restarts():
                                additional_path='ocean')
 
 
-def write_test_config(restart_freq, restart_history=None):
+def write_test_config(restart_freq=None, restart_history=None):
     test_config = copy.deepcopy(config)
     test_config['model'] = 'access-om2'
     test_config['submodels'] = [
         {'name': 'atmosphere', 'model': 'yatm'},
         {'name': 'ocean', 'model': 'mom'}
     ]
-    test_config['restart_freq'] = restart_freq
+    if restart_freq:
+        test_config['restart_freq'] = restart_freq
     if restart_history:
         test_config['restart_history'] = restart_history
 
@@ -257,3 +261,17 @@ def test_prune_restarts_ignores_empty_restart_dirs():
     ]
 
     assert restarts_to_prune_indices == [5]
+
+
+def test_restart_history_with_empty_archive():
+    write_test_config(restart_history=3)
+    expt_archive_dir.mkdir()
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+
+        # Function to test
+        restarts_to_prune = expt.get_restarts_to_prune()
+
+    assert restarts_to_prune == []
