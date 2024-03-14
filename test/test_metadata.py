@@ -261,6 +261,60 @@ def test_set_experiment_and_uuid(uuid_exists, keep_uuid, is_new_experiment,
     assert metadata.uuid == expected_uuid
 
 
+@pytest.mark.parametrize(
+    "new_uuid, archive_metadata_exists, archive_uuid, expected_result",
+    [
+        # A legacy archive exists, but there's no corresponding metadata
+        (
+            True, False, None, True
+        ),
+        # A legacy archive exists, there's a metadata with a UUID in
+        # control directory, but no metadata in archive
+        (
+            False, False, None, True
+        ),
+        # Archive metadata exists but has no UUID
+        (
+            False, True, None, False
+        ),
+        # Archive metadata exists with same UUID
+        (
+            False, True, "3d18b3b6-dd19-49a9-8d9e-c7fa8582f136", True
+        ),
+        # Archive metadata exists with different UUID
+        (
+            False, True, "cb793e91-6168-4ed2-a70c-f6f9ccf1659b", False
+        ),
+    ]
+)
+def test_has_archive(new_uuid, archive_metadata_exists, archive_uuid,
+                     expected_result):
+    # Setup config and metadata
+    write_config(config)
+    with cd(ctrldir):
+        metadata = Metadata(archive_dir)
+    metadata.uuid = "3d18b3b6-dd19-49a9-8d9e-c7fa8582f136"
+
+    if new_uuid:
+        metadata.uuid_updated = True
+
+    # Setup archive and it's metadata file
+    archive_path = archive_dir / "ctrl"
+    archive_path.mkdir(parents=True)
+
+    if archive_metadata_exists:
+        archive_metadata = {}
+
+        if archive_uuid is not None:
+            archive_metadata["experiment_uuid"] = archive_uuid
+
+        with open(archive_path / 'metadata.yaml', 'w') as file:
+            YAML().dump(archive_metadata, file)
+
+    result = metadata.has_archive("ctrl")
+    assert result == expected_result
+
+
 def test_set_configured_experiment_name():
     # Set experiment in config file
     test_config = copy.deepcopy(config)
@@ -287,6 +341,7 @@ def test_set_configured_experiment_name():
 )
 def test_new_experiment_name(branch, expected_name):
     # Test configured experiment name is the set experiment name
+    write_config(config)
     with cd(ctrldir):
         metadata = Metadata(archive_dir)
 
