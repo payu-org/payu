@@ -78,8 +78,7 @@ class Metadata:
         # Config flag to disable creating metadata files and UUIDs
         self.enabled = self.metadata_config.get('enable', True)
 
-        if self.enabled:
-            self.repo = GitRepository(self.control_path, catch_error=True)
+        self.repo = GitRepository(self.control_path, catch_error=True)
 
         self.branch = branch
         self.branch_uuid_experiment = True

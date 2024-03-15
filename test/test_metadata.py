@@ -307,7 +307,7 @@ def test_new_experiment_name(branch, expected_name):
      ("branch", "ctrl-branch")]
 )
 def test_new_experiment_name_ignore_uuid(branch, expected_name):
-    # Test configured experiment name is the set experiment name
+    # Test experiment name excludes UUID
     with cd(ctrldir):
         metadata = Metadata(archive_dir)
 
@@ -316,6 +316,26 @@ def test_new_experiment_name_ignore_uuid(branch, expected_name):
         experiment = metadata.new_experiment_name(ignore_uuid=True)
 
     assert experiment == expected_name
+
+def test_metadata_enable_false():
+    # Set metadata to false in config file
+    test_config = copy.deepcopy(config)
+    test_config['metadata'] = {
+        "enable": False
+    }
+    write_config(test_config)
+
+    with patch('payu.metadata.GitRepository.get_branch_name') as mock_branch:
+        mock_branch.return_value = "mock-branch"
+
+        with cd(ctrldir):
+            metadata = Metadata(archive_dir)
+            metadata.setup()
+            metadata.write_metadata()
+
+    # Test UUID kept out of experiment name and metadata file is not written
+    assert metadata.experiment_name == "ctrl-mock-branch"
+    assert not (ctrldir / "metadata.yaml").exists()
 
 
 @patch("payu.metadata.GitRepository")
