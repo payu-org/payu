@@ -217,12 +217,12 @@ class CesmCmeps(Model):
         for pointer in pointer_files:
             try:
                 with open(pointer,"r") as f:
-                    restart = f.readline().rstrip()
-                    restart_files.append(
-                        os.path.join(
-                            self.work_path, restart,
+                    for restart in f.readlines():
+                        restart_files.append(
+                            os.path.join(
+                                self.work_path, restart.rstrip(),
+                                )
                             )
-                        )
             except FileNotFoundError:
                 # TODO: copied this from other models. Surely we want to exit here or something
                 print(f"payu: error: Model has not produced pointer file {pointer}")
