@@ -489,8 +489,8 @@ Experiment Tracking
 
    ``enable`` (*Default:* ``True``)
       Flag to enable/disable creating/updating metadata files and UUIDs.
-      If set to False, the UUID is left out of the experiment name used
-      for archival.
+      If set to False, the experiment name used for archival is either the
+      control directory name or the configured ``experiment`` name.
 
    ``model`` (*Default: The configured model value*)
       Model name used when generating metadata for new experiments.
