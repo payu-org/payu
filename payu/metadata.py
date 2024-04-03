@@ -155,7 +155,7 @@ class Metadata:
                   self.experiment_name)
             return
 
-        # Legacy experiment name and archive path
+        # Legacy experiment name
         legacy_name = self.control_path.name
 
         if not self.enabled:
@@ -167,7 +167,6 @@ class Metadata:
             return
 
         branch_uuid_experiment_name = self.new_experiment_name()
-
         if is_new_experiment or self.has_archive(branch_uuid_experiment_name):
             # Use branch-UUID aware experiment name
             self.experiment_name = branch_uuid_experiment_name
@@ -191,13 +190,13 @@ class Metadata:
         archive_path = self.lab_archive_path / experiment_name
 
         if archive_path.exists():
-            # If a new UUID has not been generated, check if the
-            # UUID in the archive metadata matches UUID in metadata
+            # Check if the UUID in the archive metadata matches the
+            # UUID in metadata
             archive_metadata_path = archive_path / METADATA_FILENAME
-            if not self.uuid_updated and archive_metadata_path.exists():
+            if archive_metadata_path.exists():
                 archive_metadata = YAML().load(archive_metadata_path)
-                if (UUID_FIELD not in archive_metadata
-                        or archive_metadata[UUID_FIELD] != self.uuid):
+                if (UUID_FIELD in archive_metadata and
+                        archive_metadata[UUID_FIELD] != self.uuid):
                     print("Mismatch of UUIDs between metadata and an archive "
                           f"metadata found at: {archive_metadata_path}")
                     return False
