@@ -79,17 +79,17 @@ def setup_and_teardown():
 
 @patch("payu.metadata.GitRepository")
 @pytest.mark.parametrize(
-    "uuid, legacy_archive_exists, previous_metadata, expected_metadata",
+    "uuid, experiment_name, previous_metadata, expected_metadata",
     [
         # Test new metadata file created
         (
             "b1f3ce3d-99da-40e4-849a-c8b352948a31",
-            False,
+            "ctrl-branch-b1f3ce3d",
             None,
             {
                 "experiment_uuid": "b1f3ce3d-99da-40e4-849a-c8b352948a31",
                 "created": '2000-01-01',
-                "name": "DefaultExperimentName",
+                "name": "ctrl-branch-b1f3ce3d",
                 "model": "TEST-MODEL",
                 "url": "mockUrl",
                 "contact": "mockUser",
@@ -99,7 +99,7 @@ def setup_and_teardown():
         # Test metadata file updated when new UUID
         (
             "7b90f37c-4619-44f9-a439-f76fdf6ae2bd",
-            False,
+            "Control-Branch-7b90f37c",
             {
                 "experiment_uuid": "b3298c7f-01f6-4f0a-be32-ce5d2cfb9a04",
                 "contact": "Add your name here",
@@ -110,7 +110,7 @@ def setup_and_teardown():
                 "experiment_uuid": "7b90f37c-4619-44f9-a439-f76fdf6ae2bd",
                 "description": "Add description here",
                 "created": '2000-01-01',
-                "name": "DefaultExperimentName",
+                "name": "Control-Branch-7b90f37c",
                 "model": "TEST-MODEL",
                 "url": "mockUrl",
                 "contact": "mockUser",
@@ -120,7 +120,7 @@ def setup_and_teardown():
         # Test extra fields not added with legacy experiments
         (
             "7b90f37c-4619-44f9-a439-f76fdf6ae2bd",
-            True,
+            "ctrl",
             {
                 "experiment_uuid": "0f49f2a0-f45e-4c0b-a3b6-4b0bf21f2b75",
                 "name": "UserDefinedExperimentName",
@@ -136,7 +136,7 @@ def setup_and_teardown():
         ),
     ]
 )
-def test_update_file(mock_repo, uuid, legacy_archive_exists,
+def test_update_file(mock_repo, uuid, experiment_name,
                      previous_metadata, expected_metadata):
     # Create pre-existing metadata file
     metadata_path = ctrldir / 'metadata.yaml'
@@ -158,8 +158,7 @@ def test_update_file(mock_repo, uuid, legacy_archive_exists,
     with cd(ctrldir):
         metadata = Metadata(archive_dir)
     metadata.uuid = uuid
-    metadata.experiment_name = "DefaultExperimentName"
-    metadata.branch_uuid_experiment = not legacy_archive_exists
+    metadata.experiment_name = experiment_name
 
     # Mock datetime (for created date)
     with patch('payu.metadata.datetime') as mock_date:
@@ -300,22 +299,25 @@ def test_new_experiment_name(branch, expected_name):
     assert experiment == expected_name
 
 
-@pytest.mark.parametrize(
-    "branch, expected_name",
-    [(None, "ctrl"),
-     ("main", "ctrl"),
-     ("branch", "ctrl-branch")]
-)
-def test_new_experiment_name_ignore_uuid(branch, expected_name):
-    # Test configured experiment name is the set experiment name
-    with cd(ctrldir):
-        metadata = Metadata(archive_dir)
+def test_metadata_enable_false():
+    # Set metadata to false in config file
+    test_config = copy.deepcopy(config)
+    test_config['metadata'] = {
+        "enable": False
+    }
+    write_config(test_config)
 
     with patch('payu.metadata.GitRepository.get_branch_name') as mock_branch:
-        mock_branch.return_value = branch
-        experiment = metadata.new_experiment_name(ignore_uuid=True)
+        mock_branch.return_value = "mock-branch"
 
-    assert experiment == expected_name
+        with cd(ctrldir):
+            metadata = Metadata(archive_dir)
+            metadata.setup()
+            metadata.write_metadata()
+
+    # Test UUID kept out of experiment name and metadata file is not written
+    assert metadata.experiment_name == "ctrl"
+    assert not (ctrldir / "metadata.yaml").exists()
 
 
 @patch("payu.metadata.GitRepository")

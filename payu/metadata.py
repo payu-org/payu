@@ -82,15 +82,11 @@ class Metadata:
             self.repo = GitRepository(self.control_path, catch_error=True)
 
         self.branch = branch
-        self.branch_uuid_experiment = True
 
         # Set uuid if in metadata file
         metadata = self.read_file()
         self.uuid = metadata.get(UUID_FIELD, None)
         self.uuid_updated = False
-
-        # Experiment name configuration - this overrides experiment name
-        self.config_experiment_name = self.config.get("experiment", None)
 
     def read_file(self) -> CommentedMap:
         """Read metadata file - preserving orginal format if it exists"""
@@ -118,8 +114,8 @@ class Metadata:
         directories in the Laboratory.
         """
         if not self.enabled:
-            # Set experiment name only - either configured or includes branch
-            self.set_experiment_name(ignore_uuid=True)
+            # Set experiment name only - either configured or legacy name
+            self.set_experiment_name()
 
         elif self.uuid is not None and (keep_uuid or not is_new_experiment):
             self.set_experiment_name(keep_uuid=keep_uuid,
@@ -133,7 +129,7 @@ class Metadata:
 
         self.archive_path = self.lab_archive_path / self.experiment_name
 
-    def new_experiment_name(self, ignore_uuid: bool = False) -> str:
+    def new_experiment_name(self) -> str:
         """Generate a new experiment name"""
         if self.branch is None:
             self.branch = self.repo.get_branch_name()
@@ -142,38 +138,38 @@ class Metadata:
         adding_branch = self.branch not in (None, 'main', 'master')
         suffix = f'-{self.branch}' if adding_branch else ''
 
-        if not ignore_uuid:
-            truncated_uuid = self.uuid[:TRUNCATED_UUID_LENGTH]
-            suffix += f'-{truncated_uuid}'
+        truncated_uuid = self.uuid[:TRUNCATED_UUID_LENGTH]
+        suffix += f'-{truncated_uuid}'
 
         return self.control_path.name + suffix
 
     def set_experiment_name(self,
                             is_new_experiment: bool = False,
-                            keep_uuid: bool = False,
-                            ignore_uuid: bool = False) -> None:
+                            keep_uuid: bool = False) -> None:
         """Set experiment name - this is used for work and archive
         sub-directories in the Laboratory"""
-        if self.config_experiment_name is not None:
-            # The configured value over-rides the experiment name
-            self.experiment_name = self.config_experiment_name
-            self.branch_uuid_experiment = False
+        # Experiment name configuration - this overrides experiment name
+        self.experiment_name = self.config.get("experiment", None)
+        if self.experiment_name is not None:
             print(f"Experiment name is configured in config.yaml: ",
                   self.experiment_name)
             return
 
-        if ignore_uuid:
-            # Leave experiment UUID out of experiment name
-            self.experiment_name = self.new_experiment_name(ignore_uuid=True)
+        # Legacy experiment name and archive path
+        legacy_name = self.control_path.name
+        legacy_archive_path = self.lab_archive_path / legacy_name
+
+        if not self.enabled:
+            # Metadata/UUID generation is disabled, so leave UUID out of
+            # experiment name
+            self.experiment_name = legacy_name
+            print("Metadata is disabled in config.yaml.",
+                  f"Experiment name used for archival: {self.experiment_name}")
             return
 
         # Branch-UUID experiment name and archive path
         branch_uuid_experiment_name = self.new_experiment_name()
         archive_path = self.lab_archive_path / branch_uuid_experiment_name
-
-        # Legacy experiment name and archive path
-        legacy_name = self.control_path.name
-        legacy_archive_path = self.lab_archive_path / legacy_name
 
         if is_new_experiment or archive_path.exists():
             # Use branch-UUID aware experiment name
@@ -183,7 +179,6 @@ class Metadata:
             self.experiment_name = legacy_name
             print(f"Pre-existing archive found at: {legacy_archive_path}. "
                   f"Experiment name will remain: {legacy_name}")
-            self.branch_uuid_experiment = False
         elif keep_uuid:
             # Use same experiment UUID and use branch-UUID name for archive
             self.experiment_name = branch_uuid_experiment_name
@@ -202,7 +197,7 @@ class Metadata:
         self.set_experiment_name(is_new_experiment=is_new_experiment)
 
         # If experiment name does not include UUID, leave it unchanged
-        if not self.branch_uuid_experiment:
+        if self.experiment_name.endswith(self.uuid[:TRUNCATED_UUID_LENGTH]):
             return
 
         # Check experiment name is unique in local archive
@@ -267,7 +262,7 @@ class Metadata:
 
         # Add extra fields if new branch-uuid experiment
         # so to not over-write fields if it's a pre-existing legacy experiment
-        if self.branch_uuid_experiment:
+        if self.experiment_name.endswith(self.uuid[:TRUNCATED_UUID_LENGTH]):
             metadata[CREATED_FIELD] = datetime.now().strftime('%Y-%m-%d')
             metadata[NAME_FIELD] = self.experiment_name
             metadata[MODEL_FIELD] = self.get_model_name()
