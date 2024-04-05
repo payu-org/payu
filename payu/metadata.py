@@ -155,9 +155,8 @@ class Metadata:
                   self.experiment_name)
             return
 
-        # Legacy experiment name and archive path
+        # Legacy experiment name
         legacy_name = self.control_path.name
-        legacy_archive_path = self.lab_archive_path / legacy_name
 
         if not self.enabled:
             # Metadata/UUID generation is disabled, so leave UUID out of
@@ -167,18 +166,13 @@ class Metadata:
                   f"Experiment name used for archival: {self.experiment_name}")
             return
 
-        # Branch-UUID experiment name and archive path
         branch_uuid_experiment_name = self.new_experiment_name()
-        archive_path = self.lab_archive_path / branch_uuid_experiment_name
-
-        if is_new_experiment or archive_path.exists():
+        if is_new_experiment or self.has_archive(branch_uuid_experiment_name):
             # Use branch-UUID aware experiment name
             self.experiment_name = branch_uuid_experiment_name
-        elif legacy_archive_path.exists():
+        elif self.has_archive(legacy_name):
             # Use legacy CONTROL-DIR experiment name
             self.experiment_name = legacy_name
-            print(f"Pre-existing archive found at: {legacy_archive_path}. "
-                  f"Experiment name will remain: {legacy_name}")
         elif keep_uuid:
             # Use same experiment UUID and use branch-UUID name for archive
             self.experiment_name = branch_uuid_experiment_name
@@ -189,6 +183,25 @@ class Metadata:
                 MetadataWarning
             )
             self.set_new_uuid(is_new_experiment=True)
+
+    def has_archive(self, experiment_name: str) -> bool:
+        """Return True if archive under the experiment name exists and
+        if it exists, check for a non-matching UUID in archive metadata."""
+        archive_path = self.lab_archive_path / experiment_name
+
+        if archive_path.exists():
+            # Check if the UUID in the archive metadata matches the
+            # UUID in metadata
+            archive_metadata_path = archive_path / METADATA_FILENAME
+            if archive_metadata_path.exists():
+                archive_metadata = YAML().load(archive_metadata_path)
+                if (UUID_FIELD in archive_metadata and
+                        archive_metadata[UUID_FIELD] != self.uuid):
+                    print("Mismatch of UUIDs between metadata and an archive "
+                          f"metadata found at: {archive_metadata_path}")
+                    return False
+            print(f"Found experiment archive: {archive_path}")
+        return archive_path.exists()
 
     def set_new_uuid(self, is_new_experiment: bool = False) -> None:
         """Generate a new uuid and set experiment name"""
