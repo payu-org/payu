@@ -11,6 +11,7 @@ import os
 import warnings
 from pathlib import Path
 from typing import Optional
+import shutil
 
 from ruamel.yaml import YAML, CommentedMap
 import git
@@ -18,7 +19,7 @@ import git
 from payu.fsops import read_config, DEFAULT_CONFIG_FNAME, list_archive_dirs
 from payu.laboratory import Laboratory
 from payu.metadata import Metadata, UUID_FIELD, METADATA_FILENAME
-from payu.git_utils import GitRepository, git_clone
+from payu.git_utils import GitRepository, git_clone, PayuBranchError
 
 
 NO_CONFIG_FOUND_MESSAGE = """No configuration file found on this branch.
@@ -241,6 +242,13 @@ def clone(repository: str,
     # Resolve directory to an absolute path
     control_path = directory.resolve()
 
+    if control_path.exists():
+        raise PayuBranchError(
+            f"Directory path `{control_path}` already exists. "
+            "Clone to a different path, or cd into the existing directory " +
+            "and use `payu checkout` if it is the same git repository"
+        )
+
     # git clone the repository
     repo = git_clone(repository, control_path, branch)
 
@@ -275,6 +283,16 @@ def clone(repository: str,
                             lab_path=lab_path,
                             is_new_experiment=True,
                             parent_experiment=parent_experiment)
+    except PayuBranchError as e:
+        # Remove directory if incomplete checkout
+        shutil.rmtree(control_path)
+        msg = (
+            "Incomplete checkout. To run payu clone again, modify/remove " +
+            "the checkout new branch flag: --new-branch/-b, or " +
+            "checkout existing branch flag: --branch/-B " +
+            f"\n  Checkout error: {e}"
+        )
+        raise PayuBranchError(msg)
     finally:
         # Change back to original working directory
         os.chdir(owd)
