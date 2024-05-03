@@ -253,8 +253,7 @@ class Experiment(object):
             envmod.module('load', mod)
 
         # User-defined modules
-        user_modules = self.config.get('modules', {}).get('load', [])
-        for mod in user_modules:
+        for mod in self.user_modules:
             envmod.module('load', mod)
 
         envmod.module('list')
@@ -414,6 +413,19 @@ class Experiment(object):
 
         make_symlink(self.work_path, self.work_sym_path)
 
+        # Get paths added by user-modules to $PATH
+        envmod.setup()
+        self.user_modulepaths = self.config.get('modules', {}).get('use', [])
+        self.user_modules = self.config.get('modules', {}).get('load', [])
+        module_paths = envmod.paths_set_by_user_modules(
+            user_modules=self.user_modules,
+            user_modulepaths=self.user_modulepaths
+        )
+
+        # Set up model executable paths
+        for model in self.models:
+            model.setup_executable_paths(module_paths)
+
         # Set up all file manifests
         self.manifest.setup()
 
@@ -453,11 +465,8 @@ class Experiment(object):
             self.get_restarts_to_prune()
 
     def run(self, *user_flags):
-        # XXX: This was previously done in reversion
-        envmod.setup()
-
         # Add any user-defined module dir(s) to MODULEPATH
-        for module_dir in self.config.get('modules', {}).get('use', []):
+        for module_dir in self.user_modulepaths:
             envmod.module('use', module_dir)
 
         self.load_modules()
