@@ -113,6 +113,14 @@ def lib_update(required_libs, lib_name):
 
 
 def paths_set_by_user_modules(user_modules, user_modulepaths):
+    """Search along changes PATH added by user defined modules
+    and return a set of paths added - this is used for
+    searching for the model executable"""
+    if 'MODULESHOME' not in os.environ:
+        print('payu: warning: No Environment Modules found; skipping '
+              'inspecting user module changes to PATH')
+        return set()
+
     # Orginal environment
     previous_env = dict(os.environ)
     previous_modulepath = os.environ['MODULEPATH']
