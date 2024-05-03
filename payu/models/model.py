@@ -205,7 +205,7 @@ class Model(object):
                     print(
                         f"Expanded model exectuable path to: {self.exec_path}")
                 else:
-                    # Prepend the lab bin path 
+                    # Prepend the lab bin path
                     self.exec_path = os.path.join(self.expt.lab.bin_path,
                                                   self.exec_name)
 

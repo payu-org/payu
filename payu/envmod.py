@@ -113,7 +113,7 @@ def lib_update(required_libs, lib_name):
 
 
 def paths_set_by_user_modules(user_modules, user_modulepaths):
-    # Orginal environment 
+    # Orginal environment
     previous_env = dict(os.environ)
     previous_modulepath = os.environ['MODULEPATH']
 
@@ -127,12 +127,11 @@ def paths_set_by_user_modules(user_modules, user_modulepaths):
         init_paths = paths_post_module_commands(["purge"])
         for module in user_modules:
             # Check if module is available
-            cmd = f'{os.environ['MODULESHOME']}/bin/modulecmd bash is-avail {module}'
+            module_cmd = "{os.environ['MODULESHOME']}/bin/modulecmd bash"
+            cmd = f"{module_cmd} is-avail {module}"
             if run_cmd(cmd).returncode != 0:
                 continue
-
-            #TODO: Check if multiple modules are available..
-
+            # TODO: Check if multiple modules are available..
             try:
                 # Get $PATH paths post running module purge && module load
                 paths.extend(paths_post_module_commands(['purge',
@@ -147,16 +146,16 @@ def paths_set_by_user_modules(user_modules, user_modulepaths):
             "Warning: Env vars changed when inspecting paths set by modules"
         )
 
-    # Remove inital paths and convert into a set 
+    # Remove inital paths and convert into a set
     return set(paths).difference(set(init_paths))
 
 
 def paths_post_module_commands(commands):
-    """Runs subprocess module command and parse out the resulting 
+    """Runs subprocess module command and parse out the resulting
     PATH environment variable"""
     # Use modulecmd as module command is not available on compute nodes
     module_cmds = [
-        f'eval `{os.environ['MODULESHOME']}/bin/modulecmd bash {c}`'
+        f"eval `{os.environ['MODULESHOME']}/bin/modulecmd bash {c}`"
         for c in commands
     ]
     command = ' && '.join(module_cmds) + ' && echo $PATH'
@@ -165,7 +164,7 @@ def paths_post_module_commands(commands):
     output = run_cmd(command)
     output.check_returncode()
 
-    # Extact out the PATH value, and split the paths 
+    # Extact out the PATH value, and split the paths
     path = output.stdout.strip().split('\n')[-1]
     return path.split(':')
 
