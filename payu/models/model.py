@@ -177,37 +177,42 @@ class Model(object):
             print("No prior restart files found: {error}".format(error=str(e)))
             return []
 
-    def setup_executable_paths(self, module_added_paths):
+    def expand_executable_path(self, exec, search_module_path=True):
+        """Given an executable, return the expanded executable path"""
+        # Check if exe is already an absolute path
+        if os.path.isabs(exec):
+            return exec
+
+        if not search_module_path:
+            module_added_paths = set()
+        else:
+            module_added_paths = self.expt.user_modules_set_paths
+
+        # Search for exe inside paths added to $PATH by user-defined modules
+        exec_paths = []
+        for path in module_added_paths:
+            exec_path = os.path.join(path, exec)
+            if os.path.exists(exec_path):
+                exec_paths.append(exec_path)
+
+        if len(exec_paths) > 1:
+            raise ValueError(
+                f"Executable {exec} found in multiple $PATH paths added by " +
+                f"user-defined modules in `config.yaml`. Paths: {exec_paths}")
+        elif len(exec_paths) == 1:
+            return exec_paths[0]
+
+        # Else prepend the lab bin path to exec
+        return os.path.join(self.expt.lab.bin_path, exec)
+
+    def setup_executable_paths(self, search_module_paths=True):
         """Set model executable paths"""
         self.exec_prefix = self.config.get('exe_prefix', '')
         self.exec_name = self.config.get('exe', self.default_exec)
         self.exec_path = None
         if self.exec_name:
-            if os.path.isabs(self.exec_name):
-                # Use absolute path
-                self.exec_path = self.exec_name
-            else:
-                # Check for executable inside paths added by user-modules
-                exec_paths = []
-                for path in module_added_paths:
-                    exec_path = os.path.join(path, self.exec_name)
-                    if os.path.exists(exec_path):
-                        exec_paths.append(exec_path)
-
-                if len(exec_paths) > 1:
-                    # Will this ever happen?
-                    raise ValueError(
-                        f"Executable: {self.exec_name} found in multiple " +
-                        f"module paths: {exec_paths}"
-                    )
-                elif len(exec_paths) == 1:
-                    self.exec_path = exec_paths[0]
-                    print(
-                        f"Expanded model exectuable path to: {self.exec_path}")
-                else:
-                    # Prepend the lab bin path
-                    self.exec_path = os.path.join(self.expt.lab.bin_path,
-                                                  self.exec_name)
+            self.exec_path = self.expand_executable_path(self.exec_name,
+                                                         search_module_paths)
 
             # Make exec_name consistent for models with fully qualified path.
             # In all cases it will just be the name of the executable without a
@@ -361,6 +366,8 @@ class Model(object):
         raise NotImplementedError
 
     def build_model(self):
+        # Don't search user modules for executable paths
+        self.setup_executable_paths(search_module_paths=False)
 
         if not self.repo_url:
             return

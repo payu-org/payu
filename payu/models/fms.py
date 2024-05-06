@@ -76,9 +76,16 @@ def fms_collate(model):
     mpi = collate_config.get('mpi', False)
 
     if mpi:
-        # Must use envmod to be able to load mpi modules for collation
-        envmod.setup()
-        model.expt.load_modules()
+        # TODO: I've added module setup and load functions to
+        # Experiment.collate - as user modules needed to be use & loaded
+        # to expand executable paths. However, is loading mpi module
+        # for non-mpi collate jobs going to cause errors?
+        # If so, need to only use/load user modules in Experiment.collate
+        # and only load additional modules for mpi here
+
+        # # Must use envmod to be able to load mpi modules for collation
+        # envmod.setup()
+        # model.expt.load_modules()
         default_exe = 'mppnccombine-fast'
     else:
         default_exe = 'mppnccombine'
@@ -92,8 +99,7 @@ def fms_collate(model):
                 mppnc_path = os.path.join(model.expt.lab.bin_path, f)
                 break
     else:
-        if not os.path.isabs(mppnc_path):
-            mppnc_path = os.path.join(model.expt.lab.bin_path, mppnc_path)
+        mppnc_path = model.expand_executable_path(mppnc_path)
 
     assert mppnc_path, 'No mppnccombine program found'
 

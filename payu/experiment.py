@@ -220,9 +220,29 @@ class Experiment(object):
         resource.setrlimit(resource.RLIMIT_STACK,
                            (stacksize, resource.RLIM_INFINITY))
 
-    def load_modules(self):
-        # NOTE: This function is increasingly irrelevant, and may be removable.
+    def setup_modules(self):
+        """Setup modules and get paths added to $PATH by user-modules"""
+        envmod.setup()
 
+        # Get user modules info from config
+        self.user_modulepaths = self.config.get('modules', {}).get('use', [])
+        self.user_modules = self.config.get('modules', {}).get('load', [])
+
+        # Get paths added to $PATH by user-modules
+        self.user_modules_set_paths = envmod.paths_set_by_user_modules(
+            user_modules=self.user_modules,
+            user_modulepaths=self.user_modulepaths
+        )
+
+    def run_modules(self):
+        """Run module load + use commands"""
+        # Add any user-defined module dir(s) to MODULEPATH
+        for module_dir in self.user_modulepaths:
+            envmod.module('use', module_dir)
+
+        self.load_modules()
+
+    def load_modules(self):
         # Scheduler
         sched_modname = self.config.get('scheduler', 'pbs')
         self.modules.add(sched_modname)
@@ -413,18 +433,10 @@ class Experiment(object):
 
         make_symlink(self.work_path, self.work_sym_path)
 
-        # Get paths added by user-modules to $PATH
-        envmod.setup()
-        self.user_modulepaths = self.config.get('modules', {}).get('use', [])
-        self.user_modules = self.config.get('modules', {}).get('load', [])
-        module_paths = envmod.paths_set_by_user_modules(
-            user_modules=self.user_modules,
-            user_modulepaths=self.user_modulepaths
-        )
-
-        # Set up model executable paths
+        # Set up executable paths - first search through paths added by modules
+        self.setup_modules()
         for model in self.models:
-            model.setup_executable_paths(module_paths)
+            model.setup_executable_paths()
 
         # Set up all file manifests
         self.manifest.setup()
@@ -465,11 +477,8 @@ class Experiment(object):
             self.get_restarts_to_prune()
 
     def run(self, *user_flags):
-        # Add any user-defined module dir(s) to MODULEPATH
-        for module_dir in self.user_modulepaths:
-            envmod.module('use', module_dir)
-
-        self.load_modules()
+        # Run module use and load commands
+        self.run_modules()
 
         f_out = open(self.stdout_fname, 'w')
         f_err = open(self.stderr_fname, 'w')
@@ -813,6 +822,10 @@ class Experiment(object):
             self.postprocess()
 
     def collate(self):
+        # Search module added paths & run module use + load commands
+        self.setup_modules()
+        self.run_modules()
+
         for model in self.models:
             model.collate()
 

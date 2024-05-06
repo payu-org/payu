@@ -135,7 +135,7 @@ def paths_set_by_user_modules(user_modules, user_modulepaths):
         init_paths = paths_post_module_commands(["purge"])
         for module in user_modules:
             # Check if module is available
-            module_cmd = "{os.environ['MODULESHOME']}/bin/modulecmd bash"
+            module_cmd = f"{os.environ['MODULESHOME']}/bin/modulecmd bash"
             cmd = f"{module_cmd} is-avail {module}"
             if run_cmd(cmd).returncode != 0:
                 continue
