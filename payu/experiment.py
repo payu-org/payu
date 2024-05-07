@@ -228,19 +228,17 @@ class Experiment(object):
         self.user_modulepaths = self.config.get('modules', {}).get('use', [])
         self.user_modules = self.config.get('modules', {}).get('load', [])
 
-        # Get paths added to $PATH by user-modules
-        self.user_modules_set_paths = envmod.paths_set_by_user_modules(
-            user_modules=self.user_modules,
-            user_modulepaths=self.user_modulepaths
-        )
+        # Run module use + load commands for user-defined modules
+        envmod.setup_user_modules(self.user_modules, self.user_modulepaths)
 
-    def run_modules(self):
-        """Run module load + use commands"""
-        # Add any user-defined module dir(s) to MODULEPATH
-        for module_dir in self.user_modulepaths:
-            envmod.module('use', module_dir)
+        # Get paths and loaded modules post loading only the user modules
+        self.user_modules_paths = envmod.env_var_set_by_modules(
+            self.user_modules, 'PATH'
+        ).split(':')
 
-        self.load_modules()
+        self.loaded_user_modules = envmod.env_var_set_by_modules(
+            self.user_modules, 'LOADEDMODULES'
+        ).split(':')
 
     def load_modules(self):
         # Scheduler
@@ -265,15 +263,12 @@ class Experiment(object):
             if len(mod) > 0:
                 print('mod '+mod)
                 mod_base = mod.split('/')[0]
-                if mod_base not in core_modules:
+                if (mod_base not in core_modules and
+                     mod not in self.loaded_user_modules):
                     envmod.module('unload', mod)
 
         # Now load model-dependent modules
         for mod in self.modules:
-            envmod.module('load', mod)
-
-        # User-defined modules
-        for mod in self.user_modules:
             envmod.module('load', mod)
 
         envmod.module('list')
@@ -477,8 +472,7 @@ class Experiment(object):
             self.get_restarts_to_prune()
 
     def run(self, *user_flags):
-        # Run module use and load commands
-        self.run_modules()
+        self.load_modules()
 
         f_out = open(self.stdout_fname, 'w')
         f_err = open(self.stderr_fname, 'w')
@@ -822,9 +816,8 @@ class Experiment(object):
             self.postprocess()
 
     def collate(self):
-        # Search module added paths & run module use + load commands
+        # Setup modules - load user-defined modules
         self.setup_modules()
-        self.run_modules()
 
         for model in self.models:
             model.collate()

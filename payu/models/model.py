@@ -184,9 +184,9 @@ class Model(object):
             return exec
 
         if not search_module_path:
-            module_added_paths = set()
+            module_added_paths = []
         else:
-            module_added_paths = self.expt.user_modules_set_paths
+            module_added_paths = self.expt.user_modules_paths
 
         # Search for exe inside paths added to $PATH by user-defined modules
         exec_paths = []

@@ -17,6 +17,21 @@ if not hasattr(subprocess, 'check_output'):
 DEFAULT_BASEPATH = '/opt/Modules'
 DEFAULT_VERSION = 'v4.3.0'
 
+MODULE_NOT_FOUND_HELP = """ To fix module not being found:
+- Check module name and version in config.yaml (listed under `modules: load:`)
+- If module is found in a module directory, ensure this path is listed in
+config.yaml under `modules: use:`, or run `module use` command prior to running
+payu commands.
+"""
+
+MULTIPLE_MODULES_HELP = """ To fix having multiple modules available:
+- Add version to the module in config.yaml (under `modules: load:`)
+- Modify module directories in config.yaml (under `modules: use:`)
+- Or modify module directories in user environment by using module use/unuse
+commands, e.g.:
+    $ module use dir # Add dir to $MODULEPATH
+    $ module unuse dir # Remove dir from $MODULEPATH
+"""
 
 def setup(basepath=DEFAULT_BASEPATH):
     """Set the environment modules used by the Environment Module system."""
@@ -112,71 +127,76 @@ def lib_update(required_libs, lib_name):
     return ''
 
 
-def paths_set_by_user_modules(user_modules, user_modulepaths):
-    """Search along changes PATH added by user defined modules
-    and return a set of paths added - this is used for
-    searching for the model executable"""
+def setup_user_modules(user_modules, user_modulepaths):
+    """Run module use + load commands for user-defined modules"""
+
+    if 'MODULESHOME' not in os.environ:
+        print(
+            'payu: warning: No Environment Modules found; ' +
+            'skipping running module use/load commands for any module ' +
+            'directories/modulefiles defined in config.yaml')
+        return
+
+    # Add user-defined directories to MODULEPATH
+    for modulepath in user_modulepaths:
+        if not os.path.isdir(modulepath):
+            raise ValueError(
+                f"Module directory is not found: {modulepath}" +
+                "\n Check paths listed under `modules: use:` in config.yaml")
+
+        module('use', modulepath)
+
+    for modulefile in user_modules:
+        # Check module exists and there is not multiple available
+        module_subcommand = f"avail --terse {modulefile}"
+        output = run_cmd(module_cmd(module_subcommand)).stderr
+
+        # Extract out the modulefiles available
+        modules = [line for line in output.strip().splitlines()
+                    if not (line.startswith('/') and line.endswith(':'))]
+
+        if len(modules) > 1:
+            # Modules are used for finding model executable paths - so check
+            # for unique module -TODO: Could be a warning rather than an error?
+            raise ValueError(
+                f"There are multiple modules available for {modulefile}:\n" +
+                f"{output}\n{MULTIPLE_MODULES_HELP}")
+        elif len(modules) == 0:
+            raise ValueError(
+                f"Module is not found: {modulefile}\n{MODULE_NOT_FOUND_HELP}"
+            )
+
+        # Load module
+        module('load', modulefile)
+
+
+def env_var_set_by_modules(user_modules, env_var):
+    """Return an environment variable post loading only user-defined modules
+    - this is used for getting $PATH for searching for the model executable"""
     if 'MODULESHOME' not in os.environ:
         print('payu: warning: No Environment Modules found; skipping '
-              'inspecting user module changes to PATH')
-        return set()
-
-    # Orginal environment
-    previous_env = dict(os.environ)
-    previous_modulepath = os.environ['MODULEPATH']
-
-    # Set restrict module path to only user defined module paths
-    os.environ['MODULEPATH'] = ':'.join(user_modulepaths)
+              f'inspecting user module changes to ${env_var}')
+        return []
 
     # Note: Using subprocess shell to isolate changes to environment
-    paths = []
-    try:
-        # Get $PATH paths with no modules loaded
-        init_paths = paths_post_module_commands(["purge"])
-        for module in user_modules:
-            # Check if module is available
-            module_cmd = f"{os.environ['MODULESHOME']}/bin/modulecmd bash"
-            cmd = f"{module_cmd} is-avail {module}"
-            if run_cmd(cmd).returncode != 0:
-                continue
-            # TODO: Check if multiple modules are available..
-            try:
-                # Get $PATH paths post running module purge && module load
-                paths.extend(paths_post_module_commands(['purge',
-                                                         f'load {module}']))
-            except subprocess.CalledProcessError as e:
-                continue
-    finally:
-        os.environ['MODULEPATH'] = previous_modulepath
-
-    if previous_env != os.environ:
-        print(
-            "Warning: Env vars changed when inspecting paths set by modules"
-        )
-
-    # Remove inital paths and convert into a set
-    return set(paths).difference(set(init_paths))
-
-
-def paths_post_module_commands(commands):
-    """Runs subprocess module command and parse out the resulting
-    PATH environment variable"""
-    # Use modulecmd as module command is not available on compute nodes
-    module_cmds = [
-        f"eval `{os.environ['MODULESHOME']}/bin/modulecmd bash {c}`"
-        for c in commands
-    ]
-    command = ' && '.join(module_cmds) + ' && echo $PATH'
-
-    # Run Command and check the ouput
+    load_commands = [f'load {module}' for module in user_modules]
+    commands = ['purge'] + load_commands
+    module_cmds = [f"eval `{module_cmd(c)}`" for c in commands]
+    module_cmds += [f'echo ${env_var}']
+    command = ' && '.join(module_cmds)
     output = run_cmd(command)
-    output.check_returncode()
 
-    # Extact out the PATH value, and split the paths
-    path = output.stdout.strip().split('\n')[-1]
-    return path.split(':')
+    # Extract out $env_var from output
+    output.check_returncode()
+    lines = output.stdout.strip().split('\n')
+    return lines[-1]
+
+
+def module_cmd(command):
+    """Format module subcommand using modulecmd"""
+    return f"{os.environ['MODULESHOME']}/bin/modulecmd bash {command}"
 
 
 def run_cmd(command):
-    """Wrapper around subprocess command"""
+    """Wrapper around subprocess command that captures output"""
     return subprocess.run(command, shell=True, text=True, capture_output=True)
