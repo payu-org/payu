@@ -33,6 +33,7 @@ commands, e.g.:
     $ module unuse dir # Remove dir from $MODULEPATH
 """
 
+
 def setup(basepath=DEFAULT_BASEPATH):
     """Set the environment modules used by the Environment Module system."""
 
@@ -153,7 +154,7 @@ def setup_user_modules(user_modules, user_modulepaths):
 
         # Extract out the modulefiles available
         modules = [line for line in output.strip().splitlines()
-                    if not (line.startswith('/') and line.endswith(':'))]
+                   if not (line.startswith('/') and line.endswith(':'))]
 
         if len(modules) > 1:
             # Modules are used for finding model executable paths - so check
@@ -176,7 +177,7 @@ def env_var_set_by_modules(user_modules, env_var):
     if 'MODULESHOME' not in os.environ:
         print('payu: warning: No Environment Modules found; skipping '
               f'inspecting user module changes to ${env_var}')
-        return []
+        return
 
     # Note: Using subprocess shell to isolate changes to environment
     load_commands = [f'load {module}' for module in user_modules]

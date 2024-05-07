@@ -177,22 +177,28 @@ class Model(object):
             print("No prior restart files found: {error}".format(error=str(e)))
             return []
 
-    def expand_executable_path(self, exec, search_module_path=True):
+    def expand_executable_path(self, exec):
         """Given an executable, return the expanded executable path"""
         # Check if exe is already an absolute path
         if os.path.isabs(exec):
             return exec
 
-        if not search_module_path:
+        # Check if path set by loading user modules has been defined
+        module_added_path = self.expt.user_modules_path
+        if module_added_path is None:
+            print("payu: warning: Skipping searching for model executable " +
+                  "in $PATH set by user modules")
+            module_added_paths = []
+        elif module_added_path == '':
             module_added_paths = []
         else:
-            module_added_paths = self.expt.user_modules_paths
+            module_added_paths = module_added_path.split(':')
 
         # Search for exe inside paths added to $PATH by user-defined modules
         exec_paths = []
         for path in module_added_paths:
             exec_path = os.path.join(path, exec)
-            if os.path.exists(exec_path):
+            if os.path.exists(exec_path) and os.access(exec_path, os.X_OK):
                 exec_paths.append(exec_path)
 
         if len(exec_paths) > 1:
@@ -205,14 +211,13 @@ class Model(object):
         # Else prepend the lab bin path to exec
         return os.path.join(self.expt.lab.bin_path, exec)
 
-    def setup_executable_paths(self, search_module_paths=True):
+    def setup_executable_paths(self):
         """Set model executable paths"""
         self.exec_prefix = self.config.get('exe_prefix', '')
         self.exec_name = self.config.get('exe', self.default_exec)
         self.exec_path = None
         if self.exec_name:
-            self.exec_path = self.expand_executable_path(self.exec_name,
-                                                         search_module_paths)
+            self.exec_path = self.expand_executable_path(self.exec_name)
 
             # Make exec_name consistent for models with fully qualified path.
             # In all cases it will just be the name of the executable without a
@@ -366,8 +371,7 @@ class Model(object):
         raise NotImplementedError
 
     def build_model(self):
-        # Don't search user modules for executable paths
-        self.setup_executable_paths(search_module_paths=False)
+        self.setup_executable_paths()
 
         if not self.repo_url:
             return

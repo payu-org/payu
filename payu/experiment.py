@@ -132,6 +132,8 @@ class Experiment(object):
 
         self.run_id = None
 
+        self.user_modules_path = None
+
     def init_models(self):
 
         self.model_name = self.config.get('model')
@@ -232,13 +234,16 @@ class Experiment(object):
         envmod.setup_user_modules(self.user_modules, self.user_modulepaths)
 
         # Get paths and loaded modules post loading only the user modules
-        self.user_modules_paths = envmod.env_var_set_by_modules(
+        self.user_modules_path = envmod.env_var_set_by_modules(
             self.user_modules, 'PATH'
-        ).split(':')
+        )
 
+        # Store list of all modules loaded by user-modules
         self.loaded_user_modules = envmod.env_var_set_by_modules(
             self.user_modules, 'LOADEDMODULES'
-        ).split(':')
+        )
+        if self.loaded_user_modules is not None:
+            self.loaded_user_modules = self.loaded_user_modules.split(':')
 
     def load_modules(self):
         # Scheduler
@@ -264,7 +269,7 @@ class Experiment(object):
                 print('mod '+mod)
                 mod_base = mod.split('/')[0]
                 if (mod_base not in core_modules and
-                     mod not in self.loaded_user_modules):
+                        mod not in self.loaded_user_modules):
                     envmod.module('unload', mod)
 
         # Now load model-dependent modules
