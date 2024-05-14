@@ -184,15 +184,11 @@ class Model(object):
             return exec
 
         # Check if path set by loading user modules has been defined
-        module_added_path = self.expt.user_modules_path
-        if module_added_path is None:
+        module_added_paths = self.expt.user_modules_paths
+        if module_added_paths is None:
             print("payu: warning: Skipping searching for model executable " +
                   "in $PATH set by user modules")
             module_added_paths = []
-        elif module_added_path == '':
-            module_added_paths = []
-        else:
-            module_added_paths = module_added_path.split(':')
 
         # Search for exe inside paths added to $PATH by user-defined modules
         exec_paths = []

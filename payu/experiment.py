@@ -132,7 +132,7 @@ class Experiment(object):
 
         self.run_id = None
 
-        self.user_modules_path = None
+        self.user_modules_paths = None
 
     def init_models(self):
 
@@ -227,23 +227,15 @@ class Experiment(object):
         envmod.setup()
 
         # Get user modules info from config
-        self.user_modulepaths = self.config.get('modules', {}).get('use', [])
-        self.user_modules = self.config.get('modules', {}).get('load', [])
+        user_modulepaths = self.config.get('modules', {}).get('use', [])
+        user_modules = self.config.get('modules', {}).get('load', [])
 
-        # Run module use + load commands for user-defined modules
-        envmod.setup_user_modules(self.user_modules, self.user_modulepaths)
-
-        # Get paths and loaded modules post loading only the user modules
-        self.user_modules_path = envmod.env_var_set_by_modules(
-            self.user_modules, 'PATH'
-        )
-
-        # Store list of all modules loaded by user-modules
-        self.loaded_user_modules = envmod.env_var_set_by_modules(
-            self.user_modules, 'LOADEDMODULES'
-        )
-        if self.loaded_user_modules is not None:
-            self.loaded_user_modules = self.loaded_user_modules.split(':')
+        # Run module use + load commands for user-defined modules, and
+        # get a set of paths and loaded modules added by loading the modules
+        loaded_mods, paths = envmod.setup_user_modules(user_modules,
+                                                       user_modulepaths)
+        self.user_modules_paths = paths
+        self.loaded_user_modules = [] if loaded_mods is None else loaded_mods
 
     def load_modules(self):
         # Scheduler
