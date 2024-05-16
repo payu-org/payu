@@ -38,9 +38,17 @@ component_info = {
         "config_files": ["ice_in"],
     },
     "ww3dev": {
-        "config_files": ["wav_in"],
+        "config_files": ["wav_in",
+                         "WW3_PreProc/OM3.Lat",
+                         "WW3_PreProc/OM3.Lon",
+                         "WW3_PreProc/OM3.Dpt",
+                         "WW3_PreProc/OM3.Mask",
+                         "WW3_PreProc/OM3.Obstr",
+                         "WW3_PreProc/namelists_Global.nml",
+                         "WW3_PreProc/ww3_strt.inp",
+                         "WW3_PreProc/ww3_grid.nml",                         
+        ],
         "optional_config_files" : [
-            "ww3_shel.nml",
             "ww3_points.list",
         ],
     },
@@ -173,15 +181,27 @@ class CesmCmeps(Model):
         # directory
         # The ww3 mod_def input needs to be in work_path and called mod_def.ww3
         if "ww3dev" in self.components.values():
-            f_name = "mod_def.ww3"
-            f_src = os.path.join(self.work_input_path, f_name)
-            f_dst = os.path.join(self.work_path, f_name)
+             f_dst = self.work_path
 
-            if os.path.isfile(f_src):
-                make_symlink(f_src, f_dst)
-            else:
-                # TODO: copied this from other models. Surely we want to exit here or something
-                print('payu: error: Unable to find mod_def.ww3 file in input directory')
+            
+            # Change the current working directory to f_dst
+             os.chdir(f_dst)
+
+            # Extract the directory name from self.exec_path without the base name
+             exec_dir = os.path.dirname(self.exec_path)
+
+            # Run the ww3_grid command using the defined path
+             cmd = os.path.join(exec_dir, "ww3_grid")
+             result = os.system(cmd)
+
+            # Check if ww3_grid command executed successfully
+             if result == 0:
+                print("mod_def.ww3 generated successfully.")
+             else:
+                print("Error generating mod_def.ww3 file.")
+        else:
+                print("ww3dev component not found in self.components.")
+
 
     def archive(self):
         super().archive()
