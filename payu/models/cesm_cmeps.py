@@ -177,28 +177,32 @@ class CesmCmeps(Model):
 
         self.runconfig.write()
 
-        # Horrible hack to make a link to the mod_def.ww3 input in the work
-        # directory
-        # The ww3 mod_def input needs to be in work_path and called mod_def.ww3
+        # The ww3 mod_def input needs to be generated in work_path and called mod_def.ww3
         if "ww3dev" in self.components.values():
+             # Save the current working directory
+             original_dir = os.getcwd()
              f_dst = self.work_path
 
             
-            # Change the current working directory to f_dst
+             # Change the current working directory to f_dst
              os.chdir(f_dst)
 
-            # Extract the directory name from self.exec_path without the base name
+             # Extract the directory name from self.exec_path without the base name
              exec_dir = os.path.dirname(self.exec_path)
 
-            # Run the ww3_grid command using the defined path
+             # Run the ww3_grid command using the defined path
              cmd = os.path.join(exec_dir, "ww3_grid")
              result = os.system(cmd)
 
-            # Check if ww3_grid command executed successfully
+             # Change back to the original directory
+             os.chdir(original_dir)
+
+             # Check if ww3_grid command executed successfully
              if result == 0:
                 print("mod_def.ww3 generated successfully.")
              else:
                 print("Error generating mod_def.ww3 file.")
+                raise SystemExit(1)  # Terminate the program with exit code 1
         else:
                 print("ww3dev component not found in self.components.")
 
