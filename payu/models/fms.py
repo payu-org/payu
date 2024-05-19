@@ -76,8 +76,7 @@ def fms_collate(model):
     mpi = collate_config.get('mpi', False)
 
     if mpi:
-        # Must use envmod to be able to load mpi modules for collation
-        envmod.setup()
+        # Load mpi modules for collation
         model.expt.load_modules()
         default_exe = 'mppnccombine-fast'
     else:
@@ -92,8 +91,7 @@ def fms_collate(model):
                 mppnc_path = os.path.join(model.expt.lab.bin_path, f)
                 break
     else:
-        if not os.path.isabs(mppnc_path):
-            mppnc_path = os.path.join(model.expt.lab.bin_path, mppnc_path)
+        mppnc_path = model.expand_executable_path(mppnc_path)
 
     assert mppnc_path, 'No mppnccombine program found'
 

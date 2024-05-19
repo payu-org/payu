@@ -132,6 +132,8 @@ class Experiment(object):
 
         self.run_id = None
 
+        self.user_modules_paths = None
+
     def init_models(self):
 
         self.model_name = self.config.get('model')
@@ -220,9 +222,22 @@ class Experiment(object):
         resource.setrlimit(resource.RLIMIT_STACK,
                            (stacksize, resource.RLIM_INFINITY))
 
-    def load_modules(self):
-        # NOTE: This function is increasingly irrelevant, and may be removable.
+    def setup_modules(self):
+        """Setup modules and get paths added to $PATH by user-modules"""
+        envmod.setup()
 
+        # Get user modules info from config
+        user_modulepaths = self.config.get('modules', {}).get('use', [])
+        user_modules = self.config.get('modules', {}).get('load', [])
+
+        # Run module use + load commands for user-defined modules, and
+        # get a set of paths and loaded modules added by loading the modules
+        loaded_mods, paths = envmod.setup_user_modules(user_modules,
+                                                       user_modulepaths)
+        self.user_modules_paths = paths
+        self.loaded_user_modules = [] if loaded_mods is None else loaded_mods
+
+    def load_modules(self):
         # Scheduler
         sched_modname = self.config.get('scheduler', 'pbs')
         self.modules.add(sched_modname)
@@ -245,16 +260,12 @@ class Experiment(object):
             if len(mod) > 0:
                 print('mod '+mod)
                 mod_base = mod.split('/')[0]
-                if mod_base not in core_modules:
+                if (mod_base not in core_modules and
+                        mod not in self.loaded_user_modules):
                     envmod.module('unload', mod)
 
         # Now load model-dependent modules
         for mod in self.modules:
-            envmod.module('load', mod)
-
-        # User-defined modules
-        user_modules = self.config.get('modules', {}).get('load', [])
-        for mod in user_modules:
             envmod.module('load', mod)
 
         envmod.module('list')
@@ -414,6 +425,11 @@ class Experiment(object):
 
         make_symlink(self.work_path, self.work_sym_path)
 
+        # Set up executable paths - first search through paths added by modules
+        self.setup_modules()
+        for model in self.models:
+            model.setup_executable_paths()
+
         # Set up all file manifests
         self.manifest.setup()
 
@@ -453,13 +469,6 @@ class Experiment(object):
             self.get_restarts_to_prune()
 
     def run(self, *user_flags):
-        # XXX: This was previously done in reversion
-        envmod.setup()
-
-        # Add any user-defined module dir(s) to MODULEPATH
-        for module_dir in self.config.get('modules', {}).get('use', []):
-            envmod.module('use', module_dir)
-
         self.load_modules()
 
         f_out = open(self.stdout_fname, 'w')
@@ -804,6 +813,9 @@ class Experiment(object):
             self.postprocess()
 
     def collate(self):
+        # Setup modules - load user-defined modules
+        self.setup_modules()
+
         for model in self.models:
             model.collate()
 

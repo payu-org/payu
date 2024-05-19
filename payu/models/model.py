@@ -82,21 +82,6 @@ class Model(object):
         self.work_output_path = self.work_path
         self.work_init_path = self.work_path
 
-        self.exec_prefix = self.config.get('exe_prefix', '')
-        self.exec_name = self.config.get('exe', self.default_exec)
-        if self.exec_name:
-            # By default os.path.join will not prepend the lab bin_path
-            # to an absolute path
-            self.exec_path = os.path.join(self.expt.lab.bin_path,
-                                          self.exec_name)
-        else:
-            self.exec_path = None
-        if self.exec_path:
-            # Make exec_name consistent for models with fully qualified path.
-            # In all cases it will just be the name of the executable without a
-            # path
-            self.exec_name = os.path.basename(self.exec_path)
-
     def set_local_pathnames(self):
 
         # This is the path relative to the control directory, required for
@@ -129,12 +114,6 @@ class Model(object):
                 os.path.relpath(self.work_init_path, self.expt.work_path)
             )
         )
-        if self.exec_path:
-            # Local path in work directory
-            self.exec_path_local = os.path.join(
-                self.work_path_local,
-                os.path.basename(self.exec_path)
-            )
 
     def set_input_paths(self):
         if len(self.expt.models) == 1:
@@ -197,6 +176,55 @@ class Model(object):
         except Exception as e:
             print("No prior restart files found: {error}".format(error=str(e)))
             return []
+
+    def expand_executable_path(self, exec):
+        """Given an executable, return the expanded executable path"""
+        # Check if exe is already an absolute path
+        if os.path.isabs(exec):
+            return exec
+
+        # Check if path set by loading user modules has been defined
+        module_added_paths = self.expt.user_modules_paths
+        if module_added_paths is None:
+            print("payu: warning: Skipping searching for model executable " +
+                  "in $PATH set by user modules")
+            module_added_paths = []
+
+        # Search for exe inside paths added to $PATH by user-defined modules
+        exec_paths = []
+        for path in module_added_paths:
+            exec_path = os.path.join(path, exec)
+            if os.path.exists(exec_path) and os.access(exec_path, os.X_OK):
+                exec_paths.append(exec_path)
+
+        if len(exec_paths) > 1:
+            raise ValueError(
+                f"Executable {exec} found in multiple $PATH paths added by " +
+                f"user-defined modules in `config.yaml`. Paths: {exec_paths}")
+        elif len(exec_paths) == 1:
+            return exec_paths[0]
+
+        # Else prepend the lab bin path to exec
+        return os.path.join(self.expt.lab.bin_path, exec)
+
+    def setup_executable_paths(self):
+        """Set model executable paths"""
+        self.exec_prefix = self.config.get('exe_prefix', '')
+        self.exec_name = self.config.get('exe', self.default_exec)
+        self.exec_path = None
+        if self.exec_name:
+            self.exec_path = self.expand_executable_path(self.exec_name)
+
+            # Make exec_name consistent for models with fully qualified path.
+            # In all cases it will just be the name of the executable without a
+            # path
+            self.exec_name = os.path.basename(self.exec_path)
+
+            # Local path in work directory
+            self.exec_path_local = os.path.join(
+                self.work_path_local,
+                os.path.basename(self.exec_path)
+            )
 
     def setup_configuration_files(self):
         """Copy configuration and optional configuration files from control
@@ -339,6 +367,7 @@ class Model(object):
         raise NotImplementedError
 
     def build_model(self):
+        self.setup_executable_paths()
 
         if not self.repo_url:
             return
