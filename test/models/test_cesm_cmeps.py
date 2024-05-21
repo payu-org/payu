@@ -64,9 +64,9 @@ def test_runconfig_set_write_get():
     runconfig.set("CLOCK_attributes", "restart_n", "2")
 
     runconfig_path_tmp = "nuopc.runconfig.tmp"
-    runconfig.write(runconfig_tmp)
+    runconfig.write(runconfig_path_tmp)
 
-    runconfig_updated = Runconfig(runconfig_tmp)
+    runconfig_updated = Runconfig(runconfig_path_tmp)
     assert runconfig.get("CLOCK_attributes", "restart_n") == "2"
 
     os.remove(runconfig_path_tmp)
