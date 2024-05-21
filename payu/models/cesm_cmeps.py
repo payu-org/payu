@@ -121,7 +121,7 @@ class CesmCmeps(Model):
         # for additional restarts (e.g. generic tracer flux restarts)
         self.get_runconfig(self.control_path)
         additional_restart_dir = self.runconfig.get(
-            "ALLCOMP_attributes", "additional_restart_dir", "RESTART/"
+            "ALLCOMP_attributes", "additional_restart_dir", "RESTART"
         )
         self.work_restart_path = os.path.join(self.work_path, additional_restart_dir)
 
