@@ -292,9 +292,11 @@ class Runconfig:
         if m is not None:
             section_start = m.start(1)
             section_end = m.end(1)
-            # Find the variable assignment in the section
+            # This matches everything between the equals sign in
+            # a variable assignment and a # or newline character,
+            # excluding whitespace
             m = re.search(
-                r"{}\s*=\s*(.*)".format(variable),
+                r"{}\s*=\s*(\S+)\s*(?=(#|\n))".format(variable),
                 self.contents[section_start:section_end],
             )
             if m is not None:
