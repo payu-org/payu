@@ -10,6 +10,11 @@ from payu.models.cesm_cmeps import Runconfig
         ("CLOCK_attributes", "restart_n", "1"),
         ("DOES_NOT_EXIST", "OCN_model", None),
         ("ALLCOMP_attributes", "DOES_NOT_EXIST", None),
+        ("allcomp_attributes", "OCN_model", None),                  # verify case sensitivity in section
+        ("ALLCOMP_attributes", "ocn_model", None),                # verify case sensitivity in variable
+        ("ATM_attributes", "perpetual", ".false."),                        # correctly read booleans
+        ("ICE_attributes", "eps_imeshT", "1e-13"),                     # correctly read commented value
+        ("MED_attributes", "histaux_atm2med_file1_flds", "Faxa_swndr:Faxa_swvdr:Faxa_swndf:Faxa_swvdf"), # correctly read long colon separated value
     ]
 )
 def test_runconfig_get(section, variable, expected):
