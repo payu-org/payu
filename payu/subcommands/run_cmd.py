@@ -147,6 +147,7 @@ def runscript():
             expt.manifest = Manifest(expt.config.get('manifest', {}),
                                      reproduce=False)
             expt.set_output_paths()
+            expt.set_environment_vars()
             # Does not make sense to reproduce a multiple run.
             # Take care of this with argument processing?
             expt.reproduce = False
