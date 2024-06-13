@@ -98,7 +98,6 @@ class Experiment(object):
             model.set_input_paths()
 
         self.set_output_paths()
-        self.set_environment_vars()
 
         # Create metadata file and move to archive
         self.metadata.write_metadata(restart_path=self.prior_restart_path)
@@ -375,18 +374,6 @@ class Experiment(object):
 
         for model in self.models:
             model.set_model_output_paths()
-
-    def set_environment_vars(self):
-        """Save information of output directories and current run to
-        environment variables, so they can be accessed via user-scripts"""
-        os.environ.update(
-            {
-                'PAYU_CURRENT_OUTPUT_DIR': self.output_path,
-                'PAYU_CURRENT_RESTART_DIR': self.restart_path,
-                'PAYU_ARCHIVE_DIR': self.archive_path,
-                'PAYU_CURRENT_RUN': str(self.counter)
-            }
-        )
 
     def build_model(self):
 
@@ -888,7 +875,22 @@ class Experiment(object):
         cmd = shlex.split(cmd)
         sp.call(cmd)
 
+    def set_userscript_env_vars(self):
+        """Save information of output directories and current run to
+        environment variables, so they can be accessed via user-scripts"""
+        os.environ.update(
+            {
+                'PAYU_CURRENT_OUTPUT_DIR': self.output_path,
+                'PAYU_CURRENT_RESTART_DIR': self.restart_path,
+                'PAYU_ARCHIVE_DIR': self.archive_path,
+                'PAYU_CURRENT_RUN': str(self.counter)
+            }
+        )
+
     def run_userscript(self, script_cmd):
+        # Setup environment variables with current run information
+        self.set_userscript_env_vars()
+
         # First try to interpret the argument as a full command:
         try:
             sp.check_call(shlex.split(script_cmd))
