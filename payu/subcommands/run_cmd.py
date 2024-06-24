@@ -13,11 +13,12 @@ parameters = {'description': 'Run the model experiment'}
 
 arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory, args.reproduce, args.force,
-             args.force_prune_restarts]
+             args.force_prune_restarts, args.metadata_off]
 
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
-           reproduce=False, force=False, force_prune_restarts=False):
+           reproduce=False, force=False, force_prune_restarts=False,
+           metadata_off=False):
 
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
@@ -26,7 +27,8 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
                                 lab_path=lab_path,
                                 reproduce=reproduce,
                                 force=force,
-                                force_prune_restarts=force_prune_restarts)
+                                force_prune_restarts=force_prune_restarts,
+                                metadata_off=metadata_off)
 
     # Set the queue
     # NOTE: Maybe force all jobs on the normal queue
@@ -120,7 +122,8 @@ def runscript():
 
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)
-    expt = Experiment(lab, reproduce=run_args.reproduce, force=run_args.force)
+    expt = Experiment(lab, reproduce=run_args.reproduce, force=run_args.force,
+                      metadata_off=run_args.metadata_off)
 
     n_runs_per_submit = expt.config.get('runspersub', 1)
     subrun = 1

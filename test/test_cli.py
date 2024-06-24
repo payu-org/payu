@@ -62,6 +62,7 @@ def test_parse_setup():
     assert args.pop('force_archive') is False
     assert args.pop('reproduce') is False
     assert args.pop('force') is False
+    assert args.pop('metadata_off') is False
 
     assert len(args) == 0
 
@@ -72,7 +73,8 @@ def test_parse_setup():
                             '--laboratory path/to/lab '
                             '--archive '
                             '--force '
-                            '--reproduce'.format(cmd=cmd))
+                            '--reproduce '
+                            '--metadata-off'.format(cmd=cmd))
 
     args = vars(parser.parse_args(arguments[1:]))
 
@@ -86,6 +88,7 @@ def test_parse_setup():
     assert args.pop('force_archive') is True
     assert args.pop('reproduce') is True
     assert args.pop('force') is True
+    assert args.pop('metadata_off') is True
 
     assert len(args) == 0
 
@@ -95,7 +98,8 @@ def test_parse_setup():
                             '-c path/to/config.yaml '
                             '-l path/to/lab '
                             '-f '
-                            '-r'.format(cmd=cmd))
+                            '-r '
+                            '-M'.format(cmd=cmd))
 
     args = vars(parser.parse_args(arguments[1:]))
 
@@ -109,6 +113,7 @@ def test_parse_setup():
     assert args.pop('force_archive') is False
     assert args.pop('reproduce') is True
     assert args.pop('force') is True
+    assert args.pop('metadata_off') is True
 
     assert len(args) == 0
 
@@ -133,6 +138,7 @@ def test_parse_run():
     assert args.pop('init_run') is None
     assert args.pop('n_runs') is None
     assert args.pop('force_prune_restarts') is False
+    assert args.pop('metadata_off') is False
 
     assert len(args) == 0
 
@@ -145,7 +151,8 @@ def test_parse_run():
                             '--initial 99 '
                             '--nruns 999 '
                             '--reproduce '
-                            '--force-prune-restarts'.format(cmd=cmd))
+                            '--force-prune-restarts '
+                            '--metadata-off'.format(cmd=cmd))
 
     args = vars(parser.parse_args(arguments[1:]))
 
@@ -161,6 +168,7 @@ def test_parse_run():
     assert args.pop('init_run') == '99'
     assert args.pop('n_runs') == '999'
     assert args.pop('force_prune_restarts') is True
+    assert args.pop('metadata_off') is True
 
     assert len(args) == 0
 
@@ -173,7 +181,8 @@ def test_parse_run():
                             '-i 99 '
                             '-n 999 '
                             '-r '
-                            '-F'.format(cmd=cmd))
+                            '-F '
+                            '-M'.format(cmd=cmd))
 
     args = vars(parser.parse_args(arguments[1:]))
 
@@ -189,6 +198,7 @@ def test_parse_run():
     assert args.pop('init_run') == '99'
     assert args.pop('n_runs') == '999'
     assert args.pop('force_prune_restarts') is True
+    assert args.pop('metadata_off') is True
 
     assert len(args) == 0
 
@@ -209,6 +219,7 @@ def test_parse_sweep():
     assert args.pop('config_path') is None
     assert args.pop('lab_path') is None
     assert args.pop('hard_sweep') is False
+    assert args.pop('metadata_off') is False
 
     assert len(args) == 0
 
@@ -217,7 +228,8 @@ def test_parse_sweep():
                             '--model mom '
                             '--config path/to/config.yaml '
                             '--laboratory path/to/lab '
-                            '--hard'.format(cmd=cmd))
+                            '--hard '
+                            '--metadata-off'.format(cmd=cmd))
 
     args = vars(parser.parse_args(arguments[1:]))
 
@@ -229,6 +241,7 @@ def test_parse_sweep():
     assert args.pop('config_path') == 'path/to/config.yaml'
     assert args.pop('lab_path') == 'path/to/lab'
     assert args.pop('hard_sweep') is True
+    assert args.pop('metadata_off') is True
 
     assert len(args) == 0
 
@@ -236,7 +249,8 @@ def test_parse_sweep():
     arguments = shlex.split('payu {cmd} '
                             '-m mom '
                             '-c path/to/config.yaml '
-                            '-l path/to/lab '.format(cmd=cmd))
+                            '-l path/to/lab '
+                            '-M'.format(cmd=cmd))
 
     args = vars(parser.parse_args(arguments[1:]))
 
@@ -248,6 +262,7 @@ def test_parse_sweep():
     assert args.pop('config_path') == 'path/to/config.yaml'
     assert args.pop('lab_path') == 'path/to/lab'
     assert args.pop('hard_sweep') is False
+    assert args.pop('metadata_off') is True
 
     assert len(args) == 0
 
@@ -269,6 +284,7 @@ def test_parse_collate():
     assert args.pop('lab_path') is None
     assert args.pop('init_run') is None
     assert args.pop('dir_path') is None
+    assert args.pop('metadata_off') is False
 
     assert len(args) == 0
 
@@ -278,7 +294,8 @@ def test_parse_collate():
                             '--config path/to/config.yaml '
                             '--laboratory path/to/lab '
                             '--initial 99 '
-                            '--directory path/to/files '.format(cmd=cmd))
+                            '--directory path/to/files '
+                            '--metadata-off'.format(cmd=cmd))
 
     args = vars(parser.parse_args(arguments[1:]))
 
@@ -291,6 +308,7 @@ def test_parse_collate():
     assert args.pop('lab_path') == 'path/to/lab'
     assert args.pop('init_run') == '99'
     assert args.pop('dir_path') == 'path/to/files'
+    assert args.pop('metadata_off') is True
 
     assert len(args) == 0
 
@@ -300,7 +318,8 @@ def test_parse_collate():
                             '-c path/to/config.yaml '
                             '-l path/to/lab '
                             '-i 99 '
-                            '-d path/to/files '.format(cmd=cmd))
+                            '-d path/to/files '
+                            '-M'.format(cmd=cmd))
 
     args = vars(parser.parse_args(arguments[1:]))
 
@@ -313,6 +332,7 @@ def test_parse_collate():
     assert args.pop('lab_path') == 'path/to/lab'
     assert args.pop('init_run') == '99'
     assert args.pop('dir_path') == 'path/to/files'
+    assert args.pop('metadata_off') is True
 
     assert len(args) == 0
 

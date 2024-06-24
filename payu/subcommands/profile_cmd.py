@@ -15,15 +15,16 @@ title = 'profile'
 parameters = {'description': 'Postprocess any profiling output'}
 
 arguments = [args.model, args.config, args.initial, args.nruns,
-             args.laboratory]
+             args.laboratory, args.metadata_off]
 
 
-def runcmd(model_type, config_path, init_run, n_runs, lab_path):
+def runcmd(model_type, config_path, init_run, n_runs, lab_path, metadata_off):
 
     pbs_config = fsops.read_config(config_path)
     pbs_vars = cli.set_env_vars(init_run=init_run,
                                 n_runs=n_runs,
-                                lab_path=lab_path)
+                                lab_path=lab_path,
+                                metadata_off=metadata_off)
 
     pbs_config['queue'] = pbs_config.get('profile_queue', 'normal')
 
@@ -80,6 +81,6 @@ def runscript():
 
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)
-    expt = Experiment(lab)
+    expt = Experiment(lab, metadata_off=run_args.metadata_off)
 
     expt.profile()

@@ -47,7 +47,7 @@ default_restart_freq = 5
 
 class Experiment(object):
 
-    def __init__(self, lab, reproduce=False, force=False):
+    def __init__(self, lab, reproduce=False, force=False, metadata_off=False):
         self.lab = lab
 
         if not force:
@@ -59,7 +59,7 @@ class Experiment(object):
         self.start_time = datetime.datetime.now()
 
         # Initialise experiment metadata - uuid and experiment name
-        self.metadata = Metadata(Path(lab.archive_path))
+        self.metadata = Metadata(Path(lab.archive_path), disabled=metadata_off)
         self.metadata.setup()
 
         # TODO: replace with dict, check versions via key-value pairs
@@ -794,6 +794,10 @@ class Experiment(object):
                 payu=self.payu_path,
                 expt=self.counter
             )
+
+            if not self.metadata.enabled:
+                cmd += f' --metadata-off'
+
             sp.check_call(shlex.split(cmd))
 
         if self.config.get('hpctoolkit', False):
@@ -802,6 +806,10 @@ class Experiment(object):
                 payu=self.payu_path,
                 expt=self.counter
             )
+
+            if not self.metadata.enabled:
+                cmd += f' --metadata-off'
+
             sp.check_call(shlex.split(cmd))
 
         archive_script = self.userscripts.get('archive')
@@ -852,6 +860,9 @@ class Experiment(object):
                       '    payu sync')
                 cmd += f' --sync-ignore-last'
 
+            if not self.metadata.enabled:
+                cmd += f' --metadata-off'
+
             sp.check_call(shlex.split(cmd))
 
     def sync(self):
@@ -872,6 +883,10 @@ class Experiment(object):
             start=next_run,
             n=self.n_runs
         )
+
+        if not self.metadata.enabled:
+            cmd += f' --metadata-off'
+
         cmd = shlex.split(cmd)
         sp.call(cmd)
 
