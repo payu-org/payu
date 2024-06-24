@@ -13,15 +13,17 @@ arguments = [
     args.laboratory,
     args.force_archive,
     args.reproduce,
-    args.force
+    args.force,
+    args.metadata_off
 ]
 
 
 def runcmd(model_type, config_path, lab_path, force_archive,
-           reproduce=False, force=False):
+           reproduce=False, force=False, metadata_off=False):
 
     lab = Laboratory(model_type, config_path, lab_path)
-    expt = Experiment(lab, reproduce=reproduce, force=force)
+    expt = Experiment(lab, reproduce=reproduce, force=force,
+                      metadata_off=metadata_off)
 
     expt.setup(force_archive=force_archive)
 

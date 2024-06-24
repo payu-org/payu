@@ -15,15 +15,17 @@ title = 'collate'
 parameters = {'description': 'Collate tiled output into single output files'}
 
 arguments = [args.model, args.config, args.initial, args.laboratory,
-             args.dir_path]
+             args.dir_path, args.metadata_off]
 
 
-def runcmd(model_type, config_path, init_run, lab_path, dir_path):
+def runcmd(model_type, config_path, init_run, lab_path, dir_path,
+           metadata_off):
 
     pbs_config = fsops.read_config(config_path)
     pbs_vars = cli.set_env_vars(init_run=init_run,
                                 lab_path=lab_path,
-                                dir_path=dir_path)
+                                dir_path=dir_path,
+                                metadata_off=metadata_off)
 
     collate_config = pbs_config.get('collate', {})
 
@@ -107,6 +109,6 @@ def runscript():
     lab = Laboratory(run_args.model_type,
                      run_args.config_path,
                      run_args.lab_path)
-    expt = Experiment(lab)
+    expt = Experiment(lab, metadata_off=run_args.metadata_off)
     expt.collate()
     expt.postprocess()
