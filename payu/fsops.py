@@ -27,6 +27,11 @@ DEFAULT_CONFIG_FNAME = 'config.yaml'
 # Delete this once this bug in Lustre is fixed
 CHECK_LUSTRE_PATH_LEN = True
 
+# File extensions to script interpreters
+EXTENSION_TO_INTERPRETER = {'.py': sys.executable,
+                            '.sh': '/bin/bash',
+                            '.csh': '/bin/tcsh'}
+
 
 def mkdir_p(path):
     """Create a new directory; ignore if it already exists."""
@@ -229,3 +234,91 @@ def list_archive_dirs(archive_path: Union[Path, str],
 
     dirs.sort(key=lambda d: int(d.lstrip(dir_type)))
     return dirs
+
+
+def run_script_command(script_cmd: str, control_path: Path) -> None:
+    """Run a user defined script or command.
+
+    Parameters
+    ----------
+    script_cmd : string
+        String of user-script command defined in configuration file
+    control_path : Path
+        The control directory of the experiment
+
+    Raises
+    ------
+    RuntimeError
+        If there's was an error running the user-script
+    """
+    try:
+        _run_script(script_cmd, control_path)
+    except Exception as e:
+        error_msg = f"User defined script/command failed to run: {script_cmd}"
+        raise RuntimeError(error_msg) from e
+
+def needs_subprocess_shell(command: str) -> bool:
+    """Check if command contains shell specific values. For example, file
+    redirections, pipes or logical operators.
+
+    Parameters
+    ----------
+    command: string
+        String of command to run in subprocess call
+
+    Returns
+    -------
+    bool
+        Returns True if command requires a subprocess shell, False otherwise
+    """
+    shell_values = ['>', '<', '|', '&&', '$', '`']
+    for value in shell_values:
+        if value in command:
+            return True
+    return False
+
+def _run_script(script_cmd: str, control_path: Path) -> None:
+    """Helper recursive function to attempt running a script command.
+
+    Parameters
+    ----------
+    script_cmd : string
+        The script command to attempt to run in subprocess call
+    control_path: Path
+        The control directory to use for resolving relative filepaths, if file
+        is not found
+    """
+    # First try to interpret the argument as a full command:
+    try:
+        if needs_subprocess_shell(script_cmd):
+            subprocess.check_call(script_cmd, shell=True)
+        else:
+            subprocess.check_call(shlex.split(script_cmd))
+    except EnvironmentError as e:
+        # Now try to run the script explicitly
+        if e.errno == errno.ENOENT:
+            # Check if script is a file in the control directory
+            cmd = control_path / script_cmd
+            if cmd.is_file():
+                _run_script(str(cmd), control_path)
+            else:
+                raise
+
+        # If we get a "non-executable" error, then guess the type
+        elif e.errno == errno.EACCES:
+            _, file_ext = os.path.splitext(script_cmd)
+            shell_name = EXTENSION_TO_INTERPRETER.get(file_ext, None)
+            if shell_name:
+                print('payu: warning: Assuming that {0} is a {1} '
+                      'script based on the filename extension.'
+                      ''.format(os.path.basename(script_cmd),
+                                os.path.basename(shell_name)))
+
+                cmd = f'{shell_name} {script_cmd}'
+                _run_script(cmd, control_path)
+            else:
+                raise
+
+        # Otherwise re-raise the error
+        else:
+            raise

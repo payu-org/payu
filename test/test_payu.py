@@ -12,7 +12,7 @@ import payu.fsops
 import payu.laboratory
 import payu.envmod
 
-from .common import testdir, tmpdir, ctrldir, labdir, workdir
+from .common import testdir, tmpdir, ctrldir, labdir, workdir, cd
 from .common import make_exe, make_inputs, make_restarts, make_all_files
 
 
@@ -301,3 +301,116 @@ def test_list_archive_dirs():
     # Clean up test archive
     shutil.rmtree(tmp_archive)
     shutil.rmtree(tmp_archive_2)
+
+
+@pytest.fixture
+def script_control_dir():
+    # Create a temporary control directory
+    control_dir = tmpdir / 'script_control_dir'
+    control_dir.mkdir()
+
+    yield control_dir
+
+    # Tear down
+    shutil.rmtree(control_dir)
+
+
+def test_run_userscript_python_script(script_control_dir: Path):
+    # Create a simple python script
+    python_script = script_control_dir / 'test_script.py'
+    with open(python_script, 'w') as f:
+        f.writelines([
+            f"with open('{script_control_dir}/output.txt', 'w') as f:\n",
+            "   f.write('Test Python user script')"
+        ])
+
+    # Test run userscript
+    payu.fsops.run_script_command('test_script.py', script_control_dir)
+
+    # Check script output
+    with open((script_control_dir / 'output.txt'), 'r') as f:
+        assert f.read() == "Test Python user script"
+
+
+def test_run_userscript_bash_script(script_control_dir: Path):
+    # Create a simple bash script
+    bash_script = script_control_dir / 'test_script.sh'
+    with open(bash_script, 'w') as f:
+        f.writelines([
+            '#!/bin/bash\n',
+            'echo -n "Test bash user script" > output.txt'
+        ])
+
+    # Test execute script
+    with cd(script_control_dir):
+        payu.fsops.run_script_command('./test_script.sh', script_control_dir)
+
+    # Check script output
+    with open((script_control_dir / 'output.txt'), 'r') as f:
+        assert f.read() == "Test bash user script"
+
+
+def test_userscript_unknown_extension(script_control_dir: Path):
+    # Create a text file
+    text_file = script_control_dir / 'test_txt.txt'
+    text_file.touch()
+
+    # Test user script raises an error
+    with pytest.raises(RuntimeError):
+        payu.fsops.run_script_command(str(text_file), script_control_dir)
+
+
+def test_userscript_non_existent_file(script_control_dir: Path):
+    # Test user script raises an error
+    with pytest.raises(RuntimeError):
+        payu.fsops.run_script_command('unknown_userscript.sh',
+                                      script_control_dir)
+
+
+def test_userscript_non_existent_file(script_control_dir: Path):
+    # Test userscript raises an error
+    with pytest.raises(RuntimeError):
+        payu.fsops.run_script_command('unknown_userscript.sh',
+                                      script_control_dir)
+
+
+def test_run_userscript_python_script_eror(script_control_dir):
+    # Create a python script that'll exit with an error
+    python_script = script_control_dir / 'test_script.py'
+    with open(python_script, 'w') as f:
+        f.write('raise ValueError("Test that script exits with error")')
+
+    # Test userscript raises an error
+    with pytest.raises(RuntimeError):
+        payu.fsops.run_script_command('test_script.py',
+                                      script_control_dir)
+
+
+def test_run_userscript_command(script_control_dir):
+    # Create a simple command
+    cmd = 'echo -n "some_data" > test.txt'
+
+    # Test payu userscript
+    with cd(script_control_dir):
+        payu.fsops.run_script_command(cmd, script_control_dir)
+
+    # Check userscript output
+    with open((script_control_dir / 'test.txt'), 'r') as f:
+        content = f.read()
+        assert content == "some_data"
+
+
+@pytest.mark.parametrize("command, expected", [
+    ('echo "Some Data" > test.txt', True),
+    ('ls -l | grep "test"', True),
+    ('cmd1 && cmd2', True),
+    ('cmd1 || cmd2', True),
+    ('echo "Data"', False),
+    ('ls -l', False),
+    ('some_python_script.py', False),
+    ('/bin/bash script.sh', False),
+    ('echo $PAYU_ENV_VALUE', True),
+    ('echo `date`', True)
+])
+def test_needs_shell(command, expected):
+    assert payu.fsops.needs_subprocess_shell(command) == expected
