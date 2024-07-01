@@ -28,6 +28,7 @@ import yaml
 from payu import envmod
 from payu.fsops import mkdir_p, make_symlink, read_config, movetree
 from payu.fsops import list_archive_dirs
+from payu.fsops import run_script_command
 from payu.schedulers.pbs import get_job_info, pbs_env_init, get_job_id
 from payu.models import index as model_index
 import payu.profilers
@@ -887,44 +888,12 @@ class Experiment(object):
             }
         )
 
-    def run_userscript(self, script_cmd):
-        # Setup environment variables with current run information
+    def run_userscript(self, script_cmd: str):
+        """Run a user defined script or subcommand at various stages of the
+        payu submissions"""
         self.set_userscript_env_vars()
-
-        # First try to interpret the argument as a full command:
-        try:
-            sp.check_call(shlex.split(script_cmd))
-        except EnvironmentError as exc:
-            # Now try to run the script explicitly
-            if exc.errno == errno.ENOENT:
-                cmd = os.path.join(self.control_path, script_cmd)
-                # Simplistic recursion check
-                assert os.path.isfile(cmd)
-                self.run_userscript(cmd)
-
-            # If we get a "non-executable" error, then guess the type
-            elif exc.errno == errno.EACCES:
-                # TODO: Move outside
-                ext_cmd = {'.py': sys.executable,
-                           '.sh': '/bin/bash',
-                           '.csh': '/bin/tcsh'}
-
-                _, f_ext = os.path.splitext(script_cmd)
-                shell_name = ext_cmd.get(f_ext)
-                if shell_name:
-                    print('payu: warning: Assuming that {0} is a {1} script '
-                          'based on the filename extension.'
-                          ''.format(os.path.basename(script_cmd),
-                                    os.path.basename(shell_name)))
-                    cmd = ' '.join([shell_name, script_cmd])
-                    self.run_userscript(cmd)
-                else:
-                    # If we can't guess the shell, then abort
-                    raise
-        except sp.CalledProcessError as exc:
-            # If the script runs but the output is bad, then warn the user
-            print('payu: warning: user script \'{0}\' failed (error {1}).'
-                  ''.format(script_cmd, exc.returncode))
+        run_script_command(script_cmd,
+                           control_path=Path(self.control_path))
 
     def sweep(self, hard_sweep=False):
         # TODO: Fix the IO race conditions!
