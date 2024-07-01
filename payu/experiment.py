@@ -888,7 +888,7 @@ class Experiment(object):
             }
         )
 
-    def run_userscript(self, script_cmd : str):
+    def run_userscript(self, script_cmd: str):
         """Run a user defined script or subcommand at various stages of the
         payu submissions"""
         self.set_userscript_env_vars()

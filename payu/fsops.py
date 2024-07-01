@@ -257,6 +257,7 @@ def run_script_command(script_cmd: str, control_path: Path) -> None:
         error_msg = f"User defined script/command failed to run: {script_cmd}"
         raise RuntimeError(error_msg) from e
 
+
 def needs_subprocess_shell(command: str) -> bool:
     """Check if command contains shell specific values. For example, file
     redirections, pipes or logical operators.
@@ -276,6 +277,7 @@ def needs_subprocess_shell(command: str) -> bool:
         if value in command:
             return True
     return False
+
 
 def _run_script(script_cmd: str, control_path: Path) -> None:
     """Helper recursive function to attempt running a script command.
