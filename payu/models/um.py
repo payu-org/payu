@@ -38,14 +38,13 @@ class UnifiedModel(Model):
         self.restart_calendar_file = self.model_type + '.res.yaml'
 
         # TODO: many of these can probably be ignored.
-        self.config_files = ['CNTLALL', 'prefix.CNTLATM', 'prefix.CNTLGEN',
-                             'CONTCNTL', 'errflag', 'exstat',
-                             'ftxx', 'ftxx.new', 'ftxx.vars',
-                             'hnlist', 'ihist', 'INITHIS',
-                             'namelists', 'PPCNTL', 'prefix.PRESM_A',
-                             'SIZES', 'STASHC', 'UAFILES_A', 'UAFLDS_A',
-                             'parexe', 'cable.nml', 'um_env.py']
-        self.optional_config_files = ['input_atm.nml']
+        self.config_files = [
+            'errflag',
+            'hnlist', 'ihist',
+            'namelists', 'prefix.PRESM_A',
+            'STASHC', 'UAFILES_A', 'UAFLDS_A',
+            'cable.nml', 'um_env.py']
+        self.optional_config_files = ['input_atm.nml', 'parexe']
 
         self.restart = 'restart_dump.astart'
 
@@ -141,13 +140,17 @@ class UnifiedModel(Model):
                                            work_path=self.work_path)
         os.environ.update(um_vars)
 
-        # The above needs to be done in parexe also.
-        # FIXME: a better way to do this or remove.
+        # parexe removed from newer configurations - retain the
+        # old processing if parexe file exists for backwards compatibility
         parexe = os.path.join(self.work_path, 'parexe')
-        for line in fileinput.input(parexe, inplace=True):
-            line = line.format(input_path=self.input_paths[0],
-                               work_path=self.work_path)
-            print(line, end='')
+        if os.path.isfile(parexe):
+            # The above needs to be done in parexe also.
+            # FIXME: a better way to do this or remove.
+            for line in fileinput.input(parexe, inplace=True):
+                line = line.format(input_path=self.input_paths[0],
+                                   work_path=self.work_path)
+                print(line, end='')
+
 
         work_nml_path = os.path.join(self.work_path, 'namelists')
         work_nml = f90nml.read(work_nml_path)
