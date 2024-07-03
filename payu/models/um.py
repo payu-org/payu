@@ -141,17 +141,16 @@ class UnifiedModel(Model):
         os.environ.update(um_vars)
 
         # parexe removed from newer configurations - retain the
-        # old processing if file exists for backwards compatibility
-        try:
+        # old processing if parexe file exists for backwards compatibility
+        parexe = os.path.join(self.work_path, 'parexe')
+        if os.path.isfile(parexe):
             # The above needs to be done in parexe also.
             # FIXME: a better way to do this or remove.
-            parexe = os.path.join(self.work_path, 'parexe')
             for line in fileinput.input(parexe, inplace=True):
                 line = line.format(input_path=self.input_paths[0],
                                    work_path=self.work_path)
                 print(line, end='')
-        except FileNotFoundError:
-            pass
+
 
         work_nml_path = os.path.join(self.work_path, 'namelists')
         work_nml = f90nml.read(work_nml_path)
