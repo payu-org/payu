@@ -140,15 +140,15 @@ class UnifiedModel(Model):
                                            work_path=self.work_path)
         os.environ.update(um_vars)
 
-        # parexe removed from newer configurations - retain the old processing if 
-        # it exists for backwards compatibility 
+        # parexe removed from newer configurations - retain the
+        # old processing if file exists for backwards compatibility
         try:
             # The above needs to be done in parexe also.
-            # FIXME: a better way to do this or remove.  
+            # FIXME: a better way to do this or remove.
             parexe = os.path.join(self.work_path, 'parexe')
             for line in fileinput.input(parexe, inplace=True):
                 line = line.format(input_path=self.input_paths[0],
-                                work_path=self.work_path)
+                                   work_path=self.work_path)
                 print(line, end='')
         except FileNotFoundError:
             pass
