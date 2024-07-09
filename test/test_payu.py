@@ -303,38 +303,26 @@ def test_list_archive_dirs():
     shutil.rmtree(tmp_archive_2)
 
 
-@pytest.fixture
-def script_control_dir():
-    # Create a temporary control directory
-    control_dir = tmpdir / 'script_control_dir'
-    control_dir.mkdir()
-
-    yield control_dir
-
-    # Tear down
-    shutil.rmtree(control_dir)
-
-
-def test_run_userscript_python_script(script_control_dir: Path):
+def test_run_userscript_python_script(tmp_path):
     # Create a simple python script
-    python_script = script_control_dir / 'test_script.py'
+    python_script = tmp_path / 'test_script.py'
     with open(python_script, 'w') as f:
         f.writelines([
-            f"with open('{script_control_dir}/output.txt', 'w') as f:\n",
+            f"with open('{tmp_path}/output.txt', 'w') as f:\n",
             "   f.write('Test Python user script')"
         ])
 
     # Test run userscript
-    payu.fsops.run_script_command('test_script.py', script_control_dir)
+    payu.fsops.run_script_command('test_script.py', tmp_path)
 
     # Check script output
-    with open((script_control_dir / 'output.txt'), 'r') as f:
+    with open((tmp_path / 'output.txt'), 'r') as f:
         assert f.read() == "Test Python user script"
 
 
-def test_run_userscript_bash_script(script_control_dir: Path):
+def test_run_userscript_bash_script(tmp_path):
     # Create a simple bash script
-    bash_script = script_control_dir / 'test_script.sh'
+    bash_script = tmp_path / 'test_script.sh'
     with open(bash_script, 'w') as f:
         f.writelines([
             '#!/bin/bash\n',
@@ -342,62 +330,69 @@ def test_run_userscript_bash_script(script_control_dir: Path):
         ])
 
     # Test execute script
-    with cd(script_control_dir):
-        payu.fsops.run_script_command('./test_script.sh', script_control_dir)
+    with cd(tmp_path):
+        payu.fsops.run_script_command('./test_script.sh', tmp_path)
 
     # Check script output
-    with open((script_control_dir / 'output.txt'), 'r') as f:
+    with open((tmp_path / 'output.txt'), 'r') as f:
         assert f.read() == "Test bash user script"
 
 
-def test_userscript_unknown_extension(script_control_dir: Path):
+def test_userscript_unknown_extension(tmp_path):
     # Create a text file
-    text_file = script_control_dir / 'test_txt.txt'
+    text_file = tmp_path / 'test_txt.txt'
     text_file.touch()
 
     # Test user script raises an error
     with pytest.raises(RuntimeError):
-        payu.fsops.run_script_command(str(text_file), script_control_dir)
+        payu.fsops.run_script_command(str(text_file), tmp_path)
 
 
-def test_userscript_non_existent_file(script_control_dir: Path):
+def test_userscript_non_existent_file(tmp_path):
     # Test user script raises an error
     with pytest.raises(RuntimeError):
         payu.fsops.run_script_command('unknown_userscript.sh',
-                                      script_control_dir)
+                                      tmp_path)
 
 
-def test_userscript_non_existent_file(script_control_dir: Path):
-    # Test userscript raises an error
-    with pytest.raises(RuntimeError):
-        payu.fsops.run_script_command('unknown_userscript.sh',
-                                      script_control_dir)
-
-
-def test_run_userscript_python_script_eror(script_control_dir):
+def test_run_userscript_python_script_eror(tmp_path):
     # Create a python script that'll exit with an error
-    python_script = script_control_dir / 'test_script.py'
+    python_script = tmp_path / 'test_script_error.py'
     with open(python_script, 'w') as f:
         f.write('raise ValueError("Test that script exits with error")')
 
     # Test userscript raises an error
     with pytest.raises(RuntimeError):
-        payu.fsops.run_script_command('test_script.py',
-                                      script_control_dir)
+        payu.fsops.run_script_command('test_script_error.py',
+                                      tmp_path)
 
 
-def test_run_userscript_command(script_control_dir):
+def test_run_userscript_bash_script_eror(tmp_path):
+    # Create a bash script that'll exit with an error
+    bash_script = tmp_path / 'test_script_error.sh'
+    with open(bash_script, 'w') as f:
+        f.writelines([
+            '#!/bin/bash\n',
+            'exit 1'
+        ])
+
+    # Test userscript raises an error
+    with pytest.raises(RuntimeError):
+        payu.fsops.run_script_command('test_script_error.sh',
+                                      tmp_path)
+
+
+def test_run_userscript_command(tmp_path):
     # Create a simple command
     cmd = 'echo -n "some_data" > test.txt'
 
     # Test payu userscript
-    with cd(script_control_dir):
-        payu.fsops.run_script_command(cmd, script_control_dir)
+    with cd(tmp_path):
+        payu.fsops.run_script_command(cmd, tmp_path)
 
     # Check userscript output
-    with open((script_control_dir / 'test.txt'), 'r') as f:
-        content = f.read()
-        assert content == "some_data"
+    with open((tmp_path / 'test.txt'), 'r') as f:
+        assert f.read() == "some_data"
 
 
 @pytest.mark.parametrize("command, expected", [
@@ -410,7 +405,8 @@ def test_run_userscript_command(script_control_dir):
     ('some_python_script.py', False),
     ('/bin/bash script.sh', False),
     ('echo $PAYU_ENV_VALUE', True),
-    ('echo `date`', True)
+    ('echo `date`', True),
+    ('python ./some/dir/app.py arg_1 arg_2', False)
 ])
 def test_needs_shell(command, expected):
     assert payu.fsops.needs_subprocess_shell(command) == expected

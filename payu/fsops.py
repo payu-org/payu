@@ -290,37 +290,33 @@ def _run_script(script_cmd: str, control_path: Path) -> None:
         The control directory to use for resolving relative filepaths, if file
         is not found
     """
-    # First try to interpret the argument as a full command:
+    # First try to interpret the argument as a full command
     try:
         if needs_subprocess_shell(script_cmd):
             subprocess.check_call(script_cmd, shell=True)
         else:
             subprocess.check_call(shlex.split(script_cmd))
-    except EnvironmentError as e:
-        # Now try to run the script explicitly
-        if e.errno == errno.ENOENT:
-            # Check if script is a file in the control directory
-            cmd = control_path / script_cmd
-            if cmd.is_file():
-                _run_script(str(cmd), control_path)
-            else:
-                raise
+            print(script_cmd)
 
-        # If we get a "non-executable" error, then guess the type
-        elif e.errno == errno.EACCES:
-            _, file_ext = os.path.splitext(script_cmd)
-            shell_name = EXTENSION_TO_INTERPRETER.get(file_ext, None)
-            if shell_name:
-                print('payu: warning: Assuming that {0} is a {1} '
-                      'script based on the filename extension.'
-                      ''.format(os.path.basename(script_cmd),
-                                os.path.basename(shell_name)))
+    except FileNotFoundError:
+        # Check if script is a file in the control directory
+        cmd = control_path / script_cmd
+        if cmd.is_file():
+            _run_script(str(cmd), control_path)
+        else:
+            raise
 
-                cmd = f'{shell_name} {script_cmd}'
-                _run_script(cmd, control_path)
-            else:
-                raise
+    except PermissionError:
+        # Guess the type of interpreter using the file extension
+        _, file_ext = os.path.splitext(script_cmd)
+        shell_name = EXTENSION_TO_INTERPRETER.get(file_ext, None)
+        if shell_name:
+            print('payu: warning: Assuming that {0} is a {1} '
+                  'script based on the filename extension.'
+                  ''.format(os.path.basename(script_cmd),
+                            os.path.basename(shell_name)))
 
-        # Otherwise re-raise the error
+            cmd = f'{shell_name} {script_cmd}'
+            _run_script(cmd, control_path)
         else:
             raise
