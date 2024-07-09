@@ -320,6 +320,28 @@ def test_run_userscript_python_script(tmp_path):
         assert f.read() == "Test Python user script"
 
 
+def test_run_userscript_python_script_with_shebang_header(tmp_path):
+    # Create a simple python script
+    python_script = tmp_path / 'test_script_with_python_shebang.py'
+    with open(python_script, 'w') as f:
+        f.writelines([
+            '#!/usr/bin/env python\n'
+            f"with open('{tmp_path}/output.txt', 'w') as f:\n",
+            "   f.write('Test Python user script with python shebang header')"
+        ])
+
+    # Make file executable
+    os.chmod(python_script, 0o775)
+
+    # Test run userscript
+    payu.fsops.run_script_command('test_script_with_python_shebang.py',
+                                  tmp_path)
+
+    # Check script output
+    with open((tmp_path / 'output.txt'), 'r') as f:
+        assert f.read() == "Test Python user script with python shebang header"
+
+
 def test_run_userscript_bash_script(tmp_path):
     # Create a simple bash script
     bash_script = tmp_path / 'test_script.sh'
