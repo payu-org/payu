@@ -116,7 +116,7 @@ class UnifiedModel(Model):
         um_env_path = os.path.join(self.control_path, 'um_env.yaml')
         with open(um_env_path, 'r') as um_env_yaml:
             um_env_vars = yaml.safe_load(um_env_yaml)
-        
+
 
         # Stage the UM restart file.
         if self.prior_restart_path and not self.expt.repeat_run:
@@ -131,8 +131,10 @@ class UnifiedModel(Model):
 
         # Set paths in environment variables.
         for k in um_env_vars.keys():
-            um_env_vars[k] = um_env_vars[k].format(input_path=self.input_paths[0],
-                                           work_path=self.work_path)
+            um_env_vars[k] = um_env_vars[k].format(
+                                    input_path=self.input_paths[0],
+                                    work_path=self.work_path
+            )
         os.environ.update(um_env_vars)
 
         # parexe removed from newer configurations - retain the
