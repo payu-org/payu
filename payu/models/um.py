@@ -43,7 +43,8 @@ class UnifiedModel(Model):
             'hnlist', 'ihist',
             'namelists', 'prefix.PRESM_A',
             'STASHC', 'UAFILES_A', 'UAFLDS_A',
-            'cable.nml', 'um_env.py']
+            'cable.nml', 'um_env.yaml'
+            ]
         self.optional_config_files = ['input_atm.nml', 'parexe']
 
         self.restart = 'restart_dump.astart'
@@ -112,16 +113,10 @@ class UnifiedModel(Model):
         super(UnifiedModel, self).setup()
 
         # Set up environment variables needed to run UM.
-        # Look for a python file in the config directory.
-        loader = SourceFileLoader(
-            'um_env',
-            os.path.join(self.control_path, 'um_env.py')
-        )
-        um_env = module_from_spec(
-            spec_from_loader(loader.name, loader)
-        )
-        loader.exec_module(um_env)
-        um_vars = um_env.vars
+        um_env_path = os.path.join(self.control_path, 'um_env.yaml')
+        with open(um_env_path, 'r') as um_env_yaml:
+            um_env_vars = yaml.safe_load(um_env_yaml)
+        
 
         # Stage the UM restart file.
         if self.prior_restart_path and not self.expt.repeat_run:
@@ -131,14 +126,14 @@ class UnifiedModel(Model):
             if os.path.isfile(f_src):
                 make_symlink(f_src, f_dst)
                 # every run is an NRUN with an updated ASTART file
-                um_vars['ASTART'] = self.restart
-                um_vars['TYPE'] = 'NRUN'
+                um_env_vars['ASTART'] = self.restart
+                um_env_vars['TYPE'] = 'NRUN'
 
         # Set paths in environment variables.
-        for k in um_vars.keys():
-            um_vars[k] = um_vars[k].format(input_path=self.input_paths[0],
+        for k in um_env_vars.keys():
+            um_env_vars[k] = um_env_vars[k].format(input_path=self.input_paths[0],
                                            work_path=self.work_path)
-        os.environ.update(um_vars)
+        os.environ.update(um_env_vars)
 
         # parexe removed from newer configurations - retain the
         # old processing if parexe file exists for backwards compatibility
