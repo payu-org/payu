@@ -38,6 +38,7 @@ index = {
     'mom6':       Mom6,
     'qgcm':       Qgcm,
     'cable':      Cable,
+    'cablepop':   CablePOP,
 
     # Default
     'default':    Model,
