@@ -110,15 +110,15 @@ class UnifiedModel(Model):
         pass
 
     def setup(self):
-        # Raise a depreciation error if the um_env.yaml file is not found
+        # Raise a deprecation error if the um_env.yaml file is not found
         # This could be removed down the line, once older configurations 
         # have swapped to um_env.yaml files.
-        depreciated_um_env = os.path.join(self.control_path, 'um_env.py')
+        deprecated_um_env = os.path.join(self.control_path, 'um_env.py')
         new_um_env = os.path.join(self.control_path, 'um_env.yaml')
-        if (not os.path.isfile(new_um_env)) and os.path.isfile(depreciated_um_env):
+        if (not os.path.isfile(new_um_env)) and os.path.isfile(deprecated_um_env):
             raise FutureWarning(
                 (
-                    "The `um_env.py` configuration file has been depreciated and "
+                    "The `um_env.py` configuration file has been deprecated and "
                     "should be relplaced with a yaml file. "
                     "Convert `um_env.py` to `um_env.yaml` using "
                     "https://github.com/ACCESS-NRI/esm1.5-scripts/blob/main/config-files/UM/um_env_to_yaml.py"
