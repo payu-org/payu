@@ -119,7 +119,7 @@ class UnifiedModel(Model):
             raise FutureWarning(
                 (
                     "The `um_env.py` configuration file has been depreciated and "
-                    "should be relplaced with a yaml file. "
+                    "should be replaced with a yaml file. "
                     "Convert `um_env.py` to `um_env.yaml` using "
                     "https://github.com/ACCESS-NRI/esm1.5-scripts/blob/main/config-files/UM/um_env_to_yaml.py"
                 )
