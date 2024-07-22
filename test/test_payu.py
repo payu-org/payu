@@ -377,7 +377,7 @@ def test_userscript_non_existent_file(tmp_path):
                                       tmp_path)
 
 
-def test_run_userscript_python_script_eror(tmp_path):
+def test_run_userscript_python_script_error(tmp_path):
     # Create a python script that'll exit with an error
     python_script = tmp_path / 'test_script_error.py'
     with open(python_script, 'w') as f:
@@ -389,7 +389,7 @@ def test_run_userscript_python_script_eror(tmp_path):
                                       tmp_path)
 
 
-def test_run_userscript_bash_script_eror(tmp_path):
+def test_run_userscript_bash_script_error(tmp_path):
     # Create a bash script that'll exit with an error
     bash_script = tmp_path / 'test_script_error.sh'
     with open(bash_script, 'w') as f:

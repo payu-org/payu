@@ -296,7 +296,7 @@ def _run_script(script_cmd: str, control_path: Path) -> None:
             subprocess.check_call(script_cmd, shell=True)
         else:
             subprocess.check_call(shlex.split(script_cmd))
-            print(script_cmd)
+        print(script_cmd)
 
     except FileNotFoundError:
         # Check if script is a file in the control directory
@@ -311,10 +311,11 @@ def _run_script(script_cmd: str, control_path: Path) -> None:
         _, file_ext = os.path.splitext(script_cmd)
         shell_name = EXTENSION_TO_INTERPRETER.get(file_ext, None)
         if shell_name:
-            print('payu: warning: Assuming that {0} is a {1} '
-                  'script based on the filename extension.'
-                  ''.format(os.path.basename(script_cmd),
-                            os.path.basename(shell_name)))
+            print(
+                f'payu: warning: Assuming that {os.path.basename(script_cmd)} '
+                f'is a {os.path.basename(shell_name)} script based on the '
+                'filename extension.'
+            )
 
             cmd = f'{shell_name} {script_cmd}'
             _run_script(cmd, control_path)
