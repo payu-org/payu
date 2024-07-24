@@ -16,6 +16,7 @@ from payu.models.um import UnifiedModel
 from payu.models.ww3 import WW3
 from payu.models.qgcm import Qgcm
 from payu.models.yatm import Yatm
+from payu.models.cablepop import CablePOP
 
 from payu.models.model import Model
 
