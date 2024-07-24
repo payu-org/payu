@@ -235,8 +235,10 @@ class Access(Model):
                 return model.get_restart_datetime(mom_restart_path)
 
         raise NotImplementedError(
-            'Cannot find mom sub-model: access-esm1.5 date-based restart pruning '
-            'requires the mom sub-model to determine restart dates')
+            'Cannot find mom sub-model: access-esm1.5 date-based '
+            'restart pruning requires the mom sub-model to '
+            'determine restart dates'
+            )
 
     def set_model_pathnames(self):
         pass
