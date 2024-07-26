@@ -29,6 +29,7 @@ from payu import envmod
 from payu.fsops import mkdir_p, make_symlink, read_config, movetree
 from payu.fsops import list_archive_dirs
 from payu.fsops import run_script_command
+from payu.fsops import needs_subprocess_shell
 from payu.schedulers.pbs import get_job_info, pbs_env_init, get_job_id
 from payu.models import index as model_index
 import payu.profilers
@@ -826,16 +827,21 @@ class Experiment(object):
 
     def postprocess(self):
         """Submit any postprocessing scripts or remote syncing if enabled"""
+
         # First submit postprocessing script
         if self.postscript:
+            self.set_userscript_env_vars()
             envmod.setup()
             envmod.module('load', 'pbs')
 
             cmd = 'qsub {script}'.format(script=self.postscript)
 
-            cmd = shlex.split(cmd)
-            sp.check_call(cmd)
+            if needs_subprocess_shell(cmd):
+                sp.check_call(cmd, shell=True)
+            else:
+                sp.check_call(shlex.split(cmd))
 
+           
         # Submit a sync script if remote syncing is enabled
         sync_config = self.config.get('sync', {})
         syncing = sync_config.get('enable', False)
