@@ -841,7 +841,6 @@ class Experiment(object):
             else:
                 sp.check_call(shlex.split(cmd))
 
-           
         # Submit a sync script if remote syncing is enabled
         sync_config = self.config.get('sync', {})
         syncing = sync_config.get('enable', False)
