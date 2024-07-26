@@ -225,3 +225,19 @@ class Mom(MomMixin, Fms):
             land_cells = int(fmask.readline())
 
         return land_cells
+
+
+def get_restart_datetime_using_mom_submodel(model, restart_path):
+    """Given a model object and a restart path, check for
+    a MOM sub-model and use it's restart files to find a cftime datetime 
+   (for date-based restart pruning)"""
+    for sub_model in model.expt.models:
+        if sub_model.model_type == 'mom' :
+            mom_restart_path = os.path.join(restart_path, sub_model.name)
+            return sub_model.get_restart_datetime(mom_restart_path)
+
+    raise NotImplementedError(
+        f'Cannot find mom sub-model: {model.model_type} date-based '
+        'restart pruning requires the mom sub-model to '
+        'determine restart dates'
+    )
