@@ -23,6 +23,7 @@ import f90nml
 # Local
 from payu.fsops import make_symlink
 from payu.models.model import Model
+from payu.models.mom import get_restart_datetime_using_mom_submodel
 import payu.calendar as cal
 
 
@@ -225,6 +226,14 @@ class Access(Model):
             o2i_src = os.path.join(mom.work_path, 'o2i.nc')
             o2i_dst = os.path.join(cice5.restart_path, 'o2i.nc')
             shutil.copy2(o2i_src, o2i_dst)
+
+    def get_restart_datetime(self, restart_path):
+        """Given a restart path, parse the restart files and
+        return a cftime datetime (for date-based restart pruning)"""
+        return get_restart_datetime_using_mom_submodel(
+            model=self, 
+            restart_path=restart_path
+        )
 
     def set_model_pathnames(self):
         pass
