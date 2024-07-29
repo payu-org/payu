@@ -28,6 +28,7 @@ def deep_update(d_1, d_2):
         else:
             d_1[key] = value
 
+
 class StagedCable(Model):
     """A driver for running staged CABLE spin-up configurations."""
 
