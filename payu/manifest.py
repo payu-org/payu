@@ -286,6 +286,9 @@ class Manifest(object):
         # Set flag to auto-scan input directories
         self.scaninputs = self.manifest_config.get('scaninputs', True)
 
+        # TODO: With reproduce true, should scan inputs be set to True?
+        # This is so new input files or changed input files to different file in config.yaml
+        # are always picked up?
         if self.reproduce['input'] and self.scaninputs:
             print("scaninputs set to False when reproduce input is True")
             self.scaninputs = False
@@ -351,7 +354,9 @@ class Manifest(object):
             if not self.reproduce['restart']:
                 # Re-initialise restart manifest. Only keep restart manifest
                 # if reproduce. Normally want to scan for new restarts
-                self.init_mf('restart')
+                self.init_mf('restart') 
+
+        #TODO: Should links only be made in add_filepath()?
 
         # Check to make all manifests that should be populated are and
         # make links in work directory for existing manifests

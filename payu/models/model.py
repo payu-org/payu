@@ -256,8 +256,7 @@ class Model(object):
         self.setup_configuration_files()
 
         # Add restart files from prior run to restart manifest
-        if (not self.expt.manifest.have_manifest['restart'] and
-                self.prior_restart_path):
+        if self.prior_restart_path:
             restart_files = self.get_prior_restart_files()
             for f_name in restart_files:
                 f_orig = os.path.join(self.prior_restart_path, f_name)
@@ -269,8 +268,9 @@ class Model(object):
                     self.copy_restarts
                 )
 
-        # Add input files to manifest if we don't already have a populated
+        # Add input files to manifest if we don't already have a
         # input manifest, or we specify scaninputs is True (default)
+        # TODO: If Repro inputs is True, Scan inputs is set to False so input files are not added to manifest and symlink is not set up
         if (not self.expt.manifest.have_manifest['input'] or
                 self.expt.manifest.scaninputs):
             for input_path in self.input_paths:
@@ -327,16 +327,13 @@ class Model(object):
                     f'Executable for {self.name} model '
                     f'is not executable: {self.exec_path}')
 
-            # If have exe manifest this implies exe reproduce is True. Do not
-            # want to overwrite exe manifest in this case
-            if not self.expt.manifest.have_manifest['exe']:
-                # Add to exe manifest (this is always done so any change in exe
-                # path will be picked up)
-                self.expt.manifest.add_filepath(
-                    'exe',
-                    self.exec_path_local,
-                    self.exec_path
-                )
+            # Add to exe manifest (this is always done so any change in exe
+            # path will be picked up)
+            self.expt.manifest.add_filepath(
+                'exe',
+                self.exec_path_local,
+                self.exec_path
+            )
 
             # Populate information about required dynamically loaded libraries
             self.required_libs = required_libs(self.exec_path)

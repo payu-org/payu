@@ -198,6 +198,7 @@ def test_exe_reproduce():
 
     # Reinstate exe path
     config['exe'] = exe
+    write_config(config)
 
     # Recreate fake executable file
     make_exe()
@@ -219,6 +220,20 @@ def test_exe_reproduce():
 
     # Check manifests have changed as expected
     assert(not manifests == get_manifests(ctrldir/'manifests'))
+
+    # Create a separate executable file
+    new_exe = "mock_exe_with_a_different_name"
+    make_exe(new_exe)
+
+    # Change exe path and back to exe reproduce true in config.yaml
+    config['manifest']['reproduce']['exe'] = True
+    config['exe'] = new_exe
+    write_config(config)
+
+    # Run setup again, which should raise an error due to changed executable
+    with pytest.raises(SystemExit):
+        # Run setup with unchanged exe but reproduce exe set to True
+        payu_setup(lab_path=str(labdir))
 
 
 def test_input_reproduce():
@@ -392,7 +407,6 @@ def test_restart_reproduce():
     # Set reproduce restart to True
     config['manifest']['reproduce']['input'] = False
     config['manifest']['reproduce']['restart'] = True
-    del(config['restart'])
     write_config(config)
     manifests = get_manifests(ctrldir/'manifests')
 
@@ -419,8 +433,7 @@ def test_restart_reproduce():
     make_restarts()
 
     # Run setup again, which should raise an error due to changed restarts
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        # Run setup with unchanged exe but reproduce exe set to True
+    with pytest.raises(SystemExit):
         payu_setup(lab_path=str(labdir))
 
     # Set reproduce restart to False
@@ -432,6 +445,17 @@ def test_restart_reproduce():
 
     # Manifests should have changed
     assert(not manifests == get_manifests(ctrldir/'manifests'))
+
+    # Set reproduce restart to True
+    config['manifest']['reproduce']['restart'] = True
+    write_config(config)
+
+    # Add a new restart file to restart directory
+    make_restarts(['restart_005.bin'])
+
+    # Run setup again, which should raise an error due to new restart file
+    with pytest.raises(SystemExit):
+        payu_setup(lab_path=str(labdir))
 
 
 def test_all_reproduce():
