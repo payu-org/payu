@@ -40,7 +40,7 @@ class StagedCable(Model):
 
         self.config_files = ['stage_config.yaml']
         self.optional_config_files = ['cable.nml', 'cru.nml',
-                                    'luc.nml', 'met_names.nml']
+                                      'luc.nml', 'met_names.nml']
         self.configuration_log = {}
 
         # Read the stage_config.yaml file
@@ -128,11 +128,11 @@ class StagedCable(Model):
 
         # Directories required by CABLE for outputs
         os.makedirs(os.path.join(self.work_output_path, 'logs'),
-            exist_ok = True)
+                    exist_ok=True)
         os.makedirs(os.path.join(self.work_output_path, 'restart'),
-            exist_ok = True)
+                    exist_ok=True)
         os.makedirs(os.path.join(self.work_output_path, 'outputs'),
-            exist_ok = True)
+                    exist_ok=True)
 
         self._prepare_stage()
 
@@ -178,7 +178,7 @@ class StagedCable(Model):
 
             # Write the namelist to the work directory
             master_namelist.write(os.path.join(self.work_input_path, namelist),
-                force = True)
+                                  force=True)
 
     def archive(self):
         """Store model output to laboratory archive and update the
