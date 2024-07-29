@@ -11,12 +11,12 @@ from payu.models.mom import Mom
 from payu.models.mom6 import Mom6
 from payu.models.nemo import Nemo
 from payu.models.oasis import Oasis
+from payu.models.staged_cable import StagedCable
 from payu.models.test import Test
 from payu.models.um import UnifiedModel
 from payu.models.ww3 import WW3
 from payu.models.qgcm import Qgcm
 from payu.models.yatm import Yatm
-from payu.models.cablepop import CablePOP
 
 from payu.models.model import Model
 
@@ -39,7 +39,7 @@ index = {
     'mom6':       Mom6,
     'qgcm':       Qgcm,
     'cable':      Cable,
-    'cablepop':   CablePOP,
+    'staged_cable':   StagedCable,
 
     # Default
     'default':    Model,
