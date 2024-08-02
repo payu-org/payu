@@ -260,13 +260,13 @@ section for details.
 
       ``input`` (*Default: global reproduce flag*)
             Enforce input file reproducibility. If set to *True* will refuse to
-            run if hashes do no match. Will not search for any new files.
+            run if hashes do no match. It will search for new files.
 
       ``restart`` (*Default: global reproduce flag*)
             Enforce restart file reproducibility.
 
 ``scaninputs`` (*Default: True*)
-      Scan input directories for new files. Set to *False* when reproduce input
+      Scan input directories for new files. Set to *True* when reproduce input
       is *True*.
 
       If a manifest file is complete and it is desirable to not add spurious

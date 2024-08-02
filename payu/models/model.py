@@ -270,7 +270,6 @@ class Model(object):
 
         # Add input files to manifest if we don't already have a
         # input manifest, or we specify scaninputs is True (default)
-        # TODO: If Repro inputs is True, Scan inputs is set to False so input files are not added to manifest and symlink is not set up
         if (not self.expt.manifest.have_manifest['input'] or
                 self.expt.manifest.scaninputs):
             for input_path in self.input_paths:
