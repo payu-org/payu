@@ -240,11 +240,12 @@ class CesmCmeps(Model):
             shutil.move(f_src, f_dst)
 
         # Archive any additional restarts in work_restart_path
-        for name in os.listdir(self.work_restart_path):
-            f_src = os.path.join(self.work_restart_path, name)
-            f_dst = os.path.join(self.restart_path, name)
-            shutil.move(f_src, f_dst)
-        os.rmdir(self.work_restart_path)
+        if os.path.exists(self.work_restart_path):
+            for name in os.listdir(self.work_restart_path):
+                f_src = os.path.join(self.work_restart_path, name)
+                f_dst = os.path.join(self.restart_path, name)
+                shutil.move(f_src, f_dst)
+            os.rmdir(self.work_restart_path)
 
     def collate(self):
         
