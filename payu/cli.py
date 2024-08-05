@@ -8,7 +8,7 @@
 """
 
 import argparse
-from distutils import sysconfig
+import sysconfig
 import importlib
 import os
 import pkgutil
