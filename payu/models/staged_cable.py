@@ -193,7 +193,7 @@ class StagedCable(Model):
 
         for namelist in namelists:
             write_target = os.path.join(self.work_input_path, namelist)
-            with open(os.path.join(stage_name, namelist) as stage_nml_f:
+            with open(os.path.join(stage_name, namelist)) as stage_nml_f:
                 stage_namelist = f90nml.read(stage_nml_f)
 
             f90nml.patch(namelist, stage_namelist, write_target)
