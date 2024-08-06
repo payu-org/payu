@@ -1,4 +1,4 @@
-"""payu.models.cable
+"""payu.models.staged_cable
    ================
 
    Driver interface to CABLE-POP_TRENDY branch
@@ -14,7 +14,6 @@ import shutil
 # Extensions
 import f90nml
 import yaml
-# import xarray
 
 # Local
 from payu.models.model import Model
@@ -24,8 +23,15 @@ def deep_update(d_1, d_2):
     """Deep update of namelists."""
     for key, value in d_2.items():
         if isinstance(value, dict):
-            deep_update(d_1[key], d_2[key])
+            # Nested struct
+            if key in d_1:
+                # If the master namelist contains the key, then recursively apply
+                deep_update(d_1[key], d_2[key])
+            else:
+                # Otherwise just set the value from the patch dict
+                d_1[key] = value
         else:
+            # Is value, just override
             d_1[key] = value
 
 
@@ -62,6 +68,8 @@ class StagedCable(Model):
 
         # Now set the number of runs using the configuration_log
         remaining_stages = len(self.configuration_log['queued_stages'])
+        print("Overriding the remaining number of runs according to the " +
+                "number of queued stages in the configuration log.")
         os.environ['PAYU_N_RUNS'] = str(remaining_stages)
 
     def _build_new_configuration_log(self):
@@ -127,14 +135,30 @@ class StagedCable(Model):
         super(StagedCable, self).setup()
 
         # Directories required by CABLE for outputs
-        os.makedirs(os.path.join(self.work_output_path, 'logs'),
-                    exist_ok=True)
-        os.makedirs(os.path.join(self.work_output_path, 'restart'),
-                    exist_ok=True)
-        os.makedirs(os.path.join(self.work_output_path, 'outputs'),
+        for _dir in ['logs', 'restart', 'outputs']:
+            os.makedirs(os.path.join(self.work_output_path, _dir),
                     exist_ok=True)
 
         self._prepare_stage()
+
+    def get_prior_restart_files(self):
+        """Retrieve the prior restart files from the completed stages."""
+        # Go to the archives of the previous completed stages and retrieve
+        # the files from them, with the most recent taking precedent.
+
+        restart_files = []
+        num_completed_stages = len(self.configuration_log['completed_stages'])
+
+        for stage_number in reversed(range(num_completed_stages)):
+            respath = f'archive/output{stage_number:03d}/restart'
+            # We can't simply extend restart_files with os.listdir(respath)
+            # because we don't want multiple copies of the same file name, which
+            # will often occur. We only want the most recent version of a given
+            # file.
+            [restart_files.append(file) for file in os.listdir(respath)
+                    if file not in restart_files]
+
+        return restart_files
 
     def _prepare_stage(self):
         """Apply the stage namelist to the master namelist."""
@@ -168,17 +192,11 @@ class StagedCable(Model):
         namelists = os.listdir(stage_name)
 
         for namelist in namelists:
-            with open(namelist, 'r') as master_nml_f:
-                master_namelist = f90nml.read(master_nml_f)
-
-            with open(os.path.join(stage_name, namelist), 'r') as stage_nml_f:
+            write_target = os.path.join(self.work_input_path, namelist)
+            with open(os.path.join(stage_name, namelist) as stage_nml_f:
                 stage_namelist = f90nml.read(stage_nml_f)
 
-            deep_update(master_namelist, stage_namelist)
-
-            # Write the namelist to the work directory
-            master_namelist.write(os.path.join(self.work_input_path, namelist),
-                                  force=True)
+            f90nml.patch(namelist, stage_namelist, write_target)
 
     def archive(self):
         """Store model output to laboratory archive and update the
@@ -199,7 +217,7 @@ configuration log."""
     def collate(self):
         pass
 
-    def save_configuration_log(self):
+    def _save_configuration_log(self):
         """Write the updated configuration log back to the staging area."""
         with open('configuration_log.yaml', 'w+') as config_log_f:
             yaml.dump(self.configuration_log, config_log_f)
