@@ -26,7 +26,7 @@ def setup_module(module):
         shutil.rmtree(tmpdir)
     except FileNotFoundError:
         pass
-    
+
     try:
         tmpdir.mkdir()
         labdir.mkdir()
@@ -99,6 +99,7 @@ def setup_module(module):
     with open(ctrldir / 'stage_1/cable.nml', 'w') as patch_nml_f:
         f90nml.write(patch_nml, patch_nml_f)
 
+
 def teardown_module(module):
     """
     Put any test-wide teardown code in here, e.g. removing test outputs
@@ -111,6 +112,7 @@ def teardown_module(module):
         print('removing tmp')
     except Exception as e:
         print(e)
+
 
 def test_staged_cable():
     """
@@ -125,10 +127,9 @@ def test_staged_cable():
     # Since we've called the initialiser, we should be able to inspect the
     # stages immediately (through the configuration log)
     expected_queued_stages = ['stage_1', 'stage_2', 'stage_3', 'stage_4',
-                            'stage_3', 'stage_3', 'stage_5', 'stage_6',
-                            'stage_6', 'stage_7']
+        'stage_3', 'stage_3', 'stage_5', 'stage_6', 'stage_6', 'stage_7']
     assert model.configuration_log['queued_stages'] == expected_queued_stages
-    
+
     # Now prepare for a stage- should see changes in the configuration log
     # and the patched namelist in the workdir
     model.setup()
@@ -163,14 +164,14 @@ def test_staged_cable():
     assert model.configuration_log['current_stage'] == expected_current_stage
 
     # Test the acquiring of restart files
-    # First, perform setup() and archive to mimic the effect of running 2 stages
-    # on the configuration log.`
+    # First, perform setup() and archive to mimic the effect of running
+    # 2 stages on the configuration log.
     model.setup()
     model.archive()
 
     # When running an experiment, we should have archive/output00{0, 1}/restart
     outputdir = ctrldir / 'archive' / 'output000' / 'restart'
-    outputdir.mkdir(parents = True)
+    outputdir.mkdir(parents=True)
     with open(outputdir / 'rst1.txt', 'w') as rstfile:
         rstfile.write("This is rst1.txt in output000.")
 
@@ -178,7 +179,7 @@ def test_staged_cable():
         rstfile.write("This is rst2.txt in output000.")
 
     outputdir = ctrldir / 'archive' / 'output001' / 'restart'
-    outputdir.mkdir(parents = True)
+    outputdir.mkdir(parents=True)
     with open(outputdir / 'rst1.txt', 'w') as rstfile:
         rstfile.write('This is rst1.txt in output001.')
 
@@ -188,6 +189,4 @@ def test_staged_cable():
             str(ctrldir / 'archive' / 'output000' / 'restart' / 'rst2.txt')
     ]
 
-    print(expected_restart_files)
-    print(rstfiles)
     assert rstfiles == expected_restart_files

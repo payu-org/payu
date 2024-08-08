@@ -137,7 +137,8 @@ def payu_setup(model_type=None,
 
 def write_config(config, path=config_path):
     with path.open('w') as file:
-        file.write(yaml.dump(config, default_flow_style=False, sort_keys = False))
+        file.write(yaml.dump(config, default_flow_style=False,
+            sort_keys=False))
 
 
 def make_exe():

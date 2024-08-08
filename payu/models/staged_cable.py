@@ -64,7 +64,7 @@ class StagedCable(Model):
         # Now set the number of runs using the configuration_log
         remaining_stages = len(self.configuration_log['queued_stages'])
         print("Overriding the remaining number of runs according to the " +
-                "number of queued stages in the configuration log.")
+            "number of queued stages in the configuration log.")
         os.environ['PAYU_N_RUNS'] = str(remaining_stages)
 
     def _build_new_configuration_log(self):
@@ -105,18 +105,17 @@ class StagedCable(Model):
                 # So what we need to do is first record the number
                 # of times each step is run
 
-                # Use a recipe from https://stackoverflow.com/questions/48199961
+                # Use recipe from https://stackoverflow.com/questions/48199961
                 # Turn the stages into lists of "count" length
                 steps = [[step_name] * stage_opts[step_name]['count']
-                        for step_name in stage_opts.keys()]
+                    for step_name in stage_opts.keys()]
 
-                cable_stages.extend([stage for stage in 
-                        itertools.chain.from_iterable(
-                            itertools.zip_longest(
-                                *steps
-                            )
+                cable_stages.extend([stage for stage in
+                    itertools.chain.from_iterable(
+                        itertools.zip_longest(*steps)
                         )
-                        if stage is not None])
+                    )
+                    if stage is not None])
                 # Finish handling of multistep stage
 
             else:
@@ -133,7 +132,7 @@ class StagedCable(Model):
         # Directories required by CABLE for outputs
         for _dir in ['logs', 'restart', 'outputs']:
             os.makedirs(os.path.join(self.work_output_path, _dir),
-                    exist_ok=True)
+                exist_ok=True)
 
         self._prepare_stage()
 
@@ -142,11 +141,11 @@ class StagedCable(Model):
         # Go to the archives of the previous completed stages and retrieve
         # the files from them, with the most recent taking precedent.
 
-        # Unfortunately, we can't simply use the 
+        # Unfortunately, we can't simply use the
         # "if {filename} not in {restart_files}, because files from different
         # stages will have different paths, even if the local file name is the
         # same. To avoid having to call os.path.basepath on the list of restart
-        # files for every addition, we'll store the list of local file names and
+        # files for every addition, we'll store the list of local file names +
         # paths separately, and pull them together at the end.
 
         file_names = []
@@ -161,11 +160,11 @@ class StagedCable(Model):
             )
 
             [(file_names.append(file), path_names.append(respath))
-                    for file in os.listdir(respath) if file not in file_names]
+                for file in os.listdir(respath) if file not in file_names]
 
         # Zip up the files
         restart_files = [os.path.join(path, file)
-                for path, file in zip(path_names, file_names)]
+            for path, file in zip(path_names, file_names)]
 
         return restart_files
 
