@@ -1,8 +1,11 @@
 import cftime
+import datetime
 import pytest
 
-from payu.calendar import parse_date_offset, DatetimeOffset
+from payu.calendar import parse_date_offset, DatetimeOffset, seconds_between_dates
+from payu.calendar import GREGORIAN, NOLEAP
 
+SEC_PER_DAY = 24*60*60
 
 @pytest.mark.parametrize(
     "offset, initial_dt, expected",
@@ -150,3 +153,41 @@ def test_parse_date_offset_no_offset_magnitude():
 
     expected_error = "No numerical value given for offset: YS"
     assert str(exc_info.value) == expected_error
+
+@pytest.mark.parametrize(
+        "start_date, end_date, caltype_int, expected",
+        [
+            (
+                datetime.datetime(year = 4, month = 1, day = 1),
+                datetime.datetime(year = 5, month = 1, day = 1),
+                GREGORIAN,
+                366 * SEC_PER_DAY
+            ),
+            (
+                datetime.datetime(year = 4, month = 1, day = 1),
+                datetime.datetime(year = 5, month = 1, day = 1),
+                NOLEAP,
+                365  *SEC_PER_DAY
+            ),
+            (
+                datetime.datetime(year = 300, month = 1, day = 1),
+                datetime.datetime(year = 301, month = 1, day = 1),
+                GREGORIAN,
+                365 * SEC_PER_DAY
+            ),
+            (
+                datetime.datetime(year = 400, month = 1, day = 1),
+                datetime.datetime(year = 401, month = 1, day = 1),
+                GREGORIAN,
+                366 * SEC_PER_DAY
+            ),
+            (
+                datetime.datetime(year = 1, month = 1, day = 1),
+                datetime.datetime(year = 1001, month = 1, day = 1),
+                GREGORIAN,
+                (1000 * 365 + 242) * SEC_PER_DAY
+            ),
+        ]
+)
+def test_seconds_between_dates(start_date, end_date, caltype_int, expected):
+    assert seconds_between_dates(start_date, end_date, caltype_int) == expected
