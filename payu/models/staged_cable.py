@@ -26,7 +26,8 @@ def deep_update(d_1, d_2):
         if isinstance(value, dict):
             # Nested struct
             if key in d_1:
-                # If the master namelist contains the key, then recursively apply
+                # If the master namelist contains the key, then recursively
+                # apply
                 deep_update(d_1[key], d_2[key])
             else:
                 # Otherwise just set the value from the patch dict
@@ -64,7 +65,7 @@ class StagedCable(Model):
         # Now set the number of runs using the configuration_log
         remaining_stages = len(self.configuration_log['queued_stages'])
         print("Overriding the remaining number of runs according to the " +
-            "number of queued stages in the configuration log.")
+              "number of queued stages in the configuration log.")
         os.environ['PAYU_N_RUNS'] = str(remaining_stages)
 
     def _build_new_configuration_log(self):
@@ -108,14 +109,13 @@ class StagedCable(Model):
                 # Use recipe from https://stackoverflow.com/questions/48199961
                 # Turn the stages into lists of "count" length
                 steps = [[step_name] * stage_opts[step_name]['count']
-                    for step_name in stage_opts.keys()]
+                         for step_name in stage_opts.keys()]
 
-                cable_stages.extend([stage for stage in
-                    itertools.chain.from_iterable(
+                cable_stages.extend(
+                    [stage for stage in itertools.chain.from_iterable(
                         itertools.zip_longest(*steps)
-                        )
-                    )
-                    if stage is not None])
+                    ) if stage is not None]
+                )
                 # Finish handling of multistep stage
 
             else:
@@ -132,7 +132,7 @@ class StagedCable(Model):
         # Directories required by CABLE for outputs
         for _dir in ['logs', 'restart', 'outputs']:
             os.makedirs(os.path.join(self.work_output_path, _dir),
-                exist_ok=True)
+                        exist_ok=True)
 
         self._prepare_stage()
 
@@ -155,8 +155,8 @@ class StagedCable(Model):
 
         for stage_number in reversed(range(num_completed_stages)):
             respath = os.path.join(
-                    self.control_path,
-                    f'archive/output{stage_number:03d}/restart'
+                self.control_path,
+                f'archive/output{stage_number:03d}/restart'
             )
 
             [(file_names.append(file), path_names.append(respath))
@@ -164,7 +164,7 @@ class StagedCable(Model):
 
         # Zip up the files
         restart_files = [os.path.join(path, file)
-            for path, file in zip(path_names, file_names)]
+                         for path, file in zip(path_names, file_names)]
 
         return restart_files
 

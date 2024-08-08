@@ -37,14 +37,14 @@ def setup_module(module):
         print(e)
 
     config = {
-            'laboratory': 'lab',
-            'jobname': 'testrun',
-            'model': 'staged_cable',
-            'exe': 'cable',
-            'experiment': ctrldir_basename,
-            'metadata': {
-                'enable': False
-            }
+        'laboratory': 'lab',
+        'jobname': 'testrun',
+        'model': 'staged_cable',
+        'exe': 'cable',
+        'experiment': ctrldir_basename,
+        'metadata': {
+            'enable': False
+        }
     }
     write_config(config)
 
@@ -55,45 +55,45 @@ def setup_module(module):
 
     # Build a stage config for testing
     stage_config = {
-            'stage_1': {'count': 1},
-            'stage_2': {'count': 1},
-            'multistep_stage_1': {
-                'stage_3': {'count': 3},
-                'stage_4': {'count': 1},
-            },
-            'multistep_stage_2': {
-                'stage_5': {'count': 1},
-                'stage_6': {'count': 2},
-            },
-            'stage_7': {'count': 1}
+        'stage_1': {'count': 1},
+        'stage_2': {'count': 1},
+        'multistep_stage_1': {
+            'stage_3': {'count': 3},
+            'stage_4': {'count': 1},
+        },
+        'multistep_stage_2': {
+            'stage_5': {'count': 1},
+            'stage_6': {'count': 2},
+        },
+        'stage_7': {'count': 1}
     }
 
     write_config(stage_config, ctrldir / 'stage_config.yaml')
 
     # Prepare a master namelist and a stage 1 namelist
     master_nml = {
-            'cablenml': {
-                'option1': 1,
-                'struct1': {
-                    'option2': 2,
-                    'option3': 3,
-                },
-                'option4': 4
-            }
+        'cablenml': {
+            'option1': 1,
+            'struct1': {
+                'option2': 2,
+                'option3': 3,
+            },
+            'option4': 4
+        }
     }
 
     with open(ctrldir / 'cable.nml', 'w') as master_nml_f:
         f90nml.write(master_nml, master_nml_f)
 
     patch_nml = {
-            'cablenml': {
-                'option1': 10,
-                'struct1': {
-                    'option2': 20,
-                    'option5': 50
-                },
-                'option6': 60
-            }
+        'cablenml': {
+            'option1': 10,
+            'struct1': {
+                'option2': 20,
+                'option5': 50
+            },
+            'option6': 60
+        }
     }
 
     with open(ctrldir / 'stage_1/cable.nml', 'w') as patch_nml_f:
@@ -126,8 +126,17 @@ def test_staged_cable():
 
     # Since we've called the initialiser, we should be able to inspect the
     # stages immediately (through the configuration log)
-    expected_queued_stages = ['stage_1', 'stage_2', 'stage_3', 'stage_4',
-        'stage_3', 'stage_3', 'stage_5', 'stage_6', 'stage_6', 'stage_7']
+    expected_queued_stages = [
+        'stage_1',
+        'stage_2',
+        'stage_3',
+        'stage_4',
+        'stage_3',
+        'stage_3',
+        'stage_5',
+        'stage_6',
+        'stage_6',
+        'stage_7']
     assert model.configuration_log['queued_stages'] == expected_queued_stages
 
     # Now prepare for a stage- should see changes in the configuration log
@@ -185,8 +194,8 @@ def test_staged_cable():
 
     rstfiles = model.get_prior_restart_files()
     expected_restart_files = [
-            str(ctrldir / 'archive' / 'output001' / 'restart' / 'rst1.txt'),
-            str(ctrldir / 'archive' / 'output000' / 'restart' / 'rst2.txt')
+        str(ctrldir / 'archive' / 'output001' / 'restart' / 'rst1.txt'),
+        str(ctrldir / 'archive' / 'output000' / 'restart' / 'rst2.txt')
     ]
 
     assert rstfiles == expected_restart_files
