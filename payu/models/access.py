@@ -89,60 +89,93 @@ class Access(Model):
             if model.model_type in ('cice', 'matm'):
 
                 # Update the supplemental OASIS namelists
-                cpl_fname, cpl_group, runtime0_key = cpl_keys[model.model_type]
 
+                # cpl_nml is the coupling namelist located in the control directory
+                cpl_fname, cpl_group, runtime0_key = cpl_keys[model.model_type]
                 cpl_fpath = os.path.join(model.work_path, cpl_fname)
                 cpl_nml = f90nml.read(cpl_fpath)
 
+            
+
                 # Which calendar are we using, noleap or Gregorian.
                 caltype = cpl_nml[cpl_group]['caltype']
-                init_date = cal.int_to_date(cpl_nml[cpl_group]['init_date'])
 
                 # Get time info about the beginning of this run. We're
                 # interested in:
                 #   1. start date of run
                 #   2. total runtime of all previous runs.
                 if model.prior_restart_path and not self.expt.repeat_run:
-
-                    prior_cpl_fpath = os.path.join(model.prior_restart_path,
-                                                   cpl_fname)
-
-                    # With later versions this file exists in the prior restart
-                    # path, but this was not always the case, so check, and if
-                    # not there use prior output path
-                    if not os.path.exists(prior_cpl_fpath):
-                        print('payu: warning: {0} missing from prior restart '
-                              'path; checking prior output.'.format(cpl_fname),
-                              file=sys.stderr)
-                        if not os.path.isdir(model.prior_output_path):
-                            print('payu: error: No prior output path; '
-                                  'aborting run.')
-                            sys.exit(errno.ENOENT)
-
-                        prior_cpl_fpath = os.path.join(model.prior_output_path,
-                                                       cpl_fname)
+                    
+                    # Read the start date from the restart date namelist
+                    start_date_fpath = os.path.join(
+                        model.prior_restart_path,
+                        "start_date.nml"
+                    )
 
                     try:
-                        prior_cpl_nml = f90nml.read(prior_cpl_fpath)
-                    except IOError as exc:
-                        if exc.errno == errno.ENOENT:
-                            print('payu: error: {0} does not exist; aborting.'
-                                  ''.format(prior_cpl_fpath), file=sys.stderr)
-                            sys.exit(exc.errno)
-                        else:
-                            raise
+                        start_date_nml = f90nml.read(start_date_fpath)[cpl_group]
+                    except FileNotFoundError:
+                        print(
+                            "Missing restart date file for model "
+                            f"{model.model_type}",
+                            file=sys.stderr
+                        )
+                        raise
 
-                    cpl_nml_grp = prior_cpl_nml[cpl_group]
+                    NEW_start_date = cal.int_to_date(start_date_nml["inidate"])
+                    init_date = cal.int_to_date(
+                        start_date_nml["init_date"]
+                    )
+
+                    # Calculate the number of seconds between the initialisation and 
+                    # run start date to for the runtime0 field.
+                    NEW_previous_runtime = cal.seconds_between_dates(
+                        NEW_start_date,
+                        init_date
+                    )
+
+                    # TODO: Are we ok with breaking backwards compatability?
+                    # It keeps the code a lot simpler if we are.
+
+                    # prior_cpl_fpath = os.path.join(model.prior_restart_path,
+                    #                                cpl_fname)
+
+                    # # With later versions this file exists in the prior restart
+                    # # path, but this was not always the case, so check, and if
+                    # # not there use prior output path
+                    # if not os.path.exists(prior_cpl_fpath):
+                    #     print('payu: warning: {0} missing from prior restart '
+                    #           'path; checking prior output.'.format(cpl_fname),
+                    #           file=sys.stderr)
+                    #     if not os.path.isdir(model.prior_output_path):
+                    #         print('payu: error: No prior output path; '
+                    #               'aborting run.')
+                    #         sys.exit(errno.ENOENT)
+
+                    #     prior_cpl_fpath = os.path.join(model.prior_output_path,
+                    #                                    cpl_fname)
+
+                    # try:
+                    #     prior_cpl_nml = f90nml.read(prior_cpl_fpath)
+                    # except IOError as exc:
+                    #     if exc.errno == errno.ENOENT:
+                    #         print('payu: error: {0} does not exist; aborting.'
+                    #               ''.format(prior_cpl_fpath), file=sys.stderr)
+                    #         sys.exit(exc.errno)
+                    #     else:
+                    #         raise
+
 
                     # The total time in seconds since the beginning of
                     # the experiment.
-                    total_runtime = int(cpl_nml_grp[runtime0_key] +
-                                        cpl_nml_grp['runtime'])
+                    total_runtime = int(start_date_nml[runtime0_key] +
+                                        start_date_nml['runtime'])
                     run_start_date = cal.date_plus_seconds(init_date,
                                                            total_runtime,
                                                            caltype)
 
                 else:
+                    init_date = cal.int_to_date(cpl_nml[cpl_group]['init_date'])
                     total_runtime = 0
                     run_start_date = init_date
 
@@ -156,8 +189,24 @@ class Access(Model):
                         self.expt.runtime['days'],
                         self.expt.runtime.get('seconds', 0),
                         caltype)
+                    NEW_run_runtime = cal.runtime_from_date(
+                        NEW_start_date,
+                        self.expt.runtime['years'],
+                        self.expt.runtime['months'],
+                        self.expt.runtime['days'],
+                        self.expt.runtime.get('seconds', 0),
+                        caltype
+                    )
                 else:
                     run_runtime = cpl_nml[cpl_group]['runtime']
+
+                # Sanity checks during development. Ensure that the new calculations
+                # would write the same init_date, runtime, and runtime0 as the old 
+                # calculations. 
+                # TODO: Remove when satisfied changes are working
+                assert NEW_start_date == run_start_date
+                assert NEW_run_runtime == run_runtime 
+                assert NEW_previous_runtime == total_runtime 
 
                 # Now write out new run start date and total runtime.
                 cpl_nml[cpl_group]['inidate'] = cal.date_to_int(run_start_date)
@@ -171,6 +220,8 @@ class Access(Model):
                         cpl_nml[cpl_group]['jobnum'] = 1
 
                 nml_work_path = os.path.join(model.work_path, cpl_fname)
+
+                #TODO: Why is the following split into two steps?
                 f90nml.write(cpl_nml, nml_work_path + '~')
                 shutil.move(nml_work_path + '~', nml_work_path)
 
