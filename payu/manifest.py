@@ -235,14 +235,6 @@ class PayuManifest(YaManifest):
             finally:
                 self.previous_filepaths.discard(filepath)
 
-    def make_links(self):
-        """
-        Used to make all links at once for scaninputs=False
-        """
-        for filepath in list(self):
-            if os.path.exists(self.fullpath(filepath)):
-                self.make_link(filepath)
-
     def copy(self, path):
         """
         Copy myself to another location
@@ -297,14 +289,6 @@ class Manifest(object):
 
         # Make sure the manifests directory exists
         mkdir_p(os.path.dirname(self.manifests['exe'].path))
-
-        # Set flag to auto-scan input directories
-        self.scaninputs = self.manifest_config.get('scaninputs', True)
-
-        # Ensure configured input files are discovered when reproduce is True
-        if self.reproduce['input'] and not self.scaninputs:
-            print("scaninputs set to True when reproduce input is True")
-            self.scaninputs = True
 
     def init_mf(self, mf):
         # Initialise a sub-manifest object
@@ -369,22 +353,17 @@ class Manifest(object):
         # Save existing filepaths infomation in each manifest
         self.set_previous_filepaths()
 
-        if self.have_manifest['exe'] and not self.reproduce['exe']:
-            # Re-initialise exe manifest. Trivial to recreate
-            # and means no check required for changed executable
-            # paths
-            self.init_mf('exe')
-
-        if self.have_manifest['restart'] and not self.reproduce['restart']:
-            # Re-initialise restart manifest. Only keep restart manifest
-            # if reproduce. Normally want to scan for new restarts
-            self.init_mf('restart')
-
-        # Make links in work directory for existing input manifest
-        # when scan inputs is set to False
-        if self.have_manifest['input'] and not self.scaninputs:
-            print('Making input symlinks using the existing manifest')
-            self.manifests['input'].make_links()
+        # Re-initialise executable and restart manifests, unless reproduce
+        # is configured:
+        #   - Executables are generally small in size so it is trivial to
+        #   recalculate full MD5 hashes for each experiment run
+        #   - Restarts are usually different between runs.
+        #   - Input manifests are not re-initialised as inputs are typically
+        #   large files that change rarely, so MD5 hashes are computed only
+        #   if there has been a change
+        for mf in ['exe', 'restart']:
+            if self.have_manifest[mf] and not self.reproduce[mf]:
+                self.init_mf(mf)
 
     def check_manifests(self):
 

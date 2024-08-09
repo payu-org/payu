@@ -154,8 +154,6 @@ def test_exe_reproduce():
 
     # Set reproduce exe to True
     config['manifest']['reproduce']['exe'] = True
-    # Also set scaninputs to True to catch bug #388
-    config['manifest']['scaninputs'] = True
     write_config(config)
     manifests = get_manifests(ctrldir/'manifests')
 
@@ -230,8 +228,6 @@ def test_input_reproduce():
     config['manifest']['reproduce']['exe'] = False
     config['manifest']['reproduce']['input'] = True
 
-    # Set scan inputs to True
-    config['manifest']['scaninputs'] = True
     config['exe'] = config_orig['exe']
     write_config(config)
     manifests = get_manifests(ctrldir/'manifests')
@@ -324,8 +320,6 @@ def test_input_reproduce():
 
     # Set reproduce to true
     config['manifest']['reproduce']['input'] = True
-    # Set scan inputs to False - This should be ignored and set to true
-    config['manifest']['scaninputs'] = False
     write_config(config)
 
     # Run setup again, which should raise an error due to new input file
@@ -335,83 +329,13 @@ def test_input_reproduce():
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 1
 
-
-def test_input_scaninputs():
-
-    # Re-create input files
-    make_config_files()
-    make_inputs()
-
-    inputdir = labdir / 'input' / config['input']
-    inputdir.mkdir(parents=True, exist_ok=True)
-
-    # Set scaninputs input to True
-    config['manifest']['scaninputs'] = True
+    # Set reproduce manifests back to False
     config['manifest']['reproduce']['input'] = False
     write_config(config)
 
-    # Run setup with unchanged input
+    # Check setup runs without an error and new input is linked
     payu_setup(lab_path=str(labdir))
-    manifests = get_manifests(ctrldir/'manifests')
-
-    # Set scaninputs input to False
-    config['manifest']['scaninputs'] = False
-    write_config(config)
-
-    # Run setup, should work and manifests unchanged
-    payu_setup(lab_path=str(labdir))
-    assert(manifests == get_manifests(ctrldir/'manifests'))
-
-    # Update modification times for input files
-    for i in range(1, 4):
-        (inputdir/'input_00{i}.bin'.format(i=i)).touch()
-
-    # Run setup, should work as only fasthash will differ, code then
-    # checks full hash and updates fasthash if fullhash matches
-    payu_setup(lab_path=str(labdir))
-
-    # Manifests should no longer match as fasthashes have been updated
-    assert(not manifests == get_manifests(ctrldir/'manifests'))
-
-    # Reset manifest "truth"
-    manifests = get_manifests(ctrldir/'manifests')
-
-    # Re-create input files
-    make_inputs()
-
-    # Run setup again. Should be fine, but manifests changed
-    payu_setup(lab_path=str(labdir))
-    assert(not manifests == get_manifests(ctrldir/'manifests'))
-
-    # Reset manifest "truth"
-    manifests = get_manifests(ctrldir/'manifests')
-
-    # Make a new input file
-    (inputdir/'lala').touch()
-
-    # Run setup again. Should be fine, manifests unchanged as
-    # scaninputs=False
-    payu_setup(lab_path=str(labdir))
-    assert(manifests == get_manifests(ctrldir/'manifests'))
-
-    # Set scaninputs input to True
-    config['manifest']['scaninputs'] = True
-    write_config(config)
-
-    # Run setup again. Should be fine, but manifests changed now
-    # as scaninputs=True
-    payu_setup(lab_path=str(labdir))
-    assert(not manifests == get_manifests(ctrldir/'manifests'))
-    assert((workdir/'lala').is_file())
-
-    # Delete silly input file
-    (inputdir/'lala').unlink()
-
-    # Re-run after removing silly input file
-    payu_setup(lab_path=str(labdir))
-
-    # Reset manifest "truth"
-    manifests = get_manifests(ctrldir/'manifests')
+    assert (workdir / 'newInputFile').is_file()
 
 
 def test_restart_reproduce():

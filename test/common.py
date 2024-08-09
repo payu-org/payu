@@ -48,7 +48,6 @@ config = {
             'exe': 'test.exe',
             'input': 'testrun_1',
             'manifest': {
-                        'scaninputs': False,
                         'reproduce': {
                                         'input': False,
                                         'exe': False
