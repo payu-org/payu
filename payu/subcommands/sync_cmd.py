@@ -15,18 +15,19 @@ title = 'sync'
 parameters = {'description': 'Sync model output to a remote directory'}
 
 arguments = [args.model, args.config, args.laboratory, args.dir_path,
-             args.sync_restarts, args.sync_ignore_last]
+             args.sync_restarts, args.sync_ignore_last, args.metadata_off]
 
 
 def runcmd(model_type, config_path, lab_path, dir_path, sync_restarts,
-           sync_ignore_last):
+           sync_ignore_last, metadata_off):
 
     pbs_config = fsops.read_config(config_path)
 
     pbs_vars = cli.set_env_vars(lab_path=lab_path,
                                 dir_path=dir_path,
                                 sync_restarts=sync_restarts,
-                                sync_ignore_last=sync_ignore_last)
+                                sync_ignore_last=sync_ignore_last,
+                                metadata_off=metadata_off)
 
     sync_config = pbs_config.get('sync', {})
 
@@ -79,6 +80,6 @@ def runscript():
     lab = Laboratory(run_args.model_type,
                      run_args.config_path,
                      run_args.lab_path)
-    expt = Experiment(lab)
+    expt = Experiment(lab, metadata_off=run_args.metadata_off)
 
     expt.sync()

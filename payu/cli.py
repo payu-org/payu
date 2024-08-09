@@ -89,7 +89,8 @@ def get_model_type(model_type, config):
 
 def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
                  reproduce=False, force=False, force_prune_restarts=False,
-                 sync_restarts=False, sync_ignore_last=False):
+                 sync_restarts=False, sync_ignore_last=False,
+                 metadata_off=False):
     """Construct the environment variables used by payu for resubmissions."""
     payu_env_vars = {}
 
@@ -142,6 +143,9 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
 
     if force_prune_restarts:
         payu_env_vars['PAYU_FORCE_PRUNE_RESTARTS'] = force_prune_restarts
+
+    if metadata_off:
+        payu_env_vars['PAYU_METADATA_OFF'] = metadata_off
 
     # Pass through important module related environment variables
     module_env_vars = ['MODULESHOME', 'MODULES_CMD', 'MODULEPATH', 'MODULEV']
