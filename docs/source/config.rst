@@ -260,7 +260,7 @@ section for details.
 
       ``input`` (*Default: global reproduce flag*)
             Enforce input file reproducibility. If set to *True* will refuse to
-            run if hashes do no match. It will search for new files.
+            run if hashes do not match. It will search for new files.
 
       ``restart`` (*Default: global reproduce flag*)
             Enforce restart file reproducibility.

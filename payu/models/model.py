@@ -268,7 +268,7 @@ class Model(object):
                     self.copy_restarts
                 )
 
-        # Add input files to manifest if we don't already have a
+        # Add input files to manifest if we don't already have an
         # input manifest, or we specify scaninputs is True (default)
         if (not self.expt.manifest.have_manifest['input'] or
                 self.expt.manifest.scaninputs):
