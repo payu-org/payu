@@ -48,7 +48,16 @@ class PayuManifest(YaManifest):
             self.ignore = ignore
 
         self.needsync = False
-        self.existing_filepaths = set()
+
+        self.previous_filepaths = set()
+
+    def set_previous_filepaths(self):
+        """
+        Save previous filepaths information - this is obtained from the
+        pre-existing manifests. This is used to keep track of changes to
+        the manifest.
+        """
+        self.previous_filepaths = set(self.data.keys())
 
     def check_fast(self, reproduce=False, **args):
         """
@@ -129,6 +138,15 @@ class PayuManifest(YaManifest):
                 # Flag need to update version on disk
                 self.needsync = True
 
+        # Check for any missing files
+        if reproduce and len(self.previous_filepaths) > 0:
+            sys.stderr.write(
+                f"Run cannot reproduce: Files in {self.path} " +
+                "are no longer in work directory:\n  - " +
+                "\n  - ".join(self.previous_filepaths) + '\n'
+            )
+            exit(1)
+
     def add_filepath(self, filepath, fullpath, hashes, copy=False):
         """
         Bespoke function to add filepath & fullpath to manifest
@@ -156,8 +174,8 @@ class PayuManifest(YaManifest):
         if copy:
             self.data[filepath]['copy'] = copy
 
-        if filepath in self.existing_filepaths:
-            self.existing_filepaths.remove(filepath)
+        if filepath in self.previous_filepaths:
+            self.previous_filepaths.remove(filepath)
 
         return True
 
@@ -187,15 +205,11 @@ class PayuManifest(YaManifest):
         Payu integration function for creating symlinks in work directories
         which point back to the original file.
         """
-        # Check file exists. It may have been deleted but still in manifest
         if not os.path.exists(self.fullpath(filepath)):
-            print('File not found: {filepath}'.format(
-                  filepath=self.fullpath(filepath)))
-            if self.contains(filepath):
-                print('removing from manifest')
-                self.delete(filepath)
-                self.needsync = True
-                self.existing_filepaths.discard(filepath)
+            raise FileNotFoundError(
+                "Unable to create symlink in work directory. "
+                f"File not found: {self.fullpath(filepath)}"
+            )
         else:
             try:
                 destdir = os.path.dirname(filepath)
@@ -219,14 +233,7 @@ class PayuManifest(YaManifest):
                                               local=filepath))
                 raise
             finally:
-                self.existing_filepaths.discard(filepath)
-
-    def make_links(self):
-        """
-        Used to make all links at once for reproduce runs or scaninputs=False
-        """
-        for filepath in list(self):
-            self.make_link(filepath)
+                self.previous_filepaths.discard(filepath)
 
     def copy(self, path):
         """
@@ -283,13 +290,6 @@ class Manifest(object):
         # Make sure the manifests directory exists
         mkdir_p(os.path.dirname(self.manifests['exe'].path))
 
-        # Set flag to auto-scan input directories
-        self.scaninputs = self.manifest_config.get('scaninputs', True)
-
-        if self.reproduce['input'] and self.scaninputs:
-            print("scaninputs set to False when reproduce input is True")
-            self.scaninputs = False
-
     def init_mf(self, mf):
         # Initialise a sub-manifest object
         self.manifests[mf] = PayuManifest(
@@ -329,44 +329,41 @@ class Manifest(object):
                     if len(self.manifests[mf]) > 0:
                         self.have_manifest[mf] = True
 
+            # Check manifests are populated when reproduce is configured
+            if not self.have_manifest[mf] and self.reproduce[mf]:
+                sys.stderr.write(
+                    f'{mf.capitalize()} manifest must exist and be populated '
+                    'if reproduce is configured to True\n'
+                )
+                sys.exit(1)
+
+    def set_previous_filepaths(self):
+        """
+        Save the existing filepath infomation to each manifest
+        """
+        for mf in self.manifests.keys():
+            if self.have_manifest[mf]:
+                self.manifests[mf].set_previous_filepaths()
+
     def setup(self):
 
         # Load all available manifests
         self.load()
 
-        if self.have_manifest['input']:
-            if self.scaninputs:  # Must be False for reproduce=True
-                # Save existing filepath information
-                self.manifests['input'].existing_filepaths = \
-                    set(self.manifests['input'].data.keys())
+        # Save existing filepaths infomation in each manifest
+        self.set_previous_filepaths()
 
-        if self.have_manifest['exe']:
-            if not self.reproduce['exe']:
-                # Re-initialise exe manifest. Trivial to recreate
-                # and means no check required for changed executable
-                # paths
-                self.init_mf('exe')
-
-        if self.have_manifest['restart']:
-            if not self.reproduce['restart']:
-                # Re-initialise restart manifest. Only keep restart manifest
-                # if reproduce. Normally want to scan for new restarts
-                self.init_mf('restart')
-
-        # Check to make all manifests that should be populated are and
-        # make links in work directory for existing manifests
-        for mf in self.manifests.keys():
-            if self.have_manifest[mf]:
-                # Don't make links for inputs when scaninputs is True
-                if mf == 'input' and self.scaninputs:
-                    continue
-                print('Making {} links'.format(mf))
-                self.manifests[mf].make_links()
-            else:
-                if self.reproduce[mf]:
-                    print('{} manifest must exist if reproduce is True'
-                          ''.format(mf.capitalize()))
-                    exit(1)
+        # Re-initialise executable and restart manifests, unless reproduce
+        # is configured:
+        #   - Executables are generally small in size so it is trivial to
+        #   recalculate full MD5 hashes for each experiment run
+        #   - Restarts are usually different between runs.
+        #   - Input manifests are not re-initialised as inputs are typically
+        #   large files that change rarely, so MD5 hashes are computed only
+        #   if there has been a change
+        for mf in ['exe', 'restart']:
+            if self.have_manifest[mf] and not self.reproduce[mf]:
+                self.init_mf(mf)
 
     def check_manifests(self):
 
@@ -374,9 +371,9 @@ class Manifest(object):
         self.manifests['exe'].check_fast(reproduce=self.reproduce['exe'])
 
         if not self.reproduce['input']:
-            if len(self.manifests['input'].existing_filepaths) > 0:
+            if len(self.manifests['input'].previous_filepaths) > 0:
                 # Delete missing filepaths from input manifest
-                for filepath in self.manifests['input'].existing_filepaths:
+                for filepath in self.manifests['input'].previous_filepaths:
                     print('File no longer in input directory: {file} '
                           'removing from manifest'.format(file=filepath))
                     self.manifests['input'].delete(filepath)

@@ -48,7 +48,6 @@ config = {
             'exe': 'test.exe',
             'input': 'testrun_1',
             'manifest': {
-                        'scaninputs': False,
                         'reproduce': {
                                         'input': False,
                                         'exe': False
@@ -140,11 +139,13 @@ def write_config(config, path=config_path):
         file.write(yaml.dump(config, default_flow_style=False))
 
 
-def make_exe():
+def make_exe(exe_name=None):
     # Create a fake executable file
     bindir = labdir / 'bin'
     bindir.mkdir(parents=True, exist_ok=True)
-    exe_path = bindir / config['exe']
+    if not exe_name:
+        exe_name =  config['exe']
+    exe_path = bindir / exe_name
     exe_size = 199
     make_random_file(exe_path, exe_size)
     exe_path.chmod(exe_path.stat().st_mode | stat.S_IEXEC)
