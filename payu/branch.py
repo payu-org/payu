@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Optional
 import shutil
 
-from ruamel.yaml import YAML, CommentedMap
+from ruamel.yaml import YAML, CommentedMap, constructor
 import git
 
 from payu.fsops import read_config, DEFAULT_CONFIG_FNAME, list_archive_dirs
@@ -67,8 +67,18 @@ def add_restart_to_config(restart_path: Path, config_path: Path) -> None:
     restart in archive"""
 
     # Default ruamel yaml preserves comments and multiline strings
-    yaml = YAML()
-    config = yaml.load(config_path)
+    try:
+        yaml = YAML()
+        config = yaml.load(config_path)
+    except constructor.DuplicateKeyError as e:
+        # PyYaml which is used to read config allows duplicate keys
+        # These will get removed when the configuration file is modified
+        warnings.warn(
+            "Removing any subsequent duplicate keys from config.yaml"
+        )
+        yaml = YAML()
+        yaml.allow_duplicate_keys = True
+        config = yaml.load(config_path)
 
     # Add in restart path
     config['restart'] = str(restart_path)

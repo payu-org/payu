@@ -15,6 +15,7 @@ import pkgutil
 import shlex
 import subprocess
 import sys
+import warnings
 
 import payu
 import payu.envmod as envmod
@@ -23,9 +24,16 @@ from payu.models import index as supported_models
 from payu.schedulers import index as scheduler_index
 import payu.subcommands
 
-
 # Default configuration
 DEFAULT_CONFIG = 'config.yaml'
+
+# Force warnings.warn() to omit the source code line in the message
+formatwarning_orig = warnings.formatwarning
+warnings.formatwarning = (
+    lambda message, category, filename, lineno, line=None: (
+        formatwarning_orig(message, category, filename, lineno, line='')
+    )
+)
 
 
 def parse():
