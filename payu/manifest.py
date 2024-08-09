@@ -48,13 +48,16 @@ class PayuManifest(YaManifest):
             self.ignore = ignore
 
         self.needsync = False
-        self.existing_filepaths = set()
 
-    def set_existing_filepaths(self):
+        self.previous_filepaths = set()
+
+    def set_previous_filepaths(self):
         """
-        Save existing filepaths information
+        Save previous filepaths information - this is obtained from the
+        pre-existing manifests. This is used to keep track of changes to
+        the manifest.
         """
-        self.existing_filepaths = set(self.data.keys())
+        self.previous_filepaths = set(self.data.keys())
 
     def check_fast(self, reproduce=False, **args):
         """
@@ -136,11 +139,11 @@ class PayuManifest(YaManifest):
                 self.needsync = True
 
         # Check for any missing files
-        if reproduce and len(self.existing_filepaths) > 0:
-            print(
+        if reproduce and len(self.previous_filepaths) > 0:
+            sys.stderr.write(
                 f"Run cannot reproduce: Files in {self.path} " +
                 "are no longer in work directory:\n  - " +
-                "\n  - ".join(self.existing_filepaths)
+                "\n  - ".join(self.previous_filepaths) + '\n'
             )
             exit(1)
 
@@ -171,8 +174,8 @@ class PayuManifest(YaManifest):
         if copy:
             self.data[filepath]['copy'] = copy
 
-        if filepath in self.existing_filepaths:
-            self.existing_filepaths.remove(filepath)
+        if filepath in self.previous_filepaths:
+            self.previous_filepaths.remove(filepath)
 
         return True
 
@@ -230,7 +233,7 @@ class PayuManifest(YaManifest):
                                               local=filepath))
                 raise
             finally:
-                self.existing_filepaths.discard(filepath)
+                self.previous_filepaths.discard(filepath)
 
     def make_links(self):
         """
@@ -342,13 +345,21 @@ class Manifest(object):
                     if len(self.manifests[mf]) > 0:
                         self.have_manifest[mf] = True
 
-    def set_existing_filepaths(self):
+            # Check manifests are populated when reproduce is configured
+            if not self.have_manifest[mf] and self.reproduce[mf]:
+                sys.stderr.write(
+                    f'{mf.capitalize()} manifest must exist and be populated '
+                    'if reproduce is configured to True\n'
+                )
+                sys.exit(1)
+
+    def set_previous_filepaths(self):
         """
         Save the existing filepath infomation to each manifest
         """
         for mf in self.manifests.keys():
             if self.have_manifest[mf]:
-                self.manifests[mf].set_existing_filepaths()
+                self.manifests[mf].set_previous_filepaths()
 
     def setup(self):
 
@@ -356,7 +367,7 @@ class Manifest(object):
         self.load()
 
         # Save existing filepaths infomation in each manifest
-        self.set_existing_filepaths()
+        self.set_previous_filepaths()
 
         if self.have_manifest['exe'] and not self.reproduce['exe']:
             # Re-initialise exe manifest. Trivial to recreate
@@ -375,23 +386,15 @@ class Manifest(object):
             print('Making input symlinks using the existing manifest')
             self.manifests['input'].make_links()
 
-        # Check manifests are populated when reproduce is configured
-        for mf in self.manifests.keys():
-            if not self.have_manifest[mf] and self.reproduce[mf]:
-                print(
-                    f'{mf.capitalize()} manifest must exist if reproduce is True'
-                )
-                sys.exit(1)
-
     def check_manifests(self):
 
         print("Checking exe and input manifests")
         self.manifests['exe'].check_fast(reproduce=self.reproduce['exe'])
 
         if not self.reproduce['input']:
-            if len(self.manifests['input'].existing_filepaths) > 0:
+            if len(self.manifests['input'].previous_filepaths) > 0:
                 # Delete missing filepaths from input manifest
-                for filepath in self.manifests['input'].existing_filepaths:
+                for filepath in self.manifests['input'].previous_filepaths:
                     print('File no longer in input directory: {file} '
                           'removing from manifest'.format(file=filepath))
                     self.manifests['input'].delete(filepath)
