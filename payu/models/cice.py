@@ -247,6 +247,7 @@ class Cice(Model):
         # Force creation of a dump (restart) file at end of run
         setup_nml['dump_last'] = True
 
+        # Write the prepared cice namelist into the work directory
         nml_path = os.path.join(self.work_path, self.ice_nml_fname)
         self.ice_in.write(nml_path, force=True)
 
