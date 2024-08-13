@@ -159,24 +159,8 @@ def setup_user_modules(user_modules, user_modulepaths):
     previous_path = os.environ.get('PATH', '')
 
     for modulefile in user_modules:
-        # Check module exists and there is not multiple available
-        output = run_module_cmd("avail --terse", modulefile).stderr
-
-        # Extract out the modulefiles available - strip out lines like:
-        # /apps/Modules/modulefiles:
-        modules = [line for line in output.strip().splitlines()
-                   if not (line.startswith('/') and line.endswith(':'))]
-
-        # Modules are used for finding model executable paths - so check
-        # for unique module
-        if len(modules) > 1:
-            raise ValueError(
-                f"There are multiple modules available for {modulefile}:\n" +
-                f"{output}\n{MULTIPLE_MODULES_HELP}")
-        elif len(modules) == 0:
-            raise ValueError(
-                f"Module is not found: {modulefile}\n{MODULE_NOT_FOUND_HELP}"
-            )
+        # Check modulefile exists and is unique or has an exact match
+        check_modulefile(modulefile)
 
         # Load module
         module('load', modulefile)
@@ -189,6 +173,28 @@ def setup_user_modules(user_modules, user_modulepaths):
     paths = set(path.split(':')).difference(set(previous_path.split(':')))
 
     return (loaded_modules, paths)
+
+
+def check_modulefile(modulefile: str) -> None:
+    """Given a modulefile, check if modulefile exists, and there is
+    a unique modulefile available - e.g. if it's version is specified"""
+    output = run_module_cmd("avail --terse", modulefile).stderr
+
+    # Extract out the modulefiles available - strip out lines like:
+    # /apps/Modules/modulefiles:
+    modules_avail = [line for line in output.strip().splitlines()
+                     if not (line.startswith('/') and line.endswith(':'))]
+
+    # Modules are used for finding model executable paths - so check
+    # for unique module, or an exact match for the modulefile name
+    if len(modules_avail) > 1 and modules_avail.count(modulefile) != 1:
+        raise ValueError(
+            f"There are multiple modules available for {modulefile}:\n" +
+            f"{output}\n{MULTIPLE_MODULES_HELP}")
+    elif len(modules_avail) == 0:
+        raise ValueError(
+            f"Module is not found: {modulefile}\n{MODULE_NOT_FOUND_HELP}"
+        )
 
 
 def run_module_cmd(subcommand, *args):
