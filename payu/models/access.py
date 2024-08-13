@@ -51,10 +51,6 @@ class Access(Model):
 
             if model.model_type == 'cice5':
                 model.access_restarts.append(['u_star.nc', 'sicemass.nc'])
-            
-            if model.model_type == 'cice':
-                model.history_nml_fname = 'ice_history.nml'
-                model.optional_config_files.append(model.history_nml_fname)
 
 
     def setup(self):
@@ -90,26 +86,6 @@ class Access(Model):
 
                         if os.path.isfile(f_src):
                             make_symlink(f_src, f_dst)
-
-            if model.model_type == 'cice':
-                # Patch the cice namelist with the history requests 
-                # if a separate history namelist exists.
-                history_nml_fpath = os.path.join(model.control_path,
-                                         model.history_nml_fname)
-                if os.path.isfile(history_nml_fpath):
-                    history_nml = f90nml.read(history_nml_fpath)
-                    work_ice_nml_path = os.path.join(
-                        model.work_path,
-                        model.ice_nml_fname
-                    )
-                    #TODO: This requires that cice.py's setup has already been 
-                    # called so that the ice_nml exists in the control directory.
-                    # Is this always the case??
-                    work_ice_nml = f90nml.read(work_ice_nml_path)
-                    print("SPENCER: patching ice namelist")
-                    print(work_ice_nml_path)
-                    work_ice_nml.patch(history_nml)
-                    work_ice_nml.write(work_ice_nml_path, force = True)
             
             if model.model_type in ('cice', 'matm'):
 
