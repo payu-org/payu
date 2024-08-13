@@ -158,7 +158,7 @@ class Cice(Model):
     def setup(self):
         super(Cice, self).setup()
 
-        # If there is a seperate ice_history.nml, 
+        # If there is a seperate ice_history.nml,
         # update the cice namelist with its contents
         history_nml_fpath = os.path.join(self.control_path,
                                          self.history_nml_fname)
