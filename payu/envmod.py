@@ -185,6 +185,9 @@ def check_modulefile(modulefile: str) -> None:
     modules_avail = [line for line in output.strip().splitlines()
                      if not (line.startswith('/') and line.endswith(':'))]
 
+    # Remove () from end of modulefiles if they exist, e.g. (default)
+    modules_avail = [mod.rsplit('(', 1)[0] for mod in modules_avail]
+
     # Modules are used for finding model executable paths - so check
     # for unique module, or an exact match for the modulefile name
     if len(modules_avail) > 1 and modules_avail.count(modulefile) != 1:
