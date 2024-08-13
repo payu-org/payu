@@ -52,7 +52,6 @@ class Access(Model):
             if model.model_type == 'cice5':
                 model.access_restarts.append(['u_star.nc', 'sicemass.nc'])
 
-
     def setup(self):
         if not self.top_level_model:
             return
@@ -86,7 +85,7 @@ class Access(Model):
 
                         if os.path.isfile(f_src):
                             make_symlink(f_src, f_dst)
-            
+
             if model.model_type in ('cice', 'matm'):
 
                 # Update the supplemental OASIS namelists

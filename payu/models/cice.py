@@ -45,7 +45,7 @@ class Cice(Model):
 
         self.ice_nml_fname = 'cice_in.nml'
 
-        self.history_nml_fname = 'ice_history.nml' #only used by payu
+        self.history_nml_fname = 'ice_history.nml'  # only used by payu
 
         self.set_timestep = self.set_local_timestep
 
@@ -158,7 +158,8 @@ class Cice(Model):
     def setup(self):
         super(Cice, self).setup()
 
-        #  If there is a seperate ice_history.nml, update the cice namelist with its contents
+        # If there is a seperate ice_history.nml, 
+        # update the cice namelist with its contents
         history_nml_fpath = os.path.join(self.control_path,
                                          self.history_nml_fname)
         if os.path.isfile(history_nml_fpath):
@@ -253,11 +254,10 @@ class Cice(Model):
         assert(total_runtime % setup_nml['dt'] == 0)
         setup_nml['istep0'] = int(total_runtime / setup_nml['dt'])
 
-        if self.model_type != 'cice' : #model_type==cice5
+        if self.model_type != 'cice':  # model_type==cice5
             # Force creation of a dump (restart) file at end of run
             setup_nml['dump_last'] = True
 
-        # Write the prepared cice namelist into the work directory
         nml_path = os.path.join(self.work_path, self.ice_nml_fname)
         self.ice_in.write(nml_path, force=True)
 
