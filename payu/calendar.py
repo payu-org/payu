@@ -111,7 +111,7 @@ def seconds_between_dates(start_date, end_date, caltype_int):
     """
     # Get the cftime string corresponding to the caltype integer
     
-    #TODO: I think it's confusing that GREGORIAN means proleptic gregorian
+    #TODO: Is it confusing that GREGORIAN means proleptic gregorian?
     if caltype_int == GREGORIAN:
         calendar_str = "proleptic_gregorian"
     elif caltype_int == NOLEAP:
@@ -124,7 +124,6 @@ def seconds_between_dates(start_date, end_date, caltype_int):
     return delta.total_seconds()
         
 
-# TODO: Is there an inbuilt way to do this?
 def datetime_to_cftime(date, calendar):
     """
     Convert a datetime.datetime object to a cftime.datetime object which 
