@@ -90,7 +90,7 @@ def calculate_leapdays(init_date, final_date):
     return datetime.timedelta(days=leap_days)
 
 
-# TODO: The caltype logic could probably be simplified if we switched
+# TODO: The caltype logic could be simplified if we switched
 # to using just a string as the caltype input. Might require reworking of other 
 # functions for consistency.
 def seconds_between_dates(start_date, end_date, caltype_int):
