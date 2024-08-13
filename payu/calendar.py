@@ -119,12 +119,12 @@ def seconds_between_dates(start_date, end_date, caltype_int):
     else:
         raise ValueError(f"Unrecognized caltype integer {caltype_int}")
 
-    delta = datetime_to_cftime(end_date, calendar_str) - datetime_to_cftime(start_date, calendar_str)
+    delta = date_to_cftime(end_date, calendar_str) - date_to_cftime(start_date, calendar_str)
 
     return delta.total_seconds()
         
 
-def datetime_to_cftime(date, calendar):
+def date_to_cftime(date, calendar):
     """
     Convert a datetime.datetime object to a cftime.datetime object which 
     has the same year, month, day, hour, minute, second values. 
@@ -142,9 +142,9 @@ def datetime_to_cftime(date, calendar):
         year = date.year,
         month = date.month,
         day = date.day,
-        hour = date.hour,
-        minute = date.minute,
-        second = date.second,
+        hour = 0,
+        minute = 0,
+        second = 0,
         calendar = calendar
     )
 
