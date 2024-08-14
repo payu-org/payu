@@ -58,7 +58,7 @@ class Access(Model):
                 model.cpl_group = 'coupling'
                 model.runtime0_key = 'runtime0'
                 model.start_date_nml_name = "restart_date.nml"
-            
+
             if model.model_type == 'matm':
                 # Structure of model coupling namelist
                 model.cpl_fname = 'input_atm.nml'
@@ -101,7 +101,7 @@ class Access(Model):
 
                 # Update the supplemental OASIS namelists
 
-                # cpl_nml is the coupling namelist copied from the control to 
+                # cpl_nml is the coupling namelist copied from the control to
                 # work directory.
                 cpl_fpath = os.path.join(model.work_path, model.cpl_fname)
                 cpl_nml = f90nml.read(cpl_fpath)
@@ -118,7 +118,8 @@ class Access(Model):
                     )
 
                     try:
-                        start_date_nml = f90nml.read(start_date_fpath)[model.cpl_group]
+                        start_date_nml = f90nml.read(start_date_fpath)[
+                            model.cpl_group]
                     except FileNotFoundError:
                         print(
                             "Missing restart date file for model "
@@ -138,8 +139,9 @@ class Access(Model):
                     # run_start_date must be after initialisation date
                     if run_start_date < init_date:
                         msg = (
-                            f"Restart date 'inidate` in  {model.start_date_nml_name} "
-                            "must not be before initialisation date `init_date. "
+                            "Restart date 'inidate` in "
+                            f"{model.start_date_nml_name} must not be "
+                            "before initialisation date `init_date. "
                             "Values provided: \n"
                             f"inidate = {start_date_nml['inidate']}\n"
                             f"init_date = {start_date_nml['init_date']}"
@@ -156,7 +158,9 @@ class Access(Model):
                     )
 
                 else:
-                    init_date = cal.int_to_date(cpl_nml[model.cpl_group]['init_date'])
+                    init_date = cal.int_to_date(
+                        cpl_nml[model.cpl_group]['init_date']
+                    )
                     previous_runtime = 0
                     run_start_date = init_date
 
@@ -175,20 +179,24 @@ class Access(Model):
 
                 # Now write out new run start date and total runtime into the
                 # work directory namelist.
-                cpl_nml[model.cpl_group]["init_date"] = cal.date_to_int(init_date)
-                cpl_nml[model.cpl_group]['inidate'] = cal.date_to_int(run_start_date)
+                cpl_nml[model.cpl_group]["init_date"] = cal.date_to_int(
+                                                                init_date)
+                cpl_nml[model.cpl_group]['inidate'] = cal.date_to_int(
+                                                            run_start_date)
                 cpl_nml[model.cpl_group][model.runtime0_key] = previous_runtime
                 cpl_nml[model.cpl_group]['runtime'] = int(run_runtime)
 
                 if model.model_type == 'cice':
                     if self.expt.counter and not self.expt.repeat_run:
-                        cpl_nml[model.cpl_group]['jobnum'] = 1 + self.expt.counter
+                        cpl_nml[model.cpl_group]['jobnum'] = (
+                            1 + self.expt.counter
+                        )
                     else:
                         cpl_nml[model.cpl_group]['jobnum'] = 1
 
                 nml_work_path = os.path.join(model.work_path, model.cpl_fname)
 
-                #TODO: Does this need to be split into two steps?
+                # TODO: Does this need to be split into two steps?
                 f90nml.write(cpl_nml, nml_work_path + '~')
                 shutil.move(nml_work_path + '~', nml_work_path)
 
@@ -202,7 +210,7 @@ class Access(Model):
                     s = f.read()
                     m = re.search(r"^[ \t]*\$RUNTIME.*?^[ \t]*(\d+)", s,
                                   re.MULTILINE | re.DOTALL)
-                    assert(m is not None)
+                    assert (m is not None)
                     s = s[:m.start(1)] + str(run_runtime) + s[m.end(1):]
 
                 with open(namcouple, 'w') as f:
@@ -233,7 +241,7 @@ class Access(Model):
 
                     if os.path.exists(f_src):
                         shutil.copy2(f_src, f_dst)
-            
+
             if model.model_type in ('cice', 'matm'):
                 # Write the simulation end date to the restart date
                 # namelist.
@@ -266,7 +274,7 @@ class Access(Model):
                 # Write restart date to the restart directory
                 end_date_path = os.path.join(model.restart_path, 
                                              model.start_date_nml_name)
-                f90nml.write(end_date_dict, end_date_path, force = True)
+                f90nml.write(end_date_dict, end_date_path, force=True)
 
             if model.model_type == 'cice5':
                 cice5 = model

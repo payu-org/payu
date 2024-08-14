@@ -91,7 +91,7 @@ def calculate_leapdays(init_date, final_date):
 
 
 # TODO: The caltype logic could be simplified if we switched
-# to using just a string as the caltype input. Might require reworking of other 
+# to using just a string as the caltype input. Might require reworking of other
 # functions for consistency.
 def seconds_between_dates(start_date, end_date, caltype_int):
     """
@@ -110,8 +110,8 @@ def seconds_between_dates(start_date, end_date, caltype_int):
     seconds: Number of seconds between start_date and end_date.
     """
     # Get the cftime string corresponding to the caltype integer
-    
-    #TODO: Is it confusing that GREGORIAN means proleptic gregorian?
+
+    # TODO: Is it confusing that GREGORIAN means proleptic gregorian?
     if caltype_int == GREGORIAN:
         calendar_str = "proleptic_gregorian"
     elif caltype_int == NOLEAP:
@@ -119,10 +119,11 @@ def seconds_between_dates(start_date, end_date, caltype_int):
     else:
         raise ValueError(f"Unrecognized caltype integer {caltype_int}")
 
-    delta = date_to_cftime(end_date, calendar_str) - date_to_cftime(start_date, calendar_str)
+    delta = (date_to_cftime(end_date, calendar_str)
+             - date_to_cftime(start_date, calendar_str))
 
     return delta.total_seconds()
-        
+
 
 def date_to_cftime(date, calendar):
     """
@@ -139,13 +140,13 @@ def date_to_cftime(date, calendar):
     date_cf: cftime.datetime object.
     """
     date_cf = cftime.datetime(
-        year = date.year,
-        month = date.month,
-        day = date.day,
-        hour = 0,
-        minute = 0,
-        second = 0,
-        calendar = calendar
+        year=date.year,
+        month=date.month,
+        day=date.day,
+        hour=0,
+        minute=0,
+        second=0,
+        calendar=calendar
     )
 
     return date_cf
