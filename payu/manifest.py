@@ -281,7 +281,7 @@ class Manifest(object):
         """Return the number of manifests in the manifest class."""
         return len(self.manifests)
     
-    def load_previous_manifests(self):
+    def load_manifests(self):
         """
         Load pre-existing manifests
         """
@@ -304,7 +304,7 @@ class Manifest(object):
 
     def setup(self):
         # Load all available manifests
-        self.load_previous_manifests()
+        self.load_manifests()
 
     def check_manifests(self):
         print("Checking exe, input and restart manifests")
@@ -346,11 +346,11 @@ class Manifest(object):
             # Only link if filepath was added
             self.manifests[manifest].make_link(filepath)
 
-    def get_all_fullpaths(self):
+    def get_all_previous_fullpaths(self):
         """
         Return a list of all fullpaths in manifest files
         """
         files = []
-        for mf in self.manifests:
-            files.extend(self.manifests[mf].get_fullpaths())
+        for mf in self.previous_manifests:
+            files.extend(self.previous_manifests[mf].get_fullpaths())
         return files

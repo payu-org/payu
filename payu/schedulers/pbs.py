@@ -277,6 +277,6 @@ def get_manifest_paths():
     storage paths
     """
     tmpmanifest = Manifest(config={}, reproduce=False)
-    tmpmanifest.load()
+    tmpmanifest.load_manifests()
 
-    return tmpmanifest.get_all_fullpaths()
+    return tmpmanifest.get_all_previous_fullpaths()

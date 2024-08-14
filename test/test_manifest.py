@@ -420,7 +420,7 @@ def test_all_reproduce():
     assert(not manifests == get_manifests(ctrldir/'manifests'))
 
 
-def test_get_all_fullpaths():
+def test_get_all_previous_fullpaths():
 
     make_all_files()
     make_config_files()
@@ -433,10 +433,9 @@ def test_get_all_fullpaths():
     sweep_work()
 
     with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        expt.setup()
-        files = expt.manifest.get_all_fullpaths()
+        manifest = payu.manifest.Manifest(config={}, reproduce=False)
+        manifest.load_manifests()
+        files = manifest.get_all_previous_fullpaths()
 
     allfiles = []
     for mf in manifests:
