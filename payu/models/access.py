@@ -148,7 +148,7 @@ class Access(Model):
                         )
                         raise ValueError(msg)
 
-                    # Calculate the total number of seconds between the 
+                    # Calculate the total number of seconds between the
                     # initialisation and new run start date,
                     # to use for the runtime0 field.
                     previous_runtime = cal.seconds_between_dates(
@@ -246,7 +246,7 @@ class Access(Model):
                 # Write the simulation end date to the restart date
                 # namelist.
 
-                # Calculate the end date using information from the work 
+                # Calculate the end date using information from the work
                 # directory coupling namelist.
                 cpl_fpath = os.path.join(model.work_path, model.cpl_fname)
                 cpl_nml = f90nml.read(cpl_fpath)
@@ -272,7 +272,7 @@ class Access(Model):
                 }
 
                 # Write restart date to the restart directory
-                end_date_path = os.path.join(model.restart_path, 
+                end_date_path = os.path.join(model.restart_path,
                                              model.start_date_nml_name)
                 f90nml.write(end_date_dict, end_date_path, force=True)
 

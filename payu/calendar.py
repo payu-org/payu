@@ -101,7 +101,7 @@ def seconds_between_dates(start_date, end_date, caltype_int):
 
     Parameters
     ----------
-    start_date: datetime.date 
+    start_date: datetime.date
     end_date: datetime.date
     caltype: Integer, either GREGORIAN or NOLEAP
 
@@ -127,8 +127,8 @@ def seconds_between_dates(start_date, end_date, caltype_int):
 
 def date_to_cftime(date, calendar):
     """
-    Convert a datetime.datetime object to a cftime.datetime object which 
-    has the same year, month, day, hour, minute, second values. 
+    Convert a datetime.datetime object to a cftime.datetime object which
+    has the same year, month, day, hour, minute, second values.
 
     Parameters
     ----------

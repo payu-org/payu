@@ -155,6 +155,7 @@ def test_parse_date_offset_no_offset_magnitude():
     expected_error = "No numerical value given for offset: YS"
     assert str(exc_info.value) == expected_error
 
+
 @pytest.mark.parametrize(
         "start_date, end_date, caltype_int, expected",
         [
