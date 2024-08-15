@@ -286,7 +286,7 @@ class Model(object):
                 workrelpath = os.path.relpath(path, input_path)
                 subdir = os.path.normpath(
                     os.path.join(self.work_input_path_local,
-                                    workrelpath)
+                                 workrelpath)
                 )
 
                 if not os.path.exists(subdir):

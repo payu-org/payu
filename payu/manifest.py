@@ -59,7 +59,7 @@ class PayuManifest(YaManifest):
             hashfn=self.fast_hashes,
             force=True,
             fullpaths=[self.fullpath(fpath) for fpath
-                    in list(self.data.keys())]
+                       in list(self.data.keys())]
         )
 
         # If fast hashes from previous manifest match, use previous full hashes
@@ -70,7 +70,7 @@ class PayuManifest(YaManifest):
         changed_filepaths = set()
         for filepath in self.data.keys():
             for hash in self.data[filepath]['hashes'].values():
-                if hash == None:
+                if hash is None:
                     changed_filepaths.add(filepath)
 
         # Calculate full hashes for these changed filepaths
@@ -80,7 +80,7 @@ class PayuManifest(YaManifest):
                 hashfn=self.full_hashes,
                 force=True,
                 fullpaths=[self.fullpath(fpath) for fpath
-                            in list(changed_filepaths)]
+                           in list(changed_filepaths)]
             )
 
     def check_reproduce(self, previous_manifest):
@@ -101,7 +101,7 @@ class PayuManifest(YaManifest):
                     differences.append(
                         f"{filepath}: {hashfn}: {previous_hash} != {hash}"
                     )
-        
+
         if len(differences) != 0:
             sys.stderr.write(
                 f'Run cannot reproduce: manifest {self.path} is not correct\n'
@@ -123,13 +123,11 @@ class PayuManifest(YaManifest):
 
         # Ignore directories
         if os.path.isdir(fullpath):
-            # TODO: Add debug logging
             return False
 
         # Ignore anything matching the ignore patterns
         for pattern in self.ignore:
             if fnmatch.fnmatch(os.path.basename(fullpath), pattern):
-                #TODO: Add debug logging
                 return False
 
         if filepath not in self.data:
@@ -280,7 +278,7 @@ class Manifest(object):
     def __len__(self):
         """Return the number of manifests in the manifest class."""
         return len(self.manifests)
-    
+
     def load_manifests(self):
         """
         Load pre-existing manifests
@@ -315,7 +313,7 @@ class Manifest(object):
             if self.reproduce[mf]:
                 # Compare manifest with previous manifest
                 self.manifests[mf].check_reproduce(self.previous_manifests[mf])
-    
+
         # Update manifests if there's any changes, or create file if empty
         for mf in self.manifests:
             if (self.manifests[mf].data != self.previous_manifests[mf].data

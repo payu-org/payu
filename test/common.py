@@ -48,11 +48,11 @@ config = {
             'exe': 'test.exe',
             'input': 'testrun_1',
             'manifest': {
-                        'reproduce': {
-                                        'input': False,
-                                        'exe': False
-                                        }
-                        },
+                'reproduce': {
+                    'input': False,
+                    'exe': False
+                }
+            },
             'runlog': False,
             "experiment": ctrldir_basename,
             "metadata": {
