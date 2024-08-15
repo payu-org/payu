@@ -254,10 +254,6 @@ class Cice(Model):
         assert(total_runtime % setup_nml['dt'] == 0)
         setup_nml['istep0'] = int(total_runtime / setup_nml['dt'])
 
-        if self.model_type != 'cice':  # model_type==cice5
-            # Force creation of a dump (restart) file at end of run
-            setup_nml['dump_last'] = True
-
         nml_path = os.path.join(self.work_path, self.ice_nml_fname)
         self.ice_in.write(nml_path, force=True)
 

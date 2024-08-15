@@ -53,6 +53,9 @@ class Cice5(Cice):
         self.ice_in.write(ice_in_path, force=True)
 
     def setup(self):
+       # Force creation of a dump (restart) file at end of run
+        self.ice_in['setup_nml']['dump_last'] = True
+
         super(Cice5, self).setup()
 
         # Make log dir
