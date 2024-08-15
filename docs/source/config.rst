@@ -251,7 +251,7 @@ section for details.
       reproducible experiments. The default value is the value of the global
       ``reproduce`` flag, which is set using a command line argument and
       defaults to *False*. These options **override** the global ``reproduce``
-      flag. If set to *True* payu will refuse to run if the hashes in the
+      flag. If set to *True* payu will refuse to run if the MD5 hashes in the
       relevant manifest do not match.
 
       ``exe`` (*Default: global reproduce flag*)

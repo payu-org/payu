@@ -71,24 +71,12 @@ for each model run.
 Manifest updates
 ----------------
 
-Each of the manifests is updated in a slightly different way which reflects
-the way the files are expected to change during an experiment.
-
-The executable manifest is recalculated each time the model is run.
-Executables are generally fairly small in size and number, so there is very 
-little overhead calculating full MD5 hashes. This also means there is no 
-need to check that exectutable paths are still correct and also any 
-changes to executables are automatically included in the manifest.
-
-The restart manifest is also recalculated for every run as there is no expectation
-that restart (or pickup) files are ever the same between normal model runs.
-
-The input manifest changes relatively rarely and can often contain a small 
-number of very large files. It is this combination that can cause a significant 
-time overhead if full MD5 hashes have to be computed for every run. By using
-binhash, a fast change-sensitive hash, these time consuming hashes only 
-need be computed when a change has been detected. So the slow md5 hashes
-are recalculated as little as possible.
+Each time the model is run, binhash for each filepath is recalculated
+and compared with stored manifest values. If a new filepath has been added,
+or the binhash differs from the stored value, the full MD5 hash is
+recalculated. By using binhash, a fast change-sensitive hash,
+these time consuming MD5 hashes only need be computed when a change has
+been detected. So the slow md5 hashes are recalculated as little as possible.
 
 Manifest options
 ----------------

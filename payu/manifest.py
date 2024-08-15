@@ -313,7 +313,7 @@ class Manifest(object):
             self.manifests[mf].calculate_fast(self.previous_manifests[mf])
 
             if self.reproduce[mf]:
-                # Compare manifest with previous
+                # Compare manifest with previous manifest
                 self.manifests[mf].check_reproduce(self.previous_manifests[mf])
     
         # Update manifests if there's any changes, or create file if empty
