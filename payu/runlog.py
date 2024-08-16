@@ -12,6 +12,7 @@ import os
 import shlex
 import subprocess
 import sys
+import warnings
 
 # Third party
 import requests
@@ -95,9 +96,18 @@ class Runlog(object):
         print(cmd)
         try:
             subprocess.check_call(shlex.split(cmd), stdout=f_null,
-                                  cwd=self.expt.control_path)
+                                  stderr=f_null, cwd=self.expt.control_path)
         except subprocess.CalledProcessError:
-            print('TODO: Check if commit is unchanged')
+            # Attempt commit without signing commits
+            cmd = f'git -c "commit.gpgsign=false" commit -am "{commit_msg}"'
+            print(cmd)
+            try:
+                subprocess.check_call(shlex.split(cmd),
+                                      stdout=f_null,
+                                      cwd=self.expt.control_path)
+                warnings.warn("Runlog commit was commited without git signing")
+            except subprocess.CalledProcessError:
+                warnings.warn("Error occured when attempting to commit runlog")
 
         # Save the commit hash
         self.expt.run_id = commit_hash(self.expt.control_path)
