@@ -234,13 +234,18 @@ class Access(Model):
                     if os.path.exists(f_src):
                         shutil.move(f_src, f_dst)
 
-                # Copy configs from work path to restart
-                for f_name in model.config_files:
-                    f_src = os.path.join(model.work_path, f_name)
-                    f_dst = os.path.join(model.restart_path, f_name)
+                # Copy "cice_in.nml" from work path to restart.
+                work_ice_nml_path = os.path.join(
+                                        model.work_path,
+                                        model.ice_nml_fname
+                )
+                restart_ice_nml_path = os.path.join(
+                                        model.restart_path,
+                                        model.ice_nml_fname
+                )
 
-                    if os.path.exists(f_src):
-                        shutil.copy2(f_src, f_dst)
+                if os.path.exists(work_ice_nml_path):
+                    shutil.copy2(work_ice_nml_path, restart_ice_nml_path)
 
             if model.model_type in ('cice', 'matm'):
                 # Write the simulation end date to the restart date
