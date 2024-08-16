@@ -184,11 +184,23 @@ def test_parse_date_offset_no_offset_magnitude():
                 366 * SEC_PER_DAY
             ),
             (
+                datetime.datetime(year=12, month=7, day=22),
+                datetime.datetime(year=23, month=3, day=15),
+                GREGORIAN,
+                (10 * 365 + 238) * SEC_PER_DAY
+            ),
+            (
                 datetime.datetime(year=1, month=1, day=1),
                 datetime.datetime(year=1001, month=1, day=1),
                 GREGORIAN,
                 (1000 * 365 + 242) * SEC_PER_DAY
             ),
+            (
+                datetime.datetime(year=1, month=1, day=1),
+                datetime.datetime(year=9999, month=1, day=1),
+                GREGORIAN,
+                (9998 * 365 + 2424) * SEC_PER_DAY
+            )
         ]
 )
 def test_seconds_between_dates(start_date, end_date, caltype_int, expected):
