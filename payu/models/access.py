@@ -105,9 +105,10 @@ class Access(Model):
                 # work directory.
                 cpl_fpath = os.path.join(model.work_path, model.cpl_fname)
                 cpl_nml = f90nml.read(cpl_fpath)
+                cpl_group = cpl_nml[model.cpl_group]
 
                 # Which calendar are we using, noleap or Gregorian.
-                caltype = cpl_nml[model.cpl_group]['caltype']
+                caltype = cpl_group['caltype']
 
                 # Get timing information for the new run.
                 if model.prior_restart_path and not self.expt.repeat_run:
@@ -159,7 +160,7 @@ class Access(Model):
 
                 else:
                     init_date = cal.int_to_date(
-                        cpl_nml[model.cpl_group]['init_date']
+                        cpl_group['init_date']
                     )
                     previous_runtime = 0
                     run_start_date = init_date
@@ -175,24 +176,24 @@ class Access(Model):
                         self.expt.runtime.get('seconds', 0),
                         caltype)
                 else:
-                    run_runtime = cpl_nml[model.cpl_group]['runtime']
+                    run_runtime = cpl_group['runtime']
 
                 # Now write out new run start date and total runtime into the
                 # work directory namelist.
-                cpl_nml[model.cpl_group]["init_date"] = cal.date_to_int(
+                cpl_group["init_date"] = cal.date_to_int(
                                                                 init_date)
-                cpl_nml[model.cpl_group]['inidate'] = cal.date_to_int(
+                cpl_group['inidate'] = cal.date_to_int(
                                                             run_start_date)
-                cpl_nml[model.cpl_group][model.runtime0_key] = previous_runtime
-                cpl_nml[model.cpl_group]['runtime'] = int(run_runtime)
+                cpl_group[model.runtime0_key] = previous_runtime
+                cpl_group['runtime'] = int(run_runtime)
 
                 if model.model_type == 'cice':
                     if self.expt.counter and not self.expt.repeat_run:
-                        cpl_nml[model.cpl_group]['jobnum'] = (
+                        cpl_group['jobnum'] = (
                             1 + self.expt.counter
                         )
                     else:
-                        cpl_nml[model.cpl_group]['jobnum'] = 1
+                        cpl_group['jobnum'] = 1
 
                 nml_work_path = os.path.join(model.work_path, model.cpl_fname)
 
@@ -253,14 +254,15 @@ class Access(Model):
 
                 # Calculate the end date using information from the work
                 # directory coupling namelist.
-                cpl_fpath = os.path.join(model.work_path, model.cpl_fname)
-                cpl_nml = f90nml.read(cpl_fpath)
+                work_cpl_fpath = os.path.join(model.work_path, model.cpl_fname)
+                work_cpl_nml = f90nml.read(work_cpl_fpath)
+                work_cpl_grp = work_cpl_nml[model.cpl_group]
 
                 # Timing information on the completed run.
-                run_init_date_int = cpl_nml[model.cpl_group]["init_date"]
-                run_start_date_int = cpl_nml[model.cpl_group]["inidate"]
-                run_runtime = cpl_nml[model.cpl_group]["runtime"]
-                run_caltype = cpl_nml[model.cpl_group]["caltype"]
+                run_init_date_int = work_cpl_grp["init_date"]
+                run_start_date_int = work_cpl_grp["inidate"]
+                run_runtime = work_cpl_grp["runtime"]
+                run_caltype = work_cpl_grp["caltype"]
 
                 # Calculate end date of completed run
                 run_end_date = cal.date_plus_seconds(
