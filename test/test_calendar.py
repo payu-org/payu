@@ -3,7 +3,8 @@ import datetime
 import pytest
 
 from payu.calendar import parse_date_offset, DatetimeOffset
-from payu.calendar import seconds_between_dates
+from payu.calendar import seconds_between_dates, int_to_date
+from payu.calendar import runtime_from_date
 from payu.calendar import GREGORIAN, NOLEAP
 
 SEC_PER_DAY = 24*60*60
@@ -205,3 +206,56 @@ def test_parse_date_offset_no_offset_magnitude():
 )
 def test_seconds_between_dates(start_date, end_date, caltype_int, expected):
     assert seconds_between_dates(start_date, end_date, caltype_int) == expected
+
+
+@pytest.mark.parametrize(
+        "date_int, expected",
+        [
+            (10101, datetime.date(1, 1, 1)),
+            (100321, datetime.date(10, 3, 21)),
+            (38211130, datetime.date(3821, 11, 30))
+        ]
+)
+def test_int_to_date(date_int, expected):
+    """
+    Check that integers typically read in from namelists
+    are correctly converted to datetime.date objects.
+    """
+    converted_date = int_to_date(date_int)
+    assert converted_date == expected
+
+
+@pytest.mark.parametrize(
+        "start_date, years, months, days, seconds, caltype, expected",
+        [
+            (datetime.date(101, 1, 1), 1, 0, 0, 0, GREGORIAN, 365*SEC_PER_DAY),
+            (datetime.date(40, 2, 8), 0, 1, 0, 0, GREGORIAN, 29*SEC_PER_DAY),
+            (datetime.date(40, 2, 8), 0, 1, 0, 0, NOLEAP, 28*SEC_PER_DAY),
+            (datetime.date(153, 8, 21), 2, 7, 510, 5321,
+             GREGORIAN, 1453*SEC_PER_DAY + 5321),
+            # Extreme cases, unlikely to ever happen
+            (datetime.date(1, 1, 1), 9998, 0, 0, 0,
+             NOLEAP, 9998 * 365 * SEC_PER_DAY),
+            (datetime.date(1, 1, 1), 9998, 0, 0, 0,
+             GREGORIAN, (9998 * 365 + 2424) * SEC_PER_DAY)
+        ]
+)
+def test_runtime_from_date(
+        start_date,
+        years,
+        months,
+        days,
+        seconds,
+        caltype,
+        expected):
+    """
+    Test that the number of seconds calculated for run lengths is correct.
+    """
+    runtime = runtime_from_date(start_date, 
+                                years,
+                                months,
+                                days,
+                                seconds,
+                                caltype)
+
+    assert runtime == expected

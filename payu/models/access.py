@@ -180,10 +180,8 @@ class Access(Model):
 
                 # Now write out new run start date and total runtime into the
                 # work directory namelist.
-                cpl_group["init_date"] = cal.date_to_int(
-                                                                init_date)
-                cpl_group['inidate'] = cal.date_to_int(
-                                                            run_start_date)
+                cpl_group["init_date"] = cal.date_to_int(init_date)
+                cpl_group['inidate'] = cal.date_to_int(run_start_date)
                 cpl_group[model.runtime0_key] = previous_runtime
                 cpl_group['runtime'] = int(run_runtime)
 
