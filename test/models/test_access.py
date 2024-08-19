@@ -24,6 +24,7 @@ verbose = True
 INPUT_ICE_FNAME = "input_ice.nml"
 RESTART_DATE_FNAME = "restart_date.nml"
 
+
 def setup_module(module):
     """
     Put any test-wide setup code in here, e.g. creating test files
@@ -84,6 +85,7 @@ def access_1year_config():
     # Teardown
     os.remove(config_path)
 
+
 @pytest.fixture
 def ice_control_directory():
     # Make a cice control subdirectory
@@ -102,7 +104,7 @@ def default_input_ice(ice_control_directory):
     # Create base input_ice.nml namelist
     ctrl_input_ice_path = ice_control_directory / INPUT_ICE_FNAME
 
-    # Default timing values from the input_ice.nml namelist that will be 
+    # Default timing values from the input_ice.nml namelist that will be
     # overwritten by the calendar calculations.
     default_input_nml = {
         "coupling":
@@ -156,6 +158,7 @@ def restart_dir():
 
     # Teardown
     shutil.rmtree(restart_path)
+
 
 @pytest.fixture
 def initial_start_date_file(restart_dir):

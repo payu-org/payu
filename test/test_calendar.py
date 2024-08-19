@@ -9,6 +9,7 @@ from payu.calendar import GREGORIAN, NOLEAP
 
 SEC_PER_DAY = 24*60*60
 
+
 @pytest.mark.parametrize(
     "offset, initial_dt, expected",
     [
@@ -251,7 +252,7 @@ def test_runtime_from_date(
     """
     Test that the number of seconds calculated for run lengths is correct.
     """
-    runtime = runtime_from_date(start_date, 
+    runtime = runtime_from_date(start_date,
                                 years,
                                 months,
                                 days,
