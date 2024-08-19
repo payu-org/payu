@@ -99,7 +99,7 @@ class Runlog(object):
                                   stderr=f_null, cwd=self.expt.control_path)
         except subprocess.CalledProcessError:
             # Attempt commit without signing commits
-            cmd = f'git -c "commit.gpgsign=false" commit -am "{commit_msg}"'
+            cmd = f'git commit --no-gpg-sign -am "{commit_msg}"'
             print(cmd)
             try:
                 subprocess.check_call(shlex.split(cmd),
