@@ -366,7 +366,11 @@ Postprocessing
    Namelist to include separate userscripts or subcommands at various stages of
    a payu submission. Inputs can be either script names (``some_script.sh``) or
    individual subcommands (``echo "some_data" > input.nml``, ``qsub
-   some_script.sh``).
+   some_script.sh``). Userscripts are run within the same PBS job as the model 
+   execution unless the script starts a new PBS job. Userscripts therefore have
+   the same compute, storage and network access as the model. The exception to 
+   this is when `payu setup` is called directly, then the relevant userscripts 
+   will run on the login node.
 
    Specific scripts are defined below:
 
