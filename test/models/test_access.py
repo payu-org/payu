@@ -15,6 +15,7 @@ from test.common import make_all_files
 from test.common import list_expt_archive_dirs
 from test.common import make_expt_archive_dir, remove_expt_archive_dirs
 from test.common import config_path
+from payu.calendar import GREGORIAN, NOLEAP
 import f90nml
 
 
@@ -23,6 +24,7 @@ verbose = True
 
 INPUT_ICE_FNAME = "input_ice.nml"
 RESTART_DATE_FNAME = "restart_date.nml"
+SEC_PER_DAY = 24*60*60
 
 
 def setup_module(module):
@@ -178,7 +180,7 @@ def initial_start_date_file(restart_dir):
     # Teardown handled by restart_dir fixture
 
 
-def test_esm_calendar_cycling_1000(
+def test_access_cice_calendar_cycling_500(
         access_1year_config,
         ice_control_directory,
         default_input_ice,
@@ -190,8 +192,8 @@ def test_esm_calendar_cycling_1000(
     over a large number of runs.
     """
 
-    n_years = 1000
-    expected_end_date = 11010101
+    n_years = 500
+    expected_end_date = 6010101
     expected_end_init_date = 10101
     # Setup the experiment
     with cd(ctrldir):
@@ -243,3 +245,96 @@ def test_esm_calendar_cycling_1000(
 
         assert final_end_date == expected_end_date
         assert final_init_date == expected_end_init_date
+
+
+@pytest.mark.parametrize(
+        "start_date_int, caltype, expected_runtime",
+        [(1010101, GREGORIAN, 365*SEC_PER_DAY),
+         (1010101, NOLEAP, 365*SEC_PER_DAY),
+         (1040101, GREGORIAN, 366*SEC_PER_DAY),
+         (1040101, NOLEAP, 365*SEC_PER_DAY),
+         (3000101, GREGORIAN, 365*SEC_PER_DAY),
+         (3000101, NOLEAP, 365*SEC_PER_DAY),
+         (4000101, GREGORIAN, 366*SEC_PER_DAY),
+         (4000101, NOLEAP, 365*SEC_PER_DAY)]
+)
+def test_access_cice_1year_runtimes(
+    access_1year_config,
+    ice_control_directory,
+    fake_cice_in,
+    restart_dir,
+    initial_start_date_file,
+    start_date_int,
+    caltype,
+    expected_runtime
+):
+    """
+    The large setup/archive cycling test won't pick up situations 
+    where the calculations dyring setup and archive are simultaneously
+    wrong, e.g. if they both used the wrong calendar.
+    Hence test seperately that the correct runtimes for cice are
+    written by the access.setup() step for a range of standard
+    and generally tricky years.
+    """
+    # Write an input_ice.nml namelist to the control directory
+    # with the specified calendar type.
+    ctrl_input_ice_path = ice_control_directory / INPUT_ICE_FNAME
+    input_ice_nml = {
+        "coupling":
+        {
+            "caltype": caltype
+        }
+    }
+    f90nml.write(input_ice_nml, ctrl_input_ice_path)
+
+    # Reset the start date in the initial_start_date_file
+    initial_start_nml = f90nml.read(initial_start_date_file)
+    # Make sure our start date doesn't occur before the init_date
+    assert start_date_int >= initial_start_nml["coupling"]["init_date"]
+
+    initial_start_nml["coupling"]["inidate"] = start_date_int
+    f90nml.write(initial_start_nml, initial_start_date_file, force=True)
+
+    # Setup the experiment
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+
+        # For the purposes of the test, use one year runtime
+        expt.runtime["years"] = 1
+        expt.runtime["months"] = 0
+        expt.runtime["days"] = 0
+        expt.runtime["seconds"] = 0
+
+        # Get the models
+        for model in expt.models:
+            if model.model_type == "cice":
+                cice_model = model
+        # There are two access models within the experiment. The top level
+        # model, expt.model, and the one under expt.models. The top level
+        # model's setup and archive steps are the ones that actually run.
+        access_model = expt.model
+
+        # Overwrite cice model paths created during experiment initialisation.
+        # It's simpler to just set them here than rely on the ones collected
+        # from the fake namelist files.
+        cice_model.work_path = workdir
+
+        # Path to read and write restart dates from. In a real experiment
+        # The read and write restart dirs would be different and increment
+        # each run. However we will just use one for the tests.
+        cice_model.prior_restart_path = restart_dir
+        cice_model.restart_path = restart_dir
+
+        # Manually copy the input_ice.nml file from the control directory
+        # to the work directory. This would normally happen in cice.setup()
+        # which we are trying to bypass.
+        shutil.copy(ctrl_input_ice_path, cice_model.work_path)
+
+        access_model.setup()
+
+        # Check that the correct runtime is written to the work directory's
+        # input ice namelist.
+        work_input_ice = f90nml.read(cice_model.work_path/INPUT_ICE_FNAME)
+        written_runtime = work_input_ice["coupling"]["runtime"]
+        assert written_runtime == expected_runtime

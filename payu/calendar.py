@@ -122,7 +122,7 @@ def seconds_between_dates(start_date, end_date, caltype_int):
     delta = (date_to_cftime(end_date, calendar_str)
              - date_to_cftime(start_date, calendar_str))
 
-    return delta.total_seconds()
+    return int(delta.total_seconds())
 
 
 def date_to_cftime(date, calendar):

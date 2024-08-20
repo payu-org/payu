@@ -56,15 +56,30 @@ class Access(Model):
                 # Structure of model coupling namelist
                 model.cpl_fname = 'input_ice.nml'
                 model.cpl_group = 'coupling'
-                model.runtime0_key = 'runtime0'
                 model.start_date_nml_name = "restart_date.nml"
+                # Experiment initialisation date
+                model.init_date_key = "init_date"
+                # Start date for new run
+                model.inidate_key = "inidate"
+                # Total time in seconds since initialisation date
+                model.runtime0_key = 'runtime0'
+                # Simulation length in seconds for new run
+                model.runtime_key = "runtime"
 
             if model.model_type == 'matm':
                 # Structure of model coupling namelist
                 model.cpl_fname = 'input_atm.nml'
                 model.cpl_group = 'coupling'
-                model.runtime0_key = 'truntime0'
                 model.start_date_nml_name = "restart_date.nml"
+                # Experiment initialisation date
+                model.init_date_key = "init_date"
+                # Start date for new run
+                model.inidate_key = "inidate"
+                # Total time in seconds since initialisation date
+                model.runtime0_key = 'truntime0'
+                # Simulation length in seconds for new run
+                model.runtime_key = "runtime"
+
 
     def setup(self):
         if not self.top_level_model:
@@ -131,11 +146,13 @@ class Access(Model):
 
                     # Experiment initialisation date
                     init_date = cal.int_to_date(
-                        start_date_nml["init_date"]
+                        start_date_nml[model.init_date_key]
                     )
 
                     # Start date of new run
-                    run_start_date = cal.int_to_date(start_date_nml["inidate"])
+                    run_start_date = cal.int_to_date(
+                        start_date_nml[model.inidate_key]
+                    )
 
                     # run_start_date must be after initialisation date
                     if run_start_date < init_date:
@@ -144,8 +161,8 @@ class Access(Model):
                             f"{model.start_date_nml_name} must not be "
                             "before initialisation date `init_date. "
                             "Values provided: \n"
-                            f"inidate = {start_date_nml['inidate']}\n"
-                            f"init_date = {start_date_nml['init_date']}"
+                            f"inidate={start_date_nml[model.inidate_key]}\n"
+                            f"init_date={start_date_nml[model.init_date_key]}"
                         )
                         raise ValueError(msg)
 
@@ -160,7 +177,7 @@ class Access(Model):
 
                 else:
                     init_date = cal.int_to_date(
-                        cpl_group['init_date']
+                        cpl_group[model.init_date_key]
                     )
                     previous_runtime = 0
                     run_start_date = init_date
@@ -176,14 +193,14 @@ class Access(Model):
                         self.expt.runtime.get('seconds', 0),
                         caltype)
                 else:
-                    run_runtime = cpl_group['runtime']
+                    run_runtime = cpl_group[model.runtime_key]
 
                 # Now write out new run start date and total runtime into the
                 # work directory namelist.
-                cpl_group["init_date"] = cal.date_to_int(init_date)
-                cpl_group['inidate'] = cal.date_to_int(run_start_date)
+                cpl_group[model.init_date_key] = cal.date_to_int(init_date)
+                cpl_group[model.inidate_key] = cal.date_to_int(run_start_date)
                 cpl_group[model.runtime0_key] = previous_runtime
-                cpl_group['runtime'] = int(run_runtime)
+                cpl_group[model.runtime_key] = int(run_runtime)
 
                 if model.model_type == 'cice':
                     if self.expt.counter and not self.expt.repeat_run:
@@ -257,9 +274,9 @@ class Access(Model):
                 work_cpl_grp = work_cpl_nml[model.cpl_group]
 
                 # Timing information on the completed run.
-                run_init_date_int = work_cpl_grp["init_date"]
-                run_start_date_int = work_cpl_grp["inidate"]
-                run_runtime = work_cpl_grp["runtime"]
+                exp_init_date_int = work_cpl_grp[model.init_date_key]
+                run_start_date_int = work_cpl_grp[model.inidate_key]
+                run_runtime = work_cpl_grp[model.runtime_key]
                 run_caltype = work_cpl_grp["caltype"]
 
                 # Calculate end date of completed run
@@ -271,8 +288,8 @@ class Access(Model):
 
                 end_date_dict = {
                     model.cpl_group: {
-                        "init_date": run_init_date_int,
-                        "inidate": cal.date_to_int(run_end_date)
+                        model.init_date_key: exp_init_date_int,
+                        model.inidate_key: cal.date_to_int(run_end_date)
                     }
                 }
 

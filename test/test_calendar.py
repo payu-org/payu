@@ -181,9 +181,9 @@ def test_parse_date_offset_no_offset_magnitude():
             ),
             (
                 datetime.datetime(year=400, month=1, day=1),
-                datetime.datetime(year=401, month=1, day=1),
+                datetime.datetime(year=400, month=12, day=31),
                 GREGORIAN,
-                366 * SEC_PER_DAY
+                365 * SEC_PER_DAY
             ),
             (
                 datetime.datetime(year=12, month=7, day=22),
@@ -214,7 +214,7 @@ def test_seconds_between_dates(start_date, end_date, caltype_int, expected):
         [
             (10101, datetime.date(1, 1, 1)),
             (100321, datetime.date(10, 3, 21)),
-            (38211130, datetime.date(3821, 11, 30))
+            (99991231, datetime.date(9999, 12, 31))
         ]
 )
 def test_int_to_date(date_int, expected):
@@ -227,18 +227,48 @@ def test_int_to_date(date_int, expected):
 
 
 @pytest.mark.parametrize(
+        "bad_date_int",
+        [0, 100000000, 101, -5, 11119153]
+)
+def test_int_to_date_failures(bad_date_int):
+    """
+    Check that int_to_date does not allow non existent
+    or out of range dates.
+    """
+    with pytest.raises(ValueError):
+        int_to_date(bad_date_int)
+
+
+@pytest.mark.parametrize(
         "start_date, years, months, days, seconds, caltype, expected",
         [
+            # Normal year
             (datetime.date(101, 1, 1), 1, 0, 0, 0, GREGORIAN, 365*SEC_PER_DAY),
+            (datetime.date(101, 1, 1), 1, 0, 0, 0, NOLEAP, 365*SEC_PER_DAY),
+            # Leap year
+            (datetime.date(4, 1, 1), 1, 0, 0, 0, GREGORIAN, 366*SEC_PER_DAY),
+            (datetime.date(4, 1, 1), 1, 0, 0, 0, NOLEAP, 365*SEC_PER_DAY),
+            # Non-leap year due to 100 year rule
+            (datetime.date(100, 1, 1), 1, 0, 0, 0, GREGORIAN, 365*SEC_PER_DAY),
+            (datetime.date(100, 1, 1), 1, 0, 0, 0, NOLEAP, 365*SEC_PER_DAY),
+            # Leap year due to 400 year rule
+            (datetime.date(400, 1, 1), 1, 0, 0, 0, GREGORIAN, 366*SEC_PER_DAY),
+            (datetime.date(500, 1, 1), 1, 0, 0, 0, NOLEAP, 365*SEC_PER_DAY),
+            # Febraury in leap years
             (datetime.date(40, 2, 8), 0, 1, 0, 0, GREGORIAN, 29*SEC_PER_DAY),
             (datetime.date(40, 2, 8), 0, 1, 0, 0, NOLEAP, 28*SEC_PER_DAY),
+            # Misc
             (datetime.date(153, 8, 21), 2, 7, 510, 5321,
              GREGORIAN, 1453*SEC_PER_DAY + 5321),
             # Extreme cases, unlikely to ever happen
-            (datetime.date(1, 1, 1), 9998, 0, 0, 0,
-             NOLEAP, 9998 * 365 * SEC_PER_DAY),
-            (datetime.date(1, 1, 1), 9998, 0, 0, 0,
-             GREGORIAN, (9998 * 365 + 2424) * SEC_PER_DAY)
+            (datetime.date(1, 1, 1), 9998, 11, 30, 0,
+             NOLEAP, (9998 * 365 + 364) * SEC_PER_DAY),
+            (datetime.date(1, 1, 1), 9998, 11, 30, 0,
+             GREGORIAN, (9998 * 365 + 2424 + 364) * SEC_PER_DAY),
+            (datetime.date(1, 1, 1), 0, 0, 0, 1,
+             GREGORIAN, 1),
+            (datetime.date(1, 1, 1), 0, 0, 0, 1,
+             NOLEAP, 1),
         ]
 )
 def test_runtime_from_date(
