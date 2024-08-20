@@ -1,6 +1,7 @@
 from io import StringIO
 import os
 from pathlib import Path
+import payu.branch
 import pytest
 import shutil
 import stat
@@ -432,3 +433,34 @@ def test_run_userscript_command(tmp_path):
 ])
 def test_needs_shell(command, expected):
     assert payu.fsops.needs_subprocess_shell(command) == expected
+
+
+def test_read_config_yaml_duplicate_key():
+    """The PyYAML library is used for reading config.yaml, but use ruamel yaml
+    is used in when modifying config.yaml as part of payu checkout
+    (ruamel is used to preserve comments and multi-line strings).
+    This led to bug #441, where pyyaml allowed duplicate keys but
+    ruamel.library raises an error
+    """
+    # Create a yaml file with a duplicate key
+    config_content = """
+pbs_flags: value1
+pbs_flags: value2
+"""
+    config_path = tmpdir / "config.yaml"
+    with config_path.open("w") as file:
+        file.write(config_content)
+
+    # Test read config passes without an error but a warning is raised
+    warn_msg = "Duplicate key found in config.yaml: key 'pbs_flags' with "
+    warn_msg += "value 'value2'. This overwrites the original value: 'value1'"
+    with pytest.warns(UserWarning, match=warn_msg):
+        payu.fsops.read_config(config_path)
+
+    restart_path = tmpdir / "restarts"
+
+    # Test add restart to config.yaml does not fail with an error, but
+    # still raises another warning that duplicates keys will be deleted
+    warn_msg = "Removing any subsequent duplicate keys from config.yaml"
+    with pytest.warns(UserWarning, match=warn_msg):
+        payu.branch.add_restart_to_config(restart_path, config_path)
