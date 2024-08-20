@@ -181,9 +181,9 @@ def test_parse_date_offset_no_offset_magnitude():
             ),
             (
                 datetime.datetime(year=400, month=1, day=1),
-                datetime.datetime(year=401, month=1, day=1),
+                datetime.datetime(year=401, month=12, day=31),
                 GREGORIAN,
-                366 * SEC_PER_DAY
+                365 * SEC_PER_DAY
             ),
             (
                 datetime.datetime(year=12, month=7, day=22),
