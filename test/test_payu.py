@@ -452,8 +452,8 @@ pbs_flags: value2
         file.write(config_content)
 
     # Test read config passes without an error but a warning is raised
-    warn_msg = r"Duplicate key found in config.yaml: key 'pbs_flags' with "
-    warn_msg += r"value 'value2' \(original value: 'value1'\)"
+    warn_msg = "Duplicate key found in config.yaml: key 'pbs_flags' with "
+    warn_msg += "value 'value2'. This overwrites the original value: 'value1'"
     with pytest.warns(UserWarning, match=warn_msg):
         payu.fsops.read_config(config_path)
 

@@ -76,8 +76,8 @@ class DuplicateKeyWarnLoader(yaml.SafeLoader):
             if key in mapping:
                 warnings.warn(
                     "Duplicate key found in config.yaml: "
-                    f"key '{key}' with value '{value}' "
-                    f"(original value: '{mapping[key]}')"
+                    f"key '{key}' with value '{value}'. "
+                    f"This overwrites the original value: '{mapping[key]}'"
                 )
             mapping[key] = value
 
