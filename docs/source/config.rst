@@ -351,16 +351,8 @@ FMS based model only options:
    is then ``ncpus / nthreads``
 
 
-Postprocessing
+User Processing
 --------------
-
-``collate`` (*Default:* ``True``)
-   Controls whether or not a collation job is submitted after model execution.
-
-   This is typically ``True``, although individual model drivers will often set
-   the default value to ``False`` if collation is unnecessary.
-
-   See above for specific ``collate`` options.
 
 ``userscripts``
    Namelist to include separate userscripts or subcommands at various stages of
