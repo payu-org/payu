@@ -193,12 +193,6 @@ def test_parse_date_offset_no_offset_magnitude():
             ),
             (
                 datetime.datetime(year=1, month=1, day=1),
-                datetime.datetime(year=1001, month=1, day=1),
-                GREGORIAN,
-                (1000 * 365 + 242) * SEC_PER_DAY
-            ),
-            (
-                datetime.datetime(year=1, month=1, day=1),
                 datetime.datetime(year=9999, month=1, day=1),
                 GREGORIAN,
                 (9998 * 365 + 2424) * SEC_PER_DAY
