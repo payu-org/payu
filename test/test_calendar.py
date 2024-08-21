@@ -254,7 +254,7 @@ def test_int_to_date_failures(bad_date_int):
             # Leap year due to 400 year rule
             (datetime.date(400, 1, 1), 1, 0, 0, 0, GREGORIAN, 366*SEC_PER_DAY),
             (datetime.date(500, 1, 1), 1, 0, 0, 0, NOLEAP, 365*SEC_PER_DAY),
-            # Febraury in leap years
+            # February in leap years
             (datetime.date(40, 2, 8), 0, 1, 0, 0, GREGORIAN, 29*SEC_PER_DAY),
             (datetime.date(40, 2, 8), 0, 1, 0, 0, NOLEAP, 28*SEC_PER_DAY),
             # Misc
