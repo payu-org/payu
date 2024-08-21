@@ -270,7 +270,7 @@ def test_access_cice_1year_runtimes(
 ):
     """
     The large setup/archive cycling test won't pick up situations 
-    where the calculations dyring setup and archive are simultaneously
+    where the calculations during setup and archive are simultaneously
     wrong, e.g. if they both used the wrong calendar.
     Hence test seperately that the correct runtimes for cice are
     written by the access.setup() step for a range of standard
