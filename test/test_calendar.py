@@ -258,9 +258,9 @@ def test_int_to_date_failures(bad_date_int):
             (datetime.date(40, 2, 8), 0, 1, 0, 0, GREGORIAN, 29*SEC_PER_DAY),
             (datetime.date(40, 2, 8), 0, 1, 0, 0, NOLEAP, 28*SEC_PER_DAY),
             # Misc
-            (datetime.date(153, 8, 21), 2, 7, 510, 5321,
-             GREGORIAN, 1453*SEC_PER_DAY + 5321),
-            # Extreme cases, unlikely to ever happen
+            (datetime.date(1, 1, 1), 0, 0, 0, 86400,
+             GREGORIAN, 86400),
+            # Max & min limits
             (datetime.date(1, 1, 1), 9998, 11, 30, 0,
              NOLEAP, (9998 * 365 + 364) * SEC_PER_DAY),
             (datetime.date(1, 1, 1), 9998, 11, 30, 0,
