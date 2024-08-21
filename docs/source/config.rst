@@ -355,7 +355,7 @@ User Processing
 --------------
 
 ``userscripts``
-   Namelist to include separate userscripts or subcommands at various stages of
+   Configure userscripts or subcommands to run at various stages of
    a payu submission. Inputs can be either script names (``some_script.sh``) or
    individual subcommands (``echo "some_data" > input.nml``, ``qsub
    some_script.sh``). Userscripts are run within the same PBS job as the model 
