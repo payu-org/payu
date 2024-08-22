@@ -256,8 +256,7 @@ class Model(object):
         self.setup_configuration_files()
 
         # Add restart files from prior run to restart manifest
-        if (not self.expt.manifest.have_manifest['restart'] and
-                self.prior_restart_path):
+        if self.prior_restart_path:
             restart_files = self.get_prior_restart_files()
             for f_name in restart_files:
                 f_orig = os.path.join(self.prior_restart_path, f_name)
@@ -269,49 +268,46 @@ class Model(object):
                     self.copy_restarts
                 )
 
-        # Add input files to manifest if we don't already have a populated
-        # input manifest, or we specify scaninputs is True (default)
-        if (not self.expt.manifest.have_manifest['input'] or
-                self.expt.manifest.scaninputs):
-            for input_path in self.input_paths:
-                if os.path.isfile(input_path):
-                    # Build a mock walk iterator for a single file
-                    fwalk = iter([(
-                        os.path.dirname(input_path),
-                        [],
-                        [os.path.basename(input_path)]
-                    )])
-                    # Overwrite the input_path as a directory
-                    input_path = os.path.dirname(input_path)
-                else:
-                    fwalk = os.walk(input_path)
+        # Add input files to input manifest
+        for input_path in self.input_paths:
+            if os.path.isfile(input_path):
+                # Build a mock walk iterator for a single file
+                fwalk = iter([(
+                    os.path.dirname(input_path),
+                    [],
+                    [os.path.basename(input_path)]
+                )])
+                # Overwrite the input_path as a directory
+                input_path = os.path.dirname(input_path)
+            else:
+                fwalk = os.walk(input_path)
 
-                for path, dirs, files in fwalk:
-                    workrelpath = os.path.relpath(path, input_path)
-                    subdir = os.path.normpath(
-                        os.path.join(self.work_input_path_local,
-                                     workrelpath)
+            for path, dirs, files in fwalk:
+                workrelpath = os.path.relpath(path, input_path)
+                subdir = os.path.normpath(
+                    os.path.join(self.work_input_path_local,
+                                 workrelpath)
+                )
+
+                if not os.path.exists(subdir):
+                    os.mkdir(subdir)
+
+                for f_name in files:
+                    f_orig = os.path.join(path, f_name)
+                    f_link = os.path.join(
+                        self.work_input_path_local,
+                        workrelpath,
+                        f_name
                     )
-
-                    if not os.path.exists(subdir):
-                        os.mkdir(subdir)
-
-                    for f_name in files:
-                        f_orig = os.path.join(path, f_name)
-                        f_link = os.path.join(
-                            self.work_input_path_local,
-                            workrelpath,
-                            f_name
+                    # Do not use input file if already linked
+                    # as a restart file
+                    if not os.path.exists(f_link):
+                        self.expt.manifest.add_filepath(
+                            'input',
+                            f_link,
+                            f_orig,
+                            self.copy_inputs
                         )
-                        # Do not use input file if already linked
-                        # as a restart file
-                        if not os.path.exists(f_link):
-                            self.expt.manifest.add_filepath(
-                                'input',
-                                f_link,
-                                f_orig,
-                                self.copy_inputs
-                            )
 
         # Make symlink to executable in work directory
         if self.exec_path:
@@ -327,16 +323,13 @@ class Model(object):
                     f'Executable for {self.name} model '
                     f'is not executable: {self.exec_path}')
 
-            # If have exe manifest this implies exe reproduce is True. Do not
-            # want to overwrite exe manifest in this case
-            if not self.expt.manifest.have_manifest['exe']:
-                # Add to exe manifest (this is always done so any change in exe
-                # path will be picked up)
-                self.expt.manifest.add_filepath(
-                    'exe',
-                    self.exec_path_local,
-                    self.exec_path
-                )
+            # Add to exe manifest (this is always done so any change in exe
+            # path will be picked up)
+            self.expt.manifest.add_filepath(
+                'exe',
+                self.exec_path_local,
+                self.exec_path
+            )
 
             # Populate information about required dynamically loaded libraries
             self.required_libs = required_libs(self.exec_path)

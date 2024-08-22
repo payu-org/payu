@@ -154,8 +154,6 @@ def test_exe_reproduce():
 
     # Set reproduce exe to True
     config['manifest']['reproduce']['exe'] = True
-    # Also set scaninputs to True to catch bug #388
-    config['manifest']['scaninputs'] = True
     write_config(config)
     manifests = get_manifests(ctrldir/'manifests')
 
@@ -176,7 +174,7 @@ def test_exe_reproduce():
     # Update the modification time of the executable, should run ok
     (bindir/exe).touch()
 
-    # Run setup with changed exe but reproduce exe set to False
+    # Run setup with changed exe
     payu_setup(lab_path=str(labdir))
 
     # Manifests will have changed as fasthash is altered
@@ -184,20 +182,6 @@ def test_exe_reproduce():
 
     # Reset manifests "truth"
     manifests = get_manifests(ctrldir/'manifests')
-
-    # Delete exe path from config, should get it from manifest
-    del(config['exe'])
-    write_config(config)
-
-    # Run setup with changed exe but reproduce exe set to False
-    payu_setup(lab_path=str(labdir))
-
-    # Manifests will not have changed
-    assert(manifests == get_manifests(ctrldir/'manifests'))
-    assert((workdir/exe).resolve() == (bindir/exe).resolve())
-
-    # Reinstate exe path
-    config['exe'] = exe
 
     # Recreate fake executable file
     make_exe()
@@ -220,6 +204,20 @@ def test_exe_reproduce():
     # Check manifests have changed as expected
     assert(not manifests == get_manifests(ctrldir/'manifests'))
 
+    # Create a separate executable file
+    new_exe = "mock_exe_with_a_different_name"
+    make_exe(new_exe)
+
+    # Change exe path and back to exe reproduce true in config.yaml
+    config['manifest']['reproduce']['exe'] = True
+    config['exe'] = new_exe
+    write_config(config)
+
+    # Run setup again, which should raise an error due to changed executable
+    with pytest.raises(SystemExit):
+        # Run setup with unchanged exe but reproduce exe set to True
+        payu_setup(lab_path=str(labdir))
+
 
 def test_input_reproduce():
 
@@ -229,8 +227,7 @@ def test_input_reproduce():
     # Set reproduce input to True
     config['manifest']['reproduce']['exe'] = False
     config['manifest']['reproduce']['input'] = True
-    # Set back to false
-    config['manifest']['scaninputs'] = False
+
     config['exe'] = config_orig['exe']
     write_config(config)
     manifests = get_manifests(ctrldir/'manifests')
@@ -240,16 +237,24 @@ def test_input_reproduce():
     payu_setup(lab_path=str(labdir))
     assert(manifests == get_manifests(ctrldir/'manifests'))
 
-    # Delete input directory from config, should still work from
-    # manifest with input reproduce True
+    # Delete input directory from config
     input = config['input']
-    write_config(config)
     del(config['input'])
+    write_config(config)
 
-    # Run setup, should work
-    payu_setup(lab_path=str(labdir))
+    # Expect setup to fail
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        payu_setup(lab_path=str(labdir))
 
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 1
+
+    # Assert manifests have not changed
     assert(manifests == get_manifests(ctrldir/'manifests'))
+
+    # Add input directory back into config
+    config['input'] = input
+    write_config(config)
 
     # Update modification times for input files
     for i in range(1, 4):
@@ -265,11 +270,8 @@ def test_input_reproduce():
     # Reset manifest "truth"
     manifests = get_manifests(ctrldir/'manifests')
 
-    # Re-create input files. Have to set input path for this purpose
-    # but not written to config.yaml, so doesn't affect payu commands
-    config['input'] = input
+    # Re-create input files
     make_inputs()
-    del(config['input'])
 
     # Run setup again, which should raise an error due to changed inputs
     with pytest.raises(SystemExit) as pytest_wrapped_e:
@@ -297,6 +299,10 @@ def test_input_reproduce():
     # Delete input manifest
     (ctrldir/'manifests'/'input.yaml').unlink()
 
+    # Remove input from config
+    del config['input']
+    write_config(config)
+
     # Setup with no input dir and no manifest. Should work ok
     payu_setup(lab_path=str(labdir))
 
@@ -309,82 +315,27 @@ def test_input_reproduce():
     write_config(config)
     payu_setup(lab_path=str(labdir))
 
-
-def test_input_scaninputs():
-
-    # Re-create input files
-    make_config_files()
-    make_inputs()
-
-    inputdir = labdir / 'input' / config['input']
-    inputdir.mkdir(parents=True, exist_ok=True)
-
-    # Set scaninputs input to True
-    config['manifest']['scaninputs'] = True
-    write_config(config)
-
-    # Run setup with unchanged input
-    payu_setup(lab_path=str(labdir))
-    manifests = get_manifests(ctrldir/'manifests')
-
-    # Set scaninputs input to False
-    config['manifest']['scaninputs'] = False
-    write_config(config)
-
-    # Run setup, should work and manifests unchanged
-    payu_setup(lab_path=str(labdir))
-    assert(manifests == get_manifests(ctrldir/'manifests'))
-
-    # Update modification times for input files
-    for i in range(1, 4):
-        (inputdir/'input_00{i}.bin'.format(i=i)).touch()
-
-    # Run setup, should work as only fasthash will differ, code then
-    # checks full hash and updates fasthash if fullhash matches
-    payu_setup(lab_path=str(labdir))
-
-    # Manifests should no longer match as fasthashes have been updated
-    assert(not manifests == get_manifests(ctrldir/'manifests'))
-
-    # Reset manifest "truth"
-    manifests = get_manifests(ctrldir/'manifests')
-
-    # Re-create input files
-    make_inputs()
-
-    # Run setup again. Should be fine, but manifests changed
-    payu_setup(lab_path=str(labdir))
-    assert(not manifests == get_manifests(ctrldir/'manifests'))
-
-    # Reset manifest "truth"
-    manifests = get_manifests(ctrldir/'manifests')
-
     # Make a new input file
-    (inputdir/'lala').touch()
+    (inputdir / 'newInputFile').touch()
 
-    # Run setup again. Should be fine, manifests unchanged as
-    # scaninputs=False
-    payu_setup(lab_path=str(labdir))
-    assert(manifests == get_manifests(ctrldir/'manifests'))
-
-    # Set scaninputs input to True
-    config['manifest']['scaninputs'] = True
+    # Set reproduce to true
+    config['manifest']['reproduce']['input'] = True
     write_config(config)
 
-    # Run setup again. Should be fine, but manifests changed now
-    # as scaninputs=False
+    # Run setup again, which should raise an error due to new input file
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        payu_setup(lab_path=str(labdir))
+
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 1
+
+    # Set reproduce manifests back to False
+    config['manifest']['reproduce']['input'] = False
+    write_config(config)
+
+    # Check setup runs without an error and new input is linked
     payu_setup(lab_path=str(labdir))
-    assert(not manifests == get_manifests(ctrldir/'manifests'))
-    assert((workdir/'lala').is_file())
-
-    # Delete silly input file
-    (inputdir/'lala').unlink()
-
-    # Re-run after removing silly input file
-    payu_setup(lab_path=str(labdir))
-
-    # Reset manifest "truth"
-    manifests = get_manifests(ctrldir/'manifests')
+    assert (workdir / 'newInputFile').is_file()
 
 
 def test_restart_reproduce():
@@ -392,7 +343,6 @@ def test_restart_reproduce():
     # Set reproduce restart to True
     config['manifest']['reproduce']['input'] = False
     config['manifest']['reproduce']['restart'] = True
-    del(config['restart'])
     write_config(config)
     manifests = get_manifests(ctrldir/'manifests')
 
@@ -419,8 +369,7 @@ def test_restart_reproduce():
     make_restarts()
 
     # Run setup again, which should raise an error due to changed restarts
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
-        # Run setup with unchanged exe but reproduce exe set to True
+    with pytest.raises(SystemExit):
         payu_setup(lab_path=str(labdir))
 
     # Set reproduce restart to False
@@ -432,6 +381,17 @@ def test_restart_reproduce():
 
     # Manifests should have changed
     assert(not manifests == get_manifests(ctrldir/'manifests'))
+
+    # Set reproduce restart to True
+    config['manifest']['reproduce']['restart'] = True
+    write_config(config)
+
+    # Add a new restart file to restart directory
+    make_restarts(['restart_005.bin'])
+
+    # Run setup again, which should raise an error due to new restart file
+    with pytest.raises(SystemExit):
+        payu_setup(lab_path=str(labdir))
 
 
 def test_all_reproduce():
@@ -460,7 +420,7 @@ def test_all_reproduce():
     assert(not manifests == get_manifests(ctrldir/'manifests'))
 
 
-def test_get_all_fullpaths():
+def test_get_all_previous_fullpaths():
 
     make_all_files()
     make_config_files()
@@ -473,10 +433,9 @@ def test_get_all_fullpaths():
     sweep_work()
 
     with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        expt.setup()
-        files = expt.manifest.get_all_fullpaths()
+        manifest = payu.manifest.Manifest(config={}, reproduce=False)
+        manifest.load_manifests()
+        files = manifest.get_all_previous_fullpaths()
 
     allfiles = []
     for mf in manifests:

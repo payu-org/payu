@@ -251,27 +251,17 @@ section for details.
       reproducible experiments. The default value is the value of the global
       ``reproduce`` flag, which is set using a command line argument and
       defaults to *False*. These options **override** the global ``reproduce``
-      flag. If set to *True* payu will refuse to run if the hashes in the
+      flag. If set to *True* payu will refuse to run if the MD5 hashes in the
       relevant manifest do not match.
 
       ``exe`` (*Default: global reproduce flag*)
-            Enforce executable reproducibility. If set to *True* will refuse to
-            run if hashes do not match.
+            Enforce executable reproducibility.
 
       ``input`` (*Default: global reproduce flag*)
-            Enforce input file reproducibility. If set to *True* will refuse to
-            run if hashes do no match. Will not search for any new files.
+            Enforce input file reproducibility.
 
       ``restart`` (*Default: global reproduce flag*)
             Enforce restart file reproducibility.
-
-``scaninputs`` (*Default: True*)
-      Scan input directories for new files. Set to *False* when reproduce input
-      is *True*.
-
-      If a manifest file is complete and it is desirable to not add spurious
-      files to the manifest but allow existing files to change, setting this
-      option to *False* would allow that behaviour.
 
 ``ignore`` (*Default: .\**):
       List of ``glob`` patterns which match files to ignore when scanning input
