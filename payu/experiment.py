@@ -49,7 +49,7 @@ default_restart_freq = 5
 
 class Experiment(object):
 
-    def __init__(self, lab, reproduce=False, force=False):
+    def __init__(self, lab, reproduce=False, force=False, metadata_off=False):
         self.lab = lab
 
         if not force:
@@ -61,7 +61,7 @@ class Experiment(object):
         self.start_time = datetime.datetime.now()
 
         # Initialise experiment metadata - uuid and experiment name
-        self.metadata = Metadata(Path(lab.archive_path))
+        self.metadata = Metadata(Path(lab.archive_path), disabled=metadata_off)
         self.metadata.setup()
 
         # TODO: replace with dict, check versions via key-value pairs

@@ -106,7 +106,8 @@ def sweep_work(hard_sweep=False):
         payu_sweep(model_type=None,
                    config_path=None,
                    hard_sweep=hard_sweep,
-                   lab_path=str(labdir))
+                   lab_path=str(labdir),
+                   metadata_off=False)
 
 
 def payu_setup(model_type=None,
@@ -115,7 +116,8 @@ def payu_setup(model_type=None,
                force_archive=None,
                reproduce=None,
                sweep=True,
-               force=False):
+               force=False,
+               metadata_off=False):
     """
     Wrapper around original setup command to provide default arguments
     and run in ctrldir
@@ -125,13 +127,15 @@ def payu_setup(model_type=None,
             payu_sweep(model_type=None,
                        config_path=None,
                        hard_sweep=False,
-                       lab_path=str(labdir))
+                       lab_path=str(labdir),
+                       metadata_off=False)
         payu_setup_orignal(model_type,
                            config_path,
                            lab_path,
                            force_archive,
                            reproduce,
-                           force)
+                           force,
+                           metadata_off=False)
 
 
 def write_config(config, path=config_path):

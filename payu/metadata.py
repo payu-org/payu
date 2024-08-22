@@ -58,13 +58,18 @@ class Metadata:
         config_path : Optional[Path]
             Configuration Path. The default is config.yaml in the current
             working directory. This is also set in fsop.read_config
+        disabled : bool, default False
+            Flag to disable metadata and UUID generation and commits. The
+            legacy name (control directory name) for experiments names
+            in archive will be used instead.
     """
 
     def __init__(self,
                  laboratory_archive_path: Path,
                  config_path: Optional[Path] = None,
                  branch: Optional[str] = None,
-                 control_path: Optional[Path] = None) -> None:
+                 control_path: Optional[Path] = None,
+                 disabled: Optional[bool] = False) -> None:
         self.config = read_config(config_path)
         self.metadata_config = self.config.get('metadata', {})
 
@@ -74,8 +79,12 @@ class Metadata:
         self.filepath = self.control_path / METADATA_FILENAME
         self.lab_archive_path = laboratory_archive_path
 
-        # Config flag to disable creating metadata files and UUIDs
-        self.enabled = self.metadata_config.get('enable', True)
+        # Check if metadata has been disabled in call, env flag under PBS,
+        # or in config.yaml
+        self.enabled = (
+            not disabled and
+            self.metadata_config.get('enable', True)
+        )
 
         if self.enabled:
             self.repo = GitRepository(self.control_path, catch_error=True)
@@ -161,7 +170,7 @@ class Metadata:
             # Metadata/UUID generation is disabled, so leave UUID out of
             # experiment name
             self.experiment_name = legacy_name
-            print("Metadata is disabled in config.yaml.",
+            print("Metadata and UUID generation is disabled.",
                   f"Experiment name used for archival: {self.experiment_name}")
             return
 

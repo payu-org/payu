@@ -275,3 +275,15 @@ remote = {
         'help': 'Display metadata of branches in remote directory'
     }
 }
+
+
+# Disable metadata + UUID generation
+metadata_off = {
+    'flags': ['--metadata-off', '-M'],
+    'parameters': {
+        'dest': 'metadata_off',
+        'action': 'store_true',
+        'default': False,
+        'help': 'Disable experiment metadata and UUID generation and commits'
+    }
+}

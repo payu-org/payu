@@ -1,4 +1,5 @@
 import copy
+import os
 import shutil
 from datetime import datetime
 
@@ -354,13 +355,25 @@ def test_metadata_enable_false():
     }
     write_config(test_config)
 
-    with patch('payu.metadata.GitRepository.get_branch_name') as mock_branch:
-        mock_branch.return_value = "mock-branch"
+    with cd(ctrldir):
+        metadata = Metadata(archive_dir)
+        metadata.setup()
+        metadata.write_metadata()
 
-        with cd(ctrldir):
-            metadata = Metadata(archive_dir)
-            metadata.setup()
-            metadata.write_metadata()
+    # Test UUID kept out of experiment name and metadata file is not written
+    assert metadata.experiment_name == "ctrl"
+    assert not (ctrldir / "metadata.yaml").exists()
+
+
+def test_metadata_disable():
+    # Set metadata to True in config file
+    write_config(config)
+
+    with cd(ctrldir):
+        # Pass disabled flag to Metadata initialisation call
+        metadata = Metadata(archive_dir, disabled=True)
+        metadata.setup()
+        metadata.write_metadata()
 
     # Test UUID kept out of experiment name and metadata file is not written
     assert metadata.experiment_name == "ctrl"
