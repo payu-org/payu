@@ -97,16 +97,25 @@ class PayuManifest(YaManifest):
                 hash = self.get(filepath, hashfn)
                 previous_hash = previous_manifest.get(filepath, hashfn)
 
-                if hash != previous_hash:
+                if hash is None:
                     differences.append(
-                        f"{filepath}: {hashfn}: {previous_hash} != {hash}"
+                        f"  {filepath}: Missing file (file not in " +
+                        "calculated manifest)"
+                    )
+                elif previous_hash is None:
+                    differences.append(
+                        f"  {filepath}: New file (file not in stored manifest)"
+                    )
+                elif hash != previous_hash:
+                    differences.append(
+                        f"  {filepath}: {hashfn}: {previous_hash} != {hash}"
                     )
 
         if len(differences) != 0:
             sys.stderr.write(
                 f'Run cannot reproduce: manifest {self.path} is not correct\n'
             )
-            print("Manifest path: hash != calculated hash")
+            print(f"Manifest path: stored hash != calculated hash")
             for row in differences:
                 print(row)
 
