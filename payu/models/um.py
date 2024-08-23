@@ -12,8 +12,6 @@ from __future__ import print_function
 import datetime
 import fileinput
 import glob
-from importlib.machinery import SourceFileLoader
-from importlib.util import spec_from_loader, module_from_spec
 import os
 import shutil
 import string
@@ -116,10 +114,10 @@ class UnifiedModel(Model):
         deprecated_um_env = os.path.join(self.control_path, 'um_env.py')
         new_um_env = os.path.join(self.control_path, 'um_env.yaml')
         if (not os.path.isfile(new_um_env)) and os.path.isfile(deprecated_um_env):
-            raise FutureWarning(
+            raise RuntimeError(
                 (
-                    "The `um_env.py` configuration file has been deprecated and "
-                    "should be relplaced with a yaml file. "
+                    "The `um_env.py` configuration file is no longer "
+                    "supported and should be replaced with a yaml file. "
                     "Convert `um_env.py` to `um_env.yaml` using "
                     "https://github.com/ACCESS-NRI/esm1.5-scripts/blob/main/config-files/UM/um_env_to_yaml.py"
                 )
