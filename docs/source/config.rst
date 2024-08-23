@@ -364,7 +364,7 @@ User Processing
    this is when `payu setup` is called directly, then the relevant userscripts 
    will run on the login node.
 
-   Specific scripts are defined below:
+   Specific stages are defined below:
 
    ``init``
       User-defined command to be called after experiment initialization, but
