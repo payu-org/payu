@@ -360,9 +360,9 @@ User Processing
    individual subcommands (``echo "some_data" > input.nml``, ``qsub
    some_script.sh``). Userscripts are run within the same PBS job as the model 
    execution unless the script starts a new PBS job. Userscripts therefore have
-   the same compute, storage and network access as the model. The exception to 
-   this is when `payu setup` is called directly, then the relevant userscripts 
-   will run on the login node.
+   the same compute, storage and network access as the model. The exceptions to 
+   this are when `payu setup` is called directly, then the relevant userscripts 
+   will run on the login node and the `sync` userscript.
 
    Specific stages are defined below:
 
@@ -387,9 +387,10 @@ User Processing
       returns an error code. Useful for automatic error postmortem.
    
    ``sync``
-      User-defined command to be called at the start of the ``sync`` pbs job.
-      This is useful for any post-processing before syncing files to a remote
-      archive.
+      User-defined command to be called at the start of the ``sync`` PBS job. 
+      This is useful for any post-processing before syncing files to a remote 
+      archive. Note these scripts are only run if automatic syncing is enabled 
+      or if payu sync is run manually.
 
 ``postscript``
    This is an older, less user-friendly, method to submit a script after ``payu`` 
