@@ -163,7 +163,7 @@ class CesmCmeps(Model):
             ntasks = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_ntasks"))
             rootpe = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_rootpe"))
             pestride = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_pestride"))
-            #rootpe is zero-based
+            # rootpe is zero-based
             if cpucount < (rootpe + ntasks*pestride):
                 raise ValueError(
                     f"Insufficient cpus for the {realm} pelayout in nuopc.runconfig"
@@ -172,26 +172,30 @@ class CesmCmeps(Model):
         # check iolayout
         for realm in self.realms:
             # med and cpl names are both used in runconfig
-            if realm == "cpl": realm="MED"
+            if realm == "cpl": 
+                realm = "MED"
             io_section = f"{realm.upper()}_modelio"
             nc_type = self.runconfig.get(io_section, "pio_typename")
             if nc_type == "netcdf4c":
                 raise ValueError(
-                    f"netcdf4c in {io_section} of nuopc.runconfig is deprecated, use netcdf4p"
+                    f"netcdf4c in {io_section} of nuopc.runconfig is deprecated, "
+                      "use netcdf4p"
                 )
             else:
                 # if nc_type is netcdf, only one pe is needed
-                ioroot=int(self.runconfig.get(io_section, "pio_root"))
+                ioroot = int(self.runconfig.get(io_section, "pio_root"))
                 if cpucount < int(ioroot):
                     raise ValueError(
-                        f"Insufficient cpus for the {io_section} ioroot pe in nuopc.runconfig"
+                        f"Insufficient cpus for the {io_section} ioroot pe in "
+                        "nuopc.runconfig"
                     )
                 if nc_type == "netcdf4p":
-                    niotasks=int(self.runconfig.get(io_section, "pio_numiotasks"))
-                    iostride=int(self.runconfig.get(io_section, "pio_stride"))
+                    niotasks = int(self.runconfig.get(io_section, "pio_numiotasks"))
+                    iostride = int(self.runconfig.get(io_section, "pio_stride"))
                     if cpucount <= (ioroot + niotasks*iostride):
                         raise ValueError(
-                            f"The iolayout for {io_section} in nuopc.runconfig is requesting out of range cpus"
+                            f"The iolayout for {io_section} in nuopc.runconfig is "
+                            "requesting out of range cpus"
                         )
 
         # Ensure that restarts will be written at the end of each run
