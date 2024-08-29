@@ -164,7 +164,7 @@ class CesmCmeps(Model):
             rootpe = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_rootpe"))
             pestride = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_pestride"))
             #rootpe is zero-based
-            if cpucount <= (rootpe + ntasks*pestride):
+            if cpucount < (rootpe + ntasks*pestride):
                 raise ValueError(
                     f"Insufficient cpus for the {realm} pelayout in nuopc.runconfig"
                 )
@@ -182,7 +182,7 @@ class CesmCmeps(Model):
             else:
                 # if nc_type is netcdf, only one pe is needed
                 ioroot=int(self.runconfig.get(io_section, "pio_root"))
-                if cpucount <= int(ioroot):
+                if cpucount < int(ioroot):
                     raise ValueError(
                         f"Insufficient cpus for the {io_section} ioroot pe in nuopc.runconfig"
                     )
