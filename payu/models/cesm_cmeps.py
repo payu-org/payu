@@ -12,8 +12,6 @@ from __future__ import print_function
 
 import os
 import re
-import errno
-import glob
 import shutil
 import multiprocessing
 
@@ -163,8 +161,30 @@ class CesmCmeps(Model):
             )
         for realm in all_realms:
             ntasks = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_ntasks"))
-            assert cpucount >= ntasks, "Insufficient cpus for the pelayout in nuopc.runconfig"
-        
+            rootpe = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_rootpe"))
+            pestride = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_pestride"))
+            #rootpe is zero-based
+            assert cpucount >= (rootpe + ntasks*pestride), f"Insufficient cpus for the {realm} pelayout in nuopc.runconfig"
+
+        # check iolayout
+        for realm in self.realms:
+            #med and cpl names are both used in runconfig
+            if realm == "cpl" : realm="MED"
+            io_section = f"{realm.upper()}_modelio"
+            nc_type = self.runconfig.get(io_section, "pio_typename")
+            if nc_type == "netcdf4c":
+                raise RuntimeError(f"netcdf4c in {io_section} of nuopc.runconfig is deprecated, use netcdf4p")
+            else: 
+                #if nc_type is netcdf, only one pe is needed
+                ioroot=int(self.runconfig.get(io_section, "pio_root"))
+                assert cpucount > int(ioroot), f"Insufficient cpus for the {io_section} ioroot pe in nuopc.runconfig"
+                if nc_type == "netcdf4p":
+                    niotasks=int(self.runconfig.get(io_section, "pio_numiotasks"))
+                    iostride=int(self.runconfig.get(io_section, "pio_stride"))
+                    assert cpucount >= (ioroot + niotasks*iostride), ( 
+                        f"The iolayout for {io_section} in nuopc.runconfig is requesting out of range cpus"
+                        )
+
         # Ensure that restarts will be written at the end of each run
         stop_n = self.runconfig.get("CLOCK_attributes", "stop_n")
         stop_option = self.runconfig.get("CLOCK_attributes", "stop_option")
