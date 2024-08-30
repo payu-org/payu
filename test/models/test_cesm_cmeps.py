@@ -31,6 +31,15 @@ def test_runconfig_get_default():
 
     assert runconfig.get("DOES_NOT_EXIST", "DOES_NOT_EXIST", value="default") == "default"
 
+def test_runconfig_get_component_list():
+    """Test getting component_list from a nuopc.runconfig file"""
+    COMP_LIST = ['MED', 'ATM', 'ICE', 'OCN', 'ROF']
+
+    runconfig_path = os.path.join('test', 'resources', 'nuopc.runconfig')
+    runconfig = Runconfig(runconfig_path)
+
+    assert runconfig.get_component_list() == COMP_LIST
+
 @pytest.mark.parametrize(
     "section, variable, new_variable",
     [
@@ -75,3 +84,4 @@ def test_runconfig_set_write_get():
     assert runconfig.get("CLOCK_attributes", "restart_n") == "2"
 
     os.remove(runconfig_path_tmp)
+

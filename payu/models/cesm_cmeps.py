@@ -221,7 +221,7 @@ class CesmCmeps(Model):
                     case "netcdf":
                         break
                     case "netcdf4p" | "pnetcdf":
-                        if self.runconfig.get(io_section, "pio_async_interface") == ".false." :
+                        if self.runconfig.get(io_section, "pio_async_interface") == ".false.":
                             niotasks = int(self.runconfig.get(io_section, "pio_numiotasks"))
                             iostride = int(self.runconfig.get(io_section, "pio_stride"))
                             if (int(ioroot) + (niotasks-1)*iostride) > npes:
