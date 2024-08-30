@@ -247,7 +247,7 @@ def test__setup_checks_io(cmeps_config, modelio_patch):
 
     test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
     test_runconf["MOC_modelio"].update(modelio_patch)
-    
+
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, reproduce=False)
