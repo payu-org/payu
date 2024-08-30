@@ -135,7 +135,7 @@ def teardown_module(module):
 @pytest.fixture
 def cmeps_config():
     # Create a config.yaml and nuopc.runconfig file
-    
+
     config = copy.deepcopy(config_orig)
     config['model'] = 'access-om3'
     config['ncpus'] = NCPU
@@ -156,18 +156,18 @@ def cmeps_config():
 # valid minimum nuopc.runconfig for _setup_checks
 MOCK_IO_RUNCONF = {
     "PELAYOUT_attributes": dict(
-        moc_ntasks= NCPU,
-        moc_nthreads= 1,
-        moc_pestride= 1, 
-        moc_rootpe= 0
+        moc_ntasks=NCPU,
+        moc_nthreads=1,
+        moc_pestride=1,
+        moc_rootpe=0
     ),
     "MOC_modelio": dict(
-        pio_numiotasks= 1,
-        pio_rearranger= 1,
-        pio_root= 0,
-        pio_stride= 1,
-        pio_typename= 'netcdf4p',
-        pio_async_interface= '.false.'
+        pio_numiotasks=1,
+        pio_rearranger=1,
+        pio_root=0,
+        pio_stride=1,
+        pio_typename='netcdf4p',
+        pio_async_interface='.false.'
     )
 }
 
@@ -190,7 +190,7 @@ class MockRunConfig:
                          {"moc_ntasks": 2, "moc_nthreads": NCPU/2},
                          {"moc_ntasks": 2, "moc_pestride": NCPU/2},
                          {"moc_ntasks": 2, "moc_rootpe": NCPU-2},
-                         {"moc_ntasks": NCPU/4, "moc_nthreads": 2, "moc_pestride": 2}, 
+                         {"moc_ntasks": NCPU/4, "moc_nthreads": 2, "moc_pestride": 2},
                          ])
 def test__setup_checks_npes(cmeps_config, PELAYOUT_patch):
 
@@ -204,7 +204,7 @@ def test__setup_checks_npes(cmeps_config, PELAYOUT_patch):
 
         model.realms = ["moc"]
 
-        model.runconfig=MockRunConfig(test_runconf)
+        model.runconfig = MockRunConfig(test_runconf)
 
         model._setup_checks()  
 
