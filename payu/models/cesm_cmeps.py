@@ -184,7 +184,7 @@ class CesmCmeps(Model):
                 # TODO: copied this from other models. Surely we want to exit here or something
                 print('payu: error: Unable to find mod_def.ww3 file in input directory')
 
-    def _setup_checks(self) :
+    def _setup_checks(self):
         # check pelayout fits within requested cpucount
         cpucount = int(
             self.expt.config.get('ncpus', multiprocessing.cpu_count())
@@ -195,47 +195,51 @@ class CesmCmeps(Model):
             nthreads = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_nthreads"))
             rootpe = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_rootpe"))
             pestride = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_pestride"))
-            npes = (ntasks-1)*nthreads*pestride #count to the last process, starting at 0
+            npes = (ntasks-1)*nthreads*pestride  #count to the last process, starting at 0
             if (rootpe + npes) > cpucount:
                 raise ValueError(
                     f"Insufficient cpus for the {realm} pelayout in {NUOPC_CONFIG}"
                 )
 
             # check iolayout
-            if realm == "cpl": 
+            if realm == "cpl":
                 comp = "MED"  # med and cpl names are both used in runconfig
             else :
                 comp = realm.upper()
             if comp in self.runconfig.get_component_list():
                 io_section = f"{comp}_modelio"
                 nc_type = self.runconfig.get(io_section, "pio_typename")
-                if nc_type == "netcdf4c":
-                    raise ValueError(
-                        f"netcdf4c in {io_section} of {NUOPC_CONFIG} is deprecated, "
-                        "use netcdf4p"
-                    )
+                ioroot = int(self.runconfig.get(io_section, "pio_root"))
 
-                # if nc_type is netcdf, only one pe is needed
-                ioroot = (self.runconfig.get(io_section, "pio_root"))
-                if ioroot is None:
-                    raise ValueError(f"{ioroot} not valid for ioroot for the {io_section}")
-                if int(ioroot) > npes:
+                if ioroot > npes:
                     raise ValueError(
                         f"Insufficient cpus for the {io_section} ioroot pe in "
                         f"{NUOPC_CONFIG}"
                     )
-                # To-do: add coverage for nc_type=pnetcdf, and pio_async == .true.
-                if all([
-                    nc_type == "netcdf4p", 
-                    self.runconfig.get(io_section, "pio_async_interface") == ".false."
-                    ]) :
-                        niotasks = int(self.runconfig.get(io_section, "pio_numiotasks"))
-                        iostride = int(self.runconfig.get(io_section, "pio_stride"))
-                        if (int(ioroot) + (niotasks-1)*iostride) > npes:
-                            raise ValueError(
-                                f"The iolayout for {io_section} in {NUOPC_CONFIG} is "
-                                "requesting out of range cpus"
-                            )
+
+                match nc_type:
+                    case "netcdf" :
+                        break
+                    case "netcdf4p" | "pnetcdf" :
+                        if self.runconfig.get(io_section, "pio_async_interface") == ".false." :
+                            niotasks = int(self.runconfig.get(io_section, "pio_numiotasks"))
+                            iostride = int(self.runconfig.get(io_section, "pio_stride"))
+                            if (int(ioroot) + (niotasks-1)*iostride) > npes:
+                                raise ValueError(
+                                    f"The iolayout for {io_section} in {NUOPC_CONFIG} is "
+                                    "requesting out of range cpus"
+                                )
+                        # To-do: add coverage for pio_async == .true.
+                    case "netcdf4c":
+                        raise ValueError(
+                            f"netcdf4c in {io_section} of {NUOPC_CONFIG} is deprecated, "
+                            "use netcdf4p"
+                        )
+                    case _ : 
+                        raise ValueError(
+                            f"The iotype for {io_section} in {NUOPC_CONFIG} is "
+                            'invalid, valid options are "netcdf", "pnetcdf" and "netcdf4p"'
+                        )
         return True
 
     def archive(self):
