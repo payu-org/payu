@@ -134,10 +134,8 @@ def teardown_module(module):
 
 @pytest.fixture
 def cmeps_config():
-    # Write a cmeps model config file with 1 year runtime
-
-    # Create a config.yaml file with the cice submodel and 1 year run length
-
+    # Create a config.yaml and nuopc.runconfig file
+    
     config = copy.deepcopy(config_orig)
     config['model'] = 'access-om3'
     config['ncpus'] = NCPU
