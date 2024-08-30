@@ -211,9 +211,9 @@ def test__setup_checks_npes(cmeps_config, PELAYOUT_patch):
 
 @pytest.mark.parametrize("PELAYOUT_patch", [
                          {"moc_ntasks": NCPU+1},
-                         {"moc_ntasks":1, "moc_nthreads": NCPU+1},
-                         {"moc_ntasks":1, "moc_pestride": NCPU+1},
-                         {"moc_ntasks":1, "moc_rootpe": NCPU},
+                         {"moc_ntasks": 1, "moc_nthreads": NCPU+1},
+                         {"moc_ntasks": 1, "moc_pestride": NCPU+1},
+                         {"moc_ntasks": 1, "moc_rootpe": NCPU},
                          {"moc_ntasks": NCPU/4+1, "moc_nthreads":2, "moc_pestride":2}, 
                          ])
 def test__setup_checks_too_many_pes(cmeps_config, PELAYOUT_patch):
@@ -236,12 +236,12 @@ def test__setup_checks_too_many_pes(cmeps_config, PELAYOUT_patch):
 
 @pytest.mark.parametrize("modelio_patch", [
                          {"pio_typename": "netcdf"},
-                         {"pio_typename": "netcdf", "pio_root":NCPU-1},
-                         {"pio_typename": "netcdf", "pio_stride":1000, "pio_numiotask":1000},
+                         {"pio_typename": "netcdf", "pio_root": NCPU-1},
+                         {"pio_typename": "netcdf", "pio_stride": 1000, "pio_numiotask": 1000},
                          {"pio_numiotasks": NCPU},
-                         {"pio_numiotasks": 1, "pio_root":NCPU-1},
-                         {"pio_numiotasks": 1, "pio_stride":NCPU},
-                         {"pio_numiotasks": 1, "pio_root":NCPU/2, "pio_stride":NCPU/2}
+                         {"pio_numiotasks": 1, "pio_root": NCPU-1},
+                         {"pio_numiotasks": 1, "pio_stride": NCPU},
+                         {"pio_numiotasks": 1, "pio_root": NCPU/2, "pio_stride": NCPU/2}
                          ])
 def test__setup_checks_io(cmeps_config, modelio_patch):
 
