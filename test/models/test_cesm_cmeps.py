@@ -11,7 +11,8 @@ from test.common import cd, tmpdir, ctrldir, labdir, workdir, write_config, conf
 from test.common import config as config_orig
 from test.common import make_inputs, make_exe
 
-NCPU=24
+NCPU = 24
+
 
 @pytest.fixture()
 def runconfig_path():
@@ -85,8 +86,8 @@ def test_runconfig_set_write_get(runconfig):
 
     runconfig.set("CLOCK_attributes", "restart_n", "2")
 
-    runconfig_path_tmp = os.path.join(tmpdir,"nuopc.runconfig.tmp")
-    runconfig.write(file = runconfig_path_tmp)
+    runconfig_path_tmp = os.path.join(tmpdir, "nuopc.runconfig.tmp")
+    runconfig.write(file=runconfig_path_tmp)
 
     runconfig_updated = Runconfig(runconfig_path_tmp)
     assert runconfig_updated.get("CLOCK_attributes", "restart_n") == "2"
