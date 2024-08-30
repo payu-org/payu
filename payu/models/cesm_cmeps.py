@@ -20,6 +20,8 @@ from payu.models.model import Model
 from payu.models.fms import fms_collate
 from payu.models.mom6 import mom6_add_parameter_files
 
+NUOPC_CONFIG = "nuopc.runconfig"
+
 # Add as needed
 component_info = {
     "mom": {
@@ -73,7 +75,7 @@ class CesmCmeps(Model):
         self.config_files = [
             "drv_in",
             "fd.yaml",
-            "nuopc.runconfig",
+            NUOPC_CONFIG,
             "nuopc.runseq"
         ]
 
@@ -83,7 +85,7 @@ class CesmCmeps(Model):
         self.rpointers = [] # To be inferred from nuopc.runconfig
 
     def get_runconfig(self, path):
-        self.runconfig = Runconfig(os.path.join(path, 'nuopc.runconfig'))
+        self.runconfig = Runconfig(os.path.join(path, NUOPC_CONFIG))
         
     def get_components(self):
         """Get components from nuopc.runconfig"""
@@ -154,49 +156,8 @@ class CesmCmeps(Model):
 
         self.runconfig.set("ALLCOMP_attributes", "start_type", start_type)
 
-        # check pelayout fits within requested cpucount
-        cpucount = int(
-            self.expt.config.get('ncpus', multiprocessing.cpu_count())
-            )
-        all_realms = self.realms + ["glc", "lnd"]
-        for realm in all_realms:
-            ntasks = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_ntasks"))
-            rootpe = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_rootpe"))
-            pestride = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_pestride"))
-            # rootpe is zero-based
-            if cpucount < (rootpe + ntasks*pestride):
-                raise ValueError(
-                    f"Insufficient cpus for the {realm} pelayout in nuopc.runconfig"
-                )
-
-        # check iolayout
-        for realm in self.realms:
-            # med and cpl names are both used in runconfig
-            if realm == "cpl": 
-                realm = "MED"
-            io_section = f"{realm.upper()}_modelio"
-            nc_type = self.runconfig.get(io_section, "pio_typename")
-            if nc_type == "netcdf4c":
-                raise ValueError(
-                    f"netcdf4c in {io_section} of nuopc.runconfig is deprecated, "
-                      "use netcdf4p"
-                )
-            else:
-                # if nc_type is netcdf, only one pe is needed
-                ioroot = int(self.runconfig.get(io_section, "pio_root"))
-                if cpucount < int(ioroot):
-                    raise ValueError(
-                        f"Insufficient cpus for the {io_section} ioroot pe in "
-                        "nuopc.runconfig"
-                    )
-                if nc_type == "netcdf4p":
-                    niotasks = int(self.runconfig.get(io_section, "pio_numiotasks"))
-                    iostride = int(self.runconfig.get(io_section, "pio_stride"))
-                    if cpucount <= (ioroot + niotasks*iostride):
-                        raise ValueError(
-                            f"The iolayout for {io_section} in nuopc.runconfig is "
-                            "requesting out of range cpus"
-                        )
+        # run checks on nuopc.runfig
+        self._setup_checks()
 
         # Ensure that restarts will be written at the end of each run
         stop_n = self.runconfig.get("CLOCK_attributes", "stop_n")
@@ -207,7 +168,7 @@ class CesmCmeps(Model):
         mkdir_p(os.path.join(self.work_path, 'log'))
         mkdir_p(os.path.join(self.work_path, 'timing'))
 
-        self.runconfig.write(os.path.join(self.work_path, 'nuopc.runconfig'))
+        self.runconfig.write(os.path.join(self.work_path, NUOPC_CONFIG))
 
         # Horrible hack to make a link to the mod_def.ww3 input in the work
         # directory
@@ -222,6 +183,60 @@ class CesmCmeps(Model):
             else:
                 # TODO: copied this from other models. Surely we want to exit here or something
                 print('payu: error: Unable to find mod_def.ww3 file in input directory')
+
+    def _setup_checks(self) :
+        # check pelayout fits within requested cpucount
+        cpucount = int(
+            self.expt.config.get('ncpus', multiprocessing.cpu_count())
+        )
+        all_realms = self.realms
+        for realm in all_realms:
+            ntasks = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_ntasks"))
+            nthreads = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_nthreads"))
+            rootpe = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_rootpe"))
+            pestride = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_pestride"))
+            npes = (ntasks-1)*nthreads*pestride #count to the last process, starting at 0
+            if (rootpe + npes) > cpucount:
+                raise ValueError(
+                    f"Insufficient cpus for the {realm} pelayout in {NUOPC_CONFIG}"
+                )
+
+            # check iolayout
+            if realm == "cpl": 
+                comp = "MED"  # med and cpl names are both used in runconfig
+            else :
+                comp = realm.upper()
+            if comp in self.runconfig.get_component_list():
+                io_section = f"{comp}_modelio"
+                nc_type = self.runconfig.get(io_section, "pio_typename")
+                if nc_type == "netcdf4c":
+                    raise ValueError(
+                        f"netcdf4c in {io_section} of {NUOPC_CONFIG} is deprecated, "
+                        "use netcdf4p"
+                    )
+
+                # if nc_type is netcdf, only one pe is needed
+                ioroot = (self.runconfig.get(io_section, "pio_root"))
+                if ioroot is None:
+                    raise ValueError(f"{ioroot} not valid for ioroot for the {io_section}")
+                if int(ioroot) > npes:
+                    raise ValueError(
+                        f"Insufficient cpus for the {io_section} ioroot pe in "
+                        f"{NUOPC_CONFIG}"
+                    )
+                # To-do: add coverage for nc_type=pnetcdf, and pio_async == .true.
+                if all([
+                    nc_type == "netcdf4p", 
+                    self.runconfig.get(io_section, "pio_async_interface") == ".false."
+                    ]) :
+                        niotasks = int(self.runconfig.get(io_section, "pio_numiotasks"))
+                        iostride = int(self.runconfig.get(io_section, "pio_stride"))
+                        if (int(ioroot) + (niotasks-1)*iostride) > npes:
+                            raise ValueError(
+                                f"The iolayout for {io_section} in {NUOPC_CONFIG} is "
+                                "requesting out of range cpus"
+                            )
+        return True
 
     def archive(self):
         super().archive()
@@ -343,6 +358,21 @@ class Runconfig:
         span = self._get_variable_span(section, variable)
         if span:
             return self.contents[span[0]:span[1]]
+        else:
+            return value
+        
+    def get_component_list(self, value=None):
+        """
+        Get the `component_list`
+        """
+        m = re.search(
+            r'component_list:\s*(.*)',
+            self.contents
+        )
+
+        if m is not None:
+            components_str = m.group(1).strip()
+            return components_str.split()
         else:
             return value
 
