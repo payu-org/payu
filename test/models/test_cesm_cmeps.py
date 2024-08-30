@@ -214,7 +214,7 @@ def test__setup_checks_npes(cmeps_config, PELAYOUT_patch):
                          {"moc_ntasks": 1, "moc_nthreads": NCPU+1},
                          {"moc_ntasks": 1, "moc_pestride": NCPU+1},
                          {"moc_ntasks": 1, "moc_rootpe": NCPU},
-                         {"moc_ntasks": NCPU/4+1, "moc_nthreads":2, "moc_pestride":2}, 
+                         {"moc_ntasks": NCPU/4+1, "moc_nthreads": 2, "moc_pestride": 2},
                          ])
 def test__setup_checks_too_many_pes(cmeps_config, PELAYOUT_patch):
 
@@ -228,7 +228,7 @@ def test__setup_checks_too_many_pes(cmeps_config, PELAYOUT_patch):
 
         model.realms = ["moc"]
 
-        model.runconfig=MockRunConfig(test_runconf)
+        model.runconfig = MockRunConfig(test_runconf)
 
         with pytest.raises(ValueError):
             model._setup_checks() 
@@ -255,7 +255,7 @@ def test__setup_checks_io(cmeps_config, modelio_patch):
 
         model.realms = ["moc"]
 
-        model.runconfig=MockRunConfig(test_runconf)
+        model.runconfig = MockRunConfig(test_runconf)
 
         model._setup_checks()  
 
