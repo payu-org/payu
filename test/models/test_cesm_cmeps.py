@@ -7,21 +7,21 @@ import pytest
 import payu
 from payu.models.cesm_cmeps import Runconfig
 
-from test.common import cd, tmpdir, ctrldir, labdir, workdir, archive_dir, write_config, config_path
+from test.common import cd, tmpdir, ctrldir, labdir, workdir, write_config, config_path
 from test.common import config as config_orig
 from test.common import make_inputs, make_exe
-from unittest.mock import patch 
 
-verbose = True
 NCPU=24
 
 @pytest.fixture()
 def runconfig_path():
     return os.path.join('test', 'resources', 'nuopc.runconfig')
 
+
 @pytest.fixture()
 def runconfig(runconfig_path):
     return Runconfig(runconfig_path)
+
 
 # Runconfig tests:
 
@@ -43,14 +43,17 @@ def test_runconfig_get(section, variable, expected, runconfig):
     """Test getting values from a nuopc.runconfig file"""
     assert runconfig.get(section, variable) == expected
 
+
 def test_runconfig_get_default(runconfig):
     """Test getting default values from a nuopc.runconfig file"""
     assert runconfig.get("DOES_NOT_EXIST", "DOES_NOT_EXIST", value="default") == "default"
+
 
 def test_runconfig_get_component_list(runconfig):
     """Test getting component_list from a nuopc.runconfig file"""
     COMP_LIST = ['MED', 'ATM', 'ICE', 'OCN', 'ROF']
     assert runconfig.get_component_list() == COMP_LIST
+
 
 @pytest.mark.parametrize(
     "section, variable, new_variable",
@@ -65,6 +68,7 @@ def test_runconfig_set(section, variable, new_variable, runconfig):
 
     assert runconfig.get(section, variable) == new_variable
 
+
 def test_runconfig_set_error(runconfig):
     """Test error setting values in a nuopc.runconfig file that don't exist"""
     with pytest.raises(
@@ -73,6 +77,7 @@ def test_runconfig_set_error(runconfig):
         ):
         runconfig.set("DOES_NOT_EXIST", "OCN_model", "value")
         runconfig.set("ALLCOMP_attributes", "DOES_NOT_EXIST", "value")
+
 
 def test_runconfig_set_write_get(runconfig):
     """Test updating the values in a nuopc.runconfig file"""
@@ -88,14 +93,13 @@ def test_runconfig_set_write_get(runconfig):
 
     os.remove(runconfig_path_tmp)
 
+
 # Tests of cesm_cmeps
 
 def setup_module(module):
     """
     Put any test-wide setup code in here, e.g. creating test files
     """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
 
     # Should be taken care of by teardown, in case remnants lying around
     try:
@@ -119,8 +123,6 @@ def teardown_module(module):
     """
     Put any test-wide teardown code in here, e.g. removing test outputs
     """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
 
     try:
         shutil.rmtree(tmpdir)
@@ -140,9 +142,8 @@ def cmeps_config():
 
     write_config(config)
 
-    Path.touch(os.path.join(ctrldir,'nuopc.runconfig'))
-
-    # shutil.copy(str(runconfig_path), ctrldir)
+    with open(os.path.join(ctrldir,'nuopc.runconfig'), "w") as f:
+        f.close()
 
     # Run test
     yield
@@ -150,8 +151,8 @@ def cmeps_config():
     # Teardown
     os.remove(config_path)
 
-# Mock runconfig for some tests
 
+# Mock runconfig for some tests
 #valid minimum nuopc.runconfig for _setup_checks
 MOCK_IO_RUNCONF = {
     "PELAYOUT_attributes": dict(
@@ -182,6 +183,7 @@ class MockRunConfig:
     def get(self, section, variable, value=None):
         return self.conf[section][variable]
 
+
 @pytest.mark.parametrize("PELAYOUT_patch", [
                          {"moc_ntasks":1},
                          {"moc_ntasks":NCPU},
@@ -205,6 +207,7 @@ def test__setup_checks_npes(cmeps_config, PELAYOUT_patch):
         model.runconfig=MockRunConfig(test_runconf)
 
         model._setup_checks()  
+
 
 @pytest.mark.parametrize("PELAYOUT_patch", [
                          {"moc_ntasks":NCPU+1},
@@ -230,6 +233,7 @@ def test__setup_checks_too_many_pes(cmeps_config, PELAYOUT_patch):
         with pytest.raises(ValueError):
             model._setup_checks() 
 
+
 @pytest.mark.parametrize("modelio_patch", [
                          {"pio_typename":"netcdf"},
                          {"pio_typename":"netcdf", "pio_root":NCPU-1},
@@ -254,6 +258,7 @@ def test__setup_checks_io(cmeps_config, modelio_patch):
         model.runconfig=MockRunConfig(test_runconf)
 
         model._setup_checks()  
+
 
 @pytest.mark.parametrize("modelio_patch", [
                          {"pio_typename":"netcdf4s"},
