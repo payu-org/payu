@@ -206,7 +206,7 @@ def test__setup_checks_npes(cmeps_config, PELAYOUT_patch):
 
         model.runconfig = MockRunConfig(test_runconf)
 
-        model._setup_checks()  
+        model._setup_checks()
 
 
 @pytest.mark.parametrize("PELAYOUT_patch", [
@@ -231,7 +231,7 @@ def test__setup_checks_too_many_pes(cmeps_config, PELAYOUT_patch):
         model.runconfig = MockRunConfig(test_runconf)
 
         with pytest.raises(ValueError):
-            model._setup_checks() 
+            model._setup_checks()
 
 
 @pytest.mark.parametrize("modelio_patch", [
@@ -257,7 +257,7 @@ def test__setup_checks_io(cmeps_config, modelio_patch):
 
         model.runconfig = MockRunConfig(test_runconf)
 
-        model._setup_checks()  
+        model._setup_checks()
 
 
 @pytest.mark.parametrize("modelio_patch", [
@@ -284,4 +284,4 @@ def test__setup_checks_bad_io(cmeps_config, modelio_patch):
         model.runconfig = MockRunConfig(test_runconf)
 
         with pytest.raises(ValueError):
-            model._setup_checks() 
+            model._setup_checks()
