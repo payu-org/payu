@@ -131,6 +131,7 @@ def teardown_module(module):
     except Exception as e:
         print(e)
 
+
 @pytest.fixture
 def cmeps_config():
     # Write a cmeps model config file with 1 year runtime
@@ -143,7 +144,7 @@ def cmeps_config():
 
     write_config(config)
 
-    with open(os.path.join(ctrldir,'nuopc.runconfig'), "w") as f:
+    with open(os.path.join(ctrldir, 'nuopc.runconfig'), "w") as f:
         f.close()
 
     # Run test
@@ -154,21 +155,21 @@ def cmeps_config():
 
 
 # Mock runconfig for some tests
-#valid minimum nuopc.runconfig for _setup_checks
+# valid minimum nuopc.runconfig for _setup_checks
 MOCK_IO_RUNCONF = {
     "PELAYOUT_attributes": dict(
-        moc_ntasks = NCPU,
-        moc_nthreads = 1,
-        moc_pestride = 1, 
-        moc_rootpe = 0
+        moc_ntasks= NCPU,
+        moc_nthreads= 1,
+        moc_pestride= 1, 
+        moc_rootpe= 0
     ),
     "MOC_modelio": dict(
-        pio_numiotasks = 1,
-        pio_rearranger = 1,
-        pio_root = 0,
-        pio_stride = 1,
-        pio_typename = 'netcdf4p',
-        pio_async_interface = '.false.'
+        pio_numiotasks= 1,
+        pio_rearranger= 1,
+        pio_root= 0,
+        pio_stride= 1,
+        pio_typename= 'netcdf4p',
+        pio_async_interface= '.false.'
     )
 }
 
