@@ -98,17 +98,17 @@ class MockRunConfig:
 
 
 @pytest.mark.parametrize("ncpu, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe", [
-                         (1, 1, 1, 1, 0), #min
-                         (4, 4, 1, 1, 0), #min tasks
-                         (4, 2, 2, 2, 0), #min tasks * threads
-                         (4, 2, 1, 1, 2), #min tasks + rootpe
-                         (4, 1, 2, 2, 2), #min threads + rootpe
-                         (4, 1, 1, 1, 3), #max rootpe
-                         (5, 2, 1, 4, 0), #max stride
-                         (13, 4, 1, 3, 1), #odd ncpu
-                         (13, 2, 3, 3, 1), #odd ncpu
-                         (100000, 50000, 1, 2, 0), #max cpu
-                         (100000, 1, 1, 1, 99999), #max cpu
+                         (1, 1, 1, 1, 0),  # min
+                         (4, 4, 1, 1, 0),  # min tasks
+                         (4, 2, 2, 2, 0),  # min tasks * threads
+                         (4, 2, 1, 1, 2),  # min tasks + rootpe
+                         (4, 1, 2, 2, 2),  # min threads + rootpe
+                         (4, 1, 1, 1, 3),  # max rootpe
+                         (5, 2, 1, 4, 0),  # max stride
+                         (13, 4, 1, 3, 1),  # odd ncpu
+                         (13, 2, 3, 3, 1),  # odd ncpu
+                         (100000, 50000, 1, 2, 0),  # max cpu
+                         (100000, 1, 1, 1, 99999),  # max cpu
                          ])
 def test__setup_checks_npes(ncpu, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe):
 
@@ -137,16 +137,16 @@ def test__setup_checks_npes(ncpu, moc_ntasks, moc_nthreads, moc_pestride, moc_ro
 
 
 @pytest.mark.parametrize("ncpu, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe", [
-                         (1, 1, 1, 1, 1), #min
-                         (4, 5, 1, 1, 0), #min tasks
-                         (4, 2, 2, 2, 1), #min tasks * threads
-                         (2, 1, 2, 1, 1), #threads > strides
-                         (4, 1, 3, 1, 2), #min threads + rootpe
-                         (4, 1, 1, 1, 4), #max rootpe
-                         (13, 4, 1, 4, 1), #odd ncpu
-                         (13, 2, 7, 7, 0), #odd ncpu
-                         (100000, 50001, 1, 2, 0), #max cpu
-                         (100000, 1, 1, 1, 100000), #max cpu
+                         (1, 1, 1, 1, 1),  # min
+                         (4, 5, 1, 1, 0),  # min tasks
+                         (4, 2, 2, 2, 1),  # min tasks * threads
+                         (2, 1, 2, 1, 1),  # threads > strides
+                         (4, 1, 3, 1, 2),  # min threads + rootpe
+                         (4, 1, 1, 1, 4),  # max rootpe
+                         (13, 4, 1, 4, 1),  # odd ncpu
+                         (13, 2, 7, 7, 0),  # odd ncpu
+                         (100000, 50001, 1, 2, 0),  # max cpu
+                         (100000, 1, 1, 1, 100000),  # max cpu
                          ])
 def test__setup_checks_too_many_pes(ncpu, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe):
 
@@ -176,12 +176,12 @@ def test__setup_checks_too_many_pes(ncpu, moc_ntasks, moc_nthreads, moc_pestride
 
 
 @pytest.mark.parametrize("ncpu, pio_numiotasks, pio_stride, pio_root, pio_typename", [
-                         (1, 1, 1, 0, "netcdf"), #min
-                         (2, 1, 1, 1, "netcdf"), #max root 
-                         (2, 2, 1, 0, "netcdf4p"), #min tasks + rootpe
-                         (2, 1, 1, 1, "netcdf4p"), #max rootpe
+                         (1, 1, 1, 0, "netcdf"),  # min
+                         (2, 1, 1, 1, "netcdf"),  # max root 
+                         (2, 2, 1, 0, "netcdf4p"),  # min tasks + rootpe
+                         (2, 1, 1, 1, "netcdf4p"),  # max rootpe
                          (5, 3, 2, 0, "netcdf4p"), 
-                         (100000, 50001, 1, 2, "netcdf4p"), #odd ncpu
+                         (100000, 50001, 1, 2, "netcdf4p"),  # odd ncpu
                          ])
 def test__setup_checks_io(ncpu, pio_numiotasks, pio_stride, pio_root, pio_typename):
 
@@ -214,11 +214,11 @@ def test__setup_checks_io(ncpu, pio_numiotasks, pio_stride, pio_root, pio_typena
 
 @pytest.mark.parametrize("ncpu, pio_numiotasks, pio_stride, pio_root, pio_typename", [
                          (1, 1, 1, 0, "netcdf4c"), 
-                         (2, 1, 1, 2, "netcdf"), #root too big 
-                         (2, 3, 1, 0, "netcdf4p"), #too manu tasks
-                         (2, 2, 2, 0, "netcdf4p"), #stride too big 
-                         (5, 2, 2, 3, "netcdf4p"), #stride too big
-                         (100000, 50000, 2, 2, "netcdf4p"), #odd ncpu
+                         (2, 1, 1, 2, "netcdf"),  # root too big 
+                         (2, 3, 1, 0, "netcdf4p"),  # too manu tasks
+                         (2, 2, 2, 0, "netcdf4p"),  # stride too big 
+                         (5, 2, 2, 3, "netcdf4p"),  # stride too big
+                         (100000, 50000, 2, 2, "netcdf4p"),  # odd ncpu
                          ])
 def test__setup_checks_bad_io(ncpu, pio_numiotasks, pio_stride, pio_root, pio_typename):
 
