@@ -12,6 +12,7 @@ from test.common import make_inputs, make_exe
 
 MODEL = 'access-om3'
 
+
 def setup_module(module):
     """
     Put any test-wide setup code in here, e.g. creating test files
@@ -117,8 +118,8 @@ def test__setup_checks_npes(ncpu, moc_ntasks, moc_nthreads, moc_pestride, moc_ro
     test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
     test_runconf["PELAYOUT_attributes"].update({
         "moc_ntasks": moc_ntasks,
-        "moc_nthreads": moc_nthreads ,
-        "moc_pestride": moc_pestride ,
+        "moc_nthreads": moc_nthreads,
+        "moc_pestride": moc_pestride,
         "moc_rootpe": moc_rootpe
         })
 
@@ -155,8 +156,8 @@ def test__setup_checks_too_many_pes(ncpu, moc_ntasks, moc_nthreads, moc_pestride
     test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
     test_runconf["PELAYOUT_attributes"].update({
         "moc_ntasks": moc_ntasks,
-        "moc_nthreads": moc_nthreads ,
-        "moc_pestride": moc_pestride ,
+        "moc_nthreads": moc_nthreads,
+        "moc_pestride": moc_pestride,
         "moc_rootpe": moc_rootpe
     })
 
@@ -177,10 +178,10 @@ def test__setup_checks_too_many_pes(ncpu, moc_ntasks, moc_nthreads, moc_pestride
 
 @pytest.mark.parametrize("ncpu, pio_numiotasks, pio_stride, pio_root, pio_typename", [
                          (1, 1, 1, 0, "netcdf"),  # min
-                         (2, 1, 1, 1, "netcdf"),  # max root 
+                         (2, 1, 1, 1, "netcdf"),  # max root
                          (2, 2, 1, 0, "netcdf4p"),  # min tasks + rootpe
                          (2, 1, 1, 1, "netcdf4p"),  # max rootpe
-                         (5, 3, 2, 0, "netcdf4p"), 
+                         (5, 3, 2, 0, "netcdf4p"),
                          (100000, 50001, 1, 2, "netcdf4p"),  # odd ncpu
                          ])
 def test__setup_checks_io(ncpu, pio_numiotasks, pio_stride, pio_root, pio_typename):
