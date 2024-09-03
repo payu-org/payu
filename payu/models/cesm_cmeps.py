@@ -195,7 +195,16 @@ class CesmCmeps(Model):
             nthreads = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_nthreads"))
             rootpe = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_rootpe"))
             pestride = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_pestride"))
-            npes = ntasks*nthreads*pestride  # count to the last process, starting at 0
+
+            if (pestride<nthreads):
+                raise ValueError(
+                    f"{realm}_pestride needs to be equal or greater than {realm}_nthreads"
+                )
+
+            npes = (ntasks-1)*pestride + nthreads  # count to the last process, starting at 0
+
+            # can pestride be less than nthreads ??
+
             if (rootpe + npes) > cpucount:
                 raise ValueError(
                     f"Insufficient cpus for the {realm} pelayout in {NUOPC_CONFIG}"
@@ -211,7 +220,7 @@ class CesmCmeps(Model):
                 nc_type = self.runconfig.get(io_section, "pio_typename")
                 ioroot = int(self.runconfig.get(io_section, "pio_root"))
 
-                if ioroot > npes:
+                if ioroot >= npes:
                     raise ValueError(
                         f"Insufficient cpus for the {io_section} ioroot pe in "
                         f"{NUOPC_CONFIG}"
@@ -224,7 +233,7 @@ class CesmCmeps(Model):
                         if self.runconfig.get(io_section, "pio_async_interface") == ".false.":
                             niotasks = int(self.runconfig.get(io_section, "pio_numiotasks"))
                             iostride = int(self.runconfig.get(io_section, "pio_stride"))
-                            if (ioroot + niotasks*iostride) > npes:
+                            if (ioroot + (niotasks-1)*iostride) >= npes:
                                 raise ValueError(
                                     f"The iolayout for {io_section} in {NUOPC_CONFIG} is "
                                     "requesting out of range cpus"
