@@ -214,15 +214,14 @@ def test__setup_checks_io(ncpu, pio_numiotasks, pio_stride, pio_root, pio_typena
 
 
 @pytest.mark.parametrize("ncpu, pio_numiotasks, pio_stride, pio_root, pio_typename", [
-                         (1, 1, 1, 0, "netcdf4c"), 
-                         (2, 1, 1, 2, "netcdf"),  # root too big 
+                         (1, 1, 1, 0, "netcdf4c"),
+                         (2, 1, 1, 2, "netcdf"),  # root too big
                          (2, 3, 1, 0, "netcdf4p"),  # too manu tasks
-                         (2, 2, 2, 0, "netcdf4p"),  # stride too big 
+                         (2, 2, 2, 0, "netcdf4p"),  # stride too big
                          (5, 2, 2, 3, "netcdf4p"),  # stride too big
                          (100000, 50000, 2, 2, "netcdf4p"),  # odd ncpu
                          ])
 def test__setup_checks_bad_io(ncpu, pio_numiotasks, pio_stride, pio_root, pio_typename):
-
     cmeps_config(ncpu)
 
     test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
@@ -249,4 +248,3 @@ def test__setup_checks_bad_io(ncpu, pio_numiotasks, pio_stride, pio_root, pio_ty
             model._setup_checks()
 
     teardown_cmeps_config()
-
