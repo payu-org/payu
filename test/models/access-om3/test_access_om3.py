@@ -248,4 +248,3 @@ def test__setup_checks_bad_io(ncpu, pio_numiotasks, pio_stride, pio_root, pio_ty
             model._setup_checks()
 
     teardown_cmeps_config()
-    
