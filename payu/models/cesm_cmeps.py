@@ -21,6 +21,7 @@ from payu.models.fms import fms_collate
 from payu.models.mom6 import mom6_add_parameter_files
 
 NUOPC_CONFIG = "nuopc.runconfig"
+NUOPC_RUNSEQ = "nuopc.runseq"
 
 # Add as needed
 component_info = {
@@ -76,7 +77,7 @@ class CesmCmeps(Model):
             "drv_in",
             "fd.yaml",
             NUOPC_CONFIG,
-            "nuopc.runseq"
+            NUOPC_RUNSEQ
         ]
 
         self.realms = ["ocn", "ice", "wav", "atm", "rof", "cpl"]
