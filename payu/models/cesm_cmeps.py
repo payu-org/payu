@@ -198,7 +198,8 @@ class CesmCmeps(Model):
 
             if nthreads > 1:
                 npes = nthreads*ntasks*pestride
-                # this is taken from https://github.com/ESCOMP/CMEPS/blob/5b7d76978e2fdc661ec2de4ba9834b985decadc6/cesm/driver/esm.F90#L1007
+                # this is taken from 
+                # https://github.com/ESCOMP/CMEPS/blob/5b7d76978e2fdc661ec2de4ba9834b985decadc6/cesm/driver/esm.F90#L1007
                 # this correct calculation might be (ntasks-1)*pestride*nthreads + nthreads
             else:
                 npes = (ntasks-1)*pestride + 1
