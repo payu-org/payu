@@ -222,8 +222,8 @@ class CesmCmeps(Model):
 
                 if ioroot >= npes:
                     raise ValueError(
-                        f"Insufficient cpus for the {io_section} ioroot pe in "
-                        f"{NUOPC_CONFIG}"
+                        f"{io_section} pio_root exceeds available PEs (max: {npes - 1}) "
+                        f"in {NUOPC_CONFIG}."
                     )
 
                 match nc_type:
