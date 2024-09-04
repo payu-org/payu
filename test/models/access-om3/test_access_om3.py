@@ -101,13 +101,13 @@ class MockRunConfig:
 @pytest.mark.parametrize("ncpu, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe", [
                          (1, 1, 1, 1, 0),  # min
                          (4, 4, 1, 1, 0),  # min tasks
-                         (4, 2, 2, 2, 0),  # min tasks * threads
+                         (4, 2, 2, 1, 0),  # min tasks * threads
                          (4, 2, 1, 1, 2),  # min tasks + rootpe
-                         (4, 1, 2, 2, 2),  # min threads + rootpe
+                         (4, 1, 2, 2, 0),  # min threads * rootpe
                          (4, 1, 1, 1, 3),  # max rootpe
                          (5, 2, 1, 4, 0),  # max stride
                          (13, 4, 1, 3, 1),  # odd ncpu
-                         (13, 2, 3, 3, 1),  # odd ncpu
+                         (13, 2, 3, 2, 1),  # odd ncpu
                          (100000, 50000, 1, 2, 0),  # max cpu
                          (100000, 1, 1, 1, 99999),  # max cpu
                          ])
@@ -140,7 +140,7 @@ def test__setup_checks_npes(ncpu, moc_ntasks, moc_nthreads, moc_pestride, moc_ro
 @pytest.mark.parametrize("ncpu, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe", [
                          (1, 1, 1, 1, 1),  # min
                          (4, 5, 1, 1, 0),  # min tasks
-                         (4, 2, 2, 2, 1),  # min tasks * threads
+                         (4, 1, 2, 2, 1),  # min tasks * threads
                          (2, 1, 2, 1, 1),  # threads > strides
                          (4, 1, 3, 1, 2),  # min threads + rootpe
                          (4, 1, 1, 1, 4),  # max rootpe

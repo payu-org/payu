@@ -196,15 +196,13 @@ class CesmCmeps(Model):
             rootpe = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_rootpe"))
             pestride = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_pestride"))
 
-            if (pestride<nthreads):
-                raise ValueError(
-                    f"{realm}_pestride needs to be equal or greater than {realm}_nthreads"
-                )
-
-            npes = (ntasks-1)*pestride + nthreads  # count to the last process, starting at 0
-
-            # can pestride be less than nthreads ??
-
+            if nthreads > 1 :
+                npes = nthreads*ntasks*pestride 
+                # this is taken from https://github.com/ESCOMP/CMEPS/blob/5b7d76978e2fdc661ec2de4ba9834b985decadc6/cesm/driver/esm.F90#L1007
+                # this correct calculation might be (ntasks-1)*pestride*nthreads + nthreads
+            else: 
+                npes = (ntasks-1)*pestride + 1  
+            
             if (rootpe + npes) > cpucount:
                 raise ValueError(
                     f"Insufficient cpus for the {realm} pelayout in {NUOPC_CONFIG}"
