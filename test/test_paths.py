@@ -2,108 +2,124 @@ import os
 from pathlib import Path
 import shutil
 
-import pdb
 import pytest
-import yaml
-
-import payu
 
 from payu.laboratory import Laboratory
-from payu.schedulers.pbs import find_mounts
 
-
-from .common import cd, make_random_file, get_manifests
-from .common import tmpdir, ctrldir, labdir, workdir
-from .common import config, sweep_work, payu_init, payu_setup
+from .common import cd
+from .common import tmpdir, ctrldir
 from .common import write_config
-from .common import make_exe, make_inputs, make_restarts, make_all_files
-
-verbose = True
 
 
-def setup_module(module):
-    """
-    Put any test-wide setup code in here, e.g. creating test files
-    """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
+@pytest.fixture(autouse=True)
+def setup_and_teardown():
+    # Create tmp and control directories
     try:
         tmpdir.mkdir()
-        labdir.mkdir()
         ctrldir.mkdir()
     except Exception as e:
         print(e)
 
-    write_config(config)
+    yield
 
-
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
-
+    # Remove tmp directory
     try:
         shutil.rmtree(tmpdir)
-        print('removing tmp')
     except Exception as e:
         print(e)
 
 
-def test_laboratory_basepath():
+@pytest.mark.parametrize(
+    "config, expected_shortpath, expected_user, expected_labname",
+    [
+        (
+            # Test shortpath and model name for laboratory
+            {
+                'shortpath': '..',
+                'model': 'test',
+            }, '..', '*', 'test'
+        ),
+        (
+            # Test relative laboratory path
+            {
+                'shortpath': '/scratch/xx00',
+                'model': 'test',
+                'laboratory': 'lab'
+            }, '/scratch/xx00', '*', 'lab'
+        ),
+        (
+            # Test absolute laboratory path
+            {
+                'shortpath': '/scratch/xx00',
+                'model': 'test',
+                'laboratory': '/scratch/aa00/user999/lab'
+            }, '/scratch/aa00', 'user999', 'lab'
+        ),
+        (
+            # Test user defined in config.yaml
+            {
+                'shortpath': '/scratch/xx00',
+                'model': 'test',
+                'user': 'user123'
+            }, '/scratch/xx00', 'user123', 'test'
+        ),
+    ]
+)
+def test_laboratory_basepath(config, expected_shortpath, expected_user,
+                             expected_labname):
+    write_config(config)
 
-    # Test instantiating a Laboratory object
     with cd(ctrldir):
         lab = Laboratory(None, None, None)
+        basepath = Path(lab.basepath)
 
-        assert(Path(lab.basepath).parts[0] == '..')
-        assert(Path(lab.basepath).parts[2] == 'lab')
+        # Check shortpath
+        assert basepath.parent.parent.match(expected_shortpath)
 
-    # Set a PROJECT env variable to get reproducible paths
+        # Check userId - if fixed value
+        if expected_user != '*':
+            assert basepath.parent.name == expected_user
+
+        # Check laboratory name
+        assert basepath.name == expected_labname
+
+
+@pytest.mark.parametrize(
+    "config, expected_project, expected_labname",
+    [
+        (
+            # Test default for project is env variable
+            {
+                'model': 'test',
+            }, 'x00', 'test'
+        ),
+        (
+            # Test project in config is used in default shortpath
+            {
+                'project': 'aa00',
+                'model': 'test',
+            }, 'aa00', 'test'
+        ),
+    ]
+)
+def test_laboratory_basepath_default_shortpath(config, expected_project,
+                                               expected_labname):
+    write_config(config)
+
+    # Set a PROJECT env variable to x00 get reproducible paths
     os.environ['PROJECT'] = 'x00'
 
-    # Repeat, but remove shortpath definition
-    # in config, so will fall through to default
-    # depending on platform
-    del(config['shortpath'])
-    write_config(config)
     with cd(ctrldir):
         lab = Laboratory(None, None, None)
 
-        shortpath = '.'
-        for path in ['/short', '/scratch']:
-            if Path(path).exists():
-                shortpath = path
-                break
+        # Check base of shortpath is used
+        assert lab.base in ['/short', '/scratch', '.']
+        assert lab.basepath.startswith(lab.base)
 
-        assert(list(Path(lab.basepath).parents)[2] == Path(shortpath))
-        assert(Path(lab.basepath).parts[-3] == os.environ['PROJECT'])
-        assert(Path(lab.basepath).parts[-1] == 'lab')
+        basepath = Path(lab.basepath)
 
-def test_laboratory_path():
+        # Check project
+        assert basepath.parent.parent.name == expected_project
 
-    # Set a PROJECT env variable to get reproducible paths
-    os.environ['PROJECT'] = 'x00'
-
-    # Set a relative laboratory name
-    labname = 'testlab'
-    config['laboratory'] = labname
-    write_config(config)
-    with cd(ctrldir):
-        lab = Laboratory(None, None, None)
-
-        shortpath = '.'
-        for path in ['/short', '/scratch']:
-            if Path(path).exists():
-                shortpath = path
-                break
-
-        assert(Path(lab.basepath).parts[-1] == labname)
+        # Check lab name
+        assert basepath.name == expected_labname
