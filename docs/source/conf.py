@@ -1,11 +1,4 @@
-import os
-import sys
-
-sys.path.insert(1, '../../')
 import payu
-
-# Path to extensions
-sys.path.insert(0, os.path.dirname(os.path.abspath(os.pardir)))
 
 # Sphinx setup
 #needs_sphinx = '1.0'
