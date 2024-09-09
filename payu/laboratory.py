@@ -67,7 +67,7 @@ class Laboratory(object):
         # Default path settings
 
         # Append project name if present (NCI-specific)
-        default_project = os.environ.get('PROJECT', '')
+        default_project = config.get('project', os.environ.get('PROJECT', ''))
         default_short_path = os.path.join(self.base, default_project)
         default_user = pwd.getpwuid(os.getuid()).pw_name
 
