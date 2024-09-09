@@ -185,8 +185,7 @@ class Cice(Model):
                 iced_restart_file = sorted(iced_restart_files)[-1]
 
             if iced_restart_file is None:
-                print('payu: error: No restart file available.')
-                sys.exit(errno.ENOENT)
+                raise RuntimeError('payu: error: No restart file available.')
 
             res_ptr_path = os.path.join(self.work_init_path,
                                         'ice.restart_file')
@@ -326,6 +325,8 @@ class Cice(Model):
             if os.path.isfile(test_path):
                 input_path = test_path
                 break
-        assert input_path
+        raise RuntimeError(
+            f"Cannot find previous restart file, expected {fpath} to exist"
+        )
 
         make_symlink(input_path, input_work_path)
