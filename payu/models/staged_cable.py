@@ -49,6 +49,10 @@ class StagedCable(Model):
         self.config_files = ['stage_config.yaml']
         self.optional_config_files = ['cable.nml', 'cru.nml',
                                       'luc.nml', 'met_names.nml']
+
+        self.work_restart_path = 'restart'
+        self.work_output_path = 'outputs'
+
         self.configuration_log = {}
 
         # Read the stage_config.yaml file
@@ -129,44 +133,43 @@ class StagedCable(Model):
     def setup(self):
         super(StagedCable, self).setup()
 
-        # Directories required by CABLE for outputs
-        for _dir in ['logs', 'restart', 'outputs']:
-            os.makedirs(os.path.join(self.work_output_path, _dir),
-                        exist_ok=True)
+        # Make the logging directory
+        mkdir_p(os.path.join(self.work_path), "logs")
 
+        # Build the namelists for the stage
         self._prepare_stage()
 
-    def get_prior_restart_files(self):
-        """Retrieve the prior restart files from the completed stages."""
-        # Go to the archives of the previous completed stages and retrieve
-        # the files from them, with the most recent taking precedent.
+    # def get_prior_restart_files(self):
+        # """Retrieve the prior restart files from the completed stages."""
+        # # Go to the archives of the previous completed stages and retrieve
+        # # the files from them, with the most recent taking precedent.
 
-        # Unfortunately, we can't simply use the
-        # "if {filename} not in {restart_files}, because files from different
-        # stages will have different paths, even if the local file name is the
-        # same. To avoid having to call os.path.basepath on the list of restart
-        # files for every addition, we'll store the list of local file names +
-        # paths separately, and pull them together at the end.
+        # # Unfortunately, we can't simply use the
+        # # "if {filename} not in {restart_files}, because files from different
+        # # stages will have different paths, even if the local file name is the
+        # # same. To avoid having to call os.path.basepath on the list of restart
+        # # files for every addition, we'll store the list of local file names +
+        # # paths separately, and pull them together at the end.
 
-        file_names = []
-        path_names = []
+        # file_names = []
+        # path_names = []
 
-        num_completed_stages = len(self.configuration_log['completed_stages'])
+        # num_completed_stages = len(self.configuration_log['completed_stages'])
 
-        for stage_number in reversed(range(num_completed_stages)):
-            respath = os.path.join(
-                self.control_path,
-                f'archive/output{stage_number:03d}/restart'
-            )
+        # for stage_number in reversed(range(num_completed_stages)):
+            # respath = os.path.join(
+                # self.control_path,
+                # f'archive/output{stage_number:03d}/restart'
+            # )
 
-            [(file_names.append(file), path_names.append(respath))
-                for file in os.listdir(respath) if file not in file_names]
+            # [(file_names.append(file), path_names.append(respath))
+                # for file in os.listdir(respath) if file not in file_names]
 
-        # Zip up the files
-        restart_files = [os.path.join(path, file)
-                         for path, file in zip(path_names, file_names)]
+        # # Zip up the files
+        # restart_files = [os.path.join(path, file)
+                         # for path, file in zip(path_names, file_names)]
 
-        return restart_files
+        # return restart_files
 
     def _prepare_stage(self):
         """Apply the stage namelist to the master namelist."""
