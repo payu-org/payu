@@ -94,7 +94,6 @@ def empty_workdir():
     a clean work directory
     """
     expt_workdir.mkdir(parents=True)
-    print(f"SPENCER {expt_workdir}")
 
     yield expt_workdir
     shutil.rmtree(expt_workdir)
@@ -224,7 +223,7 @@ class TestClone:
         """
         Create fake prior restart files required by CICE5's setup.
         """
-        prior_restart_path = expt_archive_dir / "restartxyz"
+        prior_restart_path = expt_archive_dir / "restartXYZ"
         os.mkdir(prior_restart_path)
 
         # Restart files required by CICE5 setup

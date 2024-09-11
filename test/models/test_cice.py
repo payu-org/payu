@@ -17,18 +17,20 @@ from test.common import make_exe
 
 verbose = True
 
+DEFAULT_YEAR_INIT = 101  # arbitrary value for tests
+DEFAULT_DT = 3600  # 1 hour
 DEFAULT_CICE_NML = {
     "setup_nml": {
         "history_dir": "./HISTORY/",
         "restart_dir": "./RESTART/",
-        "year_init": 9999,
-        "days_per_year": 360,
+        "year_init": DEFAULT_YEAR_INIT,
+        "days_per_year": 365,
         "ice_ic": "default",
         "restart": False,
         "pointer_file": "./RESTART/ice.restart_file",
         "runtype": "initial",
         "npt": 99999,
-        "dt": 1,
+        "dt": DEFAULT_DT,
     },
     "grid_nml": {"grid_file": "./INPUT/grid.nc", "kmt_file": "./INPUT/kmt.nc"},
     "icefields_nml": {"f_icy": "x"},
@@ -69,7 +71,7 @@ def setup_module(module):
         "model": "cice",
         "exe": "test.exe",
         "experiment": ctrldir_basename,
-        "metadata": {"enable": False},
+        "metadata": {"enable": False}
     }
     write_config(config)
 
@@ -95,7 +97,6 @@ def empty_workdir():
     a clean work directory
     """
     expt_workdir.mkdir(parents=True)
-    print(f"SPENCER {os.path.abspath('.')}")
 
     yield expt_workdir
     shutil.rmtree(expt_workdir)
@@ -191,20 +192,24 @@ class TestClone:
     """
     Test setting up the cice model in cloned control directories.
     """
+    PREVIOUS_ISTEP0 = 0
+    PREVIOUS_NPT = 8760  # 1 year of 1hr timesteps
 
     @pytest.fixture
     def prior_restart_dir_cice4(self, scope="class"):
         """
         Create fake prior restart files required by CICE4's setup.
+        This differs from CICE5, which doesn't require a cice_in.nml
+        file in the restart directory.
         """
         prior_restart_path = expt_archive_dir / "restartxyz"
         os.mkdir(prior_restart_path)
 
         # Previous cice_in namelist with time information
         restart_cice_in = {"setup_nml": {
-                "istep0": 100,
-                "npt": 10,
-                "dt": 123
+                "istep0": self.PREVIOUS_ISTEP0,
+                "npt": self.PREVIOUS_NPT,
+                "dt": DEFAULT_DT
             }}
         f90nml.write(restart_cice_in, prior_restart_path/CICE_NML_NAME)
 
@@ -294,7 +299,7 @@ class TestClone:
         Test that seting up an experiment from a cloned control directory
         works when a restart directory is specified.
 
-        Use a restart directory mimicking the CICE4 restarts required by setup.
+        Use a restart directory mimicking the CICE4 files required by setup.
         """
         source_main = str(ctrldir_repo.active_branch)
 
@@ -313,9 +318,13 @@ class TestClone:
 
         # Setup experiment
         with cd(cloned_repo_path):
-
             lab = payu.laboratory.Laboratory(lab_path=str(labdir))
             expt = payu.experiment.Experiment(lab, reproduce=False)
+
+            # Add a runtime to test calculated cice runtime values
+            expt.runtime = {"years": 0,
+                            "months": 0,
+                            "days": 2}
             model = expt.models[0]
 
             # Test that model setup runs without issue
@@ -323,6 +332,17 @@ class TestClone:
 
         work_path_files = os.listdir(model.work_path)
         assert CICE_NML_NAME in work_path_files
+
+        # Check correct run time values written to work namelist
+        work_cice_nml = f90nml.read(
+            os.path.join(model.work_path, CICE_NML_NAME)
+            )
+        assert work_cice_nml["setup_nml"]["istep0"] == (
+            self.PREVIOUS_ISTEP0 + self.PREVIOUS_NPT
+        )
+        assert work_cice_nml["setup_nml"]["npt"] == (
+            48
+        )
 
         # Check restart files were copied to cloned experiment's
         # work directory.

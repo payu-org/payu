@@ -53,7 +53,7 @@ class Cice5(Cice):
         self.ice_in.write(ice_in_path, force=True)
 
     def setup(self):
-       # Force creation of a dump (restart) file at end of run
+        # Force creation of a dump (restart) file at end of run
         self.ice_in['setup_nml']['dump_last'] = True
 
         super(Cice5, self).setup()
@@ -73,4 +73,8 @@ class Cice5(Cice):
         self.set_local_timestep(t_step)
 
     def calc_runtime(self, setup_nml):
+        """
+        Overrides the cice driver method, as CICE5 in OM2 does not use
+        the timing information in the cice_in.nml namelist.
+        """
         pass
