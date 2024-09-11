@@ -325,8 +325,9 @@ class Cice(Model):
             if os.path.isfile(test_path):
                 input_path = test_path
                 break
-        raise RuntimeError(
-            f"Cannot find previous restart file, expected {fpath} to exist"
-        )
+        if input_path is None:
+            raise RuntimeError(
+                f"Cannot find previous restart file, expected {fpath} to exist"
+            )
 
         make_symlink(input_path, input_work_path)
