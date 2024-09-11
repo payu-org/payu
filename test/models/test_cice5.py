@@ -227,7 +227,7 @@ class TestClone:
         prior_restart_path = expt_archive_dir / "restartxyz"
         os.mkdir(prior_restart_path)
 
-        # Additional restart files required by CICE4 setup
+        # Restart files required by CICE5 setup
         (prior_restart_path/ICED_RESTART_NAME).touch()
         (prior_restart_path/RESTART_POINTER_NAME).touch()
 
@@ -278,5 +278,5 @@ class TestClone:
         # work directory.
         cice_work_restart_files = os.listdir(model.work_restart_path)
 
-        for file in [CICE_NML_NAME, ICED_RESTART_NAME, RESTART_POINTER_NAME]:
+        for file in [ICED_RESTART_NAME, RESTART_POINTER_NAME]:
             assert file in cice_work_restart_files

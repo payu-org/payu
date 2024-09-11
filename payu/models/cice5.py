@@ -71,3 +71,6 @@ class Cice5(Cice):
         # TODO: Figure out some way to move this to the ACCESS driver
         # Re-read ice timestep and move this over there
         self.set_local_timestep(t_step)
+
+    def calc_runtime(self, setup_nml):
+        pass
