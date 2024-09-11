@@ -197,6 +197,10 @@ class CesmCmeps(Model):
             rootpe = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_rootpe"))
             pestride = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_pestride"))
 
+            if nthreads < 1:
+                raise ValueError(f"The number of {realm}_nthreads ({nthreads}) in "
+                                 f"{NUOPC_CONFIG} must be at least 1.")
+                                 
             if nthreads > 1:
                 npes = nthreads*ntasks*pestride
                 # this is taken from 
