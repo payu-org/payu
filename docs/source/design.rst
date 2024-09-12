@@ -48,6 +48,27 @@ Work Path
    experiment named ``myrun``, the default directory is ``${LAB}/work/myrun``.
 
 
+Experiment Steps
+================
+
+Payu runs through several steps to setup, run and clean-up an experiment, outlined below:
+
+init
+   Experiment initialization runs first, and includes reading in configuration information and updating the metadata.
+
+setup
+   Setup creates the ephemeral work directory and updates manifests. It is what is run with the ``payu setup`` command. 
+
+run
+   This is the step which does any automated ``runlog`` commands (``git commit``) and executes the model.
+
+error
+   The error stage is entered if the model runs but returns an error code.
+
+archive
+   If the model run is succesful, payu archives the results from the work directory to the output directories.
+
+
 Style Guide
 ===========
 
