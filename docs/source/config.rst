@@ -355,14 +355,15 @@ User Processing
 --------------
 
 ``userscripts``
-   Configure userscripts or subcommands to run at various stages of
+   Configure userscripts or subcommands to run at various :ref:`experiment-steps<stages>` of
    a payu submission. Inputs can be either script names (``some_script.sh``) or
    individual subcommands (``echo "some_data" > input.nml``, ``qsub
    some_script.sh``). Userscripts are run within the same PBS job as the model 
    execution unless the script starts a new PBS job. Userscripts therefore have
    the same compute, storage and network access as the model. The exceptions to 
-   this are when `payu setup` is called directly, then the relevant userscripts 
-   will run on the login node and the `sync` userscript.
+   this are when ``payu setup`` is called directly, then the relevant userscripts 
+   will run on the login node, and the ``sync`` userscript, which runs in the 
+   ``sync`` job.
 
    Specific stages are defined below:
 
