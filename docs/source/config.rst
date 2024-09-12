@@ -355,7 +355,7 @@ User Processing
 --------------
 
 ``userscripts``
-   Configure userscripts or subcommands to run at various :ref:`experiment-steps<stages>` of
+   Configure userscripts or subcommands to run at various :ref:`stages<experiment-steps>` of
    a payu submission. Inputs can be either script names (``some_script.sh``) or
    individual subcommands (``echo "some_data" > input.nml``, ``qsub
    some_script.sh``). Userscripts are run within the same PBS job as the model 
