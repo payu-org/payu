@@ -47,7 +47,7 @@ Work Path
    Experiments that are actively running are stored in the work path. For an
    experiment named ``myrun``, the default directory is ``${LAB}/work/myrun``.
 
-
+.. _experiment-steps:
 Experiment Steps
 ================
 
