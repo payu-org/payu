@@ -11,7 +11,7 @@ from test.common import tmpdir, ctrldir, labdir, expt_workdir
 from test.common import workdir, expt_archive_dir, ctrldir_basename
 from test.common import write_config, config_path, write_metadata
 from test.common import make_exe
-from test.models.test_cice import BaseCICESetup
+from test.models.test_cice import test_setup, test_restart_setup
 
 verbose = True
 
@@ -125,37 +125,8 @@ def empty_workdir():
     workdir.unlink()
 
 
-@pytest.mark.parametrize("config", [DEFAULT_CONFIG],
-                         indirect=True)
-def test_setup(config, renamed_fixt):
-    """
-    # Confirm that payu setup works
-    """
-    with cd(ctrldir):
-
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
-
-        # Function to test
-        model.setup()
-
-    # Check config files are moved to model's work path
-    work_path_files = os.listdir(model.work_path)
-    for name in CICE_NML_NAMES:
-        assert name in work_path_files
-
-    # Check cice_in was not patched with ice_history
-    work_input_fpath = os.path.join(model.work_path, CICE_NML_NAMES[0])
-    input_nml = f90nml.read(work_input_fpath)
-    assert input_nml["icefields_nml"] == DEFAULT_CICE_NML["icefields_nml"]
-
-    # Check dump_last
-    assert input_nml["setup_nml"]["dump_last"] is True
-
-
 @pytest.fixture
-def prior_restart_dir_cice5():
+def prior_restart_dir():
     """
     Create fake prior restart files required by CICE5's setup.
     """
@@ -170,38 +141,6 @@ def prior_restart_dir_cice5():
 
     # Teardown
     shutil.rmtree(prior_restart_path)
-
-
-@pytest.mark.parametrize("config", [CONFIG_WITH_RESTART],
-                         indirect=True)
-def test_restart_setup(config, cice_config_files, prior_restart_dir_cice5):
-    """
-    Test that seting up an experiment from a cloned control directory
-    works when a restart directory is specified.
-
-    Use a restart directory mimicking the CICE5 files required by setup.
-    """
-
-    # Setup experiment
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-
-        # Add a runtime to test calculated cice runtime values
-        expt.runtime = {"years": 0,
-                        "months": 0,
-                        "days": 2}
-        model = expt.models[0]
-
-        # Function to test
-        model.setup()
-
-    # Check restart files were copied to work directory.
-    cice_work_restart_files = os.listdir(model.work_restart_path)
-
-    for file in [ICED_RESTART_NAME, RESTART_POINTER_NAME]:
-        assert file in cice_work_restart_files
-
 
 
 @pytest.fixture
@@ -222,25 +161,24 @@ def cice_config_files():
             os.remove(name)
 
 
-class TestCice5Setup(BaseCICESetup):
-    expected_work_path_files = CICE_NML_NAMES
-    excluded_work_path_files = []
-    expected_work_restart_files = [ICED_RESTART_NAME, RESTART_POINTER_NAME]
+expected_work_path_files = CICE_NML_NAMES
+excluded_work_path_files = []
+expected_work_restart_files = [ICED_RESTART_NAME, RESTART_POINTER_NAME]
 
-    def check_input_nml(self, input_nml, cice_config_files):
-        if cice_config_files['ice_history']:
-            assert (input_nml["icefields_nml"] ==
-                    cice_config_files["ice_history"]["icefields_nml"])
-        else:
-            assert input_nml["icefields_nml"] == DEFAULT_CICE_NML["icefields_nml"]
+def check_input_nml(input_nml, cice_config_files):
+    if cice_config_files['ice_history']:
+        assert (input_nml["icefields_nml"] ==
+                cice_config_files["ice_history"]["icefields_nml"])
+    else:
+        assert input_nml["icefields_nml"] == DEFAULT_CICE_NML["icefields_nml"]
 
-    def check_dump_last(self, input_nml):
-        # Check dump_last doesn't exist
-        with pytest.raises(KeyError, match="dump_last"):
-            input_nml["setup_nml"]["dump_last"]
+def check_dump_last(input_nml):
+    # Check dump_last doesn't exist
+    with pytest.raises(KeyError, match="dump_last"):
+        input_nml["setup_nml"]["dump_last"]
 
-    def add_runtime(self, expt):
-        pass
+def add_runtime(expt):
+    pass
 
-    def check_work_nml_after_restart(self, work_cice_nml):
-        pass
+def check_work_nml_after_restart(work_cice_nml):
+    pass
