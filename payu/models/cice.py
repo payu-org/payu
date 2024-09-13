@@ -214,10 +214,7 @@ class Cice(Model):
         Calculate 1: the previous number of timesteps simulated, and 2:
         the number of timesteps to simulate in the next run.
 
-        Note 1: This method is overridden in the cice5 driver, as cice5
-        in ACCESS OM2 does not require the calculated runtime information.
-        Instead it performs the calculations within the model using the
-        restart files and OM2 namelist.
+        Note 1: This method is overridden in the cice5 driver.
 
         Note 2: For ESM1.5, the actual model start date and run time are
         controlled via the separate input_ice.nml namelist, with relevant

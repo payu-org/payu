@@ -135,8 +135,7 @@ def empty_workdir():
 def cice_config_files(request):
     """
     Write the default cice_in.nml namelist, and if included, separate ice
-    history namelist used by ESM1.5. Important to also test OM2/CICE5 case
-    without separate ice history namelist.
+    history namelist used by ESM1.5. 
     """
     cice_nml = DEFAULT_CICE_NML
     ice_history = request.param
