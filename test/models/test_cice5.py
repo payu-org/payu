@@ -5,14 +5,11 @@ import pytest
 import f90nml
 
 import payu
-from payu.branch import clone
-import git
-
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, expt_workdir
-from test.common import expt_archive_dir, ctrldir_basename
-from test.common import write_config, write_metadata
+from test.common import workdir, expt_archive_dir, ctrldir_basename
+from test.common import write_config, config_path, write_metadata
 from test.common import make_exe
 
 verbose = True
@@ -38,6 +35,26 @@ CICE_NML_NAMES = ["cice_in.nml", "input_ice.nml",
 ICED_RESTART_NAME = "iced.18510101"
 RESTART_POINTER_NAME = "ice.restart_file"
 
+DEFAULT_CONFIG = {
+    "laboratory": "lab",
+    "jobname": "testrun",
+    "model": "cice5",
+    "exe": "test.exe",
+    "experiment": ctrldir_basename,
+    "metadata": {"enable": False}
+}
+RESTART_PATH = expt_archive_dir / "restartXYZ"
+
+CONFIG_WITH_RESTART = {
+    "laboratory": "lab",
+    "jobname": "testrun",
+    "model": "cice5",
+    "exe": "test.exe",
+    "experiment": ctrldir_basename,
+    "metadata": {"enable": False},
+    "restart": str(RESTART_PATH)
+}
+
 
 def setup_module(module):
     """
@@ -62,15 +79,20 @@ def setup_module(module):
     except Exception as e:
         print(e)
 
-    config = {
-        "laboratory": "lab",
-        "jobname": "testrun",
-        "model": "cice5",
-        "exe": "test.exe",
-        "experiment": ctrldir_basename,
-        "metadata": {"enable": False},
-    }
-    write_config(config)
+
+@pytest.fixture
+def config(request):
+    """
+    Write a specified dictionary to config.yaml.
+    Used to allow writing configs with and without
+    restarts.
+    """
+    config = request.param
+    write_config(config, config_path)
+
+    yield config_path
+
+    os.remove(config_path)
 
 
 def teardown_module(module):
@@ -90,13 +112,16 @@ def teardown_module(module):
 @pytest.fixture(autouse=True)
 def empty_workdir():
     """
-    Tests involving cloning + specified restarts require
-    a clean work directory
+    Model setup tests require a clean work directory and symlink from
+    the control directory.
     """
     expt_workdir.mkdir(parents=True)
+    # Symlink must exist for setup to use correct locations
+    workdir.symlink_to(expt_workdir)
 
     yield expt_workdir
     shutil.rmtree(expt_workdir)
+    workdir.unlink()
 
 
 @pytest.fixture
@@ -117,7 +142,9 @@ def cice_config_files():
             os.remove(name)
 
 
-def test_setup(cice_config_files):
+@pytest.mark.parametrize("config", [DEFAULT_CONFIG],
+                         indirect=True)
+def test_setup(config, cice_config_files):
     """
     # Confirm that payu setup works
     """
@@ -144,138 +171,50 @@ def test_setup(cice_config_files):
     assert input_nml["setup_nml"]["dump_last"] is True
 
 
-class TestClone:
+@pytest.fixture
+def prior_restart_dir_cice5():
     """
-    Test setting up the cice model in cloned control directories.
+    Create fake prior restart files required by CICE5's setup.
+    """
+    prior_restart_path = expt_archive_dir / "restartXYZ"
+    os.mkdir(prior_restart_path)
+
+    # Restart files required by CICE5 setup
+    (prior_restart_path/ICED_RESTART_NAME).touch()
+    (prior_restart_path/RESTART_POINTER_NAME).touch()
+
+    yield prior_restart_path
+
+    # Teardown
+    shutil.rmtree(prior_restart_path)
+
+
+@pytest.mark.parametrize("config", [CONFIG_WITH_RESTART],
+                         indirect=True)
+def test_restart_setup(config, cice_config_files, prior_restart_dir_cice5):
+    """
+    Test that seting up an experiment from a cloned control directory
+    works when a restart directory is specified.
+
+    Use a restart directory mimicking the CICE5 files required by setup.
     """
 
-    @pytest.fixture
-    def ctrldir_repo(self, cice_config_files):
-        """
-        Initialise a git repository in the control directory.
-        """
-        repo = git.Repo.init(ctrldir)
-        repo.index.add("*")
+    # Setup experiment
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
 
-        # Commit the changes
-        repo.index.commit("First commit - initialising repository")
+        # Add a runtime to test calculated cice runtime values
+        expt.runtime = {"years": 0,
+                        "months": 0,
+                        "days": 2}
+        model = expt.models[0]
 
-        yield repo
+        # Function to test
+        model.setup()
 
-        # Remove git from control dir after tests
-        git.rmtree(ctrldir/".git")
+    # Check restart files were copied to work directory.
+    cice_work_restart_files = os.listdir(model.work_restart_path)
 
-    @pytest.fixture
-    def clone_control_dir(self, ctrldir_repo):
-        """
-        Yield function for cloning the control directory. Cloning
-        is not done directly in fixture to allow for an optional
-        restart path to be supplied.
-        """
-        cloned_repo_path = tmpdir / "clonedRepo"
-
-        def _clone_control_dir(restart_path=None):
-            clone(str(ctrldir),
-                  cloned_repo_path,
-                  lab_path=labdir,
-                  restart_path=restart_path)
-            return cloned_repo_path
-
-        yield _clone_control_dir
-
-        # Teardown: Delete the cloned repository
-        try:
-            git.rmtree(cloned_repo_path)
-        except FileNotFoundError:
-            # Cloned repo won't exist if yielded function not called
-            pass
-
-    def test_clone(self, cice_config_files, ctrldir_repo, clone_control_dir):
-        """
-        Test that setting up cice works from a cloned control directory.
-        """
-        source_main = str(ctrldir_repo.active_branch)
-
-        # Clone control directory
-        cloned_repo_path = clone_control_dir(restart_path=None)
-        cloned_repo = git.Repo(cloned_repo_path)
-        cloned_repo.git.checkout(source_main)
-
-        cloned_ctrl_path_files = os.listdir(cloned_repo_path)
-        for name in CICE_NML_NAMES:
-            assert name in cloned_ctrl_path_files
-
-        # Set up experiment
-        with cd(cloned_repo_path):
-            lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-            expt = payu.experiment.Experiment(lab, reproduce=False)
-            model = expt.models[0]
-
-            # Test that model setup runs without issue
-            model.setup()
-
-        work_path_files = os.listdir(model.work_path)
-        for name in CICE_NML_NAMES:
-            assert name in work_path_files
-
-    @pytest.fixture
-    def prior_restart_dir_cice5(self, scope="class"):
-        """
-        Create fake prior restart files required by CICE5's setup.
-        """
-        prior_restart_path = expt_archive_dir / "restartXYZ"
-        os.mkdir(prior_restart_path)
-
-        # Restart files required by CICE5 setup
-        (prior_restart_path/ICED_RESTART_NAME).touch()
-        (prior_restart_path/RESTART_POINTER_NAME).touch()
-
-        yield prior_restart_path
-
-        # Teardown
-        shutil.rmtree(prior_restart_path)
-
-    def test_restart_clone(self, cice_config_files, ctrldir_repo,
-                           clone_control_dir, prior_restart_dir_cice5):
-
-        """
-        Test that seting up an experiment from a cloned control directory
-        works when a restart directory is specified.
-
-        Use a restart directory mimicking the CICE5 restarts required by setup.
-        This differs from the cice4 test in that 'cice_in.nml' doesn't exist.
-        """
-        source_main = str(ctrldir_repo.active_branch)
-
-        # Clone control directory
-        cloned_repo_path = clone_control_dir(
-                                restart_path=prior_restart_dir_cice5
-                            )
-        cloned_repo = git.Repo(cloned_repo_path)
-        cloned_repo.git.checkout(source_main)
-
-        cloned_ctrl_path_files = os.listdir(cloned_repo_path)
-
-        for name in CICE_NML_NAMES:
-            assert name in cloned_ctrl_path_files
-
-        # Setup experiment
-        with cd(cloned_repo_path):
-
-            lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-            expt = payu.experiment.Experiment(lab, reproduce=False)
-            model = expt.models[0]
-
-            # Test that model setup runs without issue
-            model.setup()
-
-        work_path_files = os.listdir(model.work_path)
-        for name in CICE_NML_NAMES:
-            assert name in work_path_files
-
-        # Check restart files were copied to cloned experiment's
-        # work directory.
-        cice_work_restart_files = os.listdir(model.work_restart_path)
-
-        for file in [ICED_RESTART_NAME, RESTART_POINTER_NAME]:
-            assert file in cice_work_restart_files
+    for file in [ICED_RESTART_NAME, RESTART_POINTER_NAME]:
+        assert file in cice_work_restart_files
