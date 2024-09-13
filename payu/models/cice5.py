@@ -72,7 +72,7 @@ class Cice5(Cice):
         # Re-read ice timestep and move this over there
         self.set_local_timestep(t_step)
 
-    def calc_runtime(self, setup_nml):
+    def _calc_runtime(self):
         """
         Overrides the cice driver method, as CICE5 in OM2 does not use
         the timing information in the cice_in.nml namelist.

@@ -179,7 +179,8 @@ class Cice(Model):
                 iced_restart_file = sorted(iced_restart_files)[-1]
 
             if iced_restart_file is None:
-                raise RuntimeError('payu: error: No restart file available.')
+                raise FileNotFoundError(
+                    f'No iced restart file found in {self.prior_restart_path}')
 
             res_ptr_path = os.path.join(self.work_init_path,
                                         'ice.restart_file')
@@ -202,29 +203,27 @@ class Cice(Model):
             if setup_nml['restart']:
                 self.link_restart(setup_nml['pointer_file'])
 
-        self.calc_runtime(setup_nml)
+        self._calc_runtime()
 
         # Write any changes to the work directory copy of the cice
         # namelist
         nml_path = os.path.join(self.work_path, self.ice_nml_fname)
         self.ice_in.write(nml_path, force=True)
 
-    def calc_runtime(self, setup_nml):
+    def _calc_runtime(self):
         """
         Calculate 1: the previous number of timesteps simulated, and 2:
         the number of timesteps to simulate in the next run.
+        Modifies the working self.ice_in namelist in place
 
         Note 1: This method is overridden in the cice5 driver.
 
         Note 2: For ESM1.5, the actual model start date and run time are
         controlled via the separate input_ice.nml namelist, with relevant
         calculations in the access driver.
-
-        Parameters
-        ----------
-        setup_nml: Open 'setup_nml' section of the cice_in.nml namelist.
-        Modifies in place.
         """
+        setup_nml = self.ice_in['setup_nml']
+
         init_date = datetime.date(year=setup_nml['year_init'], month=1, day=1)
         if setup_nml['days_per_year'] == 365:
             caltype = cal.NOLEAP
@@ -283,7 +282,6 @@ class Cice(Model):
         # Add the prior runtime and new runtime to the working copy of the
         # CICE namelist.
         setup_nml['npt'] = run_runtime / setup_nml['dt']
-        assert (prior_runtime_seconds % setup_nml['dt'] == 0)
         setup_nml['istep0'] = int(prior_runtime_seconds / setup_nml['dt'])
 
     def set_local_timestep(self, t_step):
