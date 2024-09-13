@@ -11,6 +11,7 @@ from test.common import tmpdir, ctrldir, labdir, expt_workdir
 from test.common import workdir, expt_archive_dir, ctrldir_basename
 from test.common import write_config, config_path, write_metadata
 from test.common import make_exe
+from test.models.test_cice import BaseCICESetup
 
 verbose = True
 
@@ -124,27 +125,9 @@ def empty_workdir():
     workdir.unlink()
 
 
-@pytest.fixture
-def cice_config_files():
-    cice_nml = DEFAULT_CICE_NML
-
-    with cd(ctrldir):
-        # 2. Create config.nml
-        f90nml.write(cice_nml, CICE_NML_NAMES[0])
-        for name in CICE_NML_NAMES[1:]:
-            with open(name, "w") as f:
-                f.close()
-
-    yield
-
-    with cd(ctrldir):
-        for name in CICE_NML_NAMES:
-            os.remove(name)
-
-
 @pytest.mark.parametrize("config", [DEFAULT_CONFIG],
                          indirect=True)
-def test_setup(config, cice_config_files):
+def test_setup(config, renamed_fixt):
     """
     # Confirm that payu setup works
     """
@@ -218,3 +201,46 @@ def test_restart_setup(config, cice_config_files, prior_restart_dir_cice5):
 
     for file in [ICED_RESTART_NAME, RESTART_POINTER_NAME]:
         assert file in cice_work_restart_files
+
+
+
+@pytest.fixture
+def cice_config_files():
+    cice_nml = DEFAULT_CICE_NML
+
+    with cd(ctrldir):
+        # 2. Create config.nml
+        f90nml.write(cice_nml, CICE_NML_NAMES[0])
+        for name in CICE_NML_NAMES[1:]:
+            with open(name, "w") as f:
+                f.close()
+
+    yield
+
+    with cd(ctrldir):
+        for name in CICE_NML_NAMES:
+            os.remove(name)
+
+
+class TestCice5Setup(BaseCICESetup):
+    expected_work_path_files = CICE_NML_NAMES
+    excluded_work_path_files = []
+    expected_work_restart_files = [ICED_RESTART_NAME, RESTART_POINTER_NAME]
+
+    def check_input_nml(self, input_nml, cice_config_files):
+        if cice_config_files['ice_history']:
+            assert (input_nml["icefields_nml"] ==
+                    cice_config_files["ice_history"]["icefields_nml"])
+        else:
+            assert input_nml["icefields_nml"] == DEFAULT_CICE_NML["icefields_nml"]
+
+    def check_dump_last(self, input_nml):
+        # Check dump_last doesn't exist
+        with pytest.raises(KeyError, match="dump_last"):
+            input_nml["setup_nml"]["dump_last"]
+
+    def add_runtime(self, expt):
+        pass
+
+    def check_work_nml_after_restart(self, work_cice_nml):
+        pass
