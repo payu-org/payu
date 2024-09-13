@@ -341,24 +341,21 @@ FMS based model only options:
    is then ``ncpus / nthreads``
 
 
-Postprocessing
+User Processing
 --------------
 
-``collate`` (*Default:* ``True``)
-   Controls whether or not a collation job is submitted after model execution.
-
-   This is typically ``True``, although individual model drivers will often set
-   the default value to ``False`` if collation is unnecessary.
-
-   See above for specific ``collate`` options.
-
 ``userscripts``
-   Namelist to include separate userscripts or subcommands at various stages of
+   Configure userscripts or subcommands to run at various :ref:`stages<experiment-steps>` of
    a payu submission. Inputs can be either script names (``some_script.sh``) or
    individual subcommands (``echo "some_data" > input.nml``, ``qsub
-   some_script.sh``).
+   some_script.sh``). Userscripts are run within the same PBS job as the model 
+   execution unless the script starts a new PBS job. Userscripts therefore have
+   the same compute, storage and network access as the model. The exceptions to 
+   this are when ``payu setup`` is called directly, then the relevant userscripts 
+   will run on the login node, and the ``sync`` userscript, which runs in the 
+   ``sync`` job.
 
-   Specific scripts are defined below:
+   Specific stages are defined below:
 
    ``init``
       User-defined command to be called after experiment initialization, but
@@ -381,9 +378,10 @@ Postprocessing
       returns an error code. Useful for automatic error postmortem.
    
    ``sync``
-      User-defined command to be called at the start of the ``sync`` pbs job.
-      This is useful for any post-processing before syncing files to a remote
-      archive.
+      User-defined command to be called at the start of the ``sync`` PBS job. 
+      This is useful for any post-processing before syncing files to a remote 
+      archive. Note these scripts are only run if automatic syncing is enabled 
+      or if payu sync is run manually.
 
 ``postscript``
    This is an older, less user-friendly, method to submit a script after ``payu`` 
