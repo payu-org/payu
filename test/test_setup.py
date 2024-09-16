@@ -202,3 +202,20 @@ def test_check_payu_version_pass_with_no_minimum_version(current_version):
 
             # Check runs without an error
             expt.check_payu_version()
+
+
+@pytest.mark.parametrize(
+    "minimum_version", ["abcdefg", None]
+)
+def test_check_payu_version_configured_invalid_version(minimum_version):
+    with patch('payu.__version__', "1.0.0"):
+        with patch.object(payu.experiment.Experiment, '__init__',
+                          lambda x: None):
+            expt = payu.experiment.Experiment()
+
+            expt.config = {
+                "payu_minimum_version": minimum_version
+            }
+
+            with pytest.raises(ValueError):
+                expt.check_payu_version()

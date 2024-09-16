@@ -393,17 +393,26 @@ class Experiment(object):
         payu version, if configured"""
         # TODO: Move this function to a setup file if setup is moved to
         # a separate file?
-        if "payu_minimum_version" not in self.config:
+        minimum_version_fieldname = "payu_minimum_version"
+        if minimum_version_fieldname not in self.config:
             # Skip version check
             return
 
-        minimum_version = str(self.config['payu_minimum_version'])
+        minimum_version = str(self.config[minimum_version_fieldname])
+        try:
+            # Attempt to parse the version
+            parsed_minimum_version = version.parse(minimum_version)
+        except version.InvalidVersion:
+            raise ValueError(
+                "Invalid version in configuration file (config.yaml) for "
+                f"'{minimum_version_fieldname}': {minimum_version}"
+            )
 
         # Get the current version of the package
         current_version = payu.__version__
 
         # Compare versions
-        if version.parse(current_version) < version.parse(minimum_version):
+        if version.parse(current_version) < parsed_minimum_version:
             raise RuntimeError(
                 f"Payu version {current_version} does not meet the configured "
                 f"minimum version. A version >= {minimum_version} is "
