@@ -4,6 +4,7 @@ from pathlib import Path
 import pdb
 import pytest
 import shutil
+from unittest.mock import patch
 import yaml
 
 import payu
@@ -136,3 +137,85 @@ def test_setup():
     for i in range(1, 4):
         assert((workdir/'input_00{i}.bin'.format(i=i)).stat().st_size
                == 1000**2 + i)
+
+
+@pytest.mark.parametrize(
+    "current_version, min_version",
+    [
+        ("2.0.0", "1.0.0"),
+        ("v0.11.2", "v0.11.1"),
+        ("1.0.0", "1.0.0"),
+        ("1.0.0+4.gabc1234", "1.0.0"),
+        ("1.0.0+0.gxyz987.dirty", "1.0.0"),
+        ("1.1.5", 1.1)
+    ]
+)
+def test_check_payu_version_pass(current_version, min_version):
+    # Mock the payu version
+    with patch('payu.__version__', current_version):
+        # Avoid running Experiment init method
+        with patch.object(payu.experiment.Experiment, '__init__',
+                          lambda x: None):
+            expt = payu.experiment.Experiment()
+
+            # Mock config.yaml
+            expt.config = {
+                "payu_minimum_version": min_version
+            }
+            expt.check_payu_version()
+
+
+@pytest.mark.parametrize(
+    "current_version, min_version",
+    [
+        ("1.0.0", "2.0.0"),
+        ("v0.11", "v0.11.1"),
+        ("1.0.0+4.gabc1234", "1.0.1"),
+        ("1.0.0+0.gxyz987.dirty", "v1.2"),
+    ]
+)
+def test_check_payu_version_fail(current_version, min_version):
+    with patch('payu.__version__', current_version):
+        with patch.object(payu.experiment.Experiment, '__init__',
+                          lambda x: None):
+            expt = payu.experiment.Experiment()
+
+            expt.config = {
+                "payu_minimum_version": min_version
+            }
+
+            with pytest.raises(RuntimeError):
+                expt.check_payu_version()
+
+
+@pytest.mark.parametrize(
+    "current_version", ["1.0.0", "1.0.0+4.gabc1234"]
+)
+def test_check_payu_version_pass_with_no_minimum_version(current_version):
+    with patch('payu.__version__', current_version):
+        with patch.object(payu.experiment.Experiment, '__init__',
+                          lambda x: None):
+            expt = payu.experiment.Experiment()
+
+            # Leave version out of config.yaml
+            expt.config = {}
+
+            # Check runs without an error
+            expt.check_payu_version()
+
+
+@pytest.mark.parametrize(
+    "minimum_version", ["abcdefg", None]
+)
+def test_check_payu_version_configured_invalid_version(minimum_version):
+    with patch('payu.__version__', "1.0.0"):
+        with patch.object(payu.experiment.Experiment, '__init__',
+                          lambda x: None):
+            expt = payu.experiment.Experiment()
+
+            expt.config = {
+                "payu_minimum_version": minimum_version
+            }
+
+            with pytest.raises(ValueError):
+                expt.check_payu_version()

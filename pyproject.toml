@@ -30,7 +30,8 @@ dependencies = [
     "tenacity >=8.0.0",
     "cftime",
     "GitPython >=3.1.40",
-    "ruamel.yaml >=0.18.5"
+    "ruamel.yaml >=0.18.5",
+    "packaging"
 ]
 
 [project.optional-dependencies]

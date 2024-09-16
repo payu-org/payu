@@ -571,3 +571,11 @@ Miscellaneous
 
       module use /path/to/module/directory
       payu run
+
+``payu_minimum_version``
+   Specify the minimum version of payu required to run the configuration.
+   At the start of experiment setup, payu checks whether its current version
+   is an earlier version, and if so, payu will refuse to run.
+   This is useful for models that require features that are in later versions
+   of payu.
+   Note that this check will only run with payu versions later than `1.1.5`.
