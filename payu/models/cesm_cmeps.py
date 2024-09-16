@@ -251,7 +251,7 @@ class CesmCmeps(Model):
                     case _:
                         raise ValueError(
                             f"The iotype for {io_section} in {NUOPC_CONFIG} is "
-                            'invalid, valid options are "netcdf", "pnetcdf" and "netcdf4p"'
+                            'invalid, valid options: "netcdf", "pnetcdf", "netcdf4p"'
                         )
         return True
 
