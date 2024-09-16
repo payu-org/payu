@@ -124,7 +124,16 @@ class GitRepository:
         objects"""
         branch_names_dict = {}
         for remote in self.repo.remotes:
-            remote.fetch()
+            try:
+                remote.fetch()
+            except git.exc.GitCommandError:
+                warnings.warn(
+                    f"Failed to fetch from remote repository: {remote.name} " +
+                    f"(url: {remote.url})",
+                    PayuGitWarning
+                )
+                continue
+
             for ref in remote.refs:
                 branch_names_dict[ref.remote_head] = ref
         return branch_names_dict
