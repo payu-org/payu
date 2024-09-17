@@ -140,36 +140,46 @@ class StagedCable(Model):
         self._prepare_stage()
 
     # def get_prior_restart_files(self):
-        # """Retrieve the prior restart files from the completed stages."""
-        # # Go to the archives of the previous completed stages and retrieve
-        # # the files from them, with the most recent taking precedent.
+        """Retrieve the prior restart files from the completed stages."""
+        # Go to the archives of the previous completed stages and retrieve
+        # the files from them, with the most recent taking precedent.
 
-        # # Unfortunately, we can't simply use the
-        # # "if {filename} not in {restart_files}, because files from different
-        # # stages will have different paths, even if the local file name is the
-        # # same. To avoid having to call os.path.basepath on the list of restart
-        # # files for every addition, we'll store the list of local file names +
-        # # paths separately, and pull them together at the end.
+        # We need to take the most recent version of a given restart file as
+        # input to the next stage. This sometimes means taking a restart from
+        # runs that are not the most recent. For example, the climate restart
+        # file from the first stage of a TRENDY run is used in the LUC module
+        # of all proceeding runs, despite there being more recent climate
+        # restarts available.
 
-        # file_names = []
-        # path_names = []
+        # Unfortunately, we can't simply use the
+        # "if {filename} not in {restart_files}", because files from different
+        # stages will have different paths, even if the local file name is the
+        # same. To avoid having to call os.path.basepath on the list of restart
+        # files for every addition, we'll store the list of local file names +
+        # paths separately, and pull them together at the end.
 
-        # num_completed_stages = len(self.configuration_log['completed_stages'])
+        file_names = []
+        path_names = []
 
-        # for stage_number in reversed(range(num_completed_stages)):
-            # respath = os.path.join(
-                # self.control_path,
-                # f'archive/output{stage_number:03d}/restart'
-            # )
+        # Don't use the expt.counter, because the number of runs is set by the
+        # configuration log.
+        num_completed_stages = len(self.configuration_log['completed_stages'])
 
-            # [(file_names.append(file), path_names.append(respath))
-                # for file in os.listdir(respath) if file not in file_names]
+        for stage_number in reversed(range(num_completed_stages)):
+            respath = os.path.join(
+                self.expt.archive_path,
+                f'output{stage_number:03d}',
+                self.work_restart_path
+            )
 
-        # # Zip up the files
-        # restart_files = [os.path.join(path, file)
-                         # for path, file in zip(path_names, file_names)]
+            [(file_names.append(file), path_names.append(respath))
+                for file in os.listdir(respath) if file not in file_names]
 
-        # return restart_files
+        # Zip up the files
+        restart_files = [os.path.join(path, file)
+                         for path, file in zip(path_names, file_names)]
+
+        return restart_files
 
     def _prepare_stage(self):
         """Apply the stage namelist to the master namelist."""
@@ -222,7 +232,7 @@ configuration log."""
 
         self._save_configuration_log()
 
-        if int(os.environ['PAYU_N_RUNS']) == 0:
+        if len(configuration_log["queued_stages"]) == 0:
             os.remove('configuration_log.yaml')
 
         super(StagedCable, self).archive()
