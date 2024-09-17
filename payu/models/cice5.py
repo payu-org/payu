@@ -74,7 +74,7 @@ class Cice5(Cice):
 
     def _calc_runtime(self):
         """
-        Overrides the cice driver method, as CICE5 in OM2 does not use
+        Overrides the cice driver method, as CICE5 can store the timing information in restart files does not use
         the timing information in the cice_in.nml namelist.
         """
         pass

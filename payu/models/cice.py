@@ -235,10 +235,6 @@ class Cice(Model):
             prior_nml_path = os.path.join(self.prior_restart_path,
                                           self.ice_nml_fname)
 
-            # TODO: Are there any models which leave cice_in.nml in
-            # the output rather than restart directory? If not we can remove
-            # this.
-
             # With later versions this file exists in the prior restart path,
             # but this was not always the case, so check, and if not there use
             # prior output path
