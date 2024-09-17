@@ -194,12 +194,21 @@ def test_setup(config, cice_config_files):
         input_nml["setup_nml"]["dump_last"]
 
 
-PREVIOUS_ISTEP0 = 0
-PREVIOUS_NPT = 8760  # 1 year of 1hr timesteps
+@pytest.fixture(
+    # prior_istep0, prior_npt, runtime, expected_npt
+    params=[
+        (0, 0, {"years": 0, "months": 0, "days": 2}, 48),
+        (0, 8670, {"years": 1, "months": 0, "days": 0}, 8760),
+        (8760000, 8670, {"years": 0, "months": 0, "days": 31}, 744),
+        (1416, 0, {"years": 0, "months": 1, "days": 0}, 744)
+    ]
+)
+def run_timing_params(request):
+    return request.param
 
 
 @pytest.fixture
-def prior_restart_dir_cice4():
+def prior_restart_cice4(run_timing_params):
     """
     Create fake prior restart files required by CICE4's setup.
     This differs from CICE5, which doesn't require a cice_in.nml
@@ -208,10 +217,11 @@ def prior_restart_dir_cice4():
     prior_restart_path = RESTART_PATH
     os.mkdir(prior_restart_path)
 
+    prior_istep0, prior_npt, _, _ = run_timing_params
     # Previous cice_in namelist with time information
     restart_cice_in = {"setup_nml": {
-            "istep0": PREVIOUS_ISTEP0,
-            "npt": PREVIOUS_NPT,
+            "istep0": prior_istep0,
+            "npt": prior_npt,
             "dt": DEFAULT_DT
         }}
     f90nml.write(restart_cice_in, prior_restart_path/CICE_NML_NAME)
@@ -228,7 +238,8 @@ def prior_restart_dir_cice4():
 
 @pytest.mark.parametrize("config", [CONFIG_WITH_RESTART],
                          indirect=True)
-def test_restart_setup(config, cice_config_files, prior_restart_dir_cice4):
+def test_restart_setup(config, cice_config_files, prior_restart_cice4,
+                       run_timing_params):
     """
     Test that seting up an experiment from a cloned control directory
     works when a restart directory is specified.
@@ -236,15 +247,14 @@ def test_restart_setup(config, cice_config_files, prior_restart_dir_cice4):
     Use a restart directory mimicking the CICE4 files required by setup.
     """
 
+    prior_istep0, prior_npt, runtime, expected_npt = run_timing_params
     # Setup experiment
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, reproduce=False)
 
         # Add a runtime to test calculated cice runtime values
-        expt.runtime = {"years": 0,
-                        "months": 0,
-                        "days": 2}
+        expt.runtime = runtime
         model = expt.models[0]
 
         # Function to test
@@ -255,10 +265,10 @@ def test_restart_setup(config, cice_config_files, prior_restart_dir_cice4):
         os.path.join(model.work_path, CICE_NML_NAME)
         )
     assert work_cice_nml["setup_nml"]["istep0"] == (
-        PREVIOUS_ISTEP0 + PREVIOUS_NPT
+        prior_istep0 + prior_npt
     )
     assert work_cice_nml["setup_nml"]["npt"] == (
-        48
+        expected_npt
     )
 
     # Check restart files were copied to work directory.

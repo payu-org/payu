@@ -176,7 +176,7 @@ def prior_restart_dir_cice5():
     """
     Create fake prior restart files required by CICE5's setup.
     """
-    prior_restart_path = expt_archive_dir / "restartXYZ"
+    prior_restart_path = RESTART_PATH
     os.mkdir(prior_restart_path)
 
     # Restart files required by CICE5 setup
@@ -203,11 +203,6 @@ def test_restart_setup(config, cice_config_files, prior_restart_dir_cice5):
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, reproduce=False)
-
-        # Add a runtime to test calculated cice runtime values
-        expt.runtime = {"years": 0,
-                        "months": 0,
-                        "days": 2}
         model = expt.models[0]
 
         # Function to test

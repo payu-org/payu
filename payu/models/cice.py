@@ -282,6 +282,7 @@ class Cice(Model):
         # Add the prior runtime and new runtime to the working copy of the
         # CICE namelist.
         setup_nml['npt'] = run_runtime / setup_nml['dt']
+        assert (prior_runtime_seconds % setup_nml['dt'] == 0)
         setup_nml['istep0'] = int(prior_runtime_seconds / setup_nml['dt'])
 
     def set_local_timestep(self, t_step):
