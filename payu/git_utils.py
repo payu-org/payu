@@ -129,7 +129,10 @@ class GitRepository:
             except git.exc.GitCommandError:
                 warnings.warn(
                     f"Failed to fetch from remote repository: {remote.name} " +
-                    f"(url: {remote.url})",
+                    f"(url: {remote.url}). Payu is not able to determine " +
+                    "remote branch names, which are used in payu checkout " +
+                    "to check if a branch already exists, or when creating " +
+                    "a new branch from a remote branch.",
                     PayuGitWarning
                 )
                 continue
