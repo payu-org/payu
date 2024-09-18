@@ -124,7 +124,19 @@ class GitRepository:
         objects"""
         branch_names_dict = {}
         for remote in self.repo.remotes:
-            remote.fetch()
+            try:
+                remote.fetch()
+            except git.exc.GitCommandError:
+                warnings.warn(
+                    f"Failed to fetch from remote repository: {remote.name} " +
+                    f"(url: {remote.url}). Payu is not able to determine " +
+                    "remote branch names, which are used in payu checkout " +
+                    "to check if a branch already exists, or when creating " +
+                    "a new branch from a remote branch.",
+                    PayuGitWarning
+                )
+                continue
+
             for ref in remote.refs:
                 branch_names_dict[ref.remote_head] = ref
         return branch_names_dict

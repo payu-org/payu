@@ -204,3 +204,27 @@ def test_git_checkout_existing_branch():
     current_hash = current_branch.object.hexsha
     assert str(current_branch) == 'branch-1'
     assert current_hash == branch_1_hash
+
+
+def test_git_checkout_missing_origin_repo():
+    """In Issue #405, there was a bug where origin remote path was deleted,
+    the payu checkout would raise an error when fetching remote repository"""
+    # Create remote repository
+    remote_repo_path = tmpdir / 'remote_repo'
+    remote_repo = create_new_repo(remote_repo_path)
+
+    # Clone repository
+    cloned_repo_path = tmpdir / 'cloned_repo'
+    remote_repo.clone(cloned_repo_path)
+
+    # Remove remote directory - this will raise errors when remote is fetched
+    shutil.rmtree(remote_repo_path)
+
+    repo = GitRepository(cloned_repo_path)
+
+    # Check remote branches runs with a warning
+    with pytest.warns(PayuGitWarning):
+        repo.checkout_branch(branch_name="branch-1", new_branch=True)
+
+        # No remote branches found
+        assert repo.remote_branches_dict() == {}
