@@ -198,7 +198,6 @@ class CesmCmeps(Model):
             if nthreads < 1:
                 raise ValueError(f"The number of {realm}_nthreads ({nthreads}) in "
                                  f"{NUOPC_CONFIG} must be at least 1.")
-            
             if nthreads > 1:
                 npes = nthreads*ntasks*pestride
                 # this is taken from
@@ -244,10 +243,10 @@ class CesmCmeps(Model):
                             iostride = int(self.runconfig.get(io_section, "pio_stride"))
                             if (niotasks <= 0):
                                 warn(f"The pio_numiotasks for {io_section} in {NUOPC_CONFIG} is "
-                                    "not set, using model default")
+                                     "not set, using model default")
                             if (iostride <= 0):
                                 warn(f"The pio_stride for {io_section} in {NUOPC_CONFIG} is "
-                                    "not set, using model default")
+                                     "not set, using model default")
                             if (all([
                                     niotasks > 0, 
                                     iostride > 0,

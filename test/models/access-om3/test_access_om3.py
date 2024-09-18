@@ -312,4 +312,3 @@ def test__setup_checks_bad_io(pio_numiotasks, pio_stride):
             model._setup_checks()
 
     teardown_cmeps_config()
-    
