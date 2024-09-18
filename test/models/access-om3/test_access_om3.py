@@ -249,10 +249,11 @@ def test__setup_checks_bad_io(ncpu, pio_numiotasks, pio_stride, pio_root, pio_ty
 
     teardown_cmeps_config()
 
+
 @pytest.mark.parametrize("pio_typename, pio_async_interface", [
-                         ("netcdf4p", ".true."),  
-                         ("pnetcdf", ".true."),  
-                         ("netcdf", ".true."),   
+                         ("netcdf4p", ".true."),
+                         ("pnetcdf", ".true."),
+                         ("netcdf", ".true."),
                          ])
 def test__setup_checks_pio_async(pio_typename, pio_async_interface):
 
@@ -273,7 +274,9 @@ def test__setup_checks_pio_async(pio_typename, pio_async_interface):
 
         model.runconfig = MockRunConfig(test_runconf)
 
-        with pytest.warns(Warning, match = "does not do consistency checks for asynchronous pio"):
+        with pytest.warns(
+            Warning, match="does not do consistency checks for asynchronous pio"
+            ):
             model._setup_checks()
 
     teardown_cmeps_config()
