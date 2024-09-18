@@ -536,6 +536,53 @@ def test_clone(mock_uuid):
     assert [head.name for head in cloned_repo2.heads] == ["Branch1", "Branch2"]
 
 
+@pytest.mark.parametrize(
+    "start_point_type", ["commit", "tag"]
+)
+def test_clone_startpoint(start_point_type):
+    # Create a repo to clone
+    source_repo_path = tmpdir / "sourceRepo"
+    source_repo_path.mkdir()
+    source_repo = setup_control_repository(path=source_repo_path)
+
+    # Create branch1
+    branch1 = source_repo.create_head("Branch1")
+    branch1_commit = branch1.object.hexsha
+    if start_point_type == "tag":
+        source_repo.create_tag('v1.0', ref=branch1.commit)
+        start_point = 'v1.0'
+    elif start_point_type == "commit":
+        start_point = branch1_commit
+
+    # Add another commit on main branch so the commit is different to branch1
+    (source_repo_path / "mock_file.txt").touch()
+    source_repo.index.add("mock_file.txt")
+    source_repo.index.commit("Another commit with a mock file")
+
+    source_repo_commit = source_repo.active_branch.object.hexsha
+    assert source_repo_commit != branch1_commit
+
+    # Run Clone
+    cloned_repo_path = tmpdir / "clonedRepo"
+    with cd(tmpdir):
+        clone(
+            repository=str(source_repo_path),
+            directory=cloned_repo_path,
+            lab_path=labdir,
+            new_branch_name="Branch3",
+            start_point=start_point
+        )
+
+    cloned_repo = git.Repo(cloned_repo_path)
+
+    # Check branched starting from start point
+    second_latest_commit = list(cloned_repo.iter_commits(max_count=2))[1]
+    assert second_latest_commit.hexsha == branch1_commit
+
+    # Latest commit is different (new commit from metadata)
+    assert source_repo_commit != cloned_repo.active_branch.object.hexsha
+
+
 def add_and_commit_metadata(repo, metadata):
     """Helper function to create/update metadata file and commit"""
     metadata_path = ctrldir / "metadata.yaml"
