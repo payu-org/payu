@@ -111,6 +111,7 @@ class MockRunConfig:
                          (100000, 50000, 1, 2, 0),  # max cpu
                          (100000, 1, 1, 1, 99999),  # max cpu
                          ])
+@pytest.mark.filterwarnings("error")
 def test__setup_checks_npes(ncpu, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe):
 
     cmeps_config(ncpu)
@@ -184,6 +185,7 @@ def test__setup_checks_too_many_pes(ncpu, moc_ntasks, moc_nthreads, moc_pestride
                          (5, 3, 2, 0, "netcdf4p"),
                          (100000, 50001, 1, 2, "netcdf4p"),  # odd ncpu
                          ])
+@pytest.mark.filterwarnings("error")
 def test__setup_checks_io(ncpu, pio_numiotasks, pio_stride, pio_root, pio_typename):
 
     cmeps_config(ncpu)
@@ -281,20 +283,17 @@ def test__setup_checks_pio_async(pio_typename, pio_async_interface):
 
     teardown_cmeps_config()
 
-@pytest.mark.parametrize("pio_typename, pio_async_interface", [
-                         ("netcdf4p", ".false."),  
-                         ("pnetcdf", ".false."),
-                         ("netcdf", ".false."),   
+@pytest.mark.parametrize("pio_numiotasks, pio_stride", [
+                         (1, -99),
+                         (-99, 1), 
                          ])
-@pytest.mark.filterwarnings("error")
-def test__setup_checks_not_pio_async(pio_typename, pio_async_interface):
-
+def test__setup_checks_bad_io(pio_numiotasks, pio_stride):
     cmeps_config(1)
 
     test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
     test_runconf["MOC_modelio"].update(dict(
-        pio_async_interface=pio_async_interface,
-        pio_typename=pio_typename,
+        pio_numiotasks=pio_numiotasks,
+        pio_stride=pio_stride,
     ))
 
     with cd(ctrldir):
@@ -306,6 +305,9 @@ def test__setup_checks_not_pio_async(pio_typename, pio_async_interface):
 
         model.runconfig = MockRunConfig(test_runconf)
 
-        model._setup_checks()
+        with pytest.warns(
+            Warning, match="using model default"
+        ):
+            model._setup_checks()
 
     teardown_cmeps_config()

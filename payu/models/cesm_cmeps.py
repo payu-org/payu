@@ -248,11 +248,11 @@ class CesmCmeps(Model):
                             if (iostride<=0) : 
                                 warn(f"The pio_stride for {io_section} in {NUOPC_CONFIG} is "
                                     "not set, using model default")
-                            if (all(
+                            if (all([
                                     niotasks>0, 
                                     iostride>0,
-                                    ioroot + (niotasks-1)*iostride) >= npes
-                                ):
+                                    (ioroot + (niotasks-1)*iostride) >= npes
+                                ])):
                                 raise ValueError(
                                     f"The iolayout for {io_section} in {NUOPC_CONFIG} is "
                                     "requesting out of range cpus"
