@@ -248,3 +248,61 @@ def test__setup_checks_bad_io(ncpu, pio_numiotasks, pio_stride, pio_root, pio_ty
             model._setup_checks()
 
     teardown_cmeps_config()
+
+@pytest.mark.parametrize("pio_typename, pio_async_interface", [
+                         ("netcdf4p", ".true."),  
+                         ("pnetcdf", ".true."),  
+                         ("netcdf", ".true."),   
+                         ])
+def test__setup_checks_pio_async(pio_typename, pio_async_interface):
+
+    cmeps_config(1)
+
+    test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
+    test_runconf["MOC_modelio"].update(dict(
+        pio_async_interface=pio_async_interface,
+        pio_typename=pio_typename,
+    ))
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        model.realms = ["moc"]
+
+        model.runconfig = MockRunConfig(test_runconf)
+
+        with pytest.warns(Warning, match = "does not do consistency checks for asynchronous pio"):
+            model._setup_checks()
+
+    teardown_cmeps_config()
+
+@pytest.mark.parametrize("pio_typename, pio_async_interface", [
+                         ("netcdf4p", ".false."),  
+                         ("pnetcdf", ".false."),
+                         ("netcdf", ".false."),   
+                         ])
+@pytest.mark.filterwarnings("error")
+def test__setup_checks_not_pio_async(pio_typename, pio_async_interface):
+
+    cmeps_config(1)
+
+    test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
+    test_runconf["MOC_modelio"].update(dict(
+        pio_async_interface=pio_async_interface,
+        pio_typename=pio_typename,
+    ))
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        model.realms = ["moc"]
+
+        model.runconfig = MockRunConfig(test_runconf)
+
+        model._setup_checks()
+
+    teardown_cmeps_config()

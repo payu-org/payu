@@ -13,7 +13,7 @@ from __future__ import print_function
 import os
 import re
 import shutil
-import multiprocessing
+from warnings import warn
 
 from payu.fsops import mkdir_p, make_symlink
 from payu.models.model import Model
@@ -187,9 +187,7 @@ class CesmCmeps(Model):
 
     def _setup_checks(self):
         # check pelayout fits within requested cpucount
-        cpucount = int(
-            self.expt.config.get('ncpus', multiprocessing.cpu_count())
-        )
+        cpucount = int(self.expt.config.get('ncpus'))
         all_realms = self.realms
         for realm in all_realms:
             ntasks = int(self.runconfig.get("PELAYOUT_attributes", f"{realm}_ntasks"))
@@ -215,10 +213,11 @@ class CesmCmeps(Model):
                 )
 
             # check iolayout
-            if realm == "cpl":
+            if realm == "cpl" or realm == "med":
                 comp = "MED"  # med and cpl names are both used in runconfig
             else:
                 comp = realm.upper()
+            
             if comp in self.runconfig.get_component_list():
                 io_section = f"{comp}_modelio"
                 nc_type = self.runconfig.get(io_section, "pio_typename")
@@ -230,11 +229,17 @@ class CesmCmeps(Model):
                         f"in {NUOPC_CONFIG}."
                     )
 
-                match nc_type:
-                    case "netcdf":
-                        break
-                    case "netcdf4p" | "pnetcdf":
-                        if self.runconfig.get(io_section, "pio_async_interface") == ".false.":
+                pio_async = self.runconfig.get(io_section, "pio_async_interface")
+                if pio_async == ".true.":
+                    warn(
+                        "Payu does not do consistency checks for asynchronous pio, as "
+                        f"set in {io_section} of {NUOPC_CONFIG}. Consider adding them"
+                    )
+                elif pio_async == ".false.":
+                    match nc_type:
+                        case "netcdf":
+                            break
+                        case "netcdf4p" | "pnetcdf":
                             niotasks = int(self.runconfig.get(io_section, "pio_numiotasks"))
                             iostride = int(self.runconfig.get(io_section, "pio_stride"))
                             if (ioroot + (niotasks-1)*iostride) >= npes:
@@ -242,17 +247,16 @@ class CesmCmeps(Model):
                                     f"The iolayout for {io_section} in {NUOPC_CONFIG} is "
                                     "requesting out of range cpus"
                                 )
-                        # To-do: add coverage for pio_async == .true.
-                    case "netcdf4c":
-                        raise ValueError(
-                            f"netcdf4c in {io_section} of {NUOPC_CONFIG} is deprecated, "
-                            "use netcdf4p"
-                        )
-                    case _:
-                        raise ValueError(
-                            f"The iotype for {io_section} in {NUOPC_CONFIG} is "
-                            'invalid, valid options: "netcdf", "pnetcdf", "netcdf4p"'
-                        )
+                        case "netcdf4c":
+                            raise ValueError(
+                                f"netcdf4c in {io_section} of {NUOPC_CONFIG} is deprecated, "
+                                "use netcdf4p"
+                            )
+                        case _:
+                            raise ValueError(
+                                f"The iotype for {io_section} in {NUOPC_CONFIG} is "
+                                'invalid, valid options: "netcdf", "pnetcdf", "netcdf4p"'
+                            )
         return True
 
     def archive(self):
@@ -378,7 +382,7 @@ class Runconfig:
         else:
             return value
 
-    def get_component_list(self, value=None):
+    def get_component_list(self):
         """
         Get the `component_list`
         """
@@ -391,7 +395,7 @@ class Runconfig:
             components_str = m.group(1).strip()
             return components_str.split()
         else:
-            return value
+            return None
 
     def set(self, section, variable, new_value):
         """
