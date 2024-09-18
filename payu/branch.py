@@ -36,10 +36,23 @@ To checkout an existing branch, run:
 Where BRANCH_NAME is the name of the branch"""
 
 
-def check_restart(restart_path: Optional[Path],
-                  archive_path: Path) -> Optional[Path]:
-    """Checks for valid prior restart path. Returns resolved restart path
-    if valid, otherwise returns None"""
+def check_restart(restart_path: Path,
+                  archive_path: Optional[Path] = None) -> Optional[Path]:
+    """Checks if restart path exists and whether the archive already
+    has pre-existing restarts. Returns a resolved restart path
+
+    Parameters
+    ----------
+    restart_path: Path
+        Absolute, or relative, restart path to start experiment from
+    archive_path: Optional[Path], default None
+        Experiment archive directory to check for pre-existing restarts files
+
+    Returns
+    ----------
+    Optional[Path]
+        Absolute restart path if a valid path, otherwise None
+    """
 
     # Check for valid path
     if not restart_path.exists():
@@ -51,7 +64,7 @@ def check_restart(restart_path: Optional[Path],
     restart_path = restart_path.resolve()
 
     # Check for pre-existing restarts in archive
-    if archive_path.exists():
+    if archive_path and archive_path.exists():
         if len(list_archive_dirs(archive_path, dir_type="restart")) > 0:
             warnings.warn((
                 f"Pre-existing restarts found in archive: {archive_path}."
@@ -136,7 +149,7 @@ def checkout_branch(branch_name: str,
     start_point: Optional[str]
         Branch name or commit hash to start new branch from
     restart_path: Optional[Path]
-        Absolute restart path to start experiment from
+        Restart path to start experiment from
     config_path: Optional[Path]
         Path to configuration file - config.yaml
     control_path: Optional[Path]
@@ -244,7 +257,7 @@ def clone(repository: str,
         lab_path: Optional[Path]
             Path to laboratory directory
         restart_path: Optional[Path]
-            Absolute restart path to start experiment from
+            Restart path to start experiment from
         parent_experiment: Optional[str]
             Parent experiment UUID to add to generated metadata
 
@@ -266,6 +279,10 @@ def clone(repository: str,
 
     # git clone the repository
     repo = git_clone(repository, control_path, branch)
+
+    if restart_path:
+        # Check path exists and resolve to an absolute path
+        restart_path = check_restart(restart_path)
 
     owd = os.getcwd()
     try:
