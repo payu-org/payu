@@ -179,23 +179,23 @@ def test_staged_cable():
     model.archive()
 
     # When running an experiment, we should have archive/output00{0, 1}/restart
-    outputdir = ctrldir / 'archive' / 'output000' / 'restart'
+    outputdir = ctrldir / 'archive' / 'restart000' / 'restart'
     outputdir.mkdir(parents=True)
     with open(outputdir / 'rst1.txt', 'w') as rstfile:
-        rstfile.write("This is rst1.txt in output000.")
+        rstfile.write("This is rst1.txt in restart000.")
 
     with open(outputdir / 'rst2.txt', 'w') as rstfile:
-        rstfile.write("This is rst2.txt in output000.")
+        rstfile.write("This is rst2.txt in restart000.")
 
-    outputdir = ctrldir / 'archive' / 'output001' / 'restart'
+    outputdir = ctrldir / 'archive' / 'restart001' / 'restart'
     outputdir.mkdir(parents=True)
     with open(outputdir / 'rst1.txt', 'w') as rstfile:
-        rstfile.write('This is rst1.txt in output001.')
+        rstfile.write('This is rst1.txt in restart001.')
 
     rstfiles = model.get_prior_restart_files()
     expected_restart_files = [
-        str(ctrldir / 'archive' / 'output001' / 'restart' / 'rst1.txt'),
-        str(ctrldir / 'archive' / 'output000' / 'restart' / 'rst2.txt')
+        str(ctrldir / 'archive' / 'restart001' / 'restart' / 'rst1.txt'),
+        str(ctrldir / 'archive' / 'restart000' / 'restart' / 'rst2.txt')
     ]
 
     assert rstfiles == expected_restart_files

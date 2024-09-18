@@ -18,6 +18,7 @@ import yaml
 
 # Local
 from payu.models.model import Model
+from payu.fsops import mkdir_p
 
 
 def deep_update(d_1, d_2):
@@ -134,7 +135,7 @@ class StagedCable(Model):
         super(StagedCable, self).setup()
 
         # Make the logging directory
-        mkdir_p(os.path.join(self.work_path), "logs")
+        mkdir_p(os.path.join(self.work_path, "logs"))
 
         # Build the namelists for the stage
         self._prepare_stage()
@@ -232,7 +233,7 @@ configuration log."""
 
         self._save_configuration_log()
 
-        if len(configuration_log["queued_stages"]) == 0:
+        if len(self.configuration_log["queued_stages"]) == 0:
             os.remove('configuration_log.yaml')
 
         super(StagedCable, self).archive()
