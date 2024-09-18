@@ -198,7 +198,7 @@ class CesmCmeps(Model):
             if nthreads < 1:
                 raise ValueError(f"The number of {realm}_nthreads ({nthreads}) in "
                                  f"{NUOPC_CONFIG} must be at least 1.")
-                           
+            
             if nthreads > 1:
                 npes = nthreads*ntasks*pestride
                 # this is taken from
@@ -217,7 +217,7 @@ class CesmCmeps(Model):
                 comp = "MED"  # med and cpl names are both used in runconfig
             else:
                 comp = realm.upper()
-            
+
             if comp in self.runconfig.get_component_list():
                 io_section = f"{comp}_modelio"
                 nc_type = self.runconfig.get(io_section, "pio_typename")
@@ -242,17 +242,17 @@ class CesmCmeps(Model):
                         case "netcdf4p" | "pnetcdf":
                             niotasks = int(self.runconfig.get(io_section, "pio_numiotasks"))
                             iostride = int(self.runconfig.get(io_section, "pio_stride"))
-                            if (niotasks<=0) : 
+                            if (niotasks <= 0):
                                 warn(f"The pio_numiotasks for {io_section} in {NUOPC_CONFIG} is "
                                     "not set, using model default")
-                            if (iostride<=0) : 
+                            if (iostride <= 0):
                                 warn(f"The pio_stride for {io_section} in {NUOPC_CONFIG} is "
                                     "not set, using model default")
                             if (all([
-                                    niotasks>0, 
-                                    iostride>0,
+                                    niotasks > 0, 
+                                    iostride > 0,
                                     (ioroot + (niotasks-1)*iostride) >= npes
-                                ])):
+                            ])):
                                 raise ValueError(
                                     f"The iolayout for {io_section} in {NUOPC_CONFIG} is "
                                     "requesting out of range cpus"

@@ -278,14 +278,15 @@ def test__setup_checks_pio_async(pio_typename, pio_async_interface):
 
         with pytest.warns(
             Warning, match="does not do consistency checks for asynchronous pio"
-            ):
+        ):
             model._setup_checks()
 
     teardown_cmeps_config()
 
+
 @pytest.mark.parametrize("pio_numiotasks, pio_stride", [
                          (1, -99),
-                         (-99, 1), 
+                         (-99, 1),
                          ])
 def test__setup_checks_bad_io(pio_numiotasks, pio_stride):
     cmeps_config(1)
@@ -311,3 +312,4 @@ def test__setup_checks_bad_io(pio_numiotasks, pio_stride):
             model._setup_checks()
 
     teardown_cmeps_config()
+    
