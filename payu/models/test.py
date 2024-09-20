@@ -15,6 +15,7 @@ config_files = [
             'diag',
             'input.nml'
         ]
+optional_config_files = ['opt_data']
 
 
 class Test(Model):
@@ -29,3 +30,4 @@ class Test(Model):
         self.default_exec = 'test.exe'
 
         self.config_files = config_files
+        self.optional_config_files = optional_config_files
