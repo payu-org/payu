@@ -3,7 +3,7 @@
 :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details
 :license: Apache License, Version 2.0, see LICENSE for details
 """
-import errno
+
 import os
 import shutil
 import shlex
@@ -129,14 +129,20 @@ class Model(object):
         self.input_paths = []
         for input_dir in input_dirs:
 
-            # First test for absolute path
+            # First test if path exists
             if os.path.exists(input_dir):
+                # Resolve symlinks and relative paths
+                input_dir = os.path.realpath(input_dir)
+
                 self.input_paths.append(input_dir)
             else:
                 # Test for path relative to /${lab_path}/input/${model_name}
                 assert self.input_basepath
                 rel_path = os.path.join(self.input_basepath, input_dir)
                 if os.path.exists(rel_path):
+                    # Resolve symlinks
+                    rel_path = os.path.realpath(rel_path)
+
                     self.input_paths.append(rel_path)
                 else:
                     sys.exit('payu: error: Input directory {0} not found; '
@@ -231,17 +237,15 @@ class Model(object):
          path to work path"""
         for f_name in self.config_files:
             f_path = os.path.join(self.control_path, f_name)
-            shutil.copy(f_path, self.work_path)
+            shutil.copy(f_path, self.work_path, follow_symlinks=True)
 
         for f_name in self.optional_config_files:
             f_path = os.path.join(self.control_path, f_name)
             try:
-                shutil.copy(f_path, self.work_path)
-            except IOError as exc:
-                if exc.errno == errno.ENOENT:
-                    pass
-                else:
-                    raise
+                shutil.copy(f_path, self.work_path, follow_symlinks=True)
+            except FileNotFoundError:
+                # Ignore missing files for optional config files
+                pass
 
     def setup(self):
 
