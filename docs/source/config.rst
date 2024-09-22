@@ -163,9 +163,12 @@ configuration.
    directory of the list takes precedence.
 
 ``exe``
-   Binary executable for the model. This can either be a filename in the
-   laboratory's ``bin`` directory, or an absolute filepath. Various model
-   drivers typically define their own default executable names.
+   Binary executable for the model. This can be a filename or an absolute
+   filepath. If it's a filename, it needs be found in either the laboratory's
+   ``bin`` directory, or in paths added to ``$PATH`` by loaded environment
+   modules (see configuring :ref:`modules<configuring-modules>` for how to load
+   modules).
+   Various model drivers typically define their own default executable names.
 
 ``submodels``
    If one is running a coupled model containing several submodels, then each
@@ -551,6 +554,7 @@ Miscellaneous
    Ignore any restart files and repeat the initial run upon resubmission. This
    is generally only used for testing purposes, such as bit reproducibility.
 
+.. _configuring-modules:
 ``modules``
    Specify lists of environment modules and/or directories
    to load/use at the start of the PBS job, for example::
@@ -563,9 +567,11 @@ Miscellaneous
             - parallel-netcdf-1.12.3
             - xerces-c-3.2.3
 
-   This is seldom needed, because payu is good at automatically determining
-   the environment modules required by model executables. If the modules
-   require `module use` in order to be found, this command can also be run
+   As environment modules can be used to determine model executable paths,
+   the modules loaded are required to be unique. This means modules should be
+   specified with a version, and modules of the same name and version
+   should not be found in multiple module directories.
+   If the modules require `module use` in order to be found, this command can also be run
    prior to `payu run` instead of listing the directory under the `use` option,
    e.g.::
 
