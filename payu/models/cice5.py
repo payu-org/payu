@@ -53,7 +53,7 @@ class Cice5(Cice):
         self.ice_in.write(ice_in_path, force=True)
 
     def setup(self):
-       # Force creation of a dump (restart) file at end of run
+        # Force creation of a dump (restart) file at end of run
         self.ice_in['setup_nml']['dump_last'] = True
 
         super(Cice5, self).setup()
@@ -71,3 +71,10 @@ class Cice5(Cice):
         # TODO: Figure out some way to move this to the ACCESS driver
         # Re-read ice timestep and move this over there
         self.set_local_timestep(t_step)
+
+    def _calc_runtime(self):
+        """
+        Overrides the cice driver method, as CICE5 can store the timing information in restart files does not use
+        the timing information in the cice_in.nml namelist.
+        """
+        pass

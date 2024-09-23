@@ -167,12 +167,6 @@ class Cice(Model):
             self.ice_in.patch(history_nml)
 
         setup_nml = self.ice_in['setup_nml']
-        init_date = datetime.date(year=setup_nml['year_init'], month=1, day=1)
-
-        if setup_nml['days_per_year'] == 365:
-            caltype = cal.NOLEAP
-        else:
-            caltype = cal.GREGORIAN
 
         if self.prior_restart_path:
             # Generate ice.restart_file
@@ -185,8 +179,8 @@ class Cice(Model):
                 iced_restart_file = sorted(iced_restart_files)[-1]
 
             if iced_restart_file is None:
-                print('payu: error: No restart file available.')
-                sys.exit(errno.ENOENT)
+                raise FileNotFoundError(
+                    f'No iced restart file found in {self.prior_restart_path}')
 
             res_ptr_path = os.path.join(self.work_init_path,
                                         'ice.restart_file')
@@ -200,6 +194,43 @@ class Cice(Model):
             # Update input namelist
             setup_nml['runtype'] = 'continue'
             setup_nml['restart'] = True
+
+        else:
+            # Locate and link any restart files (if required)
+            if not setup_nml['ice_ic'] in ('none', 'default'):
+                self.link_restart(setup_nml['ice_ic'])
+
+            if setup_nml['restart']:
+                self.link_restart(setup_nml['pointer_file'])
+
+        self._calc_runtime()
+
+        # Write any changes to the work directory copy of the cice
+        # namelist
+        nml_path = os.path.join(self.work_path, self.ice_nml_fname)
+        self.ice_in.write(nml_path, force=True)
+
+    def _calc_runtime(self):
+        """
+        Calculate 1: the previous number of timesteps simulated, and 2:
+        the number of timesteps to simulate in the next run.
+        Modifies the working self.ice_in namelist in place
+
+        Note 1: This method is overridden in the cice5 driver.
+
+        Note 2: For ESM1.5, the actual model start date and run time are
+        controlled via the separate input_ice.nml namelist, with relevant
+        calculations in the access driver.
+        """
+        setup_nml = self.ice_in['setup_nml']
+
+        init_date = datetime.date(year=setup_nml['year_init'], month=1, day=1)
+        if setup_nml['days_per_year'] == 365:
+            caltype = cal.NOLEAP
+        else:
+            caltype = cal.GREGORIAN
+
+        if self.prior_restart_path:
 
             prior_nml_path = os.path.join(self.prior_restart_path,
                                           self.ice_nml_fname)
@@ -221,22 +252,17 @@ class Cice(Model):
             prior_setup_nml = f90nml.read(prior_nml_path)['setup_nml']
 
             # The total time in seconds since the beginning of the experiment
-            total_runtime = prior_setup_nml['istep0'] + prior_setup_nml['npt']
-            total_runtime = total_runtime * prior_setup_nml['dt']
+            prior_runtime = prior_setup_nml['istep0'] + prior_setup_nml['npt']
+            prior_runtime_seconds = prior_runtime * prior_setup_nml['dt']
+
         else:
-            # Locate and link any restart files (if required)
-            if not setup_nml['ice_ic'] in ('none', 'default'):
-                self.link_restart(setup_nml['ice_ic'])
+            # If no prior restart directory exists, set the prior runtime to 0
+            prior_runtime_seconds = 0
 
-            if setup_nml['restart']:
-                self.link_restart(setup_nml['pointer_file'])
-
-            # Initialise runtime
-            total_runtime = 0
-
-        # Set runtime for this run.
+        # Calculate runtime for this run.
         if self.expt.runtime:
-            run_start_date = cal.date_plus_seconds(init_date, total_runtime,
+            run_start_date = cal.date_plus_seconds(init_date,
+                                                   prior_runtime_seconds,
                                                    caltype)
             run_runtime = cal.runtime_from_date(
                 run_start_date,
@@ -249,13 +275,11 @@ class Cice(Model):
         else:
             run_runtime = setup_nml['npt']*setup_nml['dt']
 
-        # Now write out new run start date and total runtime.
+        # Add the prior runtime and new runtime to the working copy of the
+        # CICE namelist.
         setup_nml['npt'] = run_runtime / setup_nml['dt']
-        assert(total_runtime % setup_nml['dt'] == 0)
-        setup_nml['istep0'] = int(total_runtime / setup_nml['dt'])
-
-        nml_path = os.path.join(self.work_path, self.ice_nml_fname)
-        self.ice_in.write(nml_path, force=True)
+        assert (prior_runtime_seconds % setup_nml['dt'] == 0)
+        setup_nml['istep0'] = int(prior_runtime_seconds / setup_nml['dt'])
 
     def set_local_timestep(self, t_step):
         dt = self.ice_in['setup_nml']['dt']
@@ -326,6 +350,9 @@ class Cice(Model):
             if os.path.isfile(test_path):
                 input_path = test_path
                 break
-        assert input_path
+        if input_path is None:
+            raise RuntimeError(
+                f"Cannot find previous restart file, expected {fpath} to exist"
+            )
 
         make_symlink(input_path, input_work_path)
