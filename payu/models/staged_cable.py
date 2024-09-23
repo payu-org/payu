@@ -143,6 +143,10 @@ class StagedCable(Model):
     def _get_further_restarts(self):
         """Get the restarts from stages further in the past where necessary."""
 
+        # Often we take restarts from runs which are not the most recent run as
+        # inputs for particular science modules, which means we have to extend
+        # the existing functionality around retrieving restarts.
+
         # We can't supercede the parent get_prior_restart_files, since the
         # files returned by said function are prepended by
         # self.prior_restart_path, which is not desirable in this instance.
