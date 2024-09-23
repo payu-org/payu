@@ -51,9 +51,6 @@ class StagedCable(Model):
         self.optional_config_files = ['cable.nml', 'cru.nml',
                                       'luc.nml', 'met_names.nml']
 
-        self.work_restart_path = 'restart'
-        self.work_output_path = 'outputs'
-
         self.configuration_log = {}
 
         # Read the stage_config.yaml file
@@ -140,47 +137,43 @@ class StagedCable(Model):
         # Build the namelists for the stage
         self._prepare_stage()
 
-    # def get_prior_restart_files(self):
-        """Retrieve the prior restart files from the completed stages."""
-        # Go to the archives of the previous completed stages and retrieve
-        # the files from them, with the most recent taking precedent.
+        # Get the additional restarts from older restart dirs
+        self._get_further_restarts()
 
-        # We need to take the most recent version of a given restart file as
-        # input to the next stage. This sometimes means taking a restart from
-        # runs that are not the most recent. For example, the climate restart
-        # file from the first stage of a TRENDY run is used in the LUC module
-        # of all proceeding runs, despite there being more recent climate
-        # restarts available.
+    def _get_further_restarts(self):
+        """Get the restarts from stages further in the past where necessary."""
 
-        # Unfortunately, we can't simply use the
-        # "if {filename} not in {restart_files}", because files from different
-        # stages will have different paths, even if the local file name is the
-        # same. To avoid having to call os.path.basepath on the list of restart
-        # files for every addition, we'll store the list of local file names +
-        # paths separately, and pull them together at the end.
+        # We can't supercede the parent get_prior_restart_files, since the
+        # files returned by said function are prepended by
+        # self.prior_restart_path, which is not desirable in this instance.
 
-        file_names = []
-        path_names = []
-
-        # Don't use the expt.counter, because the number of runs is set by the
-        # configuration log.
         num_completed_stages = len(self.configuration_log['completed_stages'])
 
-        for stage_number in reversed(range(num_completed_stages)):
+        for stage_number in reversed(range(num_completed_stages - 1)):
             respath = os.path.join(
                 self.expt.archive_path,
-                f'output{stage_number:03d}',
-                self.work_restart_path
+                f'restart{stage_number:03d}'
             )
+            for f_name in os.listdir(respath):
+                if os.path.isfile(os.path.join(respath, f_name)):
+                    f_orig = os.path.join(respath, f_name)
+                    f_link = os.path.join(self.work_init_path_local, f_name)
+                    # Check whether a given link already exists in the
+                    # manifest, so we don't write over a newer version of a
+                    # restart
+                    if f_link not in self.expt.manifest.manifests['restart']:
+                        self.expt.manifest.add_filepath(
+                            'restart',
+                            f_link,
+                            f_orig,
+                            self.copy_restarts
+                        )
 
-            [(file_names.append(file), path_names.append(respath))
-                for file in os.listdir(respath) if file not in file_names]
+    def set_model_pathnames(self):
+        super(StagedCable, self).set_model_pathnames()
 
-        # Zip up the files
-        restart_files = [os.path.join(path, file)
-                         for path, file in zip(path_names, file_names)]
-
-        return restart_files
+        self.work_restart_path = os.path.join(self.work_path, 'restart')
+        self.work_output_path = os.path.join(self.work_path, 'outputs')
 
     def _prepare_stage(self):
         """Apply the stage namelist to the master namelist."""
@@ -216,15 +209,31 @@ class StagedCable(Model):
         for namelist in namelists:
             write_target = os.path.join(self.work_input_path, namelist)
             stage_nml = os.path.join(self.control_path, stage_name, namelist)
-            with open(stage_nml) as stage_nml_f:
-                stage_namelist = f90nml.read(stage_nml_f)
 
-            master_nml = os.path.join(self.control_path, namelist)
-            f90nml.patch(master_nml, stage_namelist, write_target)
+            if os.path.isfile(os.path.join(self.control_path, namelist)):
+                # Usually, there will be a master version of a namelist and the
+                # stage version, in which case we need to patch the stage
+                # namelist over the master namelist.
+                with open(stage_nml) as stage_nml_f:
+                    stage_namelist = f90nml.read(stage_nml_f)
+
+                master_nml = os.path.join(self.control_path, namelist)
+                f90nml.patch(master_nml, stage_namelist, write_target)
+            else:
+                # But it's also possible to just provide a stage namelist, in
+                # which case we just copy it into the work directory as is
+                shutil.copy(stage_nml, write_target)
 
     def archive(self):
         """Store model output to laboratory archive and update the
 configuration log."""
+
+        # Move files from the restart directory within work to the archive
+        # restart directory.
+        for f in os.listdir(self.work_restart_path):
+            shutil.move(os.path.join(self.work_restart_path, f),
+                        self.restart_path)
+        os.rmdir(self.work_restart_path)
 
         # Update the configuration log and save it to the working directory
         completed_stage = self.configuration_log['current_stage']
@@ -234,6 +243,7 @@ configuration log."""
         self._save_configuration_log()
 
         if len(self.configuration_log["queued_stages"]) == 0:
+            # Configuration successfully completed
             os.remove('configuration_log.yaml')
 
         super(StagedCable, self).archive()
