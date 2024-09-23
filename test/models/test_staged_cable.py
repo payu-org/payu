@@ -31,7 +31,7 @@ def setup_module(module):
         tmpdir.mkdir()
         labdir.mkdir()
         ctrldir.mkdir()
-        expt_workdir.mkdir()
+        expt_workdir.mkdir(parents=True)
         archive_dir.mkdir()
     except Exception as e:
         print(e)
@@ -108,8 +108,7 @@ def teardown_module(module):
         print("teardown_module   module:%s" % module.__name__)
 
     try:
-        # shutil.rmtree(tmpdir)
-        print('removing tmp')
+        shutil.rmtree(tmpdir)
     except Exception as e:
         print(e)
 
