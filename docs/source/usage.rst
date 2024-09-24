@@ -115,15 +115,20 @@ For example::
 Where ``${REPOSITORY}`` is the git URL or path of the repository to clone from, 
 for example, https://github.com/payu-org/mom-example.git.
 
-To clone and checkout an existing git branch, use the ``--branch`` flag and 
+To clone and checkout an existing git branch, use the ``-B/--branch`` flag and
 specify the branch name::
 
       payu clone --branch ${EXISTING_BRANCH} ${REPOSITORY} my_expt
 
-To create and checkout a new git branch use ``--new-branch`` and specify a 
-new branch name:
+To create and checkout a new git branch use ``-b/--new-branch`` and specify a
+new branch name::
 
       payu clone --new-branch ${NEW_BRANCH} ${REPOSITORY} my_expt
+
+To create a new git branch starting from a tag or commit, use ``-s/--start-point``
+flag::
+
+      payu clone -b ${NEW_BRANCH} -s {COMMIT_HASH|TAG} ${REPOSITORY} my_expt
 
 To see more configuration options for ``payu clone``, 
 run:: 

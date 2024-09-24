@@ -212,6 +212,7 @@ def switch_symlink(lab_dir_path: Path, control_path: Path,
 def clone(repository: str,
           directory: Path,
           branch: Optional[str] = None,
+          start_point: Optional[str] = None,
           new_branch_name: Optional[str] = None,
           keep_uuid: bool = False,
           model_type: Optional[str] = None,
@@ -227,11 +228,11 @@ def clone(repository: str,
         directory: Path
             The control directory where the repository will be cloned
         branch: Optional[str]
-            Name of branch to clone and checkout
+            Name of branch to checkout during the git clone
+        start_point: Optional[str]
+            Branch-name/commit/tag to start new branch from
         new_branch_name: Optional[str]
-            Name of new branch to create and checkout.
-            If branch is also defined, the new branch will start from the
-            latest commit of the branch.
+            Name of new branch to create and checkout
         keep_uuid: bool, default False
             Keep UUID unchanged, if it exists
         config_path: Optional[Path]
@@ -248,6 +249,10 @@ def clone(repository: str,
             Parent experiment UUID to add to generated metadata
 
     Returns: None
+
+    Note: branch, if defined, can be set to avoid initially checking out the
+    default branch during git clone - this is useful for repositories where
+    the default branch is not a payu configuration.
     """
     # Resolve directory to an absolute path
     control_path = directory.resolve()
@@ -278,7 +283,8 @@ def clone(repository: str,
                             control_path=control_path,
                             model_type=model_type,
                             lab_path=lab_path,
-                            parent_experiment=parent_experiment)
+                            parent_experiment=parent_experiment,
+                            start_point=start_point)
         else:
             # Checkout branch
             if branch is None:

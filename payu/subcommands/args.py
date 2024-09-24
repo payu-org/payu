@@ -191,6 +191,17 @@ clone_branch = {
     }
 }
 
+# Clone branch
+clone_start_point = {
+    'flags': ('--start-point', '-s'),
+    'parameters': {
+        'action':   'store',
+        'dest': 'start_point',
+        'default':  None,
+        'help': 'New branch will start from this commit or tag'
+    }
+}
+
 # Clone create branch
 new_branch_name = {
     'flags': ('--new-branch', '-b'),

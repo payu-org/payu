@@ -18,7 +18,7 @@ arguments = [args.model, args.config, args.laboratory,
              args.keep_uuid, args.clone_branch,
              args.repository, args.local_directory,
              args.new_branch_name, args.restart_path,
-             args.parent_experiment]
+             args.parent_experiment, args.clone_start_point]
 
 
 def transform_strings_to_path(path_str=None):
@@ -27,7 +27,7 @@ def transform_strings_to_path(path_str=None):
 
 def runcmd(model_type, config_path, lab_path, keep_uuid,
            branch, repository, local_directory, new_branch_name, restart_path,
-           parent_experiment):
+           parent_experiment, start_point):
     """Execute the command."""
     config_path = transform_strings_to_path(config_path)
     restart_path = transform_strings_to_path(restart_path)
@@ -43,7 +43,8 @@ def runcmd(model_type, config_path, lab_path, keep_uuid,
           lab_path=lab_path,
           new_branch_name=new_branch_name,
           restart_path=restart_path,
-          parent_experiment=parent_experiment)
+          parent_experiment=parent_experiment,
+          start_point=start_point)
 
 
 runscript = runcmd
