@@ -128,7 +128,7 @@ new branch name::
 To create a new git branch starting from a tag or commit, use ``-s/--start-point``
 flag::
 
-      payu clone -b ${NEW_BRANCH} -s {COMMIT_HASH} ${REPOSITORY} my_expt
+      payu clone -b ${NEW_BRANCH} -s {COMMIT_HASH|TAG} ${REPOSITORY} my_expt
 
 To see more configuration options for ``payu clone``, 
 run:: 
