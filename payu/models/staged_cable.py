@@ -53,10 +53,6 @@ class StagedCable(Model):
 
         self.configuration_log = {}
 
-        # Read the stage_config.yaml file
-        with open('stage_config.yaml', 'r') as stage_conf_f:
-            self.stage_config = yaml.safe_load(stage_conf_f)
-
         if not os.path.isfile('configuration_log.yaml'):
             # Build a new configuration log
             self._build_new_configuration_log()
@@ -73,6 +69,10 @@ class StagedCable(Model):
     def _build_new_configuration_log(self):
         """Build a new configuration log for the first stage of the run."""
 
+        # Read the stage_config.yaml file
+        with open('stage_config.yaml', 'r') as stage_conf_f:
+            self.stage_config = yaml.safe_load(stage_conf_f)
+
         # On the first run, we need to read the 'stage_config.yaml' file.
         cable_stages = self._prepare_configuration()
 
@@ -81,8 +81,7 @@ class StagedCable(Model):
         self.configuration_log['current_stage'] = ''
         self.configuration_log['completed_stages'] = []
 
-        with open('configuration_log.yaml', 'w') as conf_log_file:
-            yaml.dump(self.configuration_log, conf_log_file)
+        self._save_configuration_log()
 
     def _read_configuration_log(self):
         """Read the existing configuration log."""
@@ -125,20 +124,24 @@ class StagedCable(Model):
                 # once, but check for the count anyway
                 cable_stages.extend([stage_name] * stage_opts['count'])
 
-            # Finish handling of single step stage
+                # Finish handling of single step stage
         return cable_stages
 
     def setup(self):
         super(StagedCable, self).setup()
 
+        # Prepare the namelists for the stage
+        stage_name = self._get_stage_name()
+        self._apply_stage_namelists(stage_name)
+
         # Make the logging directory
         mkdir_p(os.path.join(self.work_path, "logs"))
 
-        # Build the namelists for the stage
-        self._prepare_stage()
-
         # Get the additional restarts from older restart dirs
         self._get_further_restarts()
+
+        # Make necessary adjustments to the configuration log
+        self._handle_configuration_log_setup()
 
     def _get_further_restarts(self):
         """Get the restarts from stages further in the past where necessary."""
@@ -179,8 +182,8 @@ class StagedCable(Model):
         self.work_restart_path = os.path.join(self.work_path, 'restart')
         self.work_output_path = os.path.join(self.work_path, 'outputs')
 
-    def _prepare_stage(self):
-        """Apply the stage namelist to the master namelist."""
+    def _get_stage_name(self):
+        """Get the name of the stage being prepared."""
 
         if self.configuration_log['current_stage'] != '':
             # If the current stage is a non-empty string, it means we exited
@@ -188,11 +191,7 @@ class StagedCable(Model):
             stage_name = self.configuration_log['current_stage']
         else:
             # Pop the stage from the list
-            stage_name = self.configuration_log['queued_stages'].pop(0)
-            self.configuration_log['current_stage'] = stage_name
-
-        with open('configuration_log.yaml', 'w') as conf_log_f:
-            yaml.dump(self.configuration_log, conf_log_f)
+            stage_name = self.configuration_log['queued_stages'][0]
 
         # Ensure the directory exists
         if not os.path.isdir(os.path.join(self.control_path, stage_name)):
@@ -200,14 +199,28 @@ class StagedCable(Model):
              does not exist."""
             raise FileNotFoundError(errmsg)
 
-        # Apply the stage namelists
-        self._apply_stage_namelists(stage_name)
-
-        # Copy the log to the work directory
-        shutil.copy('configuration_log.yaml', self.work_input_path)
+        return stage_name
 
     def _apply_stage_namelists(self, stage_name):
-        """Apply the stage namelists to the master namelists."""
+        """Apply the stage namelists to the master namelists.
+
+        The master namelist is the namelist that exists in the control
+        directory and the stage namelist exists within the directory for the
+        given stage. If a master version of a given namelist does not exist,
+        then the stage namelist is taken as is.
+
+        Example:
+        .
+        ├── cable.nml
+        └── cable_stage
+            ├── cable.nml
+            └── luc.nml
+
+        In this instance, the ```cable.nml``` for ```cable_stage``` would be
+        a merge of the top level ```cable.nml``` and
+        ```cable_stage/cable.nml``` (with the latter taking precedence) and
+        ```luc.nml``` is just ```cable_stage/luc.nml```.
+        """
         namelists = os.listdir(os.path.join(self.control_path, stage_name))
 
         for namelist in namelists:
@@ -215,18 +228,33 @@ class StagedCable(Model):
             stage_nml = os.path.join(self.control_path, stage_name, namelist)
 
             if os.path.isfile(os.path.join(self.control_path, namelist)):
-                # Usually, there will be a master version of a namelist and the
-                # stage version, in which case we need to patch the stage
-                # namelist over the master namelist.
+                # Instance where there is a master and stage namelist
                 with open(stage_nml) as stage_nml_f:
                     stage_namelist = f90nml.read(stage_nml_f)
 
                 master_nml = os.path.join(self.control_path, namelist)
                 f90nml.patch(master_nml, stage_namelist, write_target)
             else:
-                # But it's also possible to just provide a stage namelist, in
-                # which case we just copy it into the work directory as is
+                # Instance where there is only a stage namelist
                 shutil.copy(stage_nml, write_target)
+
+    def _handle_configuration_log_setup(self):
+        """Make appropriate adjustments to the configuration log to reflect
+        that the setup of the stage is complete."""
+
+        if self.configuration_log['current_stage'] != '':
+            # If the current stage is a non-empty string, it means we exited
+            # during the running of the previous stage- leave as is
+            stage_name = self.configuration_log['current_stage']
+        else:
+            # Normal case where we just archived a successful stage.
+            self.configuration_log['current_stage'] = \
+                    self.configuration_log['queued_stages'].pop(0)
+
+        self._save_configuration_log()
+
+        # Copy the log to the work directory
+        shutil.copy('configuration_log.yaml', self.work_input_path)
 
     def archive(self):
         """Store model output to laboratory archive and update the
