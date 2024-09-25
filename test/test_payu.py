@@ -6,6 +6,7 @@ import pytest
 import shutil
 import stat
 import sys
+from unittest.mock import patch
 
 # Submodules
 import payu
@@ -327,20 +328,22 @@ def test_run_userscript_python_script_with_shebang_header(tmp_path):
     with open(python_script, 'w') as f:
         f.writelines([
             '#!/usr/bin/env python\n'
+            'import sys\n'
             f"with open('{tmp_path}/output.txt', 'w') as f:\n",
-            "   f.write('Test Python user script with python shebang header')"
+            "   f.write(f'{sys.executable}')"
         ])
 
     # Make file executable
     os.chmod(python_script, 0o775)
 
     # Test run userscript
-    payu.fsops.run_script_command('test_script_with_python_shebang.py',
-                                  tmp_path)
+    with patch.dict(os.environ, {'PATH': '/mocked/path'}):
+        payu.fsops.run_script_command('test_script_with_python_shebang.py',
+                                      tmp_path)
 
-    # Check script output
+    # Check script is run with same python executable as caller
     with open((tmp_path / 'output.txt'), 'r') as f:
-        assert f.read() == "Test Python user script with python shebang header"
+        assert sys.executable.startswith(f.read())
 
 
 def test_run_userscript_bash_script(tmp_path):
