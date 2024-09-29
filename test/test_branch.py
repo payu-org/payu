@@ -109,6 +109,19 @@ def test_add_restart_to_config(test_config, expected_config):
     assert updated_config == expected_config
 
 
+def test_check_restart_relative_path():
+    """Test an relative restart path is resolved to an absolute path"""
+    restart_path = tmpdir / "archive" / "tmpRestart"
+    restart_path.mkdir(parents=True)
+
+    with cd(tmpdir):
+        relative_restart_path = Path("archive") / "tmpRestart"
+        assert not relative_restart_path.is_absolute()
+
+        resolved_path = check_restart(relative_restart_path)
+        assert resolved_path.is_absolute()
+
+
 def test_check_restart_with_non_existent_restart():
     """Test restart path that does not exist raises a warning"""
     restart_path = tmpdir / "restartDNE"
@@ -581,6 +594,34 @@ def test_clone_startpoint(start_point_type):
 
     # Latest commit is different (new commit from metadata)
     assert source_repo_commit != cloned_repo.active_branch.object.hexsha
+
+
+def test_clone_with_relative_restart_path():
+    """Test clone with a restart path that is relative with respect to
+    the directory in which the clone command is run from"""
+    # Create a repo to clone
+    source_repo_path = tmpdir / "sourceRepo"
+    source_repo_path.mkdir()
+    setup_control_repository(path=source_repo_path)
+
+    # Create restart path
+    restart_path = tmpdir / "archive" / "tmpRestart"
+    restart_path.mkdir(parents=True)
+    relative_restart_path = Path("archive") / "tmpRestart"
+
+    cloned_repo_path = tmpdir / "clonedRepo"
+    with cd(tmpdir):
+        # Run clone
+        clone(repository=str(source_repo_path),
+              directory=cloned_repo_path,
+              lab_path=labdir,
+              restart_path=relative_restart_path)
+
+    # Test restart was added to config.yaml file
+    with cd(cloned_repo_path):
+        config = read_config()
+
+    assert config["restart"] == str(restart_path)
 
 
 def add_and_commit_metadata(repo, metadata):
