@@ -144,7 +144,7 @@ configuration.
 ``input``
    Listing of the directories containing model input fields, linked to the
    experiment during setup. This can either be the name of a directory in the
-   laboratory's ``input`` directory::
+   control directory or in laboratory's ``input`` directory::
 
       input: core_inputs
 

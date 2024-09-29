@@ -1,84 +1,45 @@
 import copy
-import os
 from pathlib import Path
-import pdb
 import pytest
 import shutil
 from unittest.mock import patch
-import yaml
 
 import payu
-import payu.models.test
 
 from .common import cd, make_random_file, get_manifests
 from .common import tmpdir, ctrldir, labdir, workdir
-from .common import sweep_work, payu_init, payu_setup
+from .common import payu_init, payu_setup
 from .common import config as config_orig
 from .common import write_config
-from .common import make_exe, make_inputs, make_restarts, make_all_files
+from .common import make_exe, make_inputs
 
-verbose = True
-
-config = copy.deepcopy(config_orig)
-
-
-def make_config_files():
-    """
-    Create files required for test model
-    """
-
-    config_files = payu.models.test.config_files
-    for file in config_files:
-        make_random_file(ctrldir/file, 29)
+# Config files in the test model driver
+CONFIG_FILES = ['data', 'diag', 'input.nml']
+OPTIONAL_CONFIG_FILES = ['opt_data']
+INPUT_NML_FILENAME = 'input.nml'
 
 
-def setup_module(module):
-    """
-    Put any test-wide setup code in here, e.g. creating test files
-    """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
+@pytest.fixture(autouse=True)
+def setup_and_teardown():
+    # Create tmp, lab and control directories
     try:
         tmpdir.mkdir()
         labdir.mkdir()
         ctrldir.mkdir()
-        make_all_files()
     except Exception as e:
         print(e)
 
-    write_config(config)
+    yield
 
-
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
-
+    # Remove tmp directory
     try:
-        # shutil.rmtree(tmpdir)
-        print('removing tmp')
+        shutil.rmtree(tmpdir)
     except Exception as e:
         print(e)
-
-# These are integration tests. They have an undesirable dependence on each
-# other. It would be possible to make them independent, but then they'd
-# be reproducing previous "tests", like init. So this design is deliberate
-# but compromised. It means when running an error in one test can cascade
-# and cause other tests to fail.
-#
-# Unfortunate but there you go.
 
 
 def test_init():
+    write_config(config_orig)
 
     # Initialise a payu laboratory
     with cd(ctrldir):
@@ -89,54 +50,131 @@ def test_init():
         assert((labdir / subdir).is_dir())
 
 
-def test_setup():
+def make_config_files():
+    """
+    Create files required for test model
+    """
+    for file in CONFIG_FILES:
+        make_random_file(ctrldir/file, 29)
 
-    # Create some input and executable files
-    make_inputs()
+
+def run_payu_setup(config=config_orig, create_inputs=False,
+                   create_config_files=True):
+    """Helper function to write config.yaml files, make inputs,
+    config files and run experiment setup"""
+    # Setup files
+    write_config(config)
     make_exe()
+    if create_inputs:
+        make_inputs()
+    if create_config_files:
+        make_config_files()
 
-    bindir = labdir / 'bin'
-    exe = config['exe']
+    # Initialise a payu laboratory
+    with cd(ctrldir):
+        payu_init(None, None, str(labdir))
 
-    make_config_files()
-
-    # Run setup
+    # Run payu setup
     payu_setup(lab_path=str(labdir))
 
-    assert(workdir.is_symlink())
-    assert(workdir.is_dir())
-    assert((workdir/exe).resolve() == (bindir/exe).resolve())
-    workdirfull = workdir.resolve()
 
-    config_files = payu.models.test.config_files
+def test_setup_configuration_files():
+    """Test model config_files are copied to work directory,
+    and that any symlinks are followed"""
+    # Create configuration files
+    all_config_files = CONFIG_FILES + OPTIONAL_CONFIG_FILES
+    for file in all_config_files:
+        if file != INPUT_NML_FILENAME:
+            make_random_file(ctrldir / file, 8)
 
-    for f in config_files + ['config.yaml']:
-        assert((workdir/f).is_file())
+    # For input.nml, create a file symlink in control directory
+    input_nml_realpath = tmpdir / INPUT_NML_FILENAME
+    input_nml_symlink = ctrldir / INPUT_NML_FILENAME
+    make_random_file(input_nml_realpath, 8)
+    input_nml_symlink.symlink_to(input_nml_realpath)
+    assert input_nml_symlink.is_symlink()
 
+    # Run payu setup
+    run_payu_setup(create_inputs=True)
+
+    # Check config files have been copied to work path
+    for file in all_config_files + ['config.yaml']:
+        filepath = workdir / file
+        assert filepath.exists() and filepath.is_file()
+        assert not filepath.is_symlink()
+        assert filepath.read_bytes() == (ctrldir / file).read_bytes()
+
+
+@pytest.mark.parametrize(
+    "input_path, is_symlink, is_absolute",
+    [
+        (labdir / 'input' / 'lab_inputs', False, False),
+        (ctrldir / 'ctrl_inputs', False, False),
+        (tmpdir / 'symlinked_inputs', True, False),
+        (tmpdir / 'tmp_inputs', False, True)
+    ]
+)
+def test_setup_inputs(input_path, is_symlink, is_absolute):
+    """Test inputs are symlinked to work directory,
+    and added in input manifest"""
+    # Make inputs
+    input_path.mkdir(parents=True, exist_ok=True)
     for i in range(1, 4):
-        assert((workdir/'input_00{i}.bin'.format(i=i)).stat().st_size
-               == 1000**2 + i)
+        make_random_file(input_path / f'input_00{i}.bin', 1000**2 + i)
 
+    if is_symlink:
+        # Create an input symlink in control directory
+        (ctrldir / input_path.name).symlink_to(input_path)
+
+    # Modify config to specify input path
+    config = copy.deepcopy(config_orig)
+    config['input'] = str(input_path) if is_absolute else input_path.name
+
+    # Run payu setup
+    run_payu_setup(config=config, create_config_files=True)
+
+    input_manifest = get_manifests(ctrldir/'manifests')['input.yaml']
+    for i in range(1, 4):
+        filename = f'input_00{i}.bin'
+        work_input = workdir / filename
+
+        # Check file exists and file size is expected
+        assert work_input.exists() and work_input.is_symlink()
+        assert work_input.stat().st_size == 1000**2 + i
+
+        # Check relative input path is added to manifest
+        filepath = str(Path('work') / filename)
+        assert filepath in input_manifest
+
+        # Check manifest fullpath
+        manifest_fullpath = input_manifest[filepath]['fullpath']
+        assert manifest_fullpath == str(input_path / filename)
+
+        # Check fullpath is a resolved path
+        assert Path(manifest_fullpath).is_absolute()
+        assert not Path(manifest_fullpath).is_symlink()
+
+
+def test_setup():
+    """Test work directory and executable are setup as expected,
+    and re-running setup requires a force=True"""
+    run_payu_setup(create_inputs=True, create_config_files=True)
+
+    assert workdir.is_symlink and workdir.is_dir()
+
+    # Check executable symlink is in work directory
+    bin_exe = labdir / 'bin' / config_orig['exe']
+    work_exe = workdir / config_orig['exe']
+    assert work_exe.exists() and work_exe.is_symlink()
+    assert work_exe.resolve() == bin_exe.resolve()
+
+    # Re-run setup - expect an error
     with pytest.raises(SystemExit,
                        match="work path already exists") as setup_error:
         payu_setup(lab_path=str(labdir), sweep=False, force=False)
     assert setup_error.type == SystemExit
 
-    payu_setup(lab_path=str(labdir), sweep=False, force=True)
-
-    assert(workdir.is_symlink())
-    assert(workdir.is_dir())
-    assert((workdir/exe).resolve() == (bindir/exe).resolve())
-    workdirfull = workdir.resolve()
-
-    config_files = payu.models.test.config_files
-
-    for f in config_files + ['config.yaml']:
-        assert((workdir/f).is_file())
-
-    for i in range(1, 4):
-        assert((workdir/'input_00{i}.bin'.format(i=i)).stat().st_size
-               == 1000**2 + i)
+    assert workdir.is_symlink and workdir.is_dir()
 
 
 @pytest.mark.parametrize(
