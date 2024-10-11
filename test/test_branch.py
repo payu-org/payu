@@ -364,12 +364,16 @@ def test_checkout_existing_branch_with_no_metadata(mock_uuid):
     expected_no_uuid_msg = (
         "No experiment uuid found in metadata. Generating a new uuid"
     )
+    expected_no_archive_msg = (
+        "No pre-existing archive found. Generating a new uuid"
+    )
 
     with cd(ctrldir):
         # Test checkout existing branch with no existing metadata
         with pytest.warns(MetadataWarning, match=expected_no_uuid_msg):
-            checkout_branch(branch_name="Branch1",
-                            lab_path=labdir)
+            with pytest.warns(MetadataWarning, match=expected_no_archive_msg):
+                checkout_branch(branch_name="Branch1",
+                                lab_path=labdir)
 
     # Check metadata was created and commited
     branch1_experiment_name = f"{ctrldir_basename}-Branch1-574ea2c9"
