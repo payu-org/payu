@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from payu.branch import add_restart_to_config, check_restart, switch_symlink
 from payu.branch import checkout_branch, clone, list_branches
+from payu.branch import check_laboratory_path
 from payu.metadata import MetadataWarning
 from payu.fsops import read_config
 
@@ -487,6 +488,22 @@ def test_checkout_branch_with_restart_path(mock_uuid):
                           expected_uuid=uuid2,
                           expected_experiment=experiment2_name,
                           expected_parent_uuid=uuid1)
+
+
+@patch("os.access")
+def test_check_laboratory_path(mock_os_access):
+    # Test seems a bit useless as was unsure on how to create a directory
+    # without write permissions without locking myself out the directory
+    mock_os_access.return_value = False
+    with cd(ctrldir):
+        # Test raises a permission error
+        with pytest.raises(PermissionError):
+            check_laboratory_path("some/path")
+    
+    mock_os_access.return_value = True
+    with cd(ctrldir):
+        # Test check runs without errors
+        check_laboratory_path("some/path")
 
 
 @patch("uuid.uuid4")

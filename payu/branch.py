@@ -21,6 +21,22 @@ from payu.laboratory import Laboratory
 from payu.metadata import Metadata, UUID_FIELD, METADATA_FILENAME
 from payu.git_utils import GitRepository, git_clone, PayuBranchError
 
+LAB_WRITE_ACCESS_ERROR = """
+Do not have write access to the configured laboratory directory.
+Skipping creating metadata, setting up restart configuration, and archive/work
+symlinks.
+
+To fix the errors, edit one (or more) of the following config.yaml options that
+determine the laboratory path:
+    - 'laboratory': (Top-level directory for the model laboratory 
+        Default: /scratch/${PROJECT}/${USER}/${MODEL}
+    - 'shortpath' (Top-level directory for laboratory.
+        Default: /scratch/${PROJECT}
+    - 'project': (The project to use for payu PBS jobs. Default: ${PROJECT})
+
+Then either run 'payu setup' or rerun checkout command with the current git
+branch, e.g. `payu checkout -r  <RESTART_PATH> <CURRENT_BRANCH>`
+"""
 
 NO_CONFIG_FOUND_MESSAGE = """No configuration file found on this branch.
 Skipping adding new metadata file and creating archive/work symlinks.
@@ -122,6 +138,15 @@ def check_config_path(config_path: Optional[Path] = None) -> Optional[Path]:
     return config_path
 
 
+def check_laboratory_path(lab_basepath: str) -> None:
+    """Check if a laboratory path has write access"""
+    if not os.access(lab_basepath, os.W_OK | os.X_OK):
+        print(LAB_WRITE_ACCESS_ERROR)
+        raise PermissionError(
+            f"Laboratory directory does not have write access: {lab_basepath}"
+        )
+
+
 def checkout_branch(branch_name: str,
                     is_new_branch: bool = False,
                     is_new_experiment: bool = False,
@@ -171,8 +196,11 @@ def checkout_branch(branch_name: str,
     # Check config file exists on checked out branch
     config_path = check_config_path(config_path)
 
-    # Initialise Lab and Metadata
+    # Initialise Lab
     lab = Laboratory(model_type, config_path, lab_path)
+    check_laboratory_path(lab.basepath)
+
+    # Initialise metadata
     metadata = Metadata(Path(lab.archive_path),
                         branch=branch_name,
                         config_path=config_path)
@@ -211,6 +239,7 @@ def switch_symlink(lab_dir_path: Path, control_path: Path,
     sym_path = control_path / sym_dir
 
     # Remove symlink if it already exists
+    # TODO: FIX for when target dir no longer exists (just check for symlink) and write test
     if sym_path.exists() and sym_path.is_symlink:
         previous_path = sym_path.resolve()
         sym_path.unlink()
