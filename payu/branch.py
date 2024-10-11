@@ -239,8 +239,7 @@ def switch_symlink(lab_dir_path: Path, control_path: Path,
     sym_path = control_path / sym_dir
 
     # Remove symlink if it already exists
-    # TODO: FIX for when target dir no longer exists (just check for symlink) and write test
-    if sym_path.exists() and sym_path.is_symlink:
+    if sym_path.is_symlink():
         previous_path = sym_path.resolve()
         sym_path.unlink()
         print(f"Removed {sym_dir} symlink to {previous_path}")

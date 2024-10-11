@@ -216,6 +216,27 @@ def test_switch_symlink_when_no_symlink_exists_and_no_archive():
     assert not archive_symlink.is_symlink()
 
 
+def test_switch_symkink_when_previous_symlink_dne():
+    # Point archive symlink to a directory that does not exist anymore
+    lab_archive = labdir / "archive"
+    previous_archive_dir = lab_archive / "ExperimentDNE"
+
+    archive_symlink = ctrldir / "archive"
+    archive_symlink.symlink_to(previous_archive_dir)
+
+    # New Experiment
+    experiment_name = "Experiment1"
+    archive_dir = lab_archive / experiment_name
+    archive_dir.mkdir(parents=True)
+
+    # Test Function
+    switch_symlink(lab_archive, ctrldir, experiment_name, "archive")
+
+    # Assert new symlink is created
+    assert archive_symlink.exists() and archive_symlink.is_symlink()
+    assert archive_symlink.resolve() == archive_dir
+
+
 def check_metadata(expected_uuid,
                    expected_experiment,
                    expected_parent_uuid=None,
