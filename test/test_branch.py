@@ -530,7 +530,7 @@ def test_checkout_laboratory_path_error(mock_lab_initialise):
 
     # Assert new commit has not been added
     assert repo.active_branch.object.hexsha == current_commit
-    
+
     assert str(repo.active_branch) == "Branch1"
     assert not (ctrldir / "metadata.yaml").exists()
 

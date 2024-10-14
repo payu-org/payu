@@ -14,11 +14,11 @@ LAB_INITIALIZE_ERROR = """
 The configured laboratory directory may not have write access. Edit/remove one
 (or more) of the following config.yaml options that determine the laboratory
 path:
+    - 'project': The project to use for payu PBS jobs. Default: ${PROJECT}
+    - 'shortpath' Top-level directory for laboratory
+        Default: /scratch/${PROJECT}
     - 'laboratory': Top-level directory for the model laboratory
         Default: /scratch/${PROJECT}/${USER}/${MODEL}
-    - 'shortpath' Top-level directory for laboratory.
-        Default: /scratch/${PROJECT}
-    - 'project': The project to use for payu PBS jobs. Default: ${PROJECT}
 """
 
 
