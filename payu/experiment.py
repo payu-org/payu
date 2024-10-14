@@ -52,6 +52,8 @@ class Experiment(object):
 
     def __init__(self, lab, reproduce=False, force=False, metadata_off=False):
         self.lab = lab
+        # Check laboratory directories are writable
+        self.lab.initialize()
 
         if not force:
             # check environment for force flag under PBS
