@@ -215,6 +215,27 @@ def test_switch_symlink_when_no_symlink_exists_and_no_archive():
     assert not archive_symlink.is_symlink()
 
 
+def test_switch_symkink_when_previous_symlink_dne():
+    # Point archive symlink to a directory that does not exist anymore
+    lab_archive = labdir / "archive"
+    previous_archive_dir = lab_archive / "ExperimentDNE"
+
+    archive_symlink = ctrldir / "archive"
+    archive_symlink.symlink_to(previous_archive_dir)
+
+    # New Experiment
+    experiment_name = "Experiment1"
+    archive_dir = lab_archive / experiment_name
+    archive_dir.mkdir(parents=True)
+
+    # Test Function
+    switch_symlink(lab_archive, ctrldir, experiment_name, "archive")
+
+    # Assert new symlink is created
+    assert archive_symlink.exists() and archive_symlink.is_symlink()
+    assert archive_symlink.resolve() == archive_dir
+
+
 def check_metadata(expected_uuid,
                    expected_experiment,
                    expected_parent_uuid=None,
@@ -342,12 +363,16 @@ def test_checkout_existing_branch_with_no_metadata(mock_uuid):
     expected_no_uuid_msg = (
         "No experiment uuid found in metadata. Generating a new uuid"
     )
+    expected_no_archive_msg = (
+        "No pre-existing archive found. Generating a new uuid"
+    )
 
     with cd(ctrldir):
         # Test checkout existing branch with no existing metadata
         with pytest.warns(MetadataWarning, match=expected_no_uuid_msg):
-            checkout_branch(branch_name="Branch1",
-                            lab_path=labdir)
+            with pytest.warns(MetadataWarning, match=expected_no_archive_msg):
+                checkout_branch(branch_name="Branch1",
+                                lab_path=labdir)
 
     # Check metadata was created and commited
     branch1_experiment_name = f"{ctrldir_basename}-Branch1-574ea2c9"
@@ -487,6 +512,39 @@ def test_checkout_branch_with_restart_path(mock_uuid):
                           expected_uuid=uuid2,
                           expected_experiment=experiment2_name,
                           expected_parent_uuid=uuid1)
+
+
+@patch("payu.laboratory.Laboratory.initialize")
+def test_checkout_laboratory_path_error(mock_lab_initialise):
+    mock_lab_initialise.side_effect = PermissionError
+
+    repo = setup_control_repository()
+    current_commit = repo.active_branch.object.hexsha
+
+    with cd(ctrldir):
+        # Test raises a permission error
+        with pytest.raises(PermissionError):
+            checkout_branch(branch_name="Branch1",
+                            is_new_branch=True,
+                            lab_path=labdir)
+
+    # Assert new commit has not been added
+    assert repo.active_branch.object.hexsha == current_commit
+
+    assert str(repo.active_branch) == "Branch1"
+    assert not (ctrldir / "metadata.yaml").exists()
+
+    # Test removing lab directory
+    shutil.rmtree(labdir)
+    mock_lab_initialise.side_effect = None
+    with cd(ctrldir):
+        # Test runs without an error - directory is initialised
+        checkout_branch(branch_name="Branch2",
+                        is_new_branch=True,
+                        lab_path=labdir)
+
+    # Assert new commit has been added
+    assert repo.active_branch.object.hexsha != current_commit
 
 
 @patch("uuid.uuid4")
