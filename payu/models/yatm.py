@@ -37,11 +37,13 @@ class Yatm(Model):
         self.work_input_path = os.path.join(self.work_path, 'INPUT')
 
     def archive(self):
-
-        # Create an empty restart directory
-        mkdir_p(self.restart_path)
-
         shutil.rmtree(self.work_input_path)
 
     def collate(self):
         pass
+
+    def get_prior_restart_files(self):
+        """Override model class method to avoid displaying an error
+        when there is no prior restart files. yatm reads from data files
+        so it should not require prior restarts"""
+        return []
