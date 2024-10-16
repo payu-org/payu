@@ -364,7 +364,7 @@ def non_log_file():
 @pytest.mark.parametrize("config", [CONFIG_WITH_COMPRESSION],
                          indirect=True)
 def test_log_compression(config, cice4_log_files, non_log_file,
-                         cice_nml # Required by expt.__init__
+                         cice_nml   # Required by expt.__init__
                          ):
     """
     Test that logfiles produced by cice during ESM1.5 simulations are
