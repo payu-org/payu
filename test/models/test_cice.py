@@ -4,6 +4,7 @@ import shutil
 import pytest
 import f90nml
 import tarfile
+from pathlib import Path
 
 import payu
 
@@ -141,6 +142,7 @@ def cice_nml():
 
     # Cleanup
     os.remove(nml_path)
+
 
 # Important to test None case without separate ice history file
 @pytest.fixture(params=[None,
@@ -325,22 +327,19 @@ def cice4_log_files():
     """
     Create cice log files matching those produced during ESM1.5 simulations.
     """
-    log_names = ["ice_diag_out", "ice_diag.d", "debug.root.03",
-                 "iceout086", "iceout088", "iceout090", "iceout092",
-                 "iceout094", "iceout096", "iceout085", "iceout087",
-                 "iceout089", "iceout091", "iceout093", "iceout095"]
-    log_paths = [os.path.join(expt_workdir, name) for name in log_names]
+    log_names = (["ice_diag_out", "ice_diag.d", "debug.root.03"]
+                 + [f'iceout{x:03d}' for x in range(85, 96)])
+    log_paths = [Path(expt_workdir)/name for name in log_names]
 
     for log_file in log_paths:
-        with open(log_file, "w") as f:
-            f.close()
+        log_file.touch()
 
     yield log_paths
 
     # Cleanup
     for log_file in log_paths:
         try:
-            os.remove(log_file)
+            log_file.unlink()
         except FileNotFoundError:
             pass
 
@@ -351,14 +350,13 @@ def non_log_file():
     Create a cice4 output file to be ignored by log compression.
     Use cice_in.nml which is copied to the work directory in ESM1.5.
     """
-    non_log_path = os.path.join(expt_workdir, CICE_NML_NAME)
-    with open(non_log_path, "w") as f:
-        f.close()
+    non_log_path = Path(expt_workdir)/CICE_NML_NAME
+    non_log_path.touch()
 
     yield non_log_path
 
     # Cleanup
-    os.remove(non_log_path)
+    non_log_path.unlink()
 
 
 @pytest.mark.parametrize("config", [CONFIG_WITH_COMPRESSION],
@@ -381,11 +379,12 @@ def test_log_compression(config, cice4_log_files, non_log_file,
 
     # Check that log tarball created and no original logs remain
     assert set(os.listdir(expt_workdir)) == {model.log_tar_name,
-                                             os.path.basename(non_log_file)}
+                                             non_log_file.name}
 
     # Check all logs present in tarball
-    log_file_names = {os.path.basename(log_path) for
+    log_file_names = {log_path.name for
                       log_path in cice4_log_files}
+
     with tarfile.open(os.path.join(expt_workdir, model.log_tar_name),
                       "r") as tar:
         assert set(tar.getnames()) == log_file_names

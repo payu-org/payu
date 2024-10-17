@@ -342,10 +342,29 @@ class Cice(Model):
         else:
             shutil.rmtree(self.work_input_path)
 
-        if self.expt.config.get('compress_logs', False):
+        if self.compression_enabled():
             self.compress_log_files()
 
+    def compression_enabled(self):
+        """
+        Determine whether to run log compression based on config.yaml settings.
+        Default to True when 'compress_logs' setting is absent.
+        """
+        archive_config = self.expt.config.get('archive', {})
+        if isinstance(archive_config, dict):
+            return archive_config.get('compress_logs', True)
+        else:
+            return True
+
     def get_log_files(self):
+        """
+        Find model log files in the work directory based on regex patterns
+        in self.logs_to_compress.
+
+        Returns
+        -------
+        log_files: list of paths to model log files.
+        """
         log_files = []
         for filename in os.listdir(self.work_path):
             if any((re.match(pattern, filename)
@@ -354,6 +373,9 @@ class Cice(Model):
         return log_files
 
     def compress_log_files(self):
+        """
+        Compress model log files into tarball.
+        """
         log_files = self.get_log_files()
         with tarfile.open(name=os.path.join(self.work_path, self.log_tar_name),
                           mode="w:gz") as tar:
