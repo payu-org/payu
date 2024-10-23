@@ -50,7 +50,7 @@ class Access(Model):
                 model.get_ptr_restart_dir = model.get_access_ptr_restart_dir
 
             if model.model_type == 'cice5':
-                model.access_restarts.append(['u_star.nc', 'sicemass.nc'])
+                model.access_restarts.extend(['u_star.nc', 'sicemass.nc'])
 
             if model.model_type == 'cice':
                 # Structure of model coupling namelist
