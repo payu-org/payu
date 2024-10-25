@@ -150,11 +150,6 @@ class Cice(Model):
     def get_ptr_restart_dir(self):
         return os.path.relpath(self.work_init_path, self.work_path)
 
-    def get_access_ptr_restart_dir(self):
-        # The ACCESS build of CICE assumes that restart_dir is 'RESTART'
-        # TODO: Move to ACCESS driver
-        return '.'
-
     def setup(self):
         super(Cice, self).setup()
 
