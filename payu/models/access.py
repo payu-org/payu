@@ -47,12 +47,14 @@ class Access(Model):
                 model.copy_restarts = True
 
                 model.set_timestep = model.set_access_timestep
-                model.get_ptr_restart_dir = model.get_access_ptr_restart_dir
 
             if model.model_type == 'cice5':
                 model.access_restarts.extend(['u_star.nc', 'sicemass.nc'])
 
             if model.model_type == 'cice':
+                # The ACCESS build of CICE assumes that restart_dir is 'RESTART'
+                model.get_ptr_restart_dir = lambda : '.'
+
                 # Structure of model coupling namelist
                 model.cpl_fname = 'input_ice.nml'
                 model.cpl_group = 'coupling'
