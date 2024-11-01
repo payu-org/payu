@@ -301,6 +301,18 @@ def needs_subprocess_shell(command: str) -> bool:
     return False
 
 
+def env_with_python_path():
+    """Return a copy of current environment variables with PATH
+    modified to include the python interpreter"""
+    # Get the directory of the current Python interpreter
+    python_dir = os.path.dirname(sys.executable)
+
+    # Add Python interpreter to PATH
+    env = os.environ.copy()
+    env["PATH"] = python_dir + os.pathsep + env["PATH"]
+    return env
+
+
 def _run_script(script_cmd: str, control_path: Path) -> None:
     """Helper recursive function to attempt running a script command.
 
@@ -315,9 +327,11 @@ def _run_script(script_cmd: str, control_path: Path) -> None:
     # First try to interpret the argument as a full command
     try:
         if needs_subprocess_shell(script_cmd):
-            subprocess.check_call(script_cmd, shell=True)
+            subprocess.check_call(script_cmd, shell=True,
+                                  env=env_with_python_path())
         else:
-            subprocess.check_call(shlex.split(script_cmd))
+            subprocess.check_call(shlex.split(script_cmd),
+                                  env=env_with_python_path())
         print(script_cmd)
 
     except FileNotFoundError:
