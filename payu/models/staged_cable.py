@@ -21,23 +21,6 @@ from payu.models.model import Model
 from payu.fsops import mkdir_p
 
 
-def deep_update(d_1, d_2):
-    """Deep update of namelists."""
-    for key, value in d_2.items():
-        if isinstance(value, dict):
-            # Nested struct
-            if key in d_1:
-                # If the master namelist contains the key, then recursively
-                # apply
-                deep_update(d_1[key], d_2[key])
-            else:
-                # Otherwise just set the value from the patch dict
-                d_1[key] = value
-        else:
-            # Is value, just override
-            d_1[key] = value
-
-
 class StagedCable(Model):
     """A driver for running staged CABLE spin-up configurations."""
 
@@ -47,10 +30,19 @@ class StagedCable(Model):
         self.model_type = 'staged_cable'
         self.default_exec = 'cable'
 
+        # We want people to be able to use payu during testing, which
+        # often means additions of new namelists due to new science
+        # modules. I would like to set 
+        # optional_config_files = glob.glob("*.nml")
+        # but this feels like a bit of an abuse of feature.
         self.config_files = ['stage_config.yaml']
         self.optional_config_files = ['cable.nml', 'cru.nml',
                                       'luc.nml', 'met_names.nml']
 
+    def setup(self):
+        super(StagedCable, self).setup()
+
+        # Initialise the configuration log
         self.configuration_log = {}
 
         if not os.path.isfile('configuration_log.yaml'):
@@ -60,11 +52,18 @@ class StagedCable(Model):
             # Read the current configuration log
             self._read_configuration_log()
 
-        # Now set the number of runs using the configuration_log
-        remaining_stages = len(self.configuration_log['queued_stages'])
-        print("Overriding the remaining number of runs according to the " +
-              "number of queued stages in the configuration log.")
-        os.environ['PAYU_N_RUNS'] = str(remaining_stages)
+        # Prepare the namelists for the stage
+        stage_name = self._get_stage_name()
+        self._apply_stage_namelists(stage_name)
+
+        # Make the logging directory
+        mkdir_p(os.path.join(self.work_path, "logs"))
+
+        # Get the additional restarts from older restart dirs
+        self._get_further_restarts()
+
+        # Make necessary adjustments to the configuration log
+        self._handle_configuration_log_setup()
 
     def _build_new_configuration_log(self):
         """Build a new configuration log for the first stage of the run."""
@@ -126,22 +125,6 @@ class StagedCable(Model):
 
                 # Finish handling of single step stage
         return cable_stages
-
-    def setup(self):
-        super(StagedCable, self).setup()
-
-        # Prepare the namelists for the stage
-        stage_name = self._get_stage_name()
-        self._apply_stage_namelists(stage_name)
-
-        # Make the logging directory
-        mkdir_p(os.path.join(self.work_path, "logs"))
-
-        # Get the additional restarts from older restart dirs
-        self._get_further_restarts()
-
-        # Make necessary adjustments to the configuration log
-        self._handle_configuration_log_setup()
 
     def _get_further_restarts(self):
         """Get the restarts from stages further in the past where necessary."""
@@ -238,47 +221,65 @@ class StagedCable(Model):
                 # Instance where there is only a stage namelist
                 shutil.copy(stage_nml, write_target)
 
-    def _handle_configuration_log_setup(self):
-        """Make appropriate adjustments to the configuration log to reflect
-        that the setup of the stage is complete."""
+    def _set_current_stage(self):
+        """Move the stage at the front of the queue into the current stage
+        slot, then copy the configuration log to the working directory."""
 
-        if self.configuration_log['current_stage'] != '':
-            # If the current stage is a non-empty string, it means we exited
-            # during the running of the previous stage- leave as is
-            stage_name = self.configuration_log['current_stage']
-        else:
-            # Normal case where we just archived a successful stage.
-            self.configuration_log['current_stage'] = \
-                    self.configuration_log['queued_stages'].pop(0)
+        self.configuration_log['current_stage'] = \
+                self.configuration_log['queued_stages'].pop(0)
 
         self._save_configuration_log()
-
-        # Copy the log to the work directory
-        shutil.copy('configuration_log.yaml', self.work_input_path)
+        shutil.copy('configuration_log.yaml', self.work_path)
 
     def archive(self):
         """Store model output to laboratory archive and update the
 configuration log."""
 
-        # Move files from the restart directory within work to the archive
-        # restart directory.
-        for f in os.listdir(self.work_restart_path):
-            shutil.move(os.path.join(self.work_restart_path, f),
-                        self.restart_path)
-        os.rmdir(self.work_restart_path)
+        # Retrieve all the restarts required for the next stage
+        self._collect_restarts()
 
         # Update the configuration log and save it to the working directory
-        completed_stage = self.configuration_log['current_stage']
-        self.configuration_log['current_stage'] = ''
-        self.configuration_log['completed_stages'].append(completed_stage)
+        self._read_configuration_log()
+        self._archive_current_stage()
 
-        self._save_configuration_log()
+        # Now set the number of runs using the configuration_log
+        remaining_stages = len(self.configuration_log['queued_stages'])
+        print("Overriding the remaining number of runs according to the " +
+              "number of queued stages in the configuration log.")
+        self.expt.n_runs = remaining_stages
 
         if len(self.configuration_log["queued_stages"]) == 0:
             # Configuration successfully completed
             os.remove('configuration_log.yaml')
 
         super(StagedCable, self).archive()
+
+    def _collect_restarts(self):
+        """Collect all restart files required for the next stage. This is a
+        merge of the files in work_path/restart and in prior_restart_path, with
+        the files in work_path/restart taking precedence."""
+
+        # Move the files in work_path/restart first
+        for f in os.listdir(self.work_restart_path):
+            shutil.move(os.path.join(self.work_restart_path, f),
+                        self.restart_path)
+        os.rmdir(self.work_restart_path)
+
+        # Now collect any restarts from prior_restart_path only if said restart
+        # doesn't already exist
+        prior_restarts = os.listdir(self.restart_path)
+        for f in self.prior_restart_path:
+            if f not in prior_restarts:
+                shutil.copy(os.path.join(self.prior_restart_path, f),
+                        self.restart_path)
+
+    def _archive_current_stage(self):
+        """Move the current stage to the list of completed stages."""
+        self.configuration_log['completed_stages'].append(
+                self.configuraton_log['current_stage'])
+
+        self.configuration_log['current_stage'] = ''
+        self._save_configuration_log()
 
     def collate(self):
         pass
