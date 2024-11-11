@@ -37,7 +37,8 @@ class StagedCable(Model):
         # but this feels like a bit of an abuse of feature.
         self.config_files = ['stage_config.yaml']
         self.optional_config_files = ['cable.nml', 'cru.nml',
-                                      'luc.nml', 'met_names.nml']
+                                      'luc.nml', 'met_names.nml',
+                                      'bios.nml']
 
     def setup(self):
         super(StagedCable, self).setup()
@@ -60,11 +61,12 @@ class StagedCable(Model):
         mkdir_p(os.path.join(self.work_path, "logs"))
 
         # Get the additional restarts from older restart dirs
-        self._get_further_restarts()
+        # self._get_further_restarts()
 
         # Make necessary adjustments to the configuration log
-        self._handle_configuration_log_setup()
+        # self._handle_configuration_log_setup()
 
+        self._set_current_stage()
     def _build_new_configuration_log(self):
         """Build a new configuration log for the first stage of the run."""
 
@@ -266,20 +268,30 @@ configuration log."""
         os.rmdir(self.work_restart_path)
 
         # Now collect any restarts from prior_restart_path only if said restart
-        # doesn't already exist
-        prior_restarts = os.listdir(self.restart_path)
-        for f in self.prior_restart_path:
-            if f not in prior_restarts:
-                shutil.copy(os.path.join(self.prior_restart_path, f),
-                        self.restart_path)
+        # doesn't already exist (except on first run)
+        if self.expt.counter > 0:
+            # self.prior_restart_path nor expt.prior_restart_path are defined here
+            # build it as in experiment.py
+            prior_restart_dir = 'restart{0:03}'.format(self.expt.counter - 1)
+            prior_restart_path = os.path.join(self.expt.archive_path,
+                                              prior_restart_dir)
+
+            current_restarts = os.listdir(self.restart_path)
+            for f in os.listdir(prior_restart_path):
+                if f not in current_restarts:
+                    shutil.copy(os.path.join(prior_restart_path, f),
+                            self.restart_path)
 
     def _archive_current_stage(self):
         """Move the current stage to the list of completed stages."""
         self.configuration_log['completed_stages'].append(
-                self.configuraton_log['current_stage'])
+                self.configuration_log['current_stage'])
 
         self.configuration_log['current_stage'] = ''
         self._save_configuration_log()
+
+        # Copy the configuration log to the restart directory for shareability
+        shutil.copy('configuration_log.yaml', self.restart_path)
 
     def collate(self):
         pass
