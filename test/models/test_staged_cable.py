@@ -131,7 +131,7 @@ def test_staged_cable():
 
         # Since we've called the initialiser, we should be able to inspect the
         # stages immediately (through the configuration log)
-        expected_queued_stages = [
+        expected_q_stages = [
             'stage_2',
             'stage_3',
             'stage_4',
@@ -141,7 +141,7 @@ def test_staged_cable():
             'stage_6',
             'stage_6',
             'stage_7']
-        assert model.configuration_log['queued_stages'] == expected_queued_stages
+        assert model.configuration_log['queued_stages'] == expected_q_stages
         assert model.configuration_log['current_stage'] == 'stage_1'
 
         # Now check the namelist
@@ -165,7 +165,7 @@ def test_staged_cable():
 
         # Archive the stage and make sure the configuration log is correct
         model.archive()
-        expected_comp_stages = ['stage_1']
-        expected_current_stage = ''
-        assert model.configuration_log['completed_stages'] == expected_comp_stages
-        assert model.configuration_log['current_stage'] == expected_current_stage
+        ex_comp_stages = ['stage_1']
+        ex_curr_stage = ''
+        assert model.configuration_log['completed_stages'] == ex_comp_stages
+        assert model.configuration_log['current_stage'] == ex_curr_stage

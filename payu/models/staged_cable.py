@@ -32,7 +32,7 @@ class StagedCable(Model):
 
         # We want people to be able to use payu during testing, which
         # often means additions of new namelists due to new science
-        # modules. I would like to set 
+        # modules. I would like to set
         # optional_config_files = glob.glob("*.nml")
         # but this feels like a bit of an abuse of feature.
         self.config_files = ['stage_config.yaml']
@@ -128,39 +128,6 @@ class StagedCable(Model):
                 # Finish handling of single step stage
         return cable_stages
 
-    def _get_further_restarts(self):
-        """Get the restarts from stages further in the past where necessary."""
-
-        # Often we take restarts from runs which are not the most recent run as
-        # inputs for particular science modules, which means we have to extend
-        # the existing functionality around retrieving restarts.
-
-        # We can't supercede the parent get_prior_restart_files, since the
-        # files returned by said function are prepended by
-        # self.prior_restart_path, which is not desirable in this instance.
-
-        num_completed_stages = len(self.configuration_log['completed_stages'])
-
-        for stage_number in reversed(range(num_completed_stages - 1)):
-            respath = os.path.join(
-                self.expt.archive_path,
-                f'restart{stage_number:03d}'
-            )
-            for f_name in os.listdir(respath):
-                if os.path.isfile(os.path.join(respath, f_name)):
-                    f_orig = os.path.join(respath, f_name)
-                    f_link = os.path.join(self.work_init_path_local, f_name)
-                    # Check whether a given link already exists in the
-                    # manifest, so we don't write over a newer version of a
-                    # restart
-                    if f_link not in self.expt.manifest.manifests['restart']:
-                        self.expt.manifest.add_filepath(
-                            'restart',
-                            f_link,
-                            f_orig,
-                            self.copy_restarts
-                        )
-
     def set_model_pathnames(self):
         super(StagedCable, self).set_model_pathnames()
 
@@ -228,7 +195,7 @@ class StagedCable(Model):
         slot, then copy the configuration log to the working directory."""
 
         self.configuration_log['current_stage'] = \
-                self.configuration_log['queued_stages'].pop(0)
+            self.configuration_log['queued_stages'].pop(0)
 
         self._save_configuration_log()
         conf_log_p = os.path.join(self.control_path, 'configuration_log.yaml')
@@ -277,8 +244,7 @@ configuration log."""
             for f in os.listdir(prior_restart_path):
                 if f not in generated_restarts:
                     shutil.copy(os.path.join(prior_restart_path, f),
-                            self.work_restart_path)
-
+                                self.work_restart_path)
 
         # Move the files in work_path/restart first
         for f in os.listdir(self.work_restart_path):
