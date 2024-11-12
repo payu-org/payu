@@ -33,6 +33,8 @@ def setup_module(module):
         ctrldir.mkdir()
         expt_workdir.mkdir(parents=True)
         archive_dir.mkdir()
+        restart_dir = archive_dir / 'ctrl' / 'restart000'
+        restart_dir.mkdir(parents=True)
     except Exception as e:
         print(e)
 
@@ -107,10 +109,10 @@ def teardown_module(module):
     if verbose:
         print("teardown_module   module:%s" % module.__name__)
 
-    try:
-        shutil.rmtree(tmpdir)
-    except Exception as e:
-        print(e)
+    # try:
+        # shutil.rmtree(tmpdir)
+    # except Exception as e:
+        # print(e)
 
 
 def test_staged_cable():
@@ -123,50 +125,47 @@ def test_staged_cable():
         expt = payu.experiment.Experiment(lab, reproduce=False)
         model = expt.models[0]
 
-    # Since we've called the initialiser, we should be able to inspect the
-    # stages immediately (through the configuration log)
-    expected_queued_stages = [
-        'stage_1',
-        'stage_2',
-        'stage_3',
-        'stage_4',
-        'stage_3',
-        'stage_3',
-        'stage_5',
-        'stage_6',
-        'stage_6',
-        'stage_7']
-    assert model.configuration_log['queued_stages'] == expected_queued_stages
+        # Now prepare for a stage- should see changes in the configuration log
+        # and the patched namelist in the workdir
+        model.setup()
 
-    # Now prepare for a stage- should see changes in the configuration log
-    # and the patched namelist in the workdir
-    model.setup()
-    expected_current_stage = expected_queued_stages.pop(0)
-    assert model.configuration_log['current_stage'] == expected_current_stage
-    assert model.configuration_log['queued_stages'] == expected_queued_stages
+        # Since we've called the initialiser, we should be able to inspect the
+        # stages immediately (through the configuration log)
+        expected_queued_stages = [
+            'stage_2',
+            'stage_3',
+            'stage_4',
+            'stage_3',
+            'stage_3',
+            'stage_5',
+            'stage_6',
+            'stage_6',
+            'stage_7']
+        assert model.configuration_log['queued_stages'] == expected_queued_stages
+        assert model.configuration_log['current_stage'] == 'stage_1'
 
-    # Now check the namelist
-    expected_namelist = {
-        'cablenml': {
-            'option1': 10,
-            'struct1': {
-                'option2': 20,
-                'option3': 3,
-                'option5': 50
-            },
-            'option4': 4,
-            'option6': 60
+        # Now check the namelist
+        expected_namelist = {
+            'cablenml': {
+                'option1': 10,
+                'struct1': {
+                    'option2': 20,
+                    'option3': 3,
+                    'option5': 50
+                },
+                'option4': 4,
+                'option6': 60
+            }
         }
-    }
 
-    with open(expt_workdir / 'cable.nml') as stage_nml_f:
-        stage_nml = f90nml.read(stage_nml_f)
+        with open(expt_workdir / 'cable.nml') as stage_nml_f:
+            stage_nml = f90nml.read(stage_nml_f)
 
-    assert stage_nml == expected_namelist
+        assert stage_nml == expected_namelist
 
-    # Archive the stage and make sure the configuration log is correct
-    model.archive()
-    expected_comp_stages = [expected_current_stage]
-    expected_current_stage = ''
-    assert model.configuration_log['completed_stages'] == expected_comp_stages
-    assert model.configuration_log['current_stage'] == expected_current_stage
+        # Archive the stage and make sure the configuration log is correct
+        model.archive()
+        expected_comp_stages = ['stage_1']
+        expected_current_stage = ''
+        assert model.configuration_log['completed_stages'] == expected_comp_stages
+        assert model.configuration_log['current_stage'] == expected_current_stage

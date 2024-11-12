@@ -46,7 +46,8 @@ class StagedCable(Model):
         # Initialise the configuration log
         self.configuration_log = {}
 
-        if not os.path.isfile('configuration_log.yaml'):
+        conf_log_p = os.path.join(self.control_path, 'configuration_log.yaml')
+        if not os.path.isfile(conf_log_p):
             # Build a new configuration log
             self._build_new_configuration_log()
         else:
@@ -60,18 +61,14 @@ class StagedCable(Model):
         # Make the logging directory
         mkdir_p(os.path.join(self.work_path, "logs"))
 
-        # Get the additional restarts from older restart dirs
-        # self._get_further_restarts()
-
-        # Make necessary adjustments to the configuration log
-        # self._handle_configuration_log_setup()
-
         self._set_current_stage()
+
     def _build_new_configuration_log(self):
         """Build a new configuration log for the first stage of the run."""
 
+        stage_conf_p = os.path.join(self.control_path, 'stage_config.yaml')
         # Read the stage_config.yaml file
-        with open('stage_config.yaml', 'r') as stage_conf_f:
+        with open(stage_conf_p, 'r') as stage_conf_f:
             self.stage_config = yaml.safe_load(stage_conf_f)
 
         # On the first run, we need to read the 'stage_config.yaml' file.
@@ -86,8 +83,11 @@ class StagedCable(Model):
 
     def _read_configuration_log(self):
         """Read the existing configuration log."""
-        with open('configuration_log.yaml') as conf_log_file:
+        conf_log_p = os.path.join(self.control_path, 'configuration_log.yaml')
+        with open(conf_log_p, 'r') as conf_log_file:
             self.configuration_log = yaml.safe_load(conf_log_file)
+
+        print(f"After reading configuration_log: {self.configuration_log}")
 
     def _prepare_configuration(self):
         """Prepare the stages in the CABLE configuration."""
@@ -231,7 +231,8 @@ class StagedCable(Model):
                 self.configuration_log['queued_stages'].pop(0)
 
         self._save_configuration_log()
-        shutil.copy('configuration_log.yaml', self.work_path)
+        conf_log_p = os.path.join(self.control_path, 'configuration_log.yaml')
+        shutil.copy(conf_log_p, self.work_path)
 
     def archive(self):
         """Store model output to laboratory archive and update the
@@ -250,9 +251,10 @@ configuration log."""
               "number of queued stages in the configuration log.")
         self.expt.n_runs = remaining_stages
 
-        if len(self.configuration_log["queued_stages"]) == 0:
+        conf_log_p = os.path.join(self.control_path, 'configuration_log.yaml')
+        if self.expt.n_runs == 0:
             # Configuration successfully completed
-            os.remove('configuration_log.yaml')
+            os.remove(conf_log_p)
 
         super(StagedCable, self).archive()
 
@@ -261,26 +263,28 @@ configuration log."""
         merge of the files in work_path/restart and in prior_restart_path, with
         the files in work_path/restart taking precedence."""
 
+        # First, collect restarts which do not have a newer version (when the
+        # counter is greater than 0)
+        if self.expt.counter > 0:
+            prior_restart_dir = 'restart{0:03}'.format(self.expt.counter - 1)
+            prior_restart_path = os.path.join(self.expt.archive_path,
+                                              prior_restart_dir)
+
+            # For each restart, check if newer version was created. If not,
+            # copy into the work restart path.
+            generated_restarts = os.listdir(self.work_restart_path)
+
+            for f in os.listdir(prior_restart_path):
+                if f not in generated_restarts:
+                    shutil.copy(os.path.join(prior_restart_path, f),
+                            self.work_restart_path)
+
+
         # Move the files in work_path/restart first
         for f in os.listdir(self.work_restart_path):
             shutil.move(os.path.join(self.work_restart_path, f),
                         self.restart_path)
         os.rmdir(self.work_restart_path)
-
-        # Now collect any restarts from prior_restart_path only if said restart
-        # doesn't already exist (except on first run)
-        if self.expt.counter > 0:
-            # self.prior_restart_path nor expt.prior_restart_path are defined here
-            # build it as in experiment.py
-            prior_restart_dir = 'restart{0:03}'.format(self.expt.counter - 1)
-            prior_restart_path = os.path.join(self.expt.archive_path,
-                                              prior_restart_dir)
-
-            current_restarts = os.listdir(self.restart_path)
-            for f in os.listdir(prior_restart_path):
-                if f not in current_restarts:
-                    shutil.copy(os.path.join(prior_restart_path, f),
-                            self.restart_path)
 
     def _archive_current_stage(self):
         """Move the current stage to the list of completed stages."""
@@ -291,12 +295,14 @@ configuration log."""
         self._save_configuration_log()
 
         # Copy the configuration log to the restart directory for shareability
-        shutil.copy('configuration_log.yaml', self.restart_path)
+        conf_log_p = os.path.join(self.control_path, 'configuration_log.yaml')
+        shutil.copy(conf_log_p, self.restart_path)
 
     def collate(self):
         pass
 
     def _save_configuration_log(self):
         """Write the updated configuration log back to the staging area."""
-        with open('configuration_log.yaml', 'w+') as config_log_f:
+        conf_log_p = os.path.join(self.control_path, 'configuration_log.yaml')
+        with open(conf_log_p, 'w+') as config_log_f:
             yaml.dump(self.configuration_log, config_log_f)
