@@ -273,6 +273,21 @@ section for details.
       POSIX filesystem.
 
 
+Archiving
+---------
+
+``archiving``
+      On completion of a model run, payu moves model output, restart, and log
+      files from the temporary work area to the experiment archive directory.
+      The following settings control the steps taken during the archive step:
+      ``enable`` (*Default:* ``True``)
+            Flag to enable/disable the archive step. If ``False`` all output, restart,
+            and log files will remain in the work directory, and any collation, post-processing,
+            and syncing will not be run.
+      ``compress_logs`` (*Default:* ``True``)
+            Compress model log files into a tarball. Currently only implemented for CICE4.
+
+
 Collation
 ---------
 
