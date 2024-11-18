@@ -325,16 +325,28 @@ CONFIG_WITH_COMPRESSION = {
 @pytest.fixture
 def cice4_log_files():
     """
-    Create cice log files matching those produced during ESM1.5 simulations.
+    Create cice log files based on ESM1.5 logs.
     """
-    log_names = (["ice_diag_out", "ice_diag.d", "debug.root.03"]
-                 + [f'iceout{x:03d}' for x in range(85, 96)])
-    log_paths = [Path(expt_workdir)/name for name in log_names]
+    non_pe_logs = {
+        "ice_diag_out": "block id, proc, local_block:",
+        "ice_diag.d": "istep0                    =   ******",
+        "debug.root.03": "oasis_io_read_avfile:av2_isst_ia:NetCDF:"
+    }
+    pe_logs = {
+        f'iceout{x:03d}': "Fake iceout file {x}"
+        for x in range(85, 96)
+    }
 
-    for log_file in log_paths:
-        log_file.touch()
+    log_files = non_pe_logs | pe_logs
 
-    yield log_paths
+    log_paths = []
+    for log_name, log_contents in log_files.items():
+        log_path = Path(expt_workdir/log_name)
+        with open(log_path, "w") as log:
+            log.write(log_contents)
+        log_paths.append(log_path)
+
+    yield log_files
 
     # Cleanup
     for log_file in log_paths:
@@ -382,9 +394,16 @@ def test_log_compression(config, cice4_log_files, non_log_file,
                                              non_log_file.name}
 
     # Check all logs present in tarball
-    log_file_names = {log_path.name for
-                      log_path in cice4_log_files}
+    log_file_names = {log_name for
+                      log_name in cice4_log_files}
 
     with tarfile.open(os.path.join(expt_workdir, model.log_tar_name),
-                      "r") as tar:
+                      mode="r") as tar:
         assert set(tar.getnames()) == log_file_names
+
+        # Check contents of compressed files
+        for entry in tar:
+            entry_name = entry.name
+            with tar.extractfile(entry) as open_entry:
+                file_contents = open_entry.read().decode("utf-8")
+                assert file_contents == cice4_log_files[entry_name]

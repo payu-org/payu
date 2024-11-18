@@ -381,7 +381,10 @@ class Cice(Model):
                           mode="w:gz") as tar:
             for file in log_files:
                 tar.add(file, arcname=os.path.basename(file))
-                os.remove(file)
+
+        # Delete files after tarball is written
+        for file in log_files:
+            os.remove(file)
 
     def collate(self):
         pass
