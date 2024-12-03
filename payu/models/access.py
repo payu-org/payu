@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import sys
+import struct
 
 # Extensions
 import f90nml
@@ -218,6 +219,32 @@ class Access(Model):
                 f90nml.write(cpl_nml, nml_work_path + '~')
                 shutil.move(nml_work_path + '~', nml_work_path)
 
+            if model.model_type == 'cice':
+                # Check that the previous runtime in iced restart file
+                # header matches the runtime calculated from
+                # the calendar restart file.
+
+                # Requires the cice.iced_restart_path to have been set
+                # in the cice driver.
+                try:
+                    cice_iced_path = model.iced_restart_path
+                except AttributeError as missing_header:
+                    msg = ("cice model attribute 'iced_restart_path' "
+                           "required for restart consistency checks has not "
+                           "been set in the cice driver.")
+                    raise RuntimeError(msg) from missing_header
+
+                _, _, cice_iced_runtime, _ = read_binary_iced_header(
+                                                        cice_iced_path
+                                                        )
+                if previous_runtime != cice_iced_runtime:
+                    msg = (f"Previous runtime from calendar file "
+                           f"{start_date_fpath}: {previous_runtime} "
+                           "does not match previous runtime in restart"
+                           f"file {cice_iced_path}: {cice_iced_runtime}."
+                           )
+                    raise RuntimeError(msg)
+
         # Now change the oasis runtime. This needs to be done after the others.
         for model in self.expt.models:
             if model.model_type == 'oasis':
@@ -333,3 +360,14 @@ class Access(Model):
 
     def collate(self):
         pass
+
+
+def read_binary_iced_header(iced_path):
+    """
+    Read the header information from a CICE4 binary restart file.
+    """
+    with open(iced_path, 'rb') as iced_file:
+        header = iced_file.read(24)
+        bint, istep0, time, time_forc = struct.unpack('>iidd', header)
+
+    return (bint, istep0, time, time_forc)

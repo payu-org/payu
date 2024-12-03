@@ -162,29 +162,10 @@ class Cice(Model):
             self.ice_in.patch(history_nml)
 
         setup_nml = self.ice_in['setup_nml']
+        self._calc_runtime()
 
         if self.prior_restart_path:
-            # Generate ice.restart_file
-            # TODO: better check of restart filename
-            iced_restart_file = None
-            iced_restart_files = [f for f in self.get_prior_restart_files()
-                                  if f.startswith('iced.')]
-
-            if len(iced_restart_files) > 0:
-                iced_restart_file = sorted(iced_restart_files)[-1]
-
-            if iced_restart_file is None:
-                raise FileNotFoundError(
-                    f'No iced restart file found in {self.prior_restart_path}')
-
-            res_ptr_path = os.path.join(self.work_init_path,
-                                        'ice.restart_file')
-            if os.path.islink(res_ptr_path):
-                # If we've linked in a previous pointer it should be deleted
-                os.remove(res_ptr_path)
-            with open(res_ptr_path, 'w') as res_ptr:
-                res_dir = self.get_ptr_restart_dir()
-                print(os.path.join(res_dir, iced_restart_file), file=res_ptr)
+            self.make_restart_ptr()
 
             # Update input namelist
             setup_nml['runtype'] = 'continue'
@@ -197,8 +178,6 @@ class Cice(Model):
 
             if setup_nml['restart']:
                 self.link_restart(setup_nml['pointer_file'])
-
-        self._calc_runtime()
 
         # Write any changes to the work directory copy of the cice
         # namelist
@@ -254,13 +233,15 @@ class Cice(Model):
             # If no prior restart directory exists, set the prior runtime to 0
             prior_runtime_seconds = 0
 
+        # Save run start date for generating restart pointer file.
+        self.run_start_date = cal.date_plus_seconds(init_date,
+                                                    prior_runtime_seconds,
+                                                    caltype)
+
         # Calculate runtime for this run.
         if self.expt.runtime:
-            run_start_date = cal.date_plus_seconds(init_date,
-                                                   prior_runtime_seconds,
-                                                   caltype)
             run_runtime = cal.runtime_from_date(
-                run_start_date,
+                self.run_start_date,
                 self.expt.runtime['years'],
                 self.expt.runtime['months'],
                 self.expt.runtime['days'],
@@ -351,3 +332,33 @@ class Cice(Model):
             )
 
         make_symlink(input_path, input_work_path)
+
+    def make_restart_ptr(self):
+        """
+        Generate restart pointer file 'ice.restart_file' pointing
+        to the correct 'iced.YYYYMMDD' based on the run start date.
+        """
+        # Expected iced restart file name based on start date
+        run_start_date_int = cal.date_to_int(self.run_start_date)
+        iced_restart_file = f"iced.{run_start_date_int}"
+
+        if iced_restart_file not in self.get_prior_restart_files():
+            msg = (f"Restart file {iced_restart_file} matching "
+                   f"run start date {run_start_date_int} "
+                   f"not found in {self.prior_restart_path}.")
+            raise FileNotFoundError(msg)
+
+        res_ptr_path = os.path.join(self.work_init_path,
+                                    'ice.restart_file')
+        if os.path.islink(res_ptr_path):
+            # If we've linked in a previous pointer it should be deleted
+            os.remove(res_ptr_path)
+
+        with open(res_ptr_path, 'w') as res_ptr:
+            res_dir = self.get_ptr_restart_dir()
+            res_ptr.write(os.path.join(res_dir, iced_restart_file))
+
+        # Save the iced restart file name for use in additional
+        # consistency checks.
+        self.iced_restart_path = os.path.join(self.prior_restart_path,
+                                              iced_restart_file)
