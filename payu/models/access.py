@@ -221,13 +221,8 @@ class Access(Model):
 
             if model.model_type == 'cice':
                 # Set up and check the cice restart files
-                res_ptr_path, iced_path = cice4_make_restart_pointer(
-                                                model,
-                                                run_start_date
-                                          )
-                cice4_check_date_consistency(model,
-                                             iced_path,
-                                             previous_runtime)
+                cice4_make_restart_pointer(model,
+                                           run_start_date)
 
         # Now change the oasis runtime. This needs to be done after the others.
         for model in self.expt.models:
@@ -346,13 +341,13 @@ class Access(Model):
         pass
 
 
-def cice4_make_restart_pointer(cice_model, run_start_date):
+def cice4_make_restart_pointer(cice_model, run_start_date, previous_runtime):
     """
-    Generate restart pointer file 'ice.restart_file' containing
+    Generate restart pointer file 'ice.restart_file' specifying
     the correct 'iced.YYYYMMDD' restart file, based on the run
     start date.
-    Additionally add the iced restart path as a model attribute
-    for use in consistency checks.
+    Additionally check that the `iced.YYYYMNDD` restart file's header
+    has the correct previous runtime.
     """
     # Expected iced restart file name based on start date
     run_start_date_int = cal.date_to_int(run_start_date)
@@ -370,25 +365,16 @@ def cice4_make_restart_pointer(cice_model, run_start_date):
         # If we've linked in a previous pointer it should be deleted
         os.remove(res_ptr_path)
 
+    iced_path = os.path.join(cice_model.prior_restart_path,
+                             iced_restart_file)
+
+    # Check that the prior run time in the iced restart header matches
+    # the previous runtime calculated from the calendar file.
+    cice4_check_date_consistency(cice_model, iced_path, previous_runtime)
+
     with open(res_ptr_path, 'w') as res_ptr:
         res_dir = cice_model.get_ptr_restart_dir()
         res_ptr.write(os.path.join(res_dir, iced_restart_file))
-
-    # Return file paths for use in additional consistency checks.
-    iced_path = os.path.join(cice_model.prior_restart_path,
-                             iced_restart_file)
-    return res_ptr_path, iced_path
-
-
-def read_binary_iced_header(iced_path):
-    """
-    Read header information from a CICE4 binary restart file.
-    """
-    with open(iced_path, 'rb') as iced_file:
-        header = iced_file.read(24)
-        bint, istep0, time, time_forc = struct.unpack('>iidd', header)
-
-    return (bint, istep0, time, time_forc)
 
 
 def cice4_check_date_consistency(cice_model, iced_path, previous_runtime):
@@ -404,3 +390,14 @@ def cice4_check_date_consistency(cice_model, iced_path, previous_runtime):
                f"file {iced_path}: {cice_iced_runtime}."
                )
         raise RuntimeError(msg)
+
+
+def read_binary_iced_header(iced_path):
+    """
+    Read header information from a CICE4 binary restart file.
+    """
+    with open(iced_path, 'rb') as iced_file:
+        header = iced_file.read(24)
+        bint, istep0, time, time_forc = struct.unpack('>iidd', header)
+
+    return (bint, istep0, time, time_forc)
