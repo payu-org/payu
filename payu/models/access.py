@@ -355,7 +355,7 @@ def cice4_make_restart_pointer(cice_model, run_start_date, previous_runtime):
     iced_restart_file = f"iced.{run_start_date_int:08d}"
 
     if iced_restart_file not in cice_model.get_prior_restart_files():
-        msg = (f"Expected restart file {iced_restart_file} based on"
+        msg = (f"Expected restart file {iced_restart_file} based on "
                f"run start date {run_start_date_int} "
                f"not found in {cice_model.prior_restart_path}.")
         raise FileNotFoundError(msg)
