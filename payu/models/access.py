@@ -220,9 +220,10 @@ class Access(Model):
                 shutil.move(nml_work_path + '~', nml_work_path)
 
             if model.model_type == 'cice':
-                # Set up and check the cice restart files
+                # Set up and check the cice restart files.
                 cice4_make_restart_pointer(model,
-                                           run_start_date)
+                                           run_start_date,
+                                           previous_runtime)
 
         # Now change the oasis runtime. This needs to be done after the others.
         for model in self.expt.models:
