@@ -220,30 +220,14 @@ class Access(Model):
                 shutil.move(nml_work_path + '~', nml_work_path)
 
             if model.model_type == 'cice':
-                # Check that the previous runtime in iced restart file
-                # header matches the runtime calculated from
-                # the calendar restart file.
-
-                # Requires the cice.iced_restart_path to have been set
-                # in the cice driver.
-                try:
-                    cice_iced_path = model.iced_restart_path
-                except AttributeError as missing_header:
-                    msg = ("cice model attribute 'iced_restart_path' "
-                           "required for restart consistency checks has not "
-                           "been set in the cice driver.")
-                    raise RuntimeError(msg) from missing_header
-
-                _, _, cice_iced_runtime, _ = read_binary_iced_header(
-                                                        cice_iced_path
-                                                        )
-                if previous_runtime != cice_iced_runtime:
-                    msg = (f"Previous runtime from calendar file "
-                           f"{start_date_fpath}: {previous_runtime} "
-                           "does not match previous runtime in restart"
-                           f"file {cice_iced_path}: {cice_iced_runtime}."
-                           )
-                    raise RuntimeError(msg)
+                # Set up and check the cice restart files
+                res_ptr_path, iced_path = cice4_make_restart_pointer(
+                                                model,
+                                                run_start_date
+                                          )
+                cice4_check_date_consistency(model,
+                                             iced_path,
+                                             previous_runtime)
 
         # Now change the oasis runtime. This needs to be done after the others.
         for model in self.expt.models:
@@ -362,6 +346,39 @@ class Access(Model):
         pass
 
 
+def cice4_make_restart_pointer(cice_model, run_start_date):
+    """
+    Generate restart pointer file 'ice.restart_file' pointing
+    to the correct 'iced.YYYYMMDD' based on the run start date.
+    Additionally add the iced restart path as a model attribute
+    for use in consistency checks.
+    """
+    # Expected iced restart file name based on start date
+    run_start_date_int = cal.date_to_int(run_start_date)
+    iced_restart_file = f"iced.{run_start_date_int:08d}"
+
+    if iced_restart_file not in cice_model.get_prior_restart_files():
+        msg = (f"Expected restart file {iced_restart_file} based on"
+               f"run start date {run_start_date_int} "
+               f"not found in {cice_model.prior_restart_path}.")
+        raise FileNotFoundError(msg)
+
+    res_ptr_path = os.path.join(cice_model.work_init_path,
+                                'ice.restart_file')
+    if os.path.islink(res_ptr_path):
+        # If we've linked in a previous pointer it should be deleted
+        os.remove(res_ptr_path)
+
+    with open(res_ptr_path, 'w') as res_ptr:
+        res_dir = cice_model.get_ptr_restart_dir()
+        res_ptr.write(os.path.join(res_dir, iced_restart_file))
+
+    # Return file paths for use in additional consistency checks.
+    iced_path = os.path.join(cice_model.prior_restart_path,
+                             iced_restart_file)
+    return res_ptr_path, iced_path
+
+
 def read_binary_iced_header(iced_path):
     """
     Read the header information from a CICE4 binary restart file.
@@ -371,3 +388,18 @@ def read_binary_iced_header(iced_path):
         bint, istep0, time, time_forc = struct.unpack('>iidd', header)
 
     return (bint, istep0, time, time_forc)
+
+
+def cice4_check_date_consistency(cice_model, iced_path, previous_runtime):
+    """
+    Check that the previous runtime in iced restart file header
+    matches the runtime calculated from the calendar restart file.
+    """
+    _, _, cice_iced_runtime, _ = read_binary_iced_header(iced_path)
+    if previous_runtime != cice_iced_runtime:
+        msg = (f"Previous runtime from calendar file "
+               f"{cice_model.start_date_nml_name}: {previous_runtime} "
+               "does not match previous runtime in restart"
+               f"file {iced_path}: {cice_iced_runtime}."
+               )
+        raise RuntimeError(msg)
