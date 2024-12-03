@@ -348,8 +348,9 @@ class Access(Model):
 
 def cice4_make_restart_pointer(cice_model, run_start_date):
     """
-    Generate restart pointer file 'ice.restart_file' pointing
-    to the correct 'iced.YYYYMMDD' based on the run start date.
+    Generate restart pointer file 'ice.restart_file' containing
+    the correct 'iced.YYYYMMDD' restart file, based on the run
+    start date.
     Additionally add the iced restart path as a model attribute
     for use in consistency checks.
     """
@@ -381,7 +382,7 @@ def cice4_make_restart_pointer(cice_model, run_start_date):
 
 def read_binary_iced_header(iced_path):
     """
-    Read the header information from a CICE4 binary restart file.
+    Read header information from a CICE4 binary restart file.
     """
     with open(iced_path, 'rb') as iced_file:
         header = iced_file.read(24)

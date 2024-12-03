@@ -233,12 +233,11 @@ class Cice(Model):
             # If no prior restart directory exists, set the prior runtime to 0
             prior_runtime_seconds = 0
 
-        run_start_date = cal.date_plus_seconds(init_date,
-                                               prior_runtime_seconds,
-                                               caltype)
-
         # Calculate runtime for this run.
         if self.expt.runtime:
+            run_start_date = cal.date_plus_seconds(init_date,
+                                                   prior_runtime_seconds,
+                                                   caltype)
             run_runtime = cal.runtime_from_date(
                 run_start_date,
                 self.expt.runtime['years'],
@@ -334,7 +333,7 @@ class Cice(Model):
 
     def make_restart_ptr(self):
         """
-        CICE4 restart pointers are created by the access driver, which has
-        access to the corrected run start dates.
+        CICE4 restart pointers are created by the access driver, where
+        the correct run start dates are available.
         """
         pass
