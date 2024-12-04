@@ -11,6 +11,7 @@
 import os
 import shutil
 import itertools
+import glob
 
 # Extensions
 import f90nml
@@ -30,15 +31,11 @@ class StagedCable(Model):
         self.model_type = 'staged_cable'
         self.default_exec = 'cable'
 
-        # We want people to be able to use payu during testing, which
-        # often means additions of new namelists due to new science
-        # modules. I would like to set
-        # optional_config_files = glob.glob("*.nml")
-        # but this feels like a bit of an abuse of feature.
         self.config_files = ['stage_config.yaml']
-        self.optional_config_files = ['cable.nml', 'cru.nml',
-                                      'luc.nml', 'met_names.nml',
-                                      'bios.nml']
+
+        # To support different branches of cable, which may have different
+        # namelists, add all found namelists to the optional_config_files
+        self.optional_config_files = glob.glob('*.nml')
 
     def setup(self):
         super(StagedCable, self).setup()
@@ -178,13 +175,13 @@ class StagedCable(Model):
         for namelist in namelists:
             write_target = os.path.join(self.work_input_path, namelist)
             stage_nml = os.path.join(self.control_path, stage_name, namelist)
+            master_nml = os.path.join(self.control_path, namelist)
 
-            if os.path.isfile(os.path.join(self.control_path, namelist)):
+            if os.path.isfile(master_nml):
                 # Instance where there is a master and stage namelist
                 with open(stage_nml) as stage_nml_f:
                     stage_namelist = f90nml.read(stage_nml_f)
 
-                master_nml = os.path.join(self.control_path, namelist)
                 f90nml.patch(master_nml, stage_namelist, write_target)
             else:
                 # Instance where there is only a stage namelist
