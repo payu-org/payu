@@ -367,8 +367,7 @@ class Cice(Model):
         """
         log_files = []
         for filename in os.listdir(self.work_path):
-            if any((re.match(pattern, filename)
-                    for pattern in self.logs_to_compress)):
+            if re.match("|".join(self.logs_to_compress), filename):
                 log_files.append(os.path.join(self.work_path, filename))
         return log_files
 
