@@ -150,6 +150,7 @@ def test_read_config():
     assert(config.pop('collate') == {})
     assert(config.pop('control_path') == os.getcwd())
     assert(config.pop('modules') == {})
+    assert(config.pop('archive') == {})
     assert(config == {})
 
     os.remove(config_tmp)

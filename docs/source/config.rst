@@ -276,10 +276,11 @@ section for details.
 Archiving
 ---------
 
-``archiving``
+``archive``
       On completion of a model run, payu moves model output, restart, and log
       files from the temporary work area to the experiment archive directory.
       The following settings control the steps taken during the archive step:
+
       ``enable`` (*Default:* ``True``)
             Flag to enable/disable the archive step. If ``False`` all output, restart,
             and log files will remain in the work directory, and any collation, post-processing,

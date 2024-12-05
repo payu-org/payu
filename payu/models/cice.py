@@ -342,19 +342,10 @@ class Cice(Model):
         else:
             shutil.rmtree(self.work_input_path)
 
-        if self.compression_enabled():
-            self.compress_log_files()
-
-    def compression_enabled(self):
-        """
-        Determine whether to run log compression based on config.yaml settings.
-        Default to True when 'compress_logs' setting is absent.
-        """
         archive_config = self.expt.config.get('archive', {})
-        if isinstance(archive_config, dict):
-            return archive_config.get('compress_logs', True)
-        else:
-            return True
+        compressing_logs = archive_config.get('compress_logs', True)
+        if compressing_logs:
+            self.compress_log_files()
 
     def get_log_files(self):
         """

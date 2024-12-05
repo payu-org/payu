@@ -775,16 +775,7 @@ class Experiment(object):
         Default to True when archive settings are absent.
         """
         archive_config = self.config.get('archive', {})
-        if isinstance(archive_config, dict):
-            return archive_config.get('enable', True)
-
-        # Backwards compatibility for configs with boolean archive setting
-        elif isinstance(archive_config, bool):
-            return archive_config
-
-        else:
-            msg = "Incorrect format for archive settings in config.yaml"
-            raise RuntimeError(msg)
+        return archive_config.get('enable', True)
 
     def archive(self, force_prune_restarts=False):
         if not self.archiving():
