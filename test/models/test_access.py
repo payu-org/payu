@@ -1,9 +1,12 @@
 import copy
 import os
 import shutil
+import struct
 
 import pytest
 import cftime
+import f90nml
+from unittest.mock import patch
 
 import payu
 
@@ -16,7 +19,9 @@ from test.common import list_expt_archive_dirs
 from test.common import make_expt_archive_dir, remove_expt_archive_dirs
 from test.common import config_path
 from payu.calendar import GREGORIAN, NOLEAP
-import f90nml
+
+
+from payu.models.cice import CICE4_RESTART_HEADER_SIZE, CICE4_RESTART_HEADER_FORMAT
 
 
 verbose = True
@@ -229,7 +234,14 @@ def test_access_cice_calendar_cycling_500(
             # which we are trying to bypass.
             shutil.copy(default_input_ice, cice_model.work_path)
 
-            access_model.setup()
+            # Skip writing restart pointer as it requires iced file
+            # with valid header
+            with patch(
+                'payu.models.cice.Cice.overwrite_restart_ptr',
+                return_value=None
+            ):
+                access_model.setup()
+
             access_model.archive()
 
         end_date_fpath = os.path.join(
@@ -269,7 +281,7 @@ def test_access_cice_1year_runtimes(
     expected_runtime
 ):
     """
-    The large setup/archive cycling test won't pick up situations 
+    The large setup/archive cycling test won't pick up situations
     where the calculations during setup and archive are simultaneously
     wrong, e.g. if they both used the wrong calendar.
     Hence test seperately that the correct runtimes for cice are
@@ -331,7 +343,13 @@ def test_access_cice_1year_runtimes(
         # which we are trying to bypass.
         shutil.copy(ctrl_input_ice_path, cice_model.work_path)
 
-        access_model.setup()
+        # Skip writing restart pointer as it requires iced file
+        # with valid header
+        with patch(
+            'payu.models.cice.Cice.overwrite_restart_ptr',
+            return_value=None
+        ):
+            access_model.setup()
 
         # Check that the correct runtime is written to the work directory's
         # input ice namelist.
