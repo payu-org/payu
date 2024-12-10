@@ -126,6 +126,12 @@ def read_config(config_fname=None):
 
     config['collate'] = collate_config
 
+    # Transform legacy archive config options
+    archive_config = config.pop('archive', {})
+    if type(archive_config) is bool:
+        archive_config = {'enable': archive_config}
+    config['archive'] = archive_config
+
     # Transform legacy modules config options
     modules_config = config.pop('modules', {})
     if type(modules_config) is list:
