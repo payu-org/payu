@@ -79,7 +79,7 @@ class Cice5(Cice):
         """
         pass
 
-    def make_restart_ptr(self):
+    def _make_restart_ptr(self):
         """
         Generate restart pointer which points to the latest iced.YYYYMMDD
         restart file.

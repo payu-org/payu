@@ -17,6 +17,7 @@ import os
 import sys
 import shutil
 import datetime
+import struct
 
 # Extensions
 import f90nml
@@ -165,7 +166,7 @@ class Cice(Model):
         self._calc_runtime()
 
         if self.prior_restart_path:
-            self.make_restart_ptr()
+            self._make_restart_ptr()
 
             # Update input namelist
             setup_nml['runtype'] = 'continue'
@@ -331,9 +332,100 @@ class Cice(Model):
 
         make_symlink(input_path, input_work_path)
 
-    def make_restart_ptr(self):
+    def _make_restart_ptr(self):
         """
-        CICE4 restart pointers are created by the access driver, where
+        CICE4 restart pointers are created in the access driver, where
         the correct run start dates are available.
         """
         pass
+
+    def overwrite_restart_ptr(self,
+                              run_start_date,
+                              previous_runtime,
+                              calendar_file):
+        """
+        Generate restart pointer file 'ice.restart_file' pointing to
+        'iced.YYYYMMDD' with the correct start date.=
+        Additionally check that the `iced.YYYYMNDD` restart file's header
+        has the correct previous runtime.
+        Typically called from the access driver, which provides the
+        the correct date and runtime.
+
+        Parameters
+        ----------
+        run_start_date: datetime.date
+            Start date of the new simulation
+        previous_runtime:  int
+            Seconds between experiment initialisation date and start date
+        calendar_file:  str
+            Calendar restart file used to calculate timing information
+        """
+        # Expected iced restart file name
+        run_start_date_int = cal.date_to_int(run_start_date)
+        iced_restart_file = f"iced.{run_start_date_int:08d}"
+
+        if iced_restart_file not in self.get_prior_restart_files():
+            msg = (f"Restart file {iced_restart_file} matching "
+                   f"{calendar_file} run start date {run_start_date_int} "
+                   f"not found in {self.prior_restart_path}.")
+            raise FileNotFoundError(msg)
+
+        res_ptr_path = os.path.join(self.work_init_path,
+                                    'ice.restart_file')
+        if os.path.islink(res_ptr_path):
+            # If we've linked in a previous pointer it should be deleted
+            os.remove(res_ptr_path)
+
+        iced_path = os.path.join(self.prior_restart_path,
+                                 iced_restart_file)
+
+        # Check binary restart has correct time
+        self._cice4_check_date_consistency(iced_path,
+                                           previous_runtime,
+                                           calendar_file)
+
+        with open(res_ptr_path, 'w') as res_ptr:
+            res_dir = self.get_ptr_restart_dir()
+            res_ptr.write(os.path.join(res_dir, iced_restart_file))
+
+    def _cice4_check_date_consistency(self,
+                                      iced_path,
+                                      previous_runtime,
+                                      calendar_file):
+        """
+        Check that the previous runtime in iced restart file header
+        matches the runtime calculated from the calendar restart file.
+
+        Parameters
+        ----------
+        iced_path: str or Path
+            Path to iced restart file
+        previous_runtime:  int
+            Seconds between experiment initialisation date and start date
+        calendar_file:  str or Path
+            Calendar restart file used to calculate timing information
+        """
+        _, _, cice_iced_runtime, _ = read_binary_iced_header(iced_path)
+        if previous_runtime != cice_iced_runtime:
+            msg = (f"Previous runtime from calendar file "
+                   f"{calendar_file}: {previous_runtime} "
+                   "does not match previous runtime in restart"
+                   f"file {iced_path}: {cice_iced_runtime}.")
+            raise RuntimeError(msg)
+
+
+CICE4_RESTART_HEADER_SIZE = 24
+CICE4_RESTART_HEADER_FORMAT = '>iidd'
+
+
+def read_binary_iced_header(iced_path):
+    """
+    Read header information from a CICE4 binary restart file.
+    """
+    with open(iced_path, 'rb') as iced_file:
+        header = iced_file.read(CICE4_RESTART_HEADER_SIZE)
+        bint, istep0, time, time_forc = struct.unpack(
+                                            CICE4_RESTART_HEADER_FORMAT,
+                                            header)
+
+    return (bint, istep0, time, time_forc)
