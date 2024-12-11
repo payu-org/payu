@@ -131,22 +131,35 @@ def empty_workdir():
     workdir.unlink()
 
 
-# Important to test None case without separate ice history file
-@pytest.fixture(params=[None,
-                        {"icefields_nml": {"f_icy": "m"}},
-                        {"icefields_nml": {"f_icy": "m", "f_new": "y"}}])
-def cice_config_files(request):
+@pytest.fixture
+def cice_nml():
     """
-    Write the default cice_in.nml namelist, and if included, separate ice
-    history namelist used by ESM1.5.
+    Write the default cice_in.nml namelist.
     """
     cice_nml = DEFAULT_CICE_NML
-    ice_history = request.param
 
     with cd(ctrldir):
         # 2. Create config.nml
         f90nml.write(cice_nml, CICE_NML_NAME)
 
+    yield
+
+    # cleanup
+    with cd(ctrldir):
+        os.remove(CICE_NML_NAME)
+
+
+# Important to test None case without separate ice history file
+@pytest.fixture(params=[None,
+                        {"icefields_nml": {"f_icy": "m"}},
+                        {"icefields_nml": {"f_icy": "m", "f_new": "y"}}])
+def cice_history_nml(request):
+    """
+    Write separate history namelist used by ESM1.5.
+    """
+    ice_history = request.param
+
+    with cd(ctrldir):
         if ice_history:
             f90nml.write(ice_history, HIST_NML_NAME)
 
@@ -154,14 +167,13 @@ def cice_config_files(request):
 
     # cleanup
     with cd(ctrldir):
-        os.remove(CICE_NML_NAME)
         if ice_history:
             os.remove(HIST_NML_NAME)
 
 
 @pytest.mark.parametrize("config", [DEFAULT_CONFIG],
                          indirect=True)
-def test_setup(config, cice_config_files):
+def test_setup(config, cice_nml, cice_history_nml):
     """
     Confirm that
         1: payu overwrites cice_in with ice_history
@@ -186,9 +198,9 @@ def test_setup(config, cice_config_files):
     # Check cice_in was patched with ice_history
     work_input_fpath = os.path.join(model.work_path, CICE_NML_NAME)
     input_nml = f90nml.read(work_input_fpath)
-    if cice_config_files['ice_history']:
+    if cice_history_nml['ice_history']:
         assert (input_nml["icefields_nml"] ==
-                cice_config_files["ice_history"]["icefields_nml"])
+                cice_history_nml["ice_history"]["icefields_nml"])
     else:
         assert input_nml["icefields_nml"] == DEFAULT_CICE_NML["icefields_nml"]
 
@@ -250,7 +262,7 @@ def prior_restart_cice4(run_timing_params, prior_restart_dir):
 
 @pytest.mark.parametrize("config", [CONFIG_WITH_RESTART],
                          indirect=True)
-def test_restart_setup(config, cice_config_files, prior_restart_cice4,
+def test_restart_setup(config, cice_nml, prior_restart_cice4,
                        run_timing_params):
     """
     Test that seting up an experiment from a cloned control directory
@@ -292,7 +304,7 @@ def test_restart_setup(config, cice_config_files, prior_restart_cice4,
 
 @pytest.mark.parametrize("config", [DEFAULT_CONFIG],
                          indirect=True)
-def test_no_restart_ptr(config, cice_config_files):
+def test_no_restart_ptr(config, cice_nml):
     """
     Test that payu raises an error if no prior restart path is specified,
     restart is `true` in cice_in.nml, and the restart pointer is missing.
@@ -337,7 +349,7 @@ def write_iced_header(iced_path, bint, istep0, time, time_forc):
      ]
 )
 def test_overwrite_restart_ptr(config,
-                               cice_config_files,
+                               cice_nml,
                                run_start_date,
                                previous_runtime,
                                prior_restart_dir,
@@ -400,7 +412,7 @@ def test_overwrite_restart_ptr(config,
 @pytest.mark.parametrize("config", [DEFAULT_CONFIG],
                          indirect=["config"])
 def test_overwrite_restart_ptr_missing_iced(config,
-                                            cice_config_files,
+                                            cice_nml,
                                             prior_restart_dir,
                                             empty_workdir
                                             ):
@@ -444,7 +456,7 @@ def test_overwrite_restart_ptr_missing_iced(config,
 @pytest.mark.parametrize("config", [DEFAULT_CONFIG],
                          indirect=["config"])
 def test_check_date_consistency(config,
-                                cice_config_files,
+                                cice_nml,
                                 prior_restart_dir,
                                 ):
     """
