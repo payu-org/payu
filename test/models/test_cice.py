@@ -5,6 +5,8 @@ import struct
 
 import pytest
 import f90nml
+import tarfile
+from pathlib import Path
 
 import payu
 
@@ -127,26 +129,22 @@ def empty_workdir():
     workdir.symlink_to(expt_workdir)
 
     yield expt_workdir
-    shutil.rmtree(expt_workdir)
+    try:
+        shutil.rmtree(expt_workdir)
+    except FileNotFoundError:
+        pass
     workdir.unlink()
 
 
 @pytest.fixture
 def cice_nml():
-    """
-    Write the default cice_in.nml namelist.
-    """
-    cice_nml = DEFAULT_CICE_NML
+    nml_path = os.path.join(ctrldir, CICE_NML_NAME)
+    f90nml.write(DEFAULT_CICE_NML, nml_path)
 
-    with cd(ctrldir):
-        # 2. Create config.nml
-        f90nml.write(cice_nml, CICE_NML_NAME)
+    yield nml_path
 
-    yield
-
-    # cleanup
-    with cd(ctrldir):
-        os.remove(CICE_NML_NAME)
+    # Cleanup
+    os.remove(nml_path)
 
 
 # Important to test None case without separate ice history file
@@ -155,20 +153,19 @@ def cice_nml():
                         {"icefields_nml": {"f_icy": "m", "f_new": "y"}}])
 def cice_history_nml(request):
     """
-    Write separate history namelist used by ESM1.5.
+    Write separate ice history namelist used by ESM1.5, if provided.
     """
     ice_history = request.param
+    ice_history_path = os.path.join(ctrldir, HIST_NML_NAME)
 
-    with cd(ctrldir):
-        if ice_history:
-            f90nml.write(ice_history, HIST_NML_NAME)
+    if ice_history:
+        f90nml.write(ice_history, ice_history_path)
 
     yield {'ice_history': ice_history}
 
     # cleanup
-    with cd(ctrldir):
-        if ice_history:
-            os.remove(HIST_NML_NAME)
+    if ice_history:
+        os.remove(ice_history_path)
 
 
 @pytest.mark.parametrize("config", [DEFAULT_CONFIG],
@@ -490,3 +487,101 @@ def test_check_date_consistency(config,
                                         iced_path,
                                         previous_runtime,
                                         "fake_file")
+
+
+CONFIG_WITH_COMPRESSION = {
+    "laboratory": "lab",
+    "jobname": "testrun",
+    "model": "cice",
+    "exe": "test.exe",
+    "experiment": ctrldir_basename,
+    "metadata": {"enable": False},
+    "compress_logs": True
+}
+
+
+@pytest.fixture
+def cice4_log_files():
+    """
+    Create cice log files based on ESM1.5 logs.
+    """
+    non_pe_logs = {
+        "ice_diag_out": "block id, proc, local_block:",
+        "ice_diag.d": "istep0                    =   ******",
+        "debug.root.03": "oasis_io_read_avfile:av2_isst_ia:NetCDF:"
+    }
+    pe_logs = {
+        f'iceout{x:03d}': "Fake iceout file {x}"
+        for x in range(85, 96)
+    }
+
+    log_files = non_pe_logs | pe_logs
+
+    log_paths = []
+    for log_name, log_contents in log_files.items():
+        log_path = Path(expt_workdir/log_name)
+        with open(log_path, "w") as log:
+            log.write(log_contents)
+        log_paths.append(log_path)
+
+    yield log_files
+
+    # Cleanup
+    for log_file in log_paths:
+        try:
+            log_file.unlink()
+        except FileNotFoundError:
+            pass
+
+
+@pytest.fixture
+def non_log_file():
+    """
+    Create a cice4 output file to be ignored by log compression.
+    Use cice_in.nml which is copied to the work directory in ESM1.5.
+    """
+    non_log_path = Path(expt_workdir)/CICE_NML_NAME
+    non_log_path.touch()
+
+    yield non_log_path
+
+    # Cleanup
+    non_log_path.unlink()
+
+
+@pytest.mark.parametrize("config", [CONFIG_WITH_COMPRESSION],
+                         indirect=True)
+def test_log_compression(config, cice4_log_files, non_log_file,
+                         cice_nml   # Required by expt.__init__
+                         ):
+    """
+    Test that logfiles produced by cice during ESM1.5 simulations are
+    properly compressed into a tarball by cice.compress_log_files().
+    """
+    with cd(ctrldir):
+        # Initialise laboratory and experiment
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        # Function to test
+        model.compress_log_files()
+
+    # Check that log tarball created and no original logs remain
+    assert set(os.listdir(expt_workdir)) == {model.log_tar_name,
+                                             non_log_file.name}
+
+    # Check all logs present in tarball
+    log_file_names = {log_name for
+                      log_name in cice4_log_files}
+
+    with tarfile.open(os.path.join(expt_workdir, model.log_tar_name),
+                      mode="r") as tar:
+        assert set(tar.getnames()) == log_file_names
+
+        # Check contents of compressed files
+        for entry in tar:
+            entry_name = entry.name
+            with tar.extractfile(entry) as open_entry:
+                file_contents = open_entry.read().decode("utf-8")
+                assert file_contents == cice4_log_files[entry_name]

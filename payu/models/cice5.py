@@ -42,6 +42,9 @@ class Cice5(Cice):
         self.copy_restarts = True
         self.copy_inputs = True
 
+        # Empty list means no log files will be compressed
+        self.logs_to_compress = []
+
     def set_local_timestep(self, t_step):
         dt = self.ice_in['setup_nml']['dt']
         npt = self.ice_in['setup_nml']['npt']

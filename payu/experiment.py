@@ -503,7 +503,7 @@ class Experiment(object):
 
         # Check restart pruning for valid configuration values and
         # warns user if more restarts than expected would be pruned
-        if self.config.get('archive', True):
+        if self.archiving():
             self.get_restarts_to_prune()
 
     def run(self, *user_flags):
@@ -769,8 +769,16 @@ class Experiment(object):
         if run_script:
             self.run_userscript(run_script)
 
+    def archiving(self):
+        """
+        Determine whether to run archive step based on config.yaml settings.
+        Default to True when archive settings are absent.
+        """
+        archive_config = self.config.get('archive', {})
+        return archive_config.get('enable', True)
+
     def archive(self, force_prune_restarts=False):
-        if not self.config.get('archive', True):
+        if not self.archiving():
             print('payu: not archiving due to config.yaml setting.')
             return
 

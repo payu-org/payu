@@ -18,6 +18,8 @@ import sys
 import shutil
 import datetime
 import struct
+import re
+import tarfile
 
 # Extensions
 import f90nml
@@ -51,6 +53,13 @@ class Cice(Model):
         self.set_timestep = self.set_local_timestep
 
         self.copy_inputs = False
+
+        # regex patterns for matching log files. When empty, no logs compressed
+        self.logs_to_compress = [r"iceout[0-9]{3}",
+                                 r"debug\.root\.[0-9]{2}",
+                                 r"ice_diag\.d",
+                                 r"ice_diag_out"]
+        self.log_tar_name = "logfiles.tar.gz"
 
     def set_model_pathnames(self):
         super(Cice, self).set_model_pathnames()
@@ -307,6 +316,40 @@ class Cice(Model):
                     os.remove(os.path.join(self.restart_path, f))
         else:
             shutil.rmtree(self.work_input_path)
+
+        archive_config = self.expt.config.get('archive', {})
+        compressing_logs = archive_config.get('compress_logs', True)
+        if compressing_logs:
+            self.compress_log_files()
+
+    def get_log_files(self):
+        """
+        Find model log files in the work directory based on regex patterns
+        in self.logs_to_compress.
+
+        Returns
+        -------
+        log_files: list of paths to model log files.
+        """
+        log_files = []
+        for filename in os.listdir(self.work_path):
+            if re.match("|".join(self.logs_to_compress), filename):
+                log_files.append(os.path.join(self.work_path, filename))
+        return log_files
+
+    def compress_log_files(self):
+        """
+        Compress model log files into tarball.
+        """
+        log_files = self.get_log_files()
+        with tarfile.open(name=os.path.join(self.work_path, self.log_tar_name),
+                          mode="w:gz") as tar:
+            for file in log_files:
+                tar.add(file, arcname=os.path.basename(file))
+
+        # Delete files after tarball is written
+        for file in log_files:
+            os.remove(file)
 
     def collate(self):
         pass
