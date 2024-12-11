@@ -1,5 +1,7 @@
+import datetime
 import os
 import shutil
+import struct
 
 import pytest
 import f90nml
@@ -11,6 +13,7 @@ from test.common import tmpdir, ctrldir, labdir, expt_workdir
 from test.common import workdir, expt_archive_dir, ctrldir_basename
 from test.common import write_config, config_path, write_metadata
 from test.common import make_exe
+from payu.models.cice import CICE4_RESTART_HEADER_FORMAT
 
 verbose = True
 
@@ -194,6 +197,18 @@ def test_setup(config, cice_config_files):
         input_nml["setup_nml"]["dump_last"]
 
 
+@pytest.fixture
+def prior_restart_dir():
+    """Create prior restart directory"""
+    restart_path = RESTART_PATH
+    os.mkdir(restart_path)
+
+    yield restart_path
+
+    # Cleanup
+    shutil.rmtree(restart_path)
+
+
 @pytest.fixture(
     # prior_istep0, prior_npt, runtime, expected_npt
     params=[
@@ -208,14 +223,12 @@ def run_timing_params(request):
 
 
 @pytest.fixture
-def prior_restart_cice4(run_timing_params):
+def prior_restart_cice4(run_timing_params, prior_restart_dir):
     """
     Create fake prior restart files required by CICE4's setup.
     This differs from CICE5, which doesn't require a cice_in.nml
     file in the restart directory.
     """
-    prior_restart_path = RESTART_PATH
-    os.mkdir(prior_restart_path)
 
     prior_istep0, prior_npt, _, _ = run_timing_params
     # Previous cice_in namelist with time information
@@ -224,16 +237,15 @@ def prior_restart_cice4(run_timing_params):
             "npt": prior_npt,
             "dt": DEFAULT_DT
         }}
-    f90nml.write(restart_cice_in, prior_restart_path/CICE_NML_NAME)
+    f90nml.write(restart_cice_in, prior_restart_dir/CICE_NML_NAME)
 
     # Additional restart files required by CICE4 setup
-    (prior_restart_path/ICED_RESTART_NAME).touch()
-    (prior_restart_path/RESTART_POINTER_NAME).touch()
+    (prior_restart_dir/ICED_RESTART_NAME).touch()
+    (prior_restart_dir/RESTART_POINTER_NAME).touch()
 
-    yield prior_restart_path
+    yield prior_restart_dir
 
-    # Teardown
-    shutil.rmtree(prior_restart_path)
+    # Teardown handled by prior restart dir fixture
 
 
 @pytest.mark.parametrize("config", [CONFIG_WITH_RESTART],
@@ -300,3 +312,169 @@ def test_no_restart_ptr(config, cice_config_files):
         with pytest.raises(RuntimeError,
                            match="Cannot find previous restart file"):
             model.setup()
+
+
+def write_iced_header(iced_path, bint, istep0, time, time_forc):
+    """
+    Write a fake binary CICE4 iced restart file containing
+    only a header.
+    """
+    with open(iced_path, 'wb') as iced_file:
+        header = struct.pack(
+            CICE4_RESTART_HEADER_FORMAT, bint, istep0, time, time_forc
+        )
+        iced_file.write(header)
+
+
+@pytest.mark.parametrize("config", [DEFAULT_CONFIG],
+                         indirect=["config"])
+@pytest.mark.parametrize(
+     'run_start_date, previous_runtime',
+     [
+        (datetime.datetime(1500, 1, 1), 500000),
+        (datetime.datetime(1, 7, 3), 900000000),
+        (datetime.datetime(3753, 9, 23), 123456789),
+     ]
+)
+def test_overwrite_restart_ptr(config,
+                               cice_config_files,
+                               run_start_date,
+                               previous_runtime,
+                               prior_restart_dir,
+                               empty_workdir
+                               ):
+    """
+    CICE4 in ACCESS-ESM1.5 finds the iced restart file based on the
+    run start date. Check that:
+    1. payu identifies the correct iced restart from given start date
+    2. payu writes the correct filename to the restart pointer file.
+    """
+    # Initialize the experiment
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        cice_model = expt.models[0]
+
+    # Create iced restart with the specified date and runtime
+    run_start_date_int = payu.calendar.date_to_int(run_start_date)
+    iced_name = f"iced.{run_start_date_int:08d}"
+    iced_path = prior_restart_dir / iced_name
+    write_iced_header(iced_path,
+                      bint=0,
+                      istep0=0,
+                      time=previous_runtime,
+                      time_forc=0)
+
+    # Create an iced restart with different date, to check
+    # that payu ignores it
+    wrong_iced_name = "iced.01010101"
+    wrong_runtime = 1000
+    wrong_iced_path = prior_restart_dir / wrong_iced_name
+    write_iced_header(wrong_iced_path,
+                      bint=0,
+                      istep0=0,
+                      time=wrong_runtime,
+                      time_forc=0)
+
+    # Check test set up correctly
+    assert iced_name != wrong_iced_name
+
+    # Set model paths
+    cice_model.prior_restart_path = prior_restart_dir
+    cice_model.work_init_path = empty_workdir
+
+    cice_model.overwrite_restart_ptr(run_start_date,
+                                     previous_runtime,
+                                     "fake_file")
+
+    # Check correct iced filename written to pointer
+    res_ptr_path = os.path.join(cice_model.work_init_path,
+                                "ice.restart_file")
+
+    with open(res_ptr_path, 'r') as res_ptr:
+        ptr_iced = res_ptr.read()
+
+    assert ptr_iced == f"./{iced_name}"
+
+
+@pytest.mark.parametrize("config", [DEFAULT_CONFIG],
+                         indirect=["config"])
+def test_overwrite_restart_ptr_missing_iced(config,
+                                            cice_config_files,
+                                            prior_restart_dir,
+                                            empty_workdir
+                                            ):
+    """
+    Check that cice raises error when an iced restart file matching
+    the run start date is not found.
+    """
+    # Initialize the experiment
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        cice_model = expt.models[0]
+
+    # Run timing information
+    previous_runtime = 500000
+    run_start_date = datetime.date(500, 12, 3)
+    # Expected iced file
+    run_start_date_int = payu.calendar.date_to_int(run_start_date)
+    iced_name = f"iced.{run_start_date_int:08d}"
+
+    # Create iced restart with wrong date
+    wrong_iced_name = "iced.01010101"
+    wrong_runtime = 1000
+    wrong_iced_path = prior_restart_dir / wrong_iced_name
+    write_iced_header(wrong_iced_path,
+                      bint=0,
+                      istep0=0,
+                      time=wrong_runtime,
+                      time_forc=0)
+
+    # Set model paths
+    cice_model.prior_restart_path = prior_restart_dir
+    cice_model.work_init_path = empty_workdir
+
+    with pytest.raises(FileNotFoundError, match=iced_name):
+        cice_model.overwrite_restart_ptr(run_start_date,
+                                         previous_runtime,
+                                         "fake_file")
+
+
+@pytest.mark.parametrize("config", [DEFAULT_CONFIG],
+                         indirect=["config"])
+def test_check_date_consistency(config,
+                                cice_config_files,
+                                prior_restart_dir,
+                                ):
+    """
+    CICE4 in ACCESS-ESM1.5 reads the binary restart header to check that
+    its runtime matches a given prior runtime.
+    Check that an error is raised when the two do not match.
+    """
+    # Initialize the experiment
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        cice_model = expt.models[0]
+
+    # Experiment timing information
+    previous_runtime = 500000
+
+    # Create an iced file with a different runtime
+    iced_name = "iced.YYYYMMDD"
+    wrong_runtime = 1000
+    iced_path = prior_restart_dir / iced_name
+    write_iced_header(iced_path,
+                      bint=0,
+                      istep0=0,
+                      time=wrong_runtime,
+                      time_forc=0)
+
+    # Sanity check
+    assert wrong_runtime != previous_runtime
+    with pytest.raises(RuntimeError, match=iced_name):
+        cice_model._cice4_check_date_consistency(
+                                        iced_path,
+                                        previous_runtime,
+                                        "fake_file")

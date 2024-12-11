@@ -1,7 +1,6 @@
 import copy
 import os
 import shutil
-import struct
 
 import pytest
 import cftime
@@ -19,9 +18,6 @@ from test.common import list_expt_archive_dirs
 from test.common import make_expt_archive_dir, remove_expt_archive_dirs
 from test.common import config_path
 from payu.calendar import GREGORIAN, NOLEAP
-
-
-from payu.models.cice import CICE4_RESTART_HEADER_SIZE, CICE4_RESTART_HEADER_FORMAT
 
 
 verbose = True
