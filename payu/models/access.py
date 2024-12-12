@@ -249,6 +249,29 @@ class Access(Model):
         mom = None
 
         for model in self.expt.models:
+            if model.model_type == 'cice':
+
+                # Copy supplemental restart files to RESTART path
+                for f_name in model.access_restarts:
+                    f_src = os.path.join(model.work_path, f_name)
+                    f_dst = os.path.join(model.restart_path, f_name)
+
+                    if os.path.exists(f_src):
+                        shutil.move(f_src, f_dst)
+
+                # Copy "cice_in.nml" from work path to restart.
+                work_ice_nml_path = os.path.join(
+                                        model.work_path,
+                                        model.ice_nml_fname
+                )
+                restart_ice_nml_path = os.path.join(
+                                        model.restart_path,
+                                        model.ice_nml_fname
+                )
+
+                if os.path.exists(work_ice_nml_path):
+                    shutil.copy2(work_ice_nml_path, restart_ice_nml_path)
+
             if model.model_type in ('cice', 'matm'):
                 # Write the simulation end date to the restart date
                 # namelist.
@@ -283,33 +306,6 @@ class Access(Model):
                 end_date_path = os.path.join(model.restart_path,
                                              model.start_date_nml_name)
                 f90nml.write(end_date_dict, end_date_path, force=True)
-
-            if model.model_type == 'cice':
-
-                # Copy supplemental restart files to RESTART path
-                for f_name in model.access_restarts:
-                    f_src = os.path.join(model.work_path, f_name)
-                    f_dst = os.path.join(model.restart_path, f_name)
-
-                    if os.path.exists(f_src):
-                        shutil.move(f_src, f_dst)
-
-                # Copy "cice_in.nml" from work path to restart.
-                work_ice_nml_path = os.path.join(
-                                        model.work_path,
-                                        model.ice_nml_fname
-                )
-                restart_ice_nml_path = os.path.join(
-                                        model.restart_path,
-                                        model.ice_nml_fname
-                )
-
-                if os.path.exists(work_ice_nml_path):
-                    shutil.copy2(work_ice_nml_path, restart_ice_nml_path)
-
-                # Check that run produced iced.YYYYMMDD restart file matching
-                # run end date.
-                model.find_matching_iced(model.restart_path, run_end_date)
 
             if model.model_type == 'cice5':
                 cice5 = model
