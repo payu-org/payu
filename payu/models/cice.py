@@ -172,7 +172,6 @@ class Cice(Model):
             self.ice_in.patch(history_nml)
 
         setup_nml = self.ice_in['setup_nml']
-        self._calc_runtime()
 
         if self.prior_restart_path:
             self._make_restart_ptr()
@@ -188,6 +187,8 @@ class Cice(Model):
 
             if setup_nml['restart']:
                 self.link_restart(setup_nml['pointer_file'])
+
+        self._calc_runtime()
 
         # Write any changes to the work directory copy of the cice
         # namelist
@@ -388,7 +389,7 @@ class Cice(Model):
                               calendar_file):
         """
         Generate restart pointer file 'ice.restart_file' pointing to
-        'iced.YYYYMMDD' with the correct start date.=
+        'iced.YYYYMMDD' with the correct start date.
         Additionally check that the `iced.YYYYMNDD` restart file's header
         has the correct previous runtime.
         Typically called from the access driver, which provides the
@@ -453,8 +454,7 @@ class Cice(Model):
     def find_matching_iced(self, dir_path, date):
         """
         Check a directory for an iced.YYYYMMDD restart file matching a
-        specified date. Typically called from access.py driver which
-        provides the correct end date.
+        specified date.
         Raises an error if the expected file is not found.
 
         Parameters
