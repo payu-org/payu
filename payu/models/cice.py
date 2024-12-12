@@ -404,14 +404,8 @@ class Cice(Model):
             Calendar restart file used to calculate timing information
         """
         # Expected iced restart file name
-        run_start_date_int = cal.date_to_int(run_start_date)
-        iced_restart_file = f"iced.{run_start_date_int:08d}"
-
-        if iced_restart_file not in self.get_prior_restart_files():
-            msg = (f"Restart file {iced_restart_file} matching "
-                   f"{calendar_file} run start date {run_start_date_int} "
-                   f"not found in {self.prior_restart_path}.")
-            raise FileNotFoundError(msg)
+        iced_restart_file = self.find_matching_iced(self.prior_restart_path,
+                                                    run_start_date)
 
         res_ptr_path = os.path.join(self.work_init_path,
                                     'ice.restart_file')
@@ -455,6 +449,42 @@ class Cice(Model):
                    "does not match previous runtime in restart"
                    f"file {iced_path}: {cice_iced_runtime}.")
             raise RuntimeError(msg)
+
+    def find_matching_iced(self, dir_path, date):
+        """
+        Check a directory for an iced.YYYYMMDD restart file matching a
+        specified date. Typically called from access.py driver which
+        provides the correct end date.
+        Raises an error if the expected file is not found.
+
+        Parameters
+        ----------
+        dir_path: str or Path
+            Path to directory containing iced restart files
+        date: datetime.date
+            Date for matching iced file names
+
+        Returns
+        -------
+        iced_file_name: str
+            Name of iced restart file found in dir_path matching
+            the specified date
+        """
+        # Expected iced restart file name
+        date_int = cal.date_to_int(date)
+        iced_restart_file = f"iced.{date_int:08d}"
+
+        dir_files = [f for f in os.listdir(dir_path)
+                     if os.path.isfile(os.path.join(dir_path, f))]
+
+        if iced_restart_file not in dir_files:
+            msg = (f"CICE restart file not found in {dir_path}. Expected "
+                   f"{iced_restart_file} to exist. Is 'dumpfreq' set "
+                   f"in {self.ice_nml_fname} consistently with the run-length?"
+                   )
+            raise FileNotFoundError(msg)
+
+        return iced_restart_file
 
 
 CICE4_RESTART_HEADER_SIZE = 24

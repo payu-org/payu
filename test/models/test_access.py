@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import payu
 
-from test.common import cd
+from test.common import cd, expt_workdir
 from test.common import tmpdir, ctrldir, labdir, workdir, archive_dir
 from test.common import config as config_orig
 from test.common import write_config
@@ -17,6 +17,7 @@ from test.common import make_all_files
 from test.common import list_expt_archive_dirs
 from test.common import make_expt_archive_dir, remove_expt_archive_dirs
 from test.common import config_path
+from test.models.test_cice import write_iced_header
 from payu.calendar import GREGORIAN, NOLEAP
 
 
@@ -45,7 +46,6 @@ def setup_module(module):
         tmpdir.mkdir()
         labdir.mkdir()
         ctrldir.mkdir()
-        workdir.mkdir()
         archive_dir.mkdir()
         make_all_files()
     except Exception as e:
@@ -65,6 +65,23 @@ def teardown_module(module):
     except Exception as e:
         print(e)
 
+
+@pytest.fixture(autouse=True)
+def empty_workdir():
+    """
+    Model setup tests require a clean work directory and symlink from
+    the control directory.
+    """
+    expt_workdir.mkdir(parents=True)
+    # Symlink must exist for setup to use correct locations
+    workdir.symlink_to(expt_workdir)
+
+    yield expt_workdir
+    try:
+        shutil.rmtree(expt_workdir)
+    except FileNotFoundError:
+        pass
+    workdir.unlink()
 
 @pytest.fixture
 def access_1year_config():
@@ -231,14 +248,21 @@ def test_access_cice_calendar_cycling_500(
             shutil.copy(default_input_ice, cice_model.work_path)
 
             # Skip writing restart pointer as it requires iced file
-            # with valid header
+            # with valid header. Restart pointer functionality is tested
+            # in test_cice.py.
             with patch(
                 'payu.models.cice.Cice.overwrite_restart_ptr',
                 return_value=None
             ):
                 access_model.setup()
 
-            access_model.archive()
+            # Skip check of archived iced restart file. This is tested in
+            # in the other test_access.py tests.
+            with patch(
+                'payu.models.cice.Cice.find_matching_iced',
+                return_value=None
+            ):
+                access_model.archive()
 
         end_date_fpath = os.path.join(
                         cice_model.restart_path,
@@ -256,15 +280,15 @@ def test_access_cice_calendar_cycling_500(
 
 
 @pytest.mark.parametrize(
-        "start_date_int, caltype, expected_runtime",
-        [(1010101, GREGORIAN, 365*SEC_PER_DAY),
-         (1010101, NOLEAP, 365*SEC_PER_DAY),
-         (1040101, GREGORIAN, 366*SEC_PER_DAY),
-         (1040101, NOLEAP, 365*SEC_PER_DAY),
-         (3000101, GREGORIAN, 365*SEC_PER_DAY),
-         (3000101, NOLEAP, 365*SEC_PER_DAY),
-         (4000101, GREGORIAN, 366*SEC_PER_DAY),
-         (4000101, NOLEAP, 365*SEC_PER_DAY)]
+        "start_date_int, caltype, expected_runtime, expected_end_date",
+        [(1010101, GREGORIAN, 365*SEC_PER_DAY, 1020101),
+         (1010101, NOLEAP, 365*SEC_PER_DAY, 1020101),
+         (1040101, GREGORIAN, 366*SEC_PER_DAY, 1050101),
+         (1040101, NOLEAP, 365*SEC_PER_DAY, 1050101),
+         (3000101, GREGORIAN, 365*SEC_PER_DAY, 3010101),
+         (3000101, NOLEAP, 365*SEC_PER_DAY, 3010101),
+         (4000101, GREGORIAN, 366*SEC_PER_DAY, 4010101),
+         (4000101, NOLEAP, 365*SEC_PER_DAY, 4010101)]
 )
 def test_access_cice_1year_runtimes(
     access_1year_config,
@@ -274,7 +298,8 @@ def test_access_cice_1year_runtimes(
     initial_start_date_file,
     start_date_int,
     caltype,
-    expected_runtime
+    expected_runtime,
+    expected_end_date
 ):
     """
     The large setup/archive cycling test won't pick up situations
@@ -340,7 +365,8 @@ def test_access_cice_1year_runtimes(
         shutil.copy(ctrl_input_ice_path, cice_model.work_path)
 
         # Skip writing restart pointer as it requires iced file
-        # with valid header
+        # with valid header. Restart pointer functionality is tested
+        # in test_cice.py
         with patch(
             'payu.models.cice.Cice.overwrite_restart_ptr',
             return_value=None
@@ -352,3 +378,101 @@ def test_access_cice_1year_runtimes(
         work_input_ice = f90nml.read(cice_model.work_path/INPUT_ICE_FNAME)
         written_runtime = work_input_ice["coupling"]["runtime"]
         assert written_runtime == expected_runtime
+
+        # Write an iced to the restart directory matching the run end date.
+        iced_name = f"iced.{expected_end_date:08d}"
+        iced_path = cice_model.restart_path / iced_name
+        # Values in header unused in this test
+        write_iced_header(iced_path,
+                          bint=0,
+                          istep0=0,
+                          time=1,
+                          time_forc=0)
+
+        # Run archive to check that no errors are raised when restart directory
+        # contains iced file with correct name.
+        access_model.archive()
+
+        # Check that the correct end date is written to the restart directory
+        # calendar file
+        archived_calendar_path = cice_model.restart_path / RESTART_DATE_FNAME
+        archived_calendar_nml = f90nml.read(archived_calendar_path)
+        archived_end_date = archived_calendar_nml["coupling"]["inidate"]
+        assert archived_end_date == expected_end_date
+
+
+def test_access_cice_wrong_iced(
+    access_1year_config,
+    ice_control_directory,
+    fake_cice_in,
+    restart_dir
+):
+    """
+    Test that archive stage fails when iced.YYYYMMDD restart file
+    matching the run end date is missing from the restart directory.
+    """
+
+    # Initialise the experiment
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+
+    # For the purposes of the test, use one year runtime
+    expt.runtime["years"] = 1
+    expt.runtime["months"] = 0
+    expt.runtime["days"] = 0
+    expt.runtime["seconds"] = 0
+
+    # Get the models
+    for model in expt.models:
+        if model.model_type == "cice":
+            cice_model = model
+    access_model = expt.model
+
+    # Overwrite cice model paths created during experiment initialisation.
+    cice_model.work_path = workdir
+
+    # Path to read and write restart dates from. In a real experiment
+    # The read and write restart dirs would be different and increment
+    # each run. However we will just use one for the tests.
+    cice_model.prior_restart_path = restart_dir
+    cice_model.restart_path = restart_dir
+
+    # Write an input_ice.nml namelist to the work directory
+    # specifying date information. Force the archive to calculate
+    # the prescribed end date by setting the runtime to 0.
+    correct_end_date = 1010101
+    work_input_ice_path = cice_model.work_path / INPUT_ICE_FNAME
+    input_ice_nml = {
+        "coupling":
+        {
+            "caltype": GREGORIAN,  # Use Gregorian for simplicity
+            "init_date": 10101,
+            "inidate": correct_end_date,
+            "runtime": 0
+        }
+    }
+    f90nml.write(input_ice_nml, work_input_ice_path)
+
+    # Write an iced file to the restart directory with the wrong end date.
+    false_end_date = 5550101
+
+    if false_end_date == correct_end_date:
+        msg = ("'false_end_date' and 'correct_end_date' have "
+               f"the same value: {correct_end_date}. The two"
+               "should not match.")
+        raise ValueError(msg)
+
+    iced_name = f"iced.{false_end_date:08d}"
+    iced_path = cice_model.restart_path / iced_name
+    # Values in header unused in this test
+    write_iced_header(iced_path,
+                      bint=0,
+                      istep0=0,
+                      time=1,
+                      time_forc=0)
+
+    # Check that error raised due to missing iced file
+    with pytest.raises(FileNotFoundError,
+                       match="CICE restart file not found"):
+        access_model.archive()

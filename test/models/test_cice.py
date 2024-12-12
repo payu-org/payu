@@ -340,9 +340,8 @@ def write_iced_header(iced_path, bint, istep0, time, time_forc):
 @pytest.mark.parametrize(
      'run_start_date, previous_runtime',
      [
-        (datetime.datetime(1500, 1, 1), 500000),
-        (datetime.datetime(1, 7, 3), 900000000),
-        (datetime.datetime(3753, 9, 23), 123456789),
+        (datetime.datetime(1, 1, 1), 1),
+        (datetime.datetime(9999, 12, 31), 315537811200)
      ]
 )
 def test_overwrite_restart_ptr(config,
@@ -386,7 +385,10 @@ def test_overwrite_restart_ptr(config,
                       time_forc=0)
 
     # Check test set up correctly
-    assert iced_name != wrong_iced_name
+    if iced_name == wrong_iced_name:
+        msg = (f"Correct and incorrect iced files have the "
+               f"same name: '{iced_name}'. These should not match.")
+        raise ValueError(msg)
 
     # Set model paths
     cice_model.prior_restart_path = prior_restart_dir
@@ -430,15 +432,18 @@ def test_overwrite_restart_ptr_missing_iced(config,
     run_start_date_int = payu.calendar.date_to_int(run_start_date)
     iced_name = f"iced.{run_start_date_int:08d}"
 
-    # Create iced restart with wrong date
-    wrong_iced_name = "iced.01010101"
+    # Create iced restart files with wrong dates in their name
+    wrong_iced_dates = [run_start_date - datetime.timedelta(days=1),
+                        run_start_date + datetime.timedelta(days=1)]
+    wrong_iced_names = [f"iced.{payu.calendar.date_to_int(date)}"
+                        for date in wrong_iced_dates]
     wrong_runtime = 1000
-    wrong_iced_path = prior_restart_dir / wrong_iced_name
-    write_iced_header(wrong_iced_path,
-                      bint=0,
-                      istep0=0,
-                      time=wrong_runtime,
-                      time_forc=0)
+    for wrong_iced_file in wrong_iced_names:
+        write_iced_header(prior_restart_dir / wrong_iced_file,
+                          bint=0,
+                          istep0=0,
+                          time=wrong_runtime,
+                          time_forc=0)
 
     # Set model paths
     cice_model.prior_restart_path = prior_restart_dir
@@ -481,7 +486,12 @@ def test_check_date_consistency(config,
                       time_forc=0)
 
     # Sanity check
-    assert wrong_runtime != previous_runtime
+    if wrong_runtime == previous_runtime:
+        msg = ("Correct runtime 'previous_runtime' and incorrect "
+               "runtime 'wrong_runtime' have the same value:"
+               f" {previous_runtime}. These should not match.")
+        raise ValueError(msg)
+
     with pytest.raises(RuntimeError, match=iced_name):
         cice_model._cice4_check_date_consistency(
                                         iced_path,
