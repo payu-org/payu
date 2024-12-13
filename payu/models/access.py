@@ -218,6 +218,13 @@ class Access(Model):
                 f90nml.write(cpl_nml, nml_work_path + '~')
                 shutil.move(nml_work_path + '~', nml_work_path)
 
+            if model.model_type == 'cice':
+                if model.prior_restart_path and not self.expt.repeat_run:
+                    # Set up and check the cice restart files.
+                    model.overwrite_restart_ptr(run_start_date,
+                                                previous_runtime,
+                                                start_date_fpath)
+
         # Now change the oasis runtime. This needs to be done after the others.
         for model in self.expt.models:
             if model.model_type == 'oasis':

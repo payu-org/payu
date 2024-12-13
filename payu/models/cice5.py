@@ -81,3 +81,28 @@ class Cice5(Cice):
         the timing information in the cice_in.nml namelist.
         """
         pass
+
+    def _make_restart_ptr(self):
+        """
+        Generate restart pointer which points to the latest iced.YYYYMMDD
+        restart file.
+        """
+        iced_restart_file = None
+        iced_restart_files = [f for f in self.get_prior_restart_files()
+                              if f.startswith('iced.')]
+
+        if len(iced_restart_files) > 0:
+            iced_restart_file = sorted(iced_restart_files)[-1]
+
+        if iced_restart_file is None:
+            raise FileNotFoundError(
+                f'No iced restart file found in {self.prior_restart_path}')
+
+        res_ptr_path = os.path.join(self.work_init_path,
+                                    'ice.restart_file')
+        if os.path.islink(res_ptr_path):
+            # If we've linked in a previous pointer it should be deleted
+            os.remove(res_ptr_path)
+        with open(res_ptr_path, 'w') as res_ptr:
+            res_dir = self.get_ptr_restart_dir()
+            res_ptr.write(os.path.join(res_dir, iced_restart_file))

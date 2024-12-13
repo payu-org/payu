@@ -4,10 +4,12 @@ import shutil
 
 import pytest
 import cftime
+import f90nml
+from unittest.mock import patch
 
 import payu
 
-from test.common import cd
+from test.common import cd, expt_workdir
 from test.common import tmpdir, ctrldir, labdir, workdir, archive_dir
 from test.common import config as config_orig
 from test.common import write_config
@@ -16,7 +18,6 @@ from test.common import list_expt_archive_dirs
 from test.common import make_expt_archive_dir, remove_expt_archive_dirs
 from test.common import config_path
 from payu.calendar import GREGORIAN, NOLEAP
-import f90nml
 
 
 verbose = True
@@ -44,7 +45,6 @@ def setup_module(module):
         tmpdir.mkdir()
         labdir.mkdir()
         ctrldir.mkdir()
-        workdir.mkdir()
         archive_dir.mkdir()
         make_all_files()
     except Exception as e:
@@ -64,6 +64,23 @@ def teardown_module(module):
     except Exception as e:
         print(e)
 
+
+@pytest.fixture(autouse=True)
+def empty_workdir():
+    """
+    Model setup tests require a clean work directory and symlink from
+    the control directory.
+    """
+    expt_workdir.mkdir(parents=True)
+    # Symlink must exist for setup to use correct locations
+    workdir.symlink_to(expt_workdir)
+
+    yield expt_workdir
+    try:
+        shutil.rmtree(expt_workdir)
+    except FileNotFoundError:
+        pass
+    workdir.unlink()
 
 @pytest.fixture
 def access_1year_config():
@@ -229,7 +246,15 @@ def test_access_cice_calendar_cycling_500(
             # which we are trying to bypass.
             shutil.copy(default_input_ice, cice_model.work_path)
 
-            access_model.setup()
+            # Skip writing restart pointer as it requires iced file
+            # with valid header. Restart pointer functionality is tested
+            # in test_cice.py.
+            with patch(
+                'payu.models.cice.Cice.overwrite_restart_ptr',
+                return_value=None
+            ):
+                access_model.setup()
+
             access_model.archive()
 
         end_date_fpath = os.path.join(
@@ -269,7 +294,7 @@ def test_access_cice_1year_runtimes(
     expected_runtime
 ):
     """
-    The large setup/archive cycling test won't pick up situations 
+    The large setup/archive cycling test won't pick up situations
     where the calculations during setup and archive are simultaneously
     wrong, e.g. if they both used the wrong calendar.
     Hence test seperately that the correct runtimes for cice are
@@ -331,7 +356,14 @@ def test_access_cice_1year_runtimes(
         # which we are trying to bypass.
         shutil.copy(ctrl_input_ice_path, cice_model.work_path)
 
-        access_model.setup()
+        # Skip writing restart pointer as it requires iced file
+        # with valid header. Restart pointer functionality is tested
+        # in test_cice.py
+        with patch(
+            'payu.models.cice.Cice.overwrite_restart_ptr',
+            return_value=None
+        ):
+            access_model.setup()
 
         # Check that the correct runtime is written to the work directory's
         # input ice namelist.
