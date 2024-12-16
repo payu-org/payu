@@ -332,6 +332,9 @@ class Cice(Model):
         -------
         log_files: list of paths to model log files.
         """
+        if not self.logs_to_compress:
+            return
+
         log_files = []
         for filename in os.listdir(self.work_path):
             if re.match("|".join(self.logs_to_compress), filename):
@@ -343,6 +346,9 @@ class Cice(Model):
         Compress model log files into tarball.
         """
         log_files = self.get_log_files()
+        if not log_files:
+            return
+
         with tarfile.open(name=os.path.join(self.work_path, self.log_tar_name),
                           mode="w:gz") as tar:
             for file in log_files:
