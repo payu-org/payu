@@ -595,3 +595,37 @@ def test_log_compression(config, cice4_log_files, non_log_file,
             with tar.extractfile(entry) as open_entry:
                 file_contents = open_entry.read().decode("utf-8")
                 assert file_contents == cice4_log_files[entry_name]
+
+
+@pytest.mark.parametrize("config", [CONFIG_WITH_COMPRESSION],
+                         indirect=True)
+def test_log_compression_no_logs(config, cice4_log_files, non_log_file,
+                                 cice_nml   # Required by expt.__init__
+                                 ):
+    """
+    Check that log compression does nothing when no logfiles are
+    specifed.
+    """
+    with cd(ctrldir):
+        # Initialise laboratory and experiment
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+
+    model = expt.models[0]
+
+    initial_workdir_contents = dir_contents_and_dates(expt_workdir)
+    # Specify no files for compression
+    model.logs_to_compress = []
+    # Function to test
+    model.compress_log_files()
+
+    final_workdir_contents = dir_contents_and_dates(expt_workdir)
+    assert final_workdir_contents == initial_workdir_contents
+
+
+def dir_contents_and_dates(dir_path):
+    """
+    Return a dict of filenames and their modification dates.
+    """
+    return {name: os.path.getmtime(os.path.join(dir_path, name))
+            for name in os.listdir(dir_path)}
