@@ -202,9 +202,8 @@ def pbs_env_init():
 # even if still fails return None
 @retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
 def get_qstat_info(qflag, header, projects=None, users=None):
-
-    qstat = os.path.join(os.environ['PBS_EXEC'], 'bin', 'qstat')
-    cmd = '{} {}'.format(qstat, qflag)
+    # qstat command seems to be accessible from the path on PBS jobs
+    cmd = f'qstat {qflag}'
 
     cmd = shlex.split(cmd)
     output = subprocess.check_output(cmd)
