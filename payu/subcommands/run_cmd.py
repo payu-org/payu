@@ -8,6 +8,11 @@ import payu.subcommands.args as args
 from payu import fsops
 from payu.manifest import Manifest
 
+from colorama import Fore, Style
+
+from access_py_telemetry.api import ApiHandler
+
+
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
 
@@ -18,6 +23,11 @@ arguments = [args.model, args.config, args.initial, args.nruns,
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
            reproduce=False, force=False, force_prune_restarts=False):
+
+    api_handler = ApiHandler()
+    api_handler.server_url = "http://testing-tunnel.ct1163.tm70.ps.gadi.nci.org.au:8000"
+
+    print(f"{Fore.YELLOW}Sending telemetry data to the server at {api_handler.server_url}.{Style.RESET_ALL}")
 
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
@@ -107,20 +117,32 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
         pbs_config['mem'] = '{0}GB'.format(pbs_mem)
 
+    print(f"{Fore.YELLOW}Submitting job to the queue {pbs_config['queue']}.{Style.RESET_ALL}")
+
     cli.submit_job('payu-run', pbs_config, pbs_vars)
 
 
 def runscript():
 
+    # We have a new python interperter here, so we need to reconfigur the server url
+    api_handler = ApiHandler()
+    api_handler.server_url = "http://testing-tunnel.ct1163.tm70.ps.gadi.nci.org.au:8000"
+
     parser = argparse.ArgumentParser()
     for arg in arguments:
         parser.add_argument(*arg['flags'], **arg['parameters'])
 
+    print(f"{Fore.GREEN}Picked up submitted 'payu-run' job{Style.RESET_ALL}")
+
     run_args = parser.parse_args()
+    print(f"{Fore.BLUE}{run_args=}{Style.RESET_ALL}")
 
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)
+
+    print(f"{Fore.GREEN}Found lab {lab}.{Style.RESET_ALL}")
     expt = Experiment(lab, reproduce=run_args.reproduce, force=run_args.force)
+    print(f"{Fore.BLUE}Found experiment {expt}.{Style.RESET_ALL}")
 
     n_runs_per_submit = expt.config.get('runspersub', 1)
     subrun = 1

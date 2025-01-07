@@ -7,6 +7,7 @@ from __future__ import print_function
 
 import os
 import pwd
+from colorama import Fore, Style
 
 from payu.fsops import mkdir_p, read_config
 
@@ -27,6 +28,7 @@ class Laboratory(object):
 
     def __init__(self, model_type=None, config_path=None, lab_path=None):
         """Create the Payu laboratory interface."""
+        print(f"{Fore.YELLOW}Initialising laboratory with config {config_path} {Style.RESET_ALL}")
         config = read_config(config_path)
 
         # Set the file permission mask
