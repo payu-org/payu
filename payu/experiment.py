@@ -25,6 +25,9 @@ import warnings
 # Extensions
 import yaml
 from packaging import version
+from colorama import Fore, Style
+from access_py_telemetry.api import ApiHandler
+from access_py_telemetry.decorators import register_func
 
 # Local
 from payu import envmod
@@ -52,6 +55,10 @@ default_restart_freq = 5
 class Experiment(object):
 
     def __init__(self, lab, reproduce=False, force=False, metadata_off=False):
+        
+        api_handler = ApiHandler()
+        api_handler.server_url = "http://testing-tunnel.ct1163.tm70.ps.gadi.nci.org.au:8000"
+
         self.lab = lab
         # Check laboratory directories are writable
         self.lab.initialize()
@@ -711,6 +718,21 @@ class Experiment(object):
         # Dump job info
         with open(self.job_fname, 'w') as file:
             file.write(yaml.dump(info, default_flow_style=False))
+
+        info_lowercase = {key.lower(): val for key, val in info.items()}
+        # Add info to the telemetry server
+        ApiHandler().add_extra_fields("payu",info_lowercase)
+        ApiHandler().remove_fields("payu",["session_id"])
+        ApiHandler()._create_telemetry_record(service_name="payu",function_name="Experiment.run",
+                                              args=user_flags, kwargs={})
+
+        print(f"{Fore.GREEN}::: API: Collected the following telemetry data")
+        print(f"::: API: --> {ApiHandler()._extra_fields=}")
+        print(f"::: API: --> {ApiHandler().server_url=}")
+        print(f"::: API: --> {ApiHandler().endpoints=}")
+        print(f"::: API: --> {ApiHandler()._last_record=}")
+        print(f"{Style.RESET_ALL}")
+        ApiHandler().send_api_request("payu", "Experiment.run", (user_flags,), {})
 
         # Remove any empty output files (e.g. logs)
         for fname in os.listdir(self.work_path):
