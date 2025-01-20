@@ -21,7 +21,7 @@ import payu
 import payu.envmod as envmod
 from payu.fsops import is_conda
 from payu.models import index as supported_models
-from payu.schedulers import index as scheduler_index
+from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 import payu.subcommands
 
 # Default configuration
@@ -164,7 +164,7 @@ def submit_job(script, config, vars=None):
     """Submit a userscript the scheduler."""
 
     # TODO: Temporary stub to replicate the old approach
-    sched_name = config.get('scheduler', 'pbs')
+    sched_name = config.get('scheduler', DEFAULT_SCHEDULER_CONFIG)
     sched_type = scheduler_index[sched_name]
     sched = sched_type()
     cmd = sched.submit(script, config, vars)
