@@ -10,6 +10,7 @@ import re
 import sys
 import shlex
 import subprocess
+from typing import Any, Dict, Optional
 
 import payu.envmod as envmod
 from payu.fsops import check_exe_path
@@ -137,43 +138,53 @@ class PBS(Scheduler):
 
         return cmd
 
+    def get_job_id(self, short: bool = True) -> Optional[str]:
+        """Get PBS job ID
 
-# TODO: These support functions can probably be integrated into the class
+        Parameters
+        ----------
+        short: bool, default True
+            Return shortened form of the job ID
 
-def get_job_id(short=True):
-    """
-    Return PBS job id
-    """
+        Returns
+        ----------
+        Optional[str]
+            Job id if defined, None otherwise
+        """
 
-    jobid = os.environ.get('PBS_JOBID', '')
+        jobid = os.environ.get('PBS_JOBID', '')
 
-    if short:
-        # Strip off '.rman2'
-        jobid = jobid.split('.')[0]
+        if short:
+            # Strip off '.rman2'
+            jobid = jobid.split('.')[0]
 
-    return(jobid)
+        return(jobid)
 
+    def get_job_info(self) -> Optional[Dict[str, Any]]:
+        """
+        Get information about the job from the PBS server
 
-def get_job_info():
-    """
-    Get information about the job from the PBS server
-    """
-    jobid = get_job_id()
+        Returns
+        ----------
+        Optional[Dict[str, Any]]
+            Dictionary of information extracted from qstat output
+        """
+        jobid = self.get_job_id()
 
-    info = None
+        info = None
 
-    if not jobid == '':
-        info = get_qstat_info('-ft {0}'.format(jobid), 'Job Id:')
+        if not jobid == '':
+            info = get_qstat_info('-ft {0}'.format(jobid), 'Job Id:')
 
-    if info is not None:
-        # Select the dict for this job (there should only be one
-        # entry in any case)
-        info = info['Job Id: {}'.format(jobid)]
+        if info is not None:
+            # Select the dict for this job (there should only be one
+            # entry in any case)
+            info = info['Job Id: {}'.format(jobid)]
 
-        # Add the jobid to the dict and then return
-        info['Job_ID'] = jobid
+            # Add the jobid to the dict and then return
+            info['Job_ID'] = jobid
 
-    return info
+        return info
 
 
 def pbs_env_init():

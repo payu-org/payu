@@ -31,7 +31,7 @@ from payu.fsops import mkdir_p, make_symlink, read_config, movetree
 from payu.fsops import list_archive_dirs
 from payu.fsops import run_script_command
 from payu.fsops import needs_subprocess_shell
-from payu.schedulers.pbs import get_job_info, pbs_env_init, get_job_id
+from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 from payu.models import index as model_index
 import payu.profilers
 from payu.runlog import Runlog
@@ -672,7 +672,10 @@ class Experiment(object):
 
         self.finish_time = datetime.datetime.now()
 
-        info = get_job_info()
+        scheduler_name = self.config.get('scheduler', DEFAULT_SCHEDULER_CONFIG)
+        scheduler = scheduler_index[scheduler_name]()
+
+        info = scheduler.get_job_info()
 
         if info is None:
             # Not being run under PBS, reverse engineer environment
@@ -718,10 +721,10 @@ class Experiment(object):
             error_log_dir = os.path.join(self.archive_path, 'error_logs')
             mkdir_p(error_log_dir)
 
-            # NOTE: This is PBS-specific
-            job_id = get_job_id(short=False)
+            # NOTE: This is only implemented for PBS scheduler
+            job_id = scheduler.get_job_id(short=False)
 
-            if job_id == '':
+            if job_id == '' or job_id is None:
                 job_id = str(self.run_id)[:6]
 
             for fname in self.output_fnames:
