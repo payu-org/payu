@@ -315,6 +315,8 @@ class Manifest(object):
 
     def check_manifests(self):
         print("Checking exe, input and restart manifests")
+        from time import time
+        start = time()
         for mf in self.manifests:
             # Calculate hashes in manifests
             self.manifests[mf].calculate_fast(self.previous_manifests[mf])
@@ -322,7 +324,8 @@ class Manifest(object):
             if self.reproduce[mf]:
                 # Compare manifest with previous manifest
                 self.manifests[mf].check_reproduce(self.previous_manifests[mf])
-
+        
+        print(f"MANIFEST CALC: Finished in {time() - start:.4f} seconds")
         # Update manifests if there's any changes, or create file if empty
         for mf in self.manifests:
             if (self.manifests[mf].data != self.previous_manifests[mf].data
