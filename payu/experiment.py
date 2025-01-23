@@ -25,9 +25,6 @@ import warnings
 # Extensions
 import yaml
 from packaging import version
-from colorama import Fore, Style
-from access_py_telemetry.api import ApiHandler
-from access_py_telemetry.decorators import register_func
 
 # Local
 from payu import envmod
@@ -43,6 +40,7 @@ from payu.manifest import Manifest
 from payu.calendar import parse_date_offset
 from payu.sync import SyncToRemoteArchive
 from payu.metadata import Metadata
+from payu.telemetry import Telemetry
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -55,10 +53,6 @@ default_restart_freq = 5
 class Experiment(object):
 
     def __init__(self, lab, reproduce=False, force=False, metadata_off=False):
-        
-        api_handler = ApiHandler()
-        api_handler.server_url = "http://testing-tunnel.ct1163.tm70.ps.gadi.nci.org.au:8000"
-
         self.lab = lab
         # Check laboratory directories are writable
         self.lab.initialize()
@@ -69,7 +63,8 @@ class Experiment(object):
         else:
             self.force = force
 
-        self.start_time = datetime.datetime.now()
+        # Set start_time to the current time in UTC
+        self.start_time = datetime.datetime.now(datetime.timezone.utc)
 
         # Initialise experiment metadata - uuid and experiment name
         self.metadata = Metadata(Path(lab.archive_path), disabled=metadata_off)
@@ -146,6 +141,15 @@ class Experiment(object):
         self.run_id = None
 
         self.user_modules_paths = None
+
+        # Initialize scheduler instance
+        self.scheduler_name = self.config.get('scheduler',
+                                              DEFAULT_SCHEDULER_CONFIG)
+        self.scheduler = scheduler_index[self.scheduler_name]()
+
+        # Initialise telemetry
+        self.telemetry = Telemetry(config=self.config,
+                                   scheduler=self.scheduler)
 
     def init_models(self):
 
@@ -328,12 +332,10 @@ class Experiment(object):
         self.stdout_fname = self.lab.model_type + '.out'
         self.stderr_fname = self.lab.model_type + '.err'
 
-        self.job_fname = 'job.yaml'
         self.env_fname = 'env.yaml'
 
         self.output_fnames = (self.stderr_fname,
                               self.stdout_fname,
-                              self.job_fname,
                               self.env_fname)
 
     def set_output_paths(self):
@@ -686,53 +688,11 @@ class Experiment(object):
         f_out.close()
         f_err.close()
 
-        self.finish_time = datetime.datetime.now()
+        self.finish_time = datetime.datetime.now(datetime.timezone.utc)
+        self.run_job_status = rc
 
-        scheduler_name = self.config.get('scheduler', DEFAULT_SCHEDULER_CONFIG)
-        scheduler = scheduler_index[scheduler_name]()
-
-        info = scheduler.get_job_info()
-
-        if info is None:
-            # Not being run under PBS, reverse engineer environment
-            info = {
-                'PAYU_PATH': os.path.dirname(self.payu_path)
-            }
-
-        # Add extra information to save to jobinfo
-        info.update(
-            {
-                'PAYU_CONTROL_DIR': self.control_path,
-                'PAYU_RUN_ID': self.run_id,
-                'PAYU_CURRENT_RUN': self.counter,
-                'PAYU_N_RUNS':  self.n_runs,
-                'PAYU_JOB_STATUS': rc,
-                'PAYU_START_TIME': self.start_time.isoformat(),
-                'PAYU_FINISH_TIME': self.finish_time.isoformat(),
-                'PAYU_WALLTIME': "{0} s".format(
-                    (self.finish_time - self.start_time).total_seconds()
-                ),
-            }
-        )
-
-        # Dump job info
-        with open(self.job_fname, 'w') as file:
-            file.write(yaml.dump(info, default_flow_style=False))
-
-        info_lowercase = {key.lower(): val for key, val in info.items()}
-        # Add info to the telemetry server
-        ApiHandler().add_extra_fields("payu",info_lowercase)
-        ApiHandler().remove_fields("payu",["session_id"])
-        ApiHandler()._create_telemetry_record(service_name="payu",function_name="Experiment.run",
-                                              args=user_flags, kwargs={})
-
-        print(f"{Fore.GREEN}::: API: Collected the following telemetry data")
-        print(f"::: API: --> {ApiHandler()._extra_fields=}")
-        print(f"::: API: --> {ApiHandler().server_url=}")
-        print(f"::: API: --> {ApiHandler().endpoints=}")
-        print(f"::: API: --> {ApiHandler()._last_record=}")
-        print(f"{Style.RESET_ALL}")
-        ApiHandler().send_api_request("payu", "Experiment.run", (user_flags,), {})
+        # Store job state information
+        self.telemetry.set_run_info(self)
 
         # Remove any empty output files (e.g. logs)
         for fname in os.listdir(self.work_path):
@@ -752,8 +712,8 @@ class Experiment(object):
             error_log_dir = os.path.join(self.archive_path, 'error_logs')
             mkdir_p(error_log_dir)
 
-            # NOTE: This is only implemented for PBS scheduler
-            job_id = scheduler.get_job_id(short=False)
+            # NOTE: This is PBS-specific
+            job_id = self.scheduler.get_job_id(short=False)
 
             if job_id == '' or job_id is None:
                 job_id = str(self.run_id)[:6]
@@ -776,6 +736,12 @@ class Experiment(object):
             error_script = self.userscripts.get('error')
             if error_script:
                 self.run_userscript(error_script)
+
+            # Record run information
+            self.telemetry.set_run_info_filepath(
+                Path(error_log_dir) / f"job.{job_id}.json"
+            )
+            self.telemetry.record_run()
 
             # Terminate payu
             sys.exit('payu: Model exited with error code {0}; aborting.'
@@ -802,6 +768,9 @@ class Experiment(object):
         run_script = self.userscripts.get('run')
         if run_script:
             self.run_userscript(run_script)
+
+        # Set telemetry run info output file to the work directory
+        self.telemetry.set_run_info_filepath(Path(self.work_path) / "job.json")
 
     def archiving(self):
         """
@@ -892,6 +861,11 @@ class Experiment(object):
         # Ensure postprocessing runs if model not collating
         if not collating:
             self.postprocess()
+
+        # Set telemetry job info output file to the archive directory
+        self.telemetry.set_run_info_filepath(
+            Path(self.output_path) / "job.json"
+        )
 
     def collate(self):
         # Setup modules - load user-defined modules

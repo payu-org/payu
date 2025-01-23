@@ -20,10 +20,34 @@ from payu.schedulers.scheduler import Scheduler
 
 from tenacity import retry, stop_after_delay
 
+TELEMETRY_JOB_INFO_FIELDS = [
+    "resources_used.cpupercent",
+    "resources_used.cput",
+    "resources_used.mem",
+    "resources_used.vmem",
+    "resources_used.ncpus",
+    "resources_used.walltime",
+    "job_state",
+    "queue",
+    "project",
+    "job_id",
+    "resource_list.jobfs",
+    "resource_list.mem",
+    "resource_list.mpiprocs",
+    "resource_list.ncpus",
+    "resource_list.nodect",
+    "resource_list.storage",
+    "resource_list.walltime",
+    "resource_list.select",
+    "stime",
+    "qtime",
+    "mtime",
+]
+
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
 class PBS(Scheduler):
-    # TODO: __init__
+    name = "pbs"
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
         """Prepare a correct PBS command string"""
@@ -170,11 +194,16 @@ class PBS(Scheduler):
             # Strip off '.rman2'
             jobid = jobid.split('.')[0]
 
-        return(jobid)
+        return jobid
 
-    def get_job_info(self) -> Optional[Dict[str, Any]]:
+    def get_job_info(self, short: bool = True) -> Optional[Dict[str, Any]]:
         """
         Get information about the job from the PBS server
+
+        Parameters
+        ----------
+        short: bool, default True
+            Return shortened form of the job information
 
         Returns
         ----------
@@ -195,6 +224,21 @@ class PBS(Scheduler):
 
             # Add the jobid to the dict and then return
             info['Job_ID'] = jobid
+
+            info = {key.lower(): val for key, val in info.items()}
+            if short:
+                # Parse out the selected fields
+                info = {key: val for key, val in info.items()
+                        if key in TELEMETRY_JOB_INFO_FIELDS}
+
+            # Transform keys with ., e.g.
+            # resources_used.cpupercent -> resources_used_cpupercent
+            info = {key.replace('.', '_'): val for key, val in info.items()}
+
+        # TODO: Qstat can output in json using -F json
+        # This gives a pbs_version and parses resourced_used/Resource_List/
+        # Variable list into dictionaries
+        # So could just pass whole object through to telemetry?
 
         return info
 
