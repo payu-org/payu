@@ -173,10 +173,7 @@ class UnifiedModel(Model):
         if self.prior_restart_path and not self.expt.repeat_run \
            and os.path.exists(restart_calendar_path):
 
-            with open(restart_calendar_path, 'r') as restart_file:
-                restart_info = yaml.safe_load(restart_file)
-
-            run_start_date = restart_info['end_date']
+            run_start_date = self.read_calendar_file(restart_calendar_path)
 
             # Write out and save new calendar information.
             run_start_date_um = date_to_um_date(run_start_date)
@@ -202,6 +199,58 @@ class UnifiedModel(Model):
             work_nml['STSHCOMP']['RUN_TARGET_END'] = run_runtime
 
         work_nml.write(work_nml_path, force=True)
+
+    def read_calendar_file(self, restart_calendar_path):
+        """
+        Read date from a restart calendar file
+
+        Parameters
+        ----------
+        restart_calendar_path: Path to restart calendar file
+
+        Returns
+        -------
+        datetime.datetime or datetime.date
+        """
+        if not os.path.exists(restart_calendar_path):
+            raise FileNotFoundError(
+                f"Cannot find restart calendar file {restart_calendar_path}."
+            )
+
+        with open(restart_calendar_path, 'r') as calendar_file:
+            date_info = yaml.safe_load(calendar_file)
+
+        restart_date = date_info['end_date']
+        if not isinstance(restart_date, datetime.date):
+            raise TypeError(
+                "Failed to parse restart calendar file contents into "
+                "datetime object. "
+                f"Calendar file: {restart_calendar_path}"
+            )
+
+        return restart_date
+
+    def get_restart_datetime(self, restart_path):
+        """
+        Given a restart path, parse the restart files and
+        return a cftime datetime (for date-based restart pruning)
+
+        Parameters
+        ----------
+        restart_path: Path to UM restart directory
+
+        Returns
+        -------
+        cftime.datetime object
+        """
+        calendar_path = os.path.join(restart_path,
+                                     self.restart_calendar_file)
+
+        restart_date = self.read_calendar_file(calendar_path)
+
+        # Date-based restart pruning requires cftime.datetime object and
+        # Payu UM always uses proleptic Gregorian calendar
+        return cal.date_to_cftime(restart_date, "proleptic_gregorian")
 
 
 def date_to_um_dump_date(date):
