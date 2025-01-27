@@ -127,25 +127,40 @@ def seconds_between_dates(start_date, end_date, caltype_int):
 
 def date_to_cftime(date, calendar):
     """
-    Convert a datetime.datetime object to a cftime.datetime object which
+    Convert a datetime object to a cftime.datetime object which
     has the same year, month, day, hour, minute, second values.
 
     Parameters
     ----------
-    date: datetime.date object
+    date: datetime.date or datetime.datetime object
     calendar: string specifying a valid cftime calendar type
 
     Returns
     -------
     date_cf: cftime.datetime object.
     """
+    if isinstance(date, datetime.datetime):
+        hour = date.hour
+        minute = date.minute
+        second = date.second
+    elif isinstance(date, datetime.date):
+        # Assume date refers to start of day
+        hour = 0
+        minute = 0
+        second = 0
+    else:
+        raise TypeError(
+            "Expected datetime.date or datetime.datetime. "
+            f"Recieved {type(date)}"
+        )
+
     date_cf = cftime.datetime(
         year=date.year,
         month=date.month,
         day=date.day,
-        hour=0,
-        minute=0,
-        second=0,
+        hour=hour,
+        minute=minute,
+        second=second,
         calendar=calendar
     )
 
