@@ -384,11 +384,14 @@ def remove_restart_dirs():
 
 
 @pytest.fixture
-def mom_only_config():
+def two_model_config():
     config = copy.deepcopy(config_orig)
     config["model"] = "access"
-    config["submodels"] = [{"name": "ocean",
-                           "model": "mom"}]
+    config["submodels"] = [{"name": "atmosphere",
+                           "model": "um"},
+                           {"name": "ocean",
+                           "model": "mom"}
+                           ]
     write_config(config)
 
     # Run test
@@ -398,10 +401,11 @@ def mom_only_config():
     os.remove(config_path)
 
 
-def test_access_get_mom_restart_datetime(mom_only_config, remove_restart_dirs):
+def test_access_get_mom_restart_datetime(two_model_config,
+                                         remove_restart_dirs):
     """
-    Check that the restart datetime can be read when only
-    the mom submodel is present.
+    Check that the restart datetime is read using the
+    the mom submodel by default.
     """
     # Create 1 mom restart directory
     start_dt = "1900-01-01 00:00:00"
@@ -414,7 +418,14 @@ def test_access_get_mom_restart_datetime(mom_only_config, remove_restart_dirs):
         expt = payu.experiment.Experiment(lab, reproduce=False)
 
     restart_path = list_expt_archive_dirs()[0]
-    parsed_run_dt = expt.model.get_restart_datetime(restart_path)
+
+    with (
+        patch("payu.models.um.UnifiedModel.get_restart_datetime") as um_date
+    ):
+        parsed_run_dt = expt.model.get_restart_datetime(restart_path)
+
+    um_date.assert_not_called()
+
     assert parsed_run_dt == cftime.datetime(1900, 2, 1,
                                             calendar="proleptic_gregorian")
 

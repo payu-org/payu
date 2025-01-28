@@ -320,22 +320,12 @@ class Access(Model):
     def get_restart_datetime(self, restart_path):
         """Given a restart path, parse the restart files and
         return a cftime datetime (for date-based restart pruning)"""
-        for model in self.expt.models:
-            if model.model_type == 'mom':
-                mom_restart_path = os.path.join(restart_path, model.name)
-                return model.get_restart_datetime(mom_restart_path)
 
-        # Use UM if mom model not present
-        for model in self.expt.models:
-            if model.model_type == 'um':
-                um_restart_path = os.path.join(restart_path, model.name)
-                return model.get_restart_datetime(um_restart_path)
+        # Use mom by default and um if ocean not present
+        model_types = ['mom', 'um']
 
-        raise NotImplementedError(
-            f'Cannot find mom or um sub-models: {self.model_type} date-based '
-            'restart pruning requires the mom or um sub-model to '
-            'determine restart dates'
-        )
+        return self.get_restart_datetime_using_submodel(restart_path,
+                                                        model_types)
 
     def set_model_pathnames(self):
         pass
