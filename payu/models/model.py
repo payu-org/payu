@@ -505,3 +505,31 @@ class Model(object):
         """Given a restart path, parse the restart files and return a cftime
         datetime (currently used for date-based restart pruning)"""
         raise NotImplementedError
+
+    def get_restart_datetime_using_submodel(self, restart_path, model_types):
+        """
+        Use a specified submodel's get_restart_datetime method
+
+        Parameters
+        ----------
+        restart_path: Path to an experiment restart directory
+
+        model_types: List of submodels in order of priority. Use first
+        submodel in model_types that is present in the experiment.
+
+        Returns:
+        --------
+        cftime.datetime object
+        """
+        for model_type in model_types:
+            for model in self.expt.models:
+                if model.model_type == model_type:
+                    model_restart_path = os.path.join(restart_path, model.name)
+                    return model.get_restart_datetime(model_restart_path)
+
+        raise NotImplementedError(
+            f'Cannot find any of the specified sub-models: '
+            f'{", ".join(model_types)}. '
+            f'{self.model_type} date-based restart pruning requires one of '
+            'these sub-models to determine restart dates.'
+        )

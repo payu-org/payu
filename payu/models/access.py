@@ -23,7 +23,6 @@ import f90nml
 # Local
 from payu.fsops import make_symlink
 from payu.models.model import Model
-from payu.models.mom import get_restart_datetime_using_mom_submodel
 import payu.calendar as cal
 
 
@@ -321,10 +320,12 @@ class Access(Model):
     def get_restart_datetime(self, restart_path):
         """Given a restart path, parse the restart files and
         return a cftime datetime (for date-based restart pruning)"""
-        return get_restart_datetime_using_mom_submodel(
-            model=self, 
-            restart_path=restart_path
-        )
+
+        # Use mom by default and um if ocean not present
+        model_types = ['mom', 'um']
+
+        return self.get_restart_datetime_using_submodel(restart_path,
+                                                        model_types)
 
     def set_model_pathnames(self):
         pass

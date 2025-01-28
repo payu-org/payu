@@ -1,6 +1,7 @@
 import copy
 import os
 import shutil
+import datetime
 
 import pytest
 import cftime
@@ -17,6 +18,8 @@ from test.common import make_all_files
 from test.common import list_expt_archive_dirs
 from test.common import make_expt_archive_dir, remove_expt_archive_dirs
 from test.common import config_path
+from test.models.test_um import make_atmosphere_restart_dir
+from test.models.test_mom_mixin import make_ocean_restart_dir
 from payu.calendar import GREGORIAN, NOLEAP
 
 
@@ -370,3 +373,93 @@ def test_access_cice_1year_runtimes(
         work_input_ice = f90nml.read(cice_model.work_path/INPUT_ICE_FNAME)
         written_runtime = work_input_ice["coupling"]["runtime"]
         assert written_runtime == expected_runtime
+
+
+@pytest.fixture
+def remove_restart_dirs():
+    """Clear any restart directories created during a test"""
+    yield
+    # Teardown
+    remove_expt_archive_dirs(type="restart")
+
+
+@pytest.fixture
+def two_model_config():
+    config = copy.deepcopy(config_orig)
+    config["model"] = "access"
+    config["submodels"] = [{"name": "atmosphere",
+                           "model": "um"},
+                           {"name": "ocean",
+                           "model": "mom"}
+                           ]
+    write_config(config)
+
+    # Run test
+    yield
+
+    # Teardown
+    os.remove(config_path)
+
+
+def test_access_get_mom_restart_datetime(two_model_config,
+                                         remove_restart_dirs):
+    """
+    Check that the restart datetime is read using the
+    the mom submodel by default.
+    """
+    # Create 1 mom restart directory
+    start_dt = "1900-01-01 00:00:00"
+    run_dt = "1900-02-01 00:00:00"
+    calendar = 3  # proleptic Gregorian
+    make_ocean_restart_dir(start_dt, run_dt, calendar, additional_path="ocean")
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+
+    restart_path = list_expt_archive_dirs()[0]
+
+    with (
+        patch("payu.models.um.UnifiedModel.get_restart_datetime") as um_date
+    ):
+        parsed_run_dt = expt.model.get_restart_datetime(restart_path)
+
+    um_date.assert_not_called()
+
+    assert parsed_run_dt == cftime.datetime(1900, 2, 1,
+                                            calendar="proleptic_gregorian")
+
+
+@pytest.fixture
+def um_only_config():
+    config = copy.deepcopy(config_orig)
+    config["model"] = "access"
+    config["submodels"] = [{"name": "atmosphere",
+                           "model": "um"}]
+    write_config(config)
+
+    # Run test
+    yield
+
+    # Teardown
+    os.remove(config_path)
+
+
+def test_access_get_um_restart_datetime(um_only_config, remove_restart_dirs):
+    """
+    Check that the restart datetime can be read when only
+    the UM submodel is present.
+    """
+    # Create UM restart directory
+    date = datetime.datetime(100, 1, 1)
+    make_atmosphere_restart_dir("um.res.yaml", date,
+                                additional_path="atmosphere")
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+
+    restart_path = list_expt_archive_dirs()[0]
+    parsed_run_dt = expt.model.get_restart_datetime(restart_path)
+    assert parsed_run_dt == cftime.datetime(100, 1, 1,
+                                            calendar="proleptic_gregorian")

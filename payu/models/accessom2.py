@@ -14,7 +14,6 @@ import os
 import shutil
 
 from payu.models.model import Model
-from payu.models.mom import get_restart_datetime_using_mom_submodel
 
 
 class AccessOm2(Model):
@@ -91,8 +90,7 @@ class AccessOm2(Model):
     def get_restart_datetime(self, restart_path):
         """Given a restart path, parse the restart files and
         return a cftime datetime (for date-based restart pruning)"""
-       # Use mom submodel to determine restart datetimes
-        return get_restart_datetime_using_mom_submodel(
-            model=self, 
-            restart_path=restart_path
-        )
+        model_types = ['mom']
+
+        return self.get_restart_datetime_using_submodel(restart_path,
+                                                        model_types)
