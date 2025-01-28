@@ -96,7 +96,7 @@ def make_atmosphere_restart_dir(calendar_file_name,
 @pytest.mark.parametrize(
     "date, expected_cftime",
     [
-    # The UM driver only uses the proleptic Gregorian calendar.
+        # The UM driver only uses the proleptic Gregorian calendar.
         (
             datetime.datetime(1900, 2, 1),
             cftime.datetime(1900, 2, 1, calendar="proleptic_gregorian")
