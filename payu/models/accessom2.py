@@ -92,4 +92,5 @@ class AccessOm2(Model):
         return a cftime datetime (for date-based restart pruning)"""
         model_types = ['mom']
 
-        self.get_restart_datetime_using_submodel(restart_path, model_types)
+        return self.get_restart_datetime_using_submodel(restart_path,
+                                                        model_types)
