@@ -151,7 +151,7 @@ def date_to_cftime(date, calendar):
     else:
         raise TypeError(
             "Expected datetime.date or datetime.datetime. "
-            f"Recieved {type(date)}"
+            f"Received {type(date)}"
         )
 
     date_cf = cftime.datetime(
