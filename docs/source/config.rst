@@ -98,8 +98,10 @@ These settings are primarily used by the PBS scheduler.
    setting is applied to any ``qsub`` calls.
 
 ``jobfs``
-   Request a non-default amount of storage that is local to the compute.
-   See `NCI jobfs documentation`_ and the `CLEX blog for details`_.
+   The maximum amount of local disk available to the job on the hosting compute nodes. 
+   If this is missing in the submission, the value is set to 100 MiB. 
+   The `jobfs` allocation in a multiple-node jobs will be distributed equally among every nodes.
+   See `NCI jobfs documentation`_ and the `CLEX blog`_ for details.
 
 ``storage``
    On the NCI system gadi all storage mount points must be specified, except
@@ -118,8 +120,8 @@ These settings are primarily used by the PBS scheduler.
             scratch:
                   - zz3
 
-.. _`NCI jobfs documentation`: https://opus.nci.org.au/display/Help/PBS+Directives+Explained#PBSDirectivesExplained--ljobfs=%3C10GB%3E
-.. _`CLEX blog for details`: https://climate-cms.org/posts/2022-11-10-jobfs.html#what-is-pbs-jobfs
+.. _`NCI jobfs documentation`: https://opus.nci.org.au/spaces/Help/pages/236881349/PBS+Directives...#PBSDirectives...--ljobfs=%3C10GB%3E
+.. _`CLEX blog`: https://coecms.github.io/posts/2022-11-10-jobfs.html
 
 Model
 -----
