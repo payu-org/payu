@@ -1117,37 +1117,42 @@ class Experiment(object):
         return restarts_to_prune
 
     def track_run_info(self, job_status, user_flags):
-        """Build information for the current run"""
-        # Add scheduler job information
-        scheduler_info = self.scheduler.get_job_info()
-        if scheduler_info is None:
-            # Not being run under PBS, reverse engineer environment
-            info = {
-                'PAYU_PATH': os.path.dirname(self.payu_path)
-            }
-        else:
-            scheduler_info = {key.lower(): val for key, val in scheduler_info.items()}
-            info = {
-                'scheduler': scheduler_info,
-                'scheduler_type': self.scheduler_name,
-                'scheduler_version': '1.0'
-            }
+        """
+        Build information for the current run and write it to a JSON file.
+        If telemetry is configured, post the job information to the
+        access-py-telemetry API.
 
-        # Add extra information to save to jobinfo
+        Parameters
+        ----------
+        job_status : int
+            The return code of the model run
+        user_flags : tuple
+            The flags passed to the payu run command (?)
+        """
+        # Add fields from experiment metadata
+        metadata = self.metadata.read_file()
+        info = {
+            'experiment_uuid': metadata.get('experiment_uuid'),
+            'experiment_created': metadata.get('created', None),
+            'experiment_name': metadata.get('name', None),
+            'model': metadata.get('model', None)
+        }
+
+        # Add payu run state information
         info.update(
             {
-                'PAYU_CONTROL_DIR': self.control_path,
-                'PAYU_RUN_ID': self.run_id,
-                'PAYU_CURRENT_RUN': self.counter,
-                'PAYU_N_RUNS':  self.n_runs,
-                'PAYU_JOB_STATUS': job_status,
-                'PAYU_START_TIME': self.start_time.isoformat(),
-                'PAYU_FINISH_TIME': self.finish_time.isoformat(),
-                'PAYU_WALLTIME': "{0} s".format(
-                    (self.finish_time - self.start_time).total_seconds()
-                ),
-                'PAYU_VERSION': payu.__version__,
-                'PAYU_ARCHIVE_DIR': self.archive_path,
+                'payu_run_id': self.run_id,
+                'payu_current_run': self.counter,
+                'payu_n_runs':  self.n_runs,
+                'payu_job_status': job_status,
+                'payu_start_time': self.start_time.isoformat(),
+                'payu_finish_time': self.finish_time.isoformat(),
+                'payu_walltime_seconds':
+                    (self.finish_time - self.start_time).total_seconds(),
+                'payu_version': payu.__version__,
+                'payu_path': os.path.dirname(self.payu_path),
+                'payu_control_dir': self.control_path,
+                'payu_archive_dir': self.archive_path,
             }
         )
 
@@ -1155,18 +1160,26 @@ class Experiment(object):
         sync_config = self.config.get('sync', {})
         syncing = sync_config.get('enable', False)
         if syncing:
-            info['PAYU_REMOTE_ARCHIVE_DIR'] = sync_config.get('path')
+            info['payu_remote_archive_dir'] = sync_config.get('path')
 
-        # Add metadata
-        info.update(
-            {
-                'metadata': dict(self.metadata.read_file()),
-                'metadata_schema_version': METADATA_SCHEMA_VERSION
-            }
-        )
-        info = dict((key.lower(), val) for key, val in info.items())
+        # Add scheduler job information
+        scheduler_job_id = self.scheduler.get_job_id(short=False)
+        scheduler_info = self.scheduler.get_job_info()
 
-        # Dump job info
+        if scheduler_info is not None:
+            scheduler_info = {key.lower(): val for key, val in scheduler_info.items()}
+            info.update(
+                {
+                    'scheduler_job_info': scheduler_info,
+                    # Storing a version pre-emptively incase scheduler_info dictionary
+                    # is modified in the future
+                    'scheduler_job_info_version': '1.0', 
+                    'scheduler_type': self.scheduler_name,
+                    'scheduler_job_id': scheduler_job_id
+                }
+            )
+
+        # Write job information to a JSON file
         with open(self.job_fname, 'w', encoding='utf-8') as f:
             json.dump(info, f, ensure_ascii=False, indent=4)
 
