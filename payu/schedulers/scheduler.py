@@ -21,8 +21,13 @@ class Scheduler(object):
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
         raise NotImplementedError
 
-    def get_job_info(self) -> Optional[Dict[str, Any]]:
+    def get_job_info(self, short: bool = True) -> Optional[Dict[str, Any]]:
         """Get information about the currently running job
+
+        Parameters
+        ----------
+        short: bool, default True
+            Return shortened form of the job information
 
         Returns
         ----------
