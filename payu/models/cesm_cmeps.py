@@ -355,7 +355,7 @@ class CesmCmeps(Model):
         date_str = lines[0].split('.')[3]
         year, month, day, hms = date_str.split('-')
 
-        self.get_runconfig(self.expt.work_path)
+        self.get_runconfig(self.expt.control_path)
         run_calendar = self.runconfig.get("CLOCK_attributes", "calendar")
 
         cftime_calendars = {
