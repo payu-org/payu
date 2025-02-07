@@ -13,6 +13,7 @@ from __future__ import print_function
 import os
 import re
 import shutil
+import cftime
 from warnings import warn
 
 from payu.fsops import mkdir_p, make_symlink
@@ -335,6 +336,38 @@ class CesmCmeps(Model):
             fms_collate(self)
         else:
             super().collate()
+
+    def get_restart_datetime(self, restart_path):
+        """Given a restart path, parse the restart files and
+        return a cftime datetime (for date-based restart pruning)"""
+
+        # Check for rpointer.cpl file
+        rpointer_path = os.path.join(restart_path, 'rpointer.cpl')
+        if not os.path.exists(rpointer_path):
+            raise FileNotFoundError(
+                'Cannot find rpointer.cpl file, which is required for '
+                'date-based restart pruning')
+
+        with open(rpointer_path, 'r') as ocean_solo:
+            lines = ocean_solo.readlines()
+            # example lines would be access-om3.cpl.r.1900-01-02-00000.nc
+
+        date_str = lines[0].split('.')[3]
+        year, month, day, hms = date_str.split('-')
+
+        self.get_runconfig(self.expt.work_path)
+        run_calendar = self.runconfig.get("CLOCK_attributes", "calendar")
+
+        cftime_calendars = {
+            "NO_LEAP" : "noleap" ,
+            "GREGORIAN" : "proleptic_gregorian"
+        }
+
+        return cftime.datetime(
+            int(year), int(month), int(day), 
+            int(hms[0:2]), int(hms[2:4]), int(hms[4:6]),
+            calendar  = cftime_calendars[run_calendar]
+        )
 
 
 class AccessOm3(CesmCmeps):
