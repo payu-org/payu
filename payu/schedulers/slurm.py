@@ -16,7 +16,6 @@ from payu.schedulers.scheduler import Scheduler
 
 
 class Slurm(Scheduler):
-
     name = "slurm"
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):

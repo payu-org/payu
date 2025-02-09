@@ -20,6 +20,7 @@ TELEMETRY_CONFIG_FIELDS = [SERVER_URL_FIELD, HOSTNAME_FIELD]
 PAYU_RUN_SERVICE_NAME = "api_payu_run"
 API_HANDLER_REQUEST_TIMEOUT = 10
 
+
 def get_metadata(metadata: Metadata) -> Optional[Dict[str, Any]]:
     """Returns a dictionary of the experiment metadata to record"""
     metadata_dict = metadata.read_file()
@@ -58,7 +59,8 @@ def get_scheduler_run_info(scheduler: Scheduler) -> Dict[str, Any]:
 
     info = {}
     if scheduler_info is not None:
-        scheduler_info = {key.lower(): val for key, val in scheduler_info.items()}
+        scheduler_info = {key.lower(): val
+                          for key, val in scheduler_info.items()}
         info = {
             'scheduler_job_info': scheduler_info,
             # Storing a version pre-emptively incase scheduler_info dictionary
@@ -146,16 +148,17 @@ def post_telemetry_data(server_url: str,
 
     # Add info to the telemetry server
     api_handler.add_extra_fields(service_name, extra_fields)
-    api_handler.remove_fields(service_name,["session_id"])
+    api_handler.remove_fields(service_name, ["session_id"])
 
     # Send telemetry data
     api_handler.send_api_request(service_name=service_name,
                                  function_name=function_name,
                                  args={}, kwargs={})
 
+
 class Telemetry():
     """Telemetry class to store and post telemetry information.
-    Currently these class methods are accessed during an Experiment run,
+    Currently these class methods are accessed during an Experiment run -
     so in payu.Experiment class and in the payu run subcommand.
     """
 
@@ -164,7 +167,7 @@ class Telemetry():
         self.run_info = {}
         self.run_info_filepath = None
 
-        # Check for config.yaml option to disable telemetry, and if an 
+        # Check for config.yaml option to disable telemetry, and if an
         # environment variable for an external telemetry config file is set
         self.telemetry_enabled = (
             config.get('telemetry', {}).get('enable', True)
@@ -172,7 +175,7 @@ class Telemetry():
         )
 
         self.scheduler = scheduler
-    
+
     def set_run_info_filepath(self, filepath: Path):
         """This file path will be different depending depending if there
         are model errors, whether archive runs or not. This is updated
@@ -182,10 +185,10 @@ class Telemetry():
     def set_run_info(self, experiment):
         self.run_info.update(get_metadata(experiment.metadata))
         self.run_info.update(get_experiment_run_state(experiment))
-    
+
     def clear_run_info(self):
         self.run_info = {}
-    
+
     def record_run(self):
         """
         Build information for the current run and write it to a JSON file.
@@ -209,23 +212,26 @@ class Telemetry():
             # Skip any external telemetry
             return
 
-        # Note: Using warnings for exceptions caught past this point as
-        # telemetry is configured
-
         # Check for valid external telemetry configuration file
         external_config = get_external_telemetry_config()
         if external_config is None:
             # Skip any external telemetry
             return
 
-        # Update the hostname to the run info fields
+        # Add hostname to the run info fields
         self.run_info.update({'hostname': external_config[HOSTNAME_FIELD]})
-        # Extract the server_url from the external telemetry configuration
-        server_url = external_config[SERVER_URL_FIELD]
 
-        #TODO: What should the function name be? It's mostly tracking
-        # the Experiment.run() command - but more the run_cmd as a whole?
-        post_telemetry_data(server_url, self.run_info, PAYU_RUN_SERVICE_NAME,
-                            "Telemetry.record_run")
-
-        # TODO: Wrap entire function in a try: except Exception?
+        try:
+            # Post telemetry data using the built run info fields
+            # Using the payu run subcommand as the function name as the
+            # telemetry covers the experiment run
+            post_telemetry_data(
+                server_url=external_config[SERVER_URL_FIELD],
+                extra_fields=self.run_info,
+                service_name=PAYU_RUN_SERVICE_NAME,
+                function_name="payu.subcommands.run_cmd.runscript"
+            )
+        except Exception as e:
+            warnings.warn(
+                f"Error posting telemetry: {e}"
+            )
