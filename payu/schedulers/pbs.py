@@ -194,7 +194,7 @@ class PBS(Scheduler):
             # Strip off '.rman2'
             jobid = jobid.split('.')[0]
 
-        return(jobid)
+        return jobid
 
     def get_job_info(self, short: bool = True) -> Optional[Dict[str, Any]]:
         """
@@ -231,11 +231,13 @@ class PBS(Scheduler):
                 info = {key: val for key, val in info.items()
                         if key in TELEMETRY_JOB_INFO_FIELDS}
 
-            # Transform keys with ., e.g. resources_used.cpupercent -> resources_used_cpupercent
+            # Transform keys with ., e.g.
+            # resources_used.cpupercent -> resources_used_cpupercent
             info = {key.replace('.', '_'): val for key, val in info.items()}
-    
+
         # TODO: Qstat can output in json using -F json
-        # This gives a pbs_version and parses resourced_used/Resource_List/Variable list into dictionaries
+        # This gives a pbs_version and parses resourced_used/Resource_List/
+        # Variable list into dictionaries
         # So could just pass whole object through to telemetry?
 
         return info

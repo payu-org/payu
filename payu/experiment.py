@@ -53,7 +53,6 @@ default_restart_freq = 5
 class Experiment(object):
 
     def __init__(self, lab, reproduce=False, force=False, metadata_off=False):
-
         self.lab = lab
         # Check laboratory directories are writable
         self.lab.initialize()
@@ -143,7 +142,8 @@ class Experiment(object):
         self.user_modules_paths = None
 
         # Initialize scheduler instance
-        self.scheduler_name = self.config.get('scheduler', DEFAULT_SCHEDULER_CONFIG)
+        self.scheduler_name = self.config.get('scheduler',
+                                              DEFAULT_SCHEDULER_CONFIG)
         self.scheduler = scheduler_index[self.scheduler_name]()
 
         # Initialise telemetry
