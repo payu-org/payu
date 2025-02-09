@@ -9,7 +9,6 @@ import payu.subcommands.args as args
 from payu import fsops
 from payu.manifest import Manifest
 
-
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
 
