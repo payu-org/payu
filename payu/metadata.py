@@ -37,7 +37,6 @@ METADATA_FILENAME = "metadata.yaml"
 
 # Metadata Schema
 SCHEMA_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema/80a3ce720af14b2b5e718630e1b52e7b3d22ea95/au.org.access-nri/model/output/experiment-metadata/1-0-3.json"
-METADATA_SCHEMA_VERSION = "1.0.3"
 
 class MetadataWarning(Warning):
     pass
