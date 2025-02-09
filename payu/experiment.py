@@ -23,9 +23,7 @@ from pathlib import Path
 
 # Extensions
 import yaml
-import json
 from packaging import version
-from access_py_telemetry.api import ApiHandler
 
 # Local
 from payu import envmod
@@ -40,7 +38,8 @@ from payu.runlog import Runlog
 from payu.manifest import Manifest
 from payu.calendar import parse_date_offset
 from payu.sync import SyncToRemoteArchive
-from payu.metadata import Metadata, METADATA_SCHEMA_VERSION
+from payu.metadata import Metadata
+from payu.telemetry import Telemetry
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -145,6 +144,10 @@ class Experiment(object):
         # Initialize scheduler instance
         self.scheduler_name = self.config.get('scheduler', DEFAULT_SCHEDULER_CONFIG)
         self.scheduler = scheduler_index[self.scheduler_name]()
+
+        # Initialise telemetry
+        self.telemetry = Telemetry(config=self.config,
+                                   scheduler=self.scheduler)
 
     def init_models(self):
 
@@ -331,12 +334,10 @@ class Experiment(object):
         self.stdout_fname = self.lab.model_type + '.out'
         self.stderr_fname = self.lab.model_type + '.err'
 
-        self.job_fname = 'job.json'
         self.env_fname = 'env.yaml'
 
         self.output_fnames = (self.stderr_fname,
                               self.stdout_fname,
-                              self.job_fname,
                               self.env_fname)
 
     def set_output_paths(self):
@@ -678,9 +679,10 @@ class Experiment(object):
         f_err.close()
 
         self.finish_time = datetime.datetime.now()
+        self.run_job_status = rc
 
-        # Store and track job information
-        self.track_run_info(job_status=rc, user_flags=user_flags)
+        # Store job state information
+        self.telemetry.set_run_info(self)
 
         # Remove any empty output files (e.g. logs)
         for fname in os.listdir(self.work_path):
@@ -725,6 +727,12 @@ class Experiment(object):
             if error_script:
                 self.run_userscript(error_script)
 
+            # Record run information
+            self.telemetry.set_run_info_filepath(
+                Path(error_log_dir) / f"job.{job_id}.json"
+            )
+            self.telemetry.record_run()
+
             # Terminate payu
             sys.exit('payu: Model exited with error code {0}; aborting.'
                      ''.format(rc))
@@ -750,6 +758,9 @@ class Experiment(object):
         run_script = self.userscripts.get('run')
         if run_script:
             self.run_userscript(run_script)
+
+        # Set telemetry run info output file to the work directory
+        self.telemetry.set_run_info_filepath(Path(self.work_path) / "job.json")
 
     def archiving(self):
         """
@@ -839,6 +850,11 @@ class Experiment(object):
         # Ensure postprocessing runs if model not collating
         if not collating:
             self.postprocess()
+
+        # Set telemetry job info output file to the archive directory
+        self.telemetry.set_run_info_filepath(
+            Path(self.output_path) / "job.json"
+        )
 
     def collate(self):
         # Setup modules - load user-defined modules
@@ -1114,86 +1130,6 @@ class Experiment(object):
             restarts_to_prune = []
 
         return restarts_to_prune
-
-    def track_run_info(self, job_status, user_flags):
-        """
-        Build information for the current run and write it to a JSON file.
-        If telemetry is configured, post the job information to the
-        access-py-telemetry API.
-
-        Parameters
-        ----------
-        job_status : int
-            The return code of the model run
-        user_flags : tuple
-            The flags passed to the payu run command (?)
-        """
-        # Add fields from experiment metadata
-        metadata = self.metadata.read_file()
-        info = {
-            'experiment_uuid': metadata.get('experiment_uuid'),
-            'experiment_created': metadata.get('created', None),
-            'experiment_name': metadata.get('name', None),
-            'model': metadata.get('model', None)
-        }
-
-        # Add payu run state information
-        info.update(
-            {
-                'payu_run_id': self.run_id,
-                'payu_current_run': self.counter,
-                'payu_n_runs':  self.n_runs,
-                'payu_job_status': job_status,
-                'payu_start_time': self.start_time.isoformat(),
-                'payu_finish_time': self.finish_time.isoformat(),
-                'payu_walltime_seconds':
-                    (self.finish_time - self.start_time).total_seconds(),
-                'payu_version': payu.__version__,
-                'payu_path': os.path.dirname(self.payu_path),
-                'payu_control_dir': self.control_path,
-                'payu_archive_dir': self.archive_path,
-            }
-        )
-
-        # Add remote archive path if syncing is enabled
-        sync_config = self.config.get('sync', {})
-        syncing = sync_config.get('enable', False)
-        if syncing:
-            info['payu_remote_archive_dir'] = sync_config.get('path')
-
-        # Add scheduler job information
-        scheduler_job_id = self.scheduler.get_job_id(short=False)
-        scheduler_info = self.scheduler.get_job_info()
-
-        if scheduler_info is not None:
-            scheduler_info = {key.lower(): val for key, val in scheduler_info.items()}
-            info.update(
-                {
-                    'scheduler_job_info': scheduler_info,
-                    # Storing a version pre-emptively incase scheduler_info dictionary
-                    # is modified in the future
-                    'scheduler_job_info_version': '1.0', 
-                    'scheduler_type': self.scheduler_name,
-                    'scheduler_job_id': scheduler_job_id
-                }
-            )
-
-        # Write job information to a JSON file
-        with open(self.job_fname, 'w', encoding='utf-8') as f:
-            json.dump(info, f, ensure_ascii=False, indent=4)
-
-        # Add info to the telemetry server
-        ApiHandler().add_extra_fields("api_payu_run",info)
-        ApiHandler().remove_fields("api_payu_run",["session_id"])
-        ApiHandler()._create_telemetry_record(service_name="api_payu_run",function_name="Experiment.run",
-                                              args=user_flags, kwargs={})
-
-        print(f"::: API: Collected the following telemetry data")
-        print(f"::: API: --> {ApiHandler()._extra_fields=}")
-        print(f"::: API: --> {ApiHandler().server_url=}")
-        print(f"::: API: --> {ApiHandler().endpoints=}")
-        print(f"::: API: --> {ApiHandler()._last_record=}")
-        ApiHandler().send_api_request("api_payu_run", "Experiment.run", (user_flags,), {})
 
 
 def enable_core_dump():

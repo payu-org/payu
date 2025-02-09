@@ -1,3 +1,4 @@
+import datetime
 import os
 import argparse
 
@@ -7,8 +8,6 @@ from payu.laboratory import Laboratory
 import payu.subcommands.args as args
 from payu import fsops
 from payu.manifest import Manifest
-
-from access_py_telemetry.api import ApiHandler
 
 
 title = 'run'
@@ -113,11 +112,6 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
 
 def runscript():
-    # We have a new python interperter here, set the server url
-    api_handler = ApiHandler()
-    api_handler.server_url = "http://tracking-services.jb4202.tm70.ps.gadi.nci.org.au:8000"
-    api_handler.request_timeout = 10
-
     parser = argparse.ArgumentParser()
     for arg in arguments:
         parser.add_argument(*arg['flags'], **arg['parameters'])
@@ -140,6 +134,13 @@ def runscript():
         expt.setup()
         expt.run()
         expt.archive(force_prune_restarts=run_args.force_prune_restarts)
+
+        # Record job information for experiment run
+        expt.telemetry.record_run()
+
+        # Reset run information before the next run
+        expt.telemetry.clear_run_info()
+        expt.start_time = datetime.datetime.now()
 
         # Finished runs
         if expt.n_runs == 0:
