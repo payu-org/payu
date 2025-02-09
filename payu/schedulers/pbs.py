@@ -47,7 +47,7 @@ TELEMETRY_JOB_INFO_FIELDS = [
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
 class PBS(Scheduler):
-    # TODO: __init__
+    name = "pbs"
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
         """Prepare a correct PBS command string"""
