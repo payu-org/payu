@@ -217,9 +217,9 @@ configuration.
    For example, ``restart_freq: 10YS`` would save earliest restart of the year,
    10 years from the last permanently archived restart's datetime.
 
-   Please note that currently, only ACCESS-OM2, MOM5 and MOM6 models support
-   date-based restart frequency, as it depends on the payu model driver being
-   able to parse restarts files for a datetime.
+   Please note that currently, only ACCESS-ESM1.5, ACCESS-OM2, ACCESS-OM3, MOM5 
+   and MOM6 models support  date-based restart frequency, as it depends on the payu 
+   model driver being able to parse restarts files for a datetime.
 
 ``restart_history``
     Specifies how many of the most recent restart files to retain regardless of 
