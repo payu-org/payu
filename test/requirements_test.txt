@@ -1,9 +1,0 @@
-coverage
-coveralls
-pytest>=4.6; python_version>"2.7"
-pylint
-mnctools
-Sphinx
-pytest-cov
-numpy>=1.16.0
-cftime
