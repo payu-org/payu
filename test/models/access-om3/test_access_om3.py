@@ -5,10 +5,12 @@ from pathlib import Path
 import pytest
 
 import payu
+import cftime
 
 from test.common import cd, tmpdir, ctrldir, labdir, workdir, write_config, config_path
 from test.common import config as config_orig
 from test.common import make_inputs, make_exe
+from test.common import list_expt_archive_dirs, make_expt_archive_dir, remove_expt_archive_dirs
 
 MODEL = 'access-om3'
 
@@ -312,3 +314,111 @@ def test__setup_checks_bad_io(pio_numiotasks, pio_stride):
             model._setup_checks()
 
     teardown_cmeps_config()
+
+
+# test restart datetime pruning
+
+def make_restart_dir(start_dt):
+    """Create restart directory with rpointer.cpl file"""
+    # Create restart directory
+    restart_path = make_expt_archive_dir(type='restart')
+
+    rpath = os.path.join(restart_path, "rpointer.cpl")
+    with open(rpath, "w") as rpointer_file:
+        rpointer_file.write(
+            f"access-om3.cpl.r.{start_dt}.nc"
+        )
+
+@pytest.mark.parametrize(
+    "start_dt, calendar, cmeps_calendar, expected_cftime",
+    [
+        (
+            "0001-01-01-00000",
+            "proleptic_gregorian",
+            "GREGORIAN",
+            cftime.datetime(1, 1, 1, calendar="proleptic_gregorian")
+        ),
+        (
+            "9999-12-31-86399",
+            "proleptic_gregorian",
+            "GREGORIAN",
+            cftime.datetime(9999, 12, 31,23,59,59, calendar="proleptic_gregorian")
+        ),
+        (
+            "1900-02-01-00000",
+            "noleap",
+            "NO_LEAP",
+            cftime.datetime(1900, 2, 1, calendar="noleap")
+        ),
+    ])
+@pytest.mark.filterwarnings("error")
+def test_get_restart_datetime(start_dt, calendar, cmeps_calendar, expected_cftime):
+
+    cmeps_config(1)
+
+    make_restart_dir(start_dt)
+
+    test_runconf = {
+        "CLOCK_attributes": {
+            "calendar":cmeps_calendar
+        }
+    }
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+
+        model = expt.model
+        model.get_runconfig = lambda a : (True)         # mock reading runconf from file
+        model.runconfig = MockRunConfig(test_runconf)
+
+        print(model.runconfig.get("CLOCK_attributes","calendar"))
+
+    restart_path = list_expt_archive_dirs()[0]
+    parsed_run_dt = expt.model.get_restart_datetime(restart_path)
+    assert parsed_run_dt == expected_cftime
+
+    teardown_cmeps_config()
+    remove_expt_archive_dirs(type='restart')
+
+@pytest.mark.parametrize(
+    "start_dt, calendar, cmeps_calendar, expected_cftime",
+    [
+        (
+            "1900-02-01-00000",
+            "julian",
+            "JULIAN",
+            cftime.datetime(1900, 2, 1, calendar="julian")
+        ),
+    ])
+def test_get_restart_datetime_badcal(start_dt, calendar, cmeps_calendar, expected_cftime):
+
+    cmeps_config(1)
+
+    make_restart_dir(start_dt)
+
+    test_runconf = {
+        "CLOCK_attributes": {
+            "calendar":cmeps_calendar
+        }
+    }
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+
+        model = expt.model
+        model.get_runconfig = lambda a : (True)         # mock reading runconf from file
+        model.runconfig = MockRunConfig(test_runconf)
+
+        print(model.runconfig.get("CLOCK_attributes","calendar"))
+
+    restart_path = list_expt_archive_dirs()[0]
+    with pytest.warns(
+            Warning, match="Unsupported calendar"
+        ):
+        expt.model.get_restart_datetime(restart_path)
+    
+    teardown_cmeps_config()
+    remove_expt_archive_dirs(type='restart')
+

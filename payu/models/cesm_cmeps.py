@@ -24,6 +24,12 @@ from payu.models.mom6 import mom6_add_parameter_files
 NUOPC_CONFIG = "nuopc.runconfig"
 NUOPC_RUNSEQ = "nuopc.runseq"
 
+#mapping of runconfig to cftime calendars:
+CFTIME_CALENDARS = {
+    "NO_LEAP" : "noleap" ,
+    "GREGORIAN" : "proleptic_gregorian"
+}
+
 # Add as needed
 component_info = {
     "mom": {
@@ -339,7 +345,8 @@ class CesmCmeps(Model):
 
     def get_restart_datetime(self, restart_path):
         """Given a restart path, parse the restart files and
-        return a cftime datetime (for date-based restart pruning)"""
+        return a cftime datetime (for date-based restart pruning)
+        Supports noleap and proleptic gregorian calendars"""
 
         # Check for rpointer.cpl file
         rpointer_path = os.path.join(restart_path, 'rpointer.cpl')
@@ -353,20 +360,27 @@ class CesmCmeps(Model):
             # example lines would be access-om3.cpl.r.1900-01-02-00000.nc
 
         date_str = lines[0].split('.')[3]
-        year, month, day, hms = date_str.split('-')
+        year, month, day, seconds = date_str.split('-')
+
+        seconds = int(seconds)
+        hour = seconds // 3600 ; min = (seconds % 3600) // 60 ; sec = seconds % 60
 
         self.get_runconfig(self.expt.control_path)
         run_calendar = self.runconfig.get("CLOCK_attributes", "calendar")
 
-        cftime_calendars = {
-            "NO_LEAP" : "noleap" ,
-            "GREGORIAN" : "proleptic_gregorian"
-        }
+        try:
+            cf_cal = CFTIME_CALENDARS[run_calendar]
+        except KeyError:
+            warn(
+                f"Unsupported calendar for restart pruning: {run_calendar},"
+                f" try {' or '.join(CFTIME_CALENDARS.keys())}"
+            )
+            return False
 
         return cftime.datetime(
             int(year), int(month), int(day), 
-            int(hms[0:2]), int(hms[2:4]), int(hms[4:6]),
-            calendar  = cftime_calendars[run_calendar]
+            hour, min, sec, 
+            calendar  = cf_cal
         )
 
 
