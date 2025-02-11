@@ -362,6 +362,7 @@ class CesmCmeps(Model):
         seconds = int(seconds)
         hour = seconds // 3600 ; min = (seconds % 3600) // 60 ; sec = seconds % 60
 
+        # TODO: change to self.control_path if https://github.com/payu-org/payu/issues/509 is implemented
         self.get_runconfig(self.expt.control_path)
         run_calendar = self.runconfig.get("CLOCK_attributes", "calendar")
 
