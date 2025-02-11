@@ -414,8 +414,8 @@ def test_get_restart_datetime_badcal(start_dt, calendar, cmeps_calendar, expecte
         print(model.runconfig.get("CLOCK_attributes","calendar"))
 
     restart_path = list_expt_archive_dirs()[0]
-    with pytest.warns(
-            Warning, match="Unsupported calendar"
+    with pytest.raises(
+            RuntimeError, match="Unsupported calendar"
         ):
         expt.model.get_restart_datetime(restart_path)
     

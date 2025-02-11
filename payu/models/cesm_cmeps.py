@@ -358,6 +358,7 @@ class CesmCmeps(Model):
         date_str = lines[0].split('.')[3]
         year, month, day, seconds = date_str.split('-')
 
+        # convert seconds into hours, mins, seconds
         seconds = int(seconds)
         hour = seconds // 3600 ; min = (seconds % 3600) // 60 ; sec = seconds % 60
 
@@ -366,11 +367,11 @@ class CesmCmeps(Model):
 
         try:
             cf_cal = CFTIME_CALENDARS[run_calendar]
-        except KeyError:
-            warn(
-                f"Unsupported calendar for restart pruning: {run_calendar},"
-                f" try {' or '.join(CFTIME_CALENDARS.keys())}"
-            )
+        except KeyError as e:
+            raise RuntimeError(
+                f"Unsupported calendar for restart pruning: {run_calendar}, in {NUOPC_CONFIG}."
+                f" Try {' or '.join(CFTIME_CALENDARS.keys())}"
+            ) from e
             return False
 
         return cftime.datetime(
