@@ -166,13 +166,7 @@ class CesmCmeps(Model):
 
         # run checks on nuopc.runfig
         self._setup_checks()
-
-        # Ensure that restarts will be written at the end of each run
-        stop_n = self.runconfig.get("CLOCK_attributes", "stop_n")
-        stop_option = self.runconfig.get("CLOCK_attributes", "stop_option")
-        self.runconfig.set("CLOCK_attributes", "restart_n", stop_n)
-        self.runconfig.set("CLOCK_attributes", "restart_option", stop_option)
-        
+       
         mkdir_p(os.path.join(self.work_path, 'log'))
         mkdir_p(os.path.join(self.work_path, 'timing'))
 
