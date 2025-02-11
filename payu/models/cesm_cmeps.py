@@ -24,7 +24,9 @@ from payu.models.mom6 import mom6_add_parameter_files
 NUOPC_CONFIG = "nuopc.runconfig"
 NUOPC_RUNSEQ = "nuopc.runseq"
 
-#mapping of runconfig to cftime calendars:
+# mapping of runconfig to cftime calendars:
+# these match the supported calendars in CMEPS
+# https://github.com/ESCOMP/CMEPS/blob/bc29792d76c16911046dbbfcfc7f4c3ae89a6f00/cesm/driver/ensemble_driver.F90#L196
 CFTIME_CALENDARS = {
     "NO_LEAP" : "noleap" ,
     "GREGORIAN" : "proleptic_gregorian"
