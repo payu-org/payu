@@ -38,7 +38,9 @@ dependencies = [
 test = [
     "pytest",
     "pylint",
-    "Sphinx"
+    "Sphinx",
+    "pytest-cov",
+    "mnctools"
 ]
 mitgcm = ["mnctools>=0.2"]
 
