@@ -31,10 +31,6 @@ jobs:
       - run: |
           python3 -m pip install --upgrade build && python3 -m build
 
-      - uses: actions/upload-artifact@v3
-        with:
-          path: ./dist
-
   conda-build:
     name: Conda Build
     runs-on: ubuntu-latest
@@ -77,11 +73,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip' # caching pip dependencies
 
-      - name: Install dependencies
-        run: pip install -r test/requirements_test.txt
-
-      - name: Install payu
-        run: pip install .
+      - name: Install payu and test dependencies
+        run: python3 -m pip install '.[test]'
 
       - name: Check payu installed correctly
         run: payu list
