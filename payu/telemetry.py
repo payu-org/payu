@@ -17,7 +17,7 @@ HOSTNAME_FIELD = "hostname"
 TELEMETRY_CONFIG_FIELDS = [SERVER_URL_FIELD, HOSTNAME_FIELD]
 
 # access-py-telemetry configuration
-PAYU_RUN_SERVICE_NAME = "api_payu_run"
+PAYU_RUN_SERVICE_NAME = "payu_run"
 API_HANDLER_REQUEST_TIMEOUT = 10
 
 
