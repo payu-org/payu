@@ -13,11 +13,17 @@ import os
 
 # Extensions
 import f90nml
+import shutil
+from warnings import warn
+from glob import glob
 
 # Local
+from payu.fsops import mkdir_p
 from payu.models.fms import Fms
 from payu.models.mom_mixin import MomMixin
+from payu.git_utils import GitRepository
 
+MOM6_DOCS = "MOM_parameter_doc.*"
 
 def mom6_add_parameter_files(model):
     """Add parameter files defined in input.nml to model configuration files.
@@ -41,6 +47,28 @@ def mom6_add_parameter_files(model):
         else:
             model.config_files.extend(filenames)
 
+def mom6_save_docs_files(model):
+    """Add docs files created as MOM output back to the configuration repository"""
+    docs_folder = os.path.join(model.control_path, 'docs')
+    mkdir_p(docs_folder)
+
+    # copy everything that matches MOM_parameter_doc.* to the control dir
+    for f in glob(os.path.join(model.work_path,MOM6_DOCS)):
+        try:
+            shutil.copy(f, docs_folder)
+        except Exception as e:
+            warn(e)
+
+    if model.config.get("runlog", True): #if runlog true, default to true
+        # commit new files to the control dir
+        repo = GitRepository(repo_path = model.control_path)
+
+        i = repo.get_hash()
+
+        repo.commit(
+            commit_message = "payu archive: documentation of MOM6 run-time configuration" ,
+            paths_to_commit = glob(os.path.join(docs_folder,MOM6_DOCS))
+        )
 
 class Mom6(MomMixin, Fms):
     """Interface to GFDL's MOM6 ocean model."""
@@ -93,3 +121,10 @@ class Mom6(MomMixin, Fms):
             input_nml['SIS_input_nml']['input_filename'] = input_type
 
         f90nml.write(input_nml, input_fpath, force=True)
+
+    def archive(self):
+        # Move any the MOM_parameter_docs output back into the control repo 
+        # and commit it for documentation
+        mom6_save_docs_files(self)
+
+        super().archive()
