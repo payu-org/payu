@@ -33,7 +33,7 @@ component_info = {
         "optional_config_files": [
             "field_table",
             "data_table",
-        ]
+        ],
     },
     "cice": {
         "config_files": ["ice_in"],
