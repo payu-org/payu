@@ -67,7 +67,7 @@ def mom6_save_docs_files(model):
 
         repo.commit(
             commit_message = "payu archive: documentation of MOM6 run-time configuration" ,
-            paths_to_commit = glob(os.path.join(docs_folder,MOM6_DOCS))
+            paths_to_commit = glob(os.path.join(docs_folder, MOM6_DOCS))
         )
 
 class Mom6(MomMixin, Fms):
