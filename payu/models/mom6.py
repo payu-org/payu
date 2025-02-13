@@ -53,7 +53,7 @@ def mom6_save_docs_files(model):
     mkdir_p(docs_folder)
 
     # copy everything that matches MOM_parameter_doc.* to the control dir
-    for f in glob(os.path.join(model.work_path,MOM6_DOCS)):
+    for f in glob(os.path.join(model.work_path, MOM6_DOCS)):
         try:
             shutil.copy(f, docs_folder)
         except Exception as e:
