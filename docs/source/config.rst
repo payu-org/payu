@@ -218,7 +218,7 @@ configuration.
    10 years from the last permanently archived restart's datetime.
 
    Please note that currently, only ACCESS-ESM1.5, ACCESS-OM2, ACCESS-OM3, MOM5 
-   , MOM6 and UM7 models support  date-based restart frequency, as it depends on the payu 
+   , MOM6 and UM7 models support date-based restart frequency, as it depends on the payu 
    model driver being able to parse restarts files for a datetime.
 
 ``restart_history``
