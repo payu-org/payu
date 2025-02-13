@@ -48,7 +48,7 @@ def mom6_add_parameter_files(model):
             model.config_files.extend(filenames)
 
 def mom6_save_docs_files(model):
-    """Add docs files created as MOM output back to the configuration repository"""
+    """Add docs files created as MOM output back to the control directory"""
     docs_folder = os.path.join(model.control_path, 'docs')
     mkdir_p(docs_folder)
 
