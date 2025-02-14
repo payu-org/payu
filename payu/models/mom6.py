@@ -59,11 +59,9 @@ def mom6_save_docs_files(model):
         except Exception as e:
             warn(e)
 
-    if model.config.get("runlog", True): #if runlog true, default to true
+    if model.expt.config.get('runlog', True): #if runlog true, default to true
         # commit new files to the control dir
         repo = GitRepository(repo_path = model.control_path)
-
-        i = repo.get_hash()
 
         repo.commit(
             commit_message = "payu archive: documentation of MOM6 run-time configuration" ,
