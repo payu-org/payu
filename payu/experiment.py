@@ -63,7 +63,8 @@ class Experiment(object):
         else:
             self.force = force
 
-        self.start_time = datetime.datetime.now()
+        # Set start_time to the current time in UTC
+        self.start_time = datetime.datetime.now(datetime.timezone.utc)
 
         # Initialise experiment metadata - uuid and experiment name
         self.metadata = Metadata(Path(lab.archive_path), disabled=metadata_off)
@@ -684,7 +685,7 @@ class Experiment(object):
         f_out.close()
         f_err.close()
 
-        self.finish_time = datetime.datetime.now()
+        self.finish_time = datetime.datetime.now(datetime.timezone.utc)
         self.run_job_status = rc
 
         # Store job state information
