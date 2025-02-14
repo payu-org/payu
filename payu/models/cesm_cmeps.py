@@ -13,6 +13,7 @@ from __future__ import print_function
 import os
 import re
 import shutil
+import cftime
 from warnings import warn
 
 from payu.fsops import mkdir_p, make_symlink
@@ -22,6 +23,14 @@ from payu.models.mom6 import mom6_add_parameter_files, mom6_save_docs_files
 
 NUOPC_CONFIG = "nuopc.runconfig"
 NUOPC_RUNSEQ = "nuopc.runseq"
+
+# mapping of runconfig to cftime calendars:
+# these match the supported calendars in CMEPS
+# https://github.com/ESCOMP/CMEPS/blob/bc29792d76c16911046dbbfcfc7f4c3ae89a6f00/cesm/driver/ensemble_driver.F90#L196
+CFTIME_CALENDARS = {
+    "NO_LEAP" : "noleap" ,
+    "GREGORIAN" : "proleptic_gregorian"
+}
 
 # Add as needed
 component_info = {
@@ -334,6 +343,48 @@ class CesmCmeps(Model):
             fms_collate(self)
         else:
             super().collate()
+
+    def get_restart_datetime(self, restart_path):
+        """Given a restart path, parse the restart files and
+        return a cftime datetime (for date-based restart pruning)
+        Supports noleap and proleptic gregorian calendars"""
+
+        # Check for rpointer.cpl file
+        rpointer_path = os.path.join(restart_path, 'rpointer.cpl')
+        if not os.path.exists(rpointer_path):
+            raise FileNotFoundError(
+                'Cannot find rpointer.cpl file, which is required for '
+                'date-based restart pruning')
+
+        with open(rpointer_path, 'r') as ocean_solo:
+            lines = ocean_solo.readlines()
+            # example lines would be access-om3.cpl.r.1900-01-02-00000.nc
+
+        date_str = lines[0].split('.')[3]
+        year, month, day, seconds = date_str.split('-')
+
+        # convert seconds into hours, mins, seconds
+        seconds = int(seconds)
+        hour = seconds // 3600 ; min = (seconds % 3600) // 60 ; sec = seconds % 60
+
+        # TODO: change to self.control_path if https://github.com/payu-org/payu/issues/509 is implemented
+        self.get_runconfig(self.expt.control_path)
+        run_calendar = self.runconfig.get("CLOCK_attributes", "calendar")
+
+        try:
+            cf_cal = CFTIME_CALENDARS[run_calendar]
+        except KeyError as e:
+            raise RuntimeError(
+                f"Unsupported calendar for restart pruning: {run_calendar}, in {NUOPC_CONFIG}."
+                f" Try {' or '.join(CFTIME_CALENDARS.keys())}"
+            ) from e
+            return False
+
+        return cftime.datetime(
+            int(year), int(month), int(day), 
+            hour, min, sec, 
+            calendar  = cf_cal
+        )
 
 
 class AccessOm3(CesmCmeps):
