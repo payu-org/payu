@@ -27,11 +27,23 @@ def setup_and_teardown():
         print(e)
 
 
-def create_new_repo(repo_path):
-    """Helper function to initialise a repo and create first commit"""
+def create_new_repo(repo_path, set_user=False):
+    """Helper function to initialise a repo and create first commit
+    Set the git username if required"""
     repo = git.Repo.init(repo_path)
     init_file = repo_path / "init.txt"
     add_file_and_commit(repo, init_file)
+
+    if set_user :
+        try:
+            # Set config that is local to temporary test repository only
+            subprocess.run('git config user.name "TestUserName"',
+                        check=True,
+                        shell=True,
+                        cwd=repo_path)
+            print("User name set successfully.")
+        except subprocess.CalledProcessError as e:
+            print(f"Error setting user name: {e}")
     return repo
 
 
@@ -73,17 +85,8 @@ def test_get_git_user_info_no_config_set():
 
 def test_get_git_user_info_config_set():
     repo_path = tmpdir / "test_repo"
-    create_new_repo(repo_path)
-    try:
-        # Set config that is local to temporary test repository only
-        subprocess.run('git config user.name "TestUserName"',
-                       check=True,
-                       shell=True,
-                       cwd=repo_path)
-        print("User name set successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error setting user name: {e}")
-
+    create_new_repo(repo_path, set_user = True)
+    
     repo = GitRepository(repo_path)
     value = repo.get_user_info('name')
 

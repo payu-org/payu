@@ -1,7 +1,6 @@
-import copy
 import os
 import shutil
-import git
+from pathlib import Path
 
 import pytest
 import f90nml
@@ -12,6 +11,7 @@ from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, expt_workdir, ctrldir_basename
 from test.common import write_config, write_metadata
 from test.common import make_random_file, make_inputs, make_exe
+from test.test_git_utils import create_new_repo
 
 verbose = True
 
@@ -184,13 +184,10 @@ def test_mom6_save_doc_files(mom_parameter_doc):
 @pytest.mark.filterwarnings("error")
 def test_mom6_commit_doc_files(mom_parameter_doc):
     # Confirm that mom6_save_doc_files commits files named MOM_parameter_doc.* into the docs folder of a config
-    
-    #commit during tests
-    mom_parameter_doc.config["runlog"] = True
+    # default is to commit during runs
 
-    #init a git repo and initial commit
-    repo = git.Repo.init(mom_parameter_doc.control_path)
-    repo.git.commit("-m", "Initial commit", "--allow-empty")
+    #init a git repo
+    repo = create_new_repo(Path(mom_parameter_doc.control_path))
     initial_commit = repo.head.commit
 
     # Function to test
