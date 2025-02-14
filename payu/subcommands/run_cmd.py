@@ -139,7 +139,7 @@ def runscript():
 
         # Reset run information before the next run
         expt.telemetry.clear_run_info()
-        expt.start_time = datetime.datetime.now()
+        expt.start_time = datetime.datetime.now(datetime.timezone.utc)
 
         # Finished runs
         if expt.n_runs == 0:
