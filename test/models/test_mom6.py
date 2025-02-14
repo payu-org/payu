@@ -201,6 +201,27 @@ def test_mom6_commit_doc_files(mom_parameter_doc):
     
     assert repo.head.commit != initial_commit,  "Payu did not commit MOM_parameter_doc.layout"
 
+    # Confirm it doesn't commit twice if unchanged
+    initial_commit = repo.head.commit
+    payu.models.mom6.mom6_save_docs_files(mom_parameter_doc)
+
+    assert repo.head.commit == initial_commit,  "Payu commit MOM_parameter_doc incorrectly"
+
+    # Confirm it does commit twice correctly
+    file = "MOM_parameter_doc.all"
+    filename = os.path.join(mom_parameter_doc.work_path, file)
+    make_random_file(filename, 8)
+
+    payu.models.mom6.mom6_save_docs_files(mom_parameter_doc)
+
+    assert repo.head.commit != initial_commit,  "Payu did not commit MOM_parameter_doc.all"
+
+    # and Tidy up 
+    filename = os.path.join(mom_parameter_doc.work_path, file)
+    os.remove(filename)
+
+
+
 @pytest.mark.parametrize(
         "mom_parameter_doc", 
         [["MOM_parameter_doc.layout"]],
@@ -226,6 +247,8 @@ def test_mom6_not_commit_doc_files(mom_parameter_doc):
         os.remove(filename)
     
     assert repo.head.commit == initial_commit,  "Payu did not commit MOM_parameter_doc.layout"
+
+
     
 
 
