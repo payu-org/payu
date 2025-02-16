@@ -159,7 +159,7 @@ def test_mom6_save_doc_files(mom_parameter_doc):
     # and doesn't move files that don't match that name
 
     # don't try and commit during tests
-    mom_parameter_doc.expt.config["runlog"] = False
+    mom_parameter_doc.expt.runlog.enabled = False
 
     # Function to test
     payu.models.mom6.mom6_save_docs_files(mom_parameter_doc)
@@ -184,7 +184,7 @@ def test_mom6_save_doc_files(mom_parameter_doc):
 @pytest.mark.filterwarnings("error")
 def test_mom6_commit_doc_files(mom_parameter_doc):
     # Confirm that mom6_save_doc_files commits files named MOM_parameter_doc.* into the docs folder of a config
-    # default is to commit during runs
+    mom_parameter_doc.expt.runlog.enabled = True
 
     #init a git repo
     repo = create_new_repo(Path(mom_parameter_doc.control_path))
@@ -221,7 +221,6 @@ def test_mom6_commit_doc_files(mom_parameter_doc):
     os.remove(filename)
 
 
-
 @pytest.mark.parametrize(
         "mom_parameter_doc", 
         [["MOM_parameter_doc.layout"]],
@@ -231,7 +230,7 @@ def test_mom6_commit_doc_files(mom_parameter_doc):
 def test_mom6_not_commit_doc_files(mom_parameter_doc):
     # Confirm that mom6_save_doc_files doesn't commits files if runlog is False
 
-    mom_parameter_doc.expt.config["runlog"] = False
+    mom_parameter_doc.expt.runlog.enabled = False
 
     #init a git repo
     repo = create_new_repo(Path(mom_parameter_doc.control_path))
@@ -247,9 +246,6 @@ def test_mom6_not_commit_doc_files(mom_parameter_doc):
         os.remove(filename)
     
     assert repo.head.commit == initial_commit,  "Payu did not commit MOM_parameter_doc.layout"
-
-
-    
 
 
 def test_setup():
