@@ -1,4 +1,5 @@
 from payu.models.access import Access
+from payu.models.access_esm1p6 import AccessEsm1p6
 from payu.models.accessom2 import AccessOm2
 from payu.models.cesm_cmeps import AccessOm3
 from payu.models.cable import Cable
@@ -22,6 +23,7 @@ from payu.models.model import Model
 
 index = {
     'access':     Access,
+    'access-esm1.6': AccessEsm1p6,
     'access-om2': AccessOm2,
     'access-om3': AccessOm3,
     'cice':       Cice,
