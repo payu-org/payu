@@ -257,3 +257,36 @@ def test_check_payu_version_configured_invalid_version(minimum_version):
 
             with pytest.raises(ValueError):
                 expt.check_payu_version()
+
+
+
+# model.expt.runlog.enabled is used in code for writing runlog
+# it can be set as runlog:true or runlog:enable:true in config.yaml
+@pytest.mark.parametrize(
+        "runlog, enabled", 
+        [   
+            (None, True),
+            (True, True), 
+            (False, False), 
+            ({"enable":True}, True),
+            ({"enable":False}, False)
+         ]
+)
+@pytest.mark.filterwarnings("error")
+def test_runlog_enable(runlog, enabled):
+    config = copy.deepcopy(config_orig)
+    if runlog == None:
+        config.pop('runlog')
+    else:
+        config['runlog'] = runlog
+
+    write_config(config)
+
+    make_inputs()
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+    assert model.expt.runlog.enabled == enabled

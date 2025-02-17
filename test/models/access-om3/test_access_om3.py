@@ -420,37 +420,3 @@ def test_get_restart_datetime_badcal(start_dt, calendar, cmeps_calendar, expecte
     
     teardown_cmeps_config()
     remove_expt_archive_dirs(type='restart')
-
-
-# During archiving, we use model.expt.runlog.enabled to determine if the runlog is set
-# Confirm all permutations set/don't set this.
-@pytest.mark.parametrize(
-        "runlog, enabled", 
-        [
-            (True, True), 
-            (False, False), 
-            ({"enable":True}, True),
-            ({"enable":False}, False)
-         ]
-)
-@pytest.mark.filterwarnings("error")
-def test_setup_runlog(runlog, enabled):
-    # set runlog differet to cmeps_config():
-    config = copy.deepcopy(config_orig)
-    config['model'] = MODEL
-    config['ncpus'] = 1
-    config['runlog'] = runlog
-
-    write_config(config)
-
-    with open(os.path.join(ctrldir, 'nuopc.runconfig'), "w") as f:
-        f.close()
-
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
-
-    assert model.expt.runlog.enabled == enabled
-
-    teardown_cmeps_config()
