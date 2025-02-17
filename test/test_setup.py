@@ -265,7 +265,7 @@ def test_check_payu_version_configured_invalid_version(minimum_version):
 @pytest.mark.parametrize(
         "runlog, enabled", 
         [   
-            (None, True),
+            (None, True), #default is True
             (True, True), 
             (False, False), 
             ({"enable":True}, True),
@@ -276,7 +276,7 @@ def test_check_payu_version_configured_invalid_version(minimum_version):
 def test_runlog_enable(runlog, enabled):
     config = copy.deepcopy(config_orig)
     if runlog == None:
-        config.pop('runlog')
+        config.pop('runlog') #remove from config for default case
     else:
         config['runlog'] = runlog
 
