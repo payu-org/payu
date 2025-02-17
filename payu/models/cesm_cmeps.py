@@ -402,11 +402,6 @@ class AccessOm3(CesmCmeps):
                 "Access-OM3 comprises a data runoff model, but the runoff model in nuopc.runconfig is set "
                 f"to {self.components['rof']}."
             )
-        
-    def archive(self):
-        
-
-        super().archive()
 
 
 class Runconfig:
