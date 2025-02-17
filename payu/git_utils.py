@@ -102,7 +102,7 @@ class GitRepository:
         untracked_files = [Path(self.repo_path) / path
                            for path in self.repo.untracked_files]
         for path in paths_to_commit:
-            if self.repo.git.diff(None, path) or path in untracked_files:
+            if self.repo.git.diff(None, path) or Path(path) in untracked_files:
                 self.repo.index.add([path])
                 changes = True
 

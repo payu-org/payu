@@ -19,7 +19,7 @@ from warnings import warn
 from payu.fsops import mkdir_p, make_symlink
 from payu.models.model import Model
 from payu.models.fms import fms_collate
-from payu.models.mom6 import mom6_add_parameter_files
+from payu.models.mom6 import mom6_add_parameter_files, mom6_save_docs_files
 
 NUOPC_CONFIG = "nuopc.runconfig"
 NUOPC_RUNSEQ = "nuopc.runseq"
@@ -272,6 +272,11 @@ class CesmCmeps(Model):
         return True
 
     def archive(self):
+
+        # Move any the MOM_parameter_docs output back into the control repo and commit it for documentation
+        if 'mom' in self.components.values() :
+            mom6_save_docs_files(self)
+
         super().archive()
 
         mkdir_p(self.restart_path)
@@ -387,14 +392,16 @@ class AccessOm3(CesmCmeps):
     def get_components(self):
         super().get_components()
 
-        assert self.components["atm"] == "datm", (
-            "Access-OM3 comprises a data atmosphere model, but the atmospheric model in nuopc.runconfig is set "
-            f"to {self.components['atm']}."
-        )
-        assert self.components["rof"] == "drof", (
-            "Access-OM3 comprises a data runoff model, but the runoff model in nuopc.runconfig is set "
-            f"to {self.components['rof']}."
-        )
+        if (self.components["atm"] != "datm") :
+            raise RuntimeError(
+                "Access-OM3 comprises a data atmosphere model, but the atmospheric model in nuopc.runconfig is set "
+                f"to {self.components['atm']}."
+            )
+        if (self.components["rof"] != "drof") :
+            raise RuntimeError(
+                "Access-OM3 comprises a data runoff model, but the runoff model in nuopc.runconfig is set "
+                f"to {self.components['rof']}."
+            )
 
 
 class Runconfig:
