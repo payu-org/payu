@@ -43,7 +43,7 @@ class UnifiedModel(Model):
             'STASHC', 'UAFILES_A', 'UAFLDS_A',
             'cable.nml', 'um_env.yaml'
             ]
-        self.optional_config_files = ['input_atm.nml', 'parexe']
+        self.optional_config_files.extend(['input_atm.nml', 'parexe'])
 
         self.restart = 'restart_dump.astart'
 
