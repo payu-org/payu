@@ -245,7 +245,7 @@ def test_mom6_not_commit_doc_files(mom_parameter_doc):
         assert os.path.isfile(filename)==True , "docs/MOM_parameter_doc.* do not exist"
         os.remove(filename)
     
-    assert repo.head.commit == initial_commit,  "Payu did not commit MOM_parameter_doc.layout"
+    assert repo.head.commit == initial_commit,  "Payu incorrectly committed MOM_parameter_docs.layout"
 
 
 def test_setup():
