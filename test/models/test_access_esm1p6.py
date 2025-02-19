@@ -144,7 +144,9 @@ def test_esm1p6_patch_optional_config_files(um_only_ctrl_dir,
 
     # Check that esm1p6 driver added new config files compared
     # to the standalone UM.
+
+    expected_files = ["soil.nml", "pft_params.nml"]
     assert (
-        set(um_standalone_model.optional_config_files) <
-        set(esm1p6_um_model.optional_config_files)
+        set(esm1p6_um_model.optional_config_files) ==
+        set(um_standalone_model.optional_config_files).union(expected_files)
     )
