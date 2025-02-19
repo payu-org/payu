@@ -81,6 +81,15 @@ class AccessEsm1p6(Model):
                 # Simulation length in seconds for new run
                 model.runtime_key = "runtime"
 
+            if model.model_type == 'um':
+                # Additional Cable 3 namelists
+
+                # Using set as this initialised twice and would otherwise
+                # contain duplicates
+                model.optional_config_files = list(
+                    set(['pft_params.nml', 'soil.nml']) |
+                    set(model.optional_config_files)
+                )
 
     def setup(self):
         if not self.top_level_model:
