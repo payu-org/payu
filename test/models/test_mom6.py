@@ -152,7 +152,7 @@ def mom_parameter_doc(request):
 
 @pytest.mark.parametrize(
         "mom_parameter_doc", 
-        [["MOM_parameter_doc.all","MOM_parameter_doc.debug","MOM_parameter_docs.debug"]],
+        [["MOM_parameter_doc.all","MOM_parameter_doc.debug","MOM_parameter_docs.debug", "available_diags.000000"]],
         indirect=True
 )
 @pytest.mark.filterwarnings("error")
@@ -167,7 +167,7 @@ def test_mom6_save_doc_files(mom_parameter_doc):
     payu.models.mom6.mom6_save_docs_files(mom_parameter_doc)
 
     # Check MOM_parameter_doc.* are added to control_path
-    for file in ["MOM_parameter_doc.all","MOM_parameter_doc.debug"]:
+    for file in ["MOM_parameter_doc.all","MOM_parameter_doc.debug", "available_diags.000000"]:
         filename = os.path.join(mom_parameter_doc.control_path, "docs", file)
         assert os.path.isfile(filename)==True , "Payu did not move MOM_parameter_doc.* files into docs folder"
         os.remove(filename)
