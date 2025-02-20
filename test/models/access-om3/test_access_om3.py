@@ -1,7 +1,6 @@
 import copy
 import os
 import shutil
-from pathlib import Path
 import pytest
 
 import payu
@@ -421,4 +420,3 @@ def test_get_restart_datetime_badcal(start_dt, calendar, cmeps_calendar, expecte
     
     teardown_cmeps_config()
     remove_expt_archive_dirs(type='restart')
-

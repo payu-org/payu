@@ -1,6 +1,6 @@
-import copy
 import os
 import shutil
+from pathlib import Path
 
 import pytest
 import f90nml
@@ -11,6 +11,7 @@ from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, expt_workdir, ctrldir_basename
 from test.common import write_config, write_metadata
 from test.common import make_random_file, make_inputs, make_exe
+from test.test_git_utils import create_new_repo
 
 verbose = True
 
@@ -125,6 +126,146 @@ def test_mom6_add_parameter_files(input_nml,
 
     # Tidy up input.nml
     os.remove(input_nml_fp)
+
+@pytest.fixture
+def mom_parameter_doc(request):
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+   # Create docs
+    if (request.param != None) :
+        for file in request.param:
+            filename = os.path.join(model.work_path, file)
+            make_random_file(filename, 8)
+
+    yield model
+
+    # and Tidy up 
+    if (request.param != None) :
+        for file in request.param:
+            filename = os.path.join(model.work_path, file)
+            os.remove(filename)
+
+
+@pytest.mark.parametrize(
+        "mom_parameter_doc", 
+        [["MOM_parameter_doc.all","MOM_parameter_doc.debug","MOM_parameter_docs.debug", "available_diags.000000"]],
+        indirect=True
+)
+@pytest.mark.filterwarnings("error")
+def test_mom6_save_doc_files(mom_parameter_doc):
+    # Confirm that mom6_save_doc_filse moves files names MOM_parameter_doc.* into the docs folder of a config
+    # and doesn't move files that don't match that name
+
+    # don't try and commit during tests
+    mom_parameter_doc.expt.runlog.enabled = False
+
+    # Function to test
+    payu.models.mom6.mom6_save_docs_files(mom_parameter_doc)
+
+    # Check MOM_parameter_doc.* are added to control_path
+    for file in ["MOM_parameter_doc.all","MOM_parameter_doc.debug", "available_diags.000000"]:
+        filename = os.path.join(mom_parameter_doc.control_path, "docs", file)
+        assert os.path.isfile(filename)==True , "Payu did not move MOM_parameter_doc.* files into docs folder"
+        os.remove(filename)
+
+    # Check fake files are not added to control_path
+    for file in ["MOM_parameter_docs.debug"]:
+        filename = os.path.join(mom_parameter_doc.control_path, "docs", file)
+        assert os.path.isfile(filename)==False, "Payu incorrectly moved MOM_parameter_docs.* files into docs folder"
+
+
+@pytest.mark.parametrize(
+        "mom_parameter_doc", 
+        [["MOM_parameter_doc.layout"]],
+        indirect=True
+)
+@pytest.mark.filterwarnings("error")
+def test_mom6_commit_doc_files(mom_parameter_doc):
+    # Confirm that mom6_save_doc_files commits files named MOM_parameter_doc.* into the docs folder of a config
+    mom_parameter_doc.expt.runlog.enabled = True
+
+    #init a git repo
+    repo = create_new_repo(Path(mom_parameter_doc.control_path))
+    initial_commit = repo.head.commit
+
+    # Function to test
+    payu.models.mom6.mom6_save_docs_files(mom_parameter_doc)
+
+    # Check files are added to control_path
+    for file in ["MOM_parameter_doc.layout"]:
+        filename = os.path.join(mom_parameter_doc.control_path, "docs", file)
+        assert os.path.isfile(filename)==True , "docs/MOM_parameter_doc.* do not exist"
+        os.remove(filename)
+    
+    assert repo.head.commit != initial_commit,  "Payu did not commit MOM_parameter_doc.layout"
+
+    # Confirm it doesn't commit twice if unchanged
+    initial_commit = repo.head.commit
+    payu.models.mom6.mom6_save_docs_files(mom_parameter_doc)
+
+    assert repo.head.commit == initial_commit,  "Payu commit MOM_parameter_doc incorrectly"
+
+    # Confirm it does commit twice correctly
+    file = "MOM_parameter_doc.all"
+    filename = os.path.join(mom_parameter_doc.work_path, file)
+    make_random_file(filename, 8)
+
+    payu.models.mom6.mom6_save_docs_files(mom_parameter_doc)
+
+    assert repo.head.commit != initial_commit,  "Payu did not commit MOM_parameter_doc.all"
+
+    # and Tidy up 
+    filename = os.path.join(mom_parameter_doc.work_path, file)
+    os.remove(filename)
+
+
+@pytest.mark.parametrize(
+        "mom_parameter_doc", 
+        [["MOM_parameter_doc.layout"]],
+        indirect=True
+)
+@pytest.mark.filterwarnings("error")
+def test_mom6_not_commit_doc_files(mom_parameter_doc):
+    # Confirm that mom6_save_doc_files doesn't commits files if runlog is False
+
+    mom_parameter_doc.expt.runlog.enabled = False
+
+    #init a git repo
+    repo = create_new_repo(Path(mom_parameter_doc.control_path))
+    initial_commit = repo.head.commit
+
+    # Function to test
+    payu.models.mom6.mom6_save_docs_files(mom_parameter_doc)
+
+    # Check files are added to control_path
+    for file in ["MOM_parameter_doc.layout"]:
+        filename = os.path.join(mom_parameter_doc.control_path, "docs", file)
+        assert os.path.isfile(filename)==True , "docs/MOM_parameter_doc.* do not exist"
+        os.remove(filename)
+    
+    assert repo.head.commit == initial_commit,  "Payu incorrectly committed MOM_parameter_docs.layout"
+
+@pytest.mark.parametrize(
+        "mom_parameter_doc", 
+        [None],
+        indirect=True
+)
+@pytest.mark.filterwarnings("error")
+def test_mom6_not_commit_doc_files(mom_parameter_doc):
+    # Confirm that mom6_save_doc_files doesn't commits files if runlog is False
+
+    #init a git repo
+    repo = create_new_repo(Path(mom_parameter_doc.control_path))
+    initial_commit = repo.head.commit
+
+    # Function to test
+    payu.models.mom6.mom6_save_docs_files(mom_parameter_doc)
+   
+    assert repo.head.commit == initial_commit,  "Payu incorrectly committed with no docs to add"
 
 
 def test_setup():

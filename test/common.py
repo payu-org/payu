@@ -7,8 +7,6 @@ import shutil
 
 import yaml
 
-import payu
-
 # Namespace clash if import setup_cmd.runcmd as setup. For
 # consistency use payu_ prefix for all commands
 from payu.subcommands.init_cmd import runcmd as payu_init
