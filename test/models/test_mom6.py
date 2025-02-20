@@ -136,16 +136,18 @@ def mom_parameter_doc(request):
         model = expt.models[0]
 
    # Create docs
-    for file in request.param:
-        filename = os.path.join(model.work_path, file)
-        make_random_file(filename, 8)
+    if (request.param != None) :
+        for file in request.param:
+            filename = os.path.join(model.work_path, file)
+            make_random_file(filename, 8)
 
     yield model
 
     # and Tidy up 
-    for file in request.param:
-        filename = os.path.join(model.work_path, file)
-        os.remove(filename)
+    if (request.param != None) :
+        for file in request.param:
+            filename = os.path.join(model.work_path, file)
+            os.remove(filename)
 
 
 @pytest.mark.parametrize(
@@ -246,6 +248,24 @@ def test_mom6_not_commit_doc_files(mom_parameter_doc):
         os.remove(filename)
     
     assert repo.head.commit == initial_commit,  "Payu incorrectly committed MOM_parameter_docs.layout"
+
+@pytest.mark.parametrize(
+        "mom_parameter_doc", 
+        [None],
+        indirect=True
+)
+@pytest.mark.filterwarnings("error")
+def test_mom6_not_commit_doc_files(mom_parameter_doc):
+    # Confirm that mom6_save_doc_files doesn't commits files if runlog is False
+
+    #init a git repo
+    repo = create_new_repo(Path(mom_parameter_doc.control_path))
+    initial_commit = repo.head.commit
+
+    # Function to test
+    payu.models.mom6.mom6_save_docs_files(mom_parameter_doc)
+   
+    assert repo.head.commit == initial_commit,  "Payu incorrectly committed with no docs to add"
 
 
 def test_setup():
