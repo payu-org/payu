@@ -179,25 +179,26 @@ configuration.
 
       model: access
       submodels:
-         atmosphere:
-            model: matm
-            exe: matm_MPI1_nt62.exe
-            input: iaf_matm_simon
-            ncpus: 1
-         ocean:
+         -  name: atmosphere
+            model: um
+            ncpus: 192
+            exe: um_hg3.exe
+            input: /g/data/vk83/configurations/inputs/atmosphere
+         - name: ocean
             model: mom
-            exe: fms_MOM_ACCESS_kate.x
-            input: iaf_mom
-            ncpus: 120
-         ice:
-            model: cice
-            exe: cice_MPI1_6p.exe
-            input: iaf_cice
-            ncpus: 6
-         coupler:
+            ncpus: 180
+            exe: fms_ACCESS-ESM.x
+            input: /g/data/vk83/configurations/inputs/ocean
+         - name: ice
+            model: cice5
+            ncpus: 12
+            exe: cice_access-esm1.6_360x300_12x1_12p.exe
+            input: /g/data/vk83/configurations/inputs/ice
+         - name: coupler
             model: oasis
-            input: iaf_oasis
             ncpus: 0
+            input: /g/data/vk83/configurations/inputs/oasis
+
 
 ``restart_freq`` (*Default:* ``5``)
    Specifies the rate of saved restart files. This rate can be either an 

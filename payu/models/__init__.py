@@ -6,7 +6,6 @@ from payu.models.cable import Cable
 from payu.models.cice import Cice
 from payu.models.cice5 import Cice5
 from payu.models.gold import Gold
-from payu.models.matm import Matm
 from payu.models.mitgcm import Mitgcm
 from payu.models.mom import Mom
 from payu.models.mom6 import Mom6
@@ -29,7 +28,6 @@ index = {
     'cice':       Cice,
     'cice5':      Cice5,
     'gold':       Gold,
-    'matm':       Matm,
     'yatm':       Yatm,
     'mitgcm':     Mitgcm,
     'mom':        Mom,

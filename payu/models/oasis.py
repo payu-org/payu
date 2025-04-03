@@ -88,15 +88,6 @@ class Oasis(Model):
 
                 input_ice.write(input_ice_path, force=True)
 
-            elif model.model_type == 'matm':
-
-                input_atm_path = os.path.join(model.work_path, 'input_atm.nml')
-                input_atm = f90nml.read(input_atm_path)
-
-                input_atm['coupling']['dt_atm'] = t_step
-
-                input_atm.write(input_atm_path, force=True)
-
             elif model.model_type == 'mom':
 
                 input_nml_path = os.path.join(model.work_path, 'input.nml')
