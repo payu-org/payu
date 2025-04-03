@@ -211,9 +211,7 @@ class AccessEsm1p6(Model):
                 f90nml.write(cpl_nml, nml_work_path + '~')
                 shutil.move(nml_work_path + '~', nml_work_path)
 
-            if ( model.model_type == 'cice'
-                and model.prior_restart_path
-                and not self.expt.repeat_run ):
+                if  model.prior_restart_path and not self.expt.repeat_run:
                     # Set up and check the cice restart files.
                     model.overwrite_restart_ptr(run_start_date,
                                                 previous_runtime,
