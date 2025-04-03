@@ -34,7 +34,7 @@ class Access(Model):
         self.model_type = 'access'
 
         for model in self.expt.models:
-            if model.model_type == 'cice' or model.model_type == 'cice5':
+            if model.model_type == 'cice':
                 model.config_files = ['cice_in.nml',
                                       'input_ice.nml']
                 model.optional_config_files = ['input_ice_gfdl.nml',
@@ -47,10 +47,6 @@ class Access(Model):
 
                 model.set_timestep = model.set_access_timestep
 
-            if model.model_type == 'cice5':
-                model.access_restarts.extend(['u_star.nc', 'sicemass.nc'])
-
-            if model.model_type == 'cice':
                 # The ACCESS build of CICE assumes that restart_dir is 'RESTART'
                 model.get_ptr_restart_dir = lambda : '.'
 
@@ -66,6 +62,9 @@ class Access(Model):
                 model.runtime0_key = 'runtime0'
                 # Simulation length in seconds for new run
                 model.runtime_key = "runtime"
+            
+            if model.model_type =='cice5':
+                raise Error("cice5 is not supported with access driver, use access-esm1.6 driver")
 
 
     def setup(self):
@@ -77,7 +76,7 @@ class Access(Model):
 
         for model in self.expt.models:
 
-            if model.model_type == 'cice' or model.model_type == 'cice5':
+            if model.model_type == 'cice':
 
                 # Horrible hack to make a link to o2i.nc in the
                 # work/ice/RESTART directory
@@ -87,19 +86,6 @@ class Access(Model):
 
                 if os.path.isfile(f_src):
                     make_symlink(f_src, f_dst)
-
-            if model.model_type == 'cice5':
-
-                # Stage the supplemental input files
-                if model.prior_restart_path:
-                    for f_name in model.access_restarts:
-                        f_src = os.path.join(model.prior_restart_path, f_name)
-                        f_dst = os.path.join(model.work_input_path, f_name)
-
-                        if os.path.isfile(f_src):
-                            make_symlink(f_src, f_dst)
-
-            if model.model_type == 'cice':
 
                 # Update the supplemental OASIS namelists
                 # cpl_nml is the coupling namelist copied from the control to
@@ -228,9 +214,6 @@ class Access(Model):
         if not self.top_level_model:
             return
 
-        cice5 = None
-        mom = None
-
         for model in self.expt.models:
             if model.model_type == 'cice':
 
@@ -289,16 +272,6 @@ class Access(Model):
                                              model.start_date_nml_name)
                 f90nml.write(end_date_dict, end_date_path, force=True)
 
-            if model.model_type == 'cice5':
-                cice5 = model
-            elif model.model_type == 'mom':
-                mom = model
-
-        # Copy restart from ocean into ice area.
-        if cice5 is not None and mom is not None:
-            o2i_src = os.path.join(mom.work_path, 'o2i.nc')
-            o2i_dst = os.path.join(cice5.restart_path, 'o2i.nc')
-            shutil.copy2(o2i_src, o2i_dst)
 
     def get_restart_datetime(self, restart_path):
         """Given a restart path, parse the restart files and

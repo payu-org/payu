@@ -54,6 +54,7 @@ class AccessEsm1p6(Model):
                 # The ACCESS build of CICE assumes that restart_dir is 'RESTART'
                 model.get_ptr_restart_dir = lambda : '.'
 
+            if model.model_type == 'cice' or model.model_type == 'cice5':
                 # Structure of model coupling namelist
                 model.cpl_fname = 'input_ice.nml'
                 model.cpl_group = 'coupling'
@@ -108,7 +109,7 @@ class AccessEsm1p6(Model):
                         if os.path.isfile(f_src):
                             make_symlink(f_src, f_dst)
 
-            if model.model_type == 'cice':
+            if model.model_type in ('cice', 'cice5'):
 
                 # Update the supplemental OASIS namelists
                 # cpl_nml is the coupling namelist copied from the control to
@@ -217,6 +218,10 @@ class AccessEsm1p6(Model):
                                                 previous_runtime,
                                                 start_date_fpath)
 
+        if run_runtime == 0:
+            raise Error()
+
+
         # Now change the oasis runtime. This needs to be done after the others.
         for model in self.expt.models:
             if model.model_type == 'oasis':
@@ -237,11 +242,8 @@ class AccessEsm1p6(Model):
         if not self.top_level_model:
             return
 
-        cice5 = None
-        mom = None
-
         for model in self.expt.models:
-            if model.model_type == 'cice':
+            if model.model_type in ('cice', 'cice5'):
 
                 # Copy supplemental restart files to RESTART path
                 for f_name in model.access_restarts:
@@ -297,17 +299,6 @@ class AccessEsm1p6(Model):
                 end_date_path = os.path.join(model.restart_path,
                                              model.start_date_nml_name)
                 f90nml.write(end_date_dict, end_date_path, force=True)
-
-            if model.model_type == 'cice5':
-                cice5 = model
-            elif model.model_type == 'mom':
-                mom = model
-
-        # Copy restart from ocean into ice area.
-        if cice5 is not None and mom is not None:
-            o2i_src = os.path.join(mom.work_path, 'o2i.nc')
-            o2i_dst = os.path.join(cice5.restart_path, 'o2i.nc')
-            shutil.copy2(o2i_src, o2i_dst)
 
     def get_restart_datetime(self, restart_path):
         """Given a restart path, parse the restart files and
