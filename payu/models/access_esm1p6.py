@@ -67,20 +67,6 @@ class AccessEsm1p6(Model):
                 # Simulation length in seconds for new run
                 model.runtime_key = "runtime"
 
-            if model.model_type == 'matm':
-                # Structure of model coupling namelist
-                model.cpl_fname = 'input_atm.nml'
-                model.cpl_group = 'coupling'
-                model.start_date_nml_name = "restart_date.nml"
-                # Experiment initialisation date
-                model.init_date_key = "init_date"
-                # Start date for new run
-                model.inidate_key = "inidate"
-                # Total time in seconds since initialisation date
-                model.runtime0_key = 'truntime0'
-                # Simulation length in seconds for new run
-                model.runtime_key = "runtime"
-
             if model.model_type == 'um':
                 # Additional Cable 3 namelists
 
@@ -122,7 +108,7 @@ class AccessEsm1p6(Model):
                         if os.path.isfile(f_src):
                             make_symlink(f_src, f_dst)
 
-            if model.model_type in ('cice', 'matm'):
+            if model.model_type in ('cice'):
 
                 # Update the supplemental OASIS namelists
 
@@ -280,7 +266,7 @@ class AccessEsm1p6(Model):
                 if os.path.exists(work_ice_nml_path):
                     shutil.copy2(work_ice_nml_path, restart_ice_nml_path)
 
-            if model.model_type in ('cice', 'matm'):
+            if model.model_type in ('cice'):
                 # Write the simulation end date to the restart date
                 # namelist.
 
