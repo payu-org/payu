@@ -99,10 +99,9 @@ class Access(Model):
                         if os.path.isfile(f_src):
                             make_symlink(f_src, f_dst)
 
-            if model.model_type in ('cice'):
+            if model.model_type == 'cice':
 
                 # Update the supplemental OASIS namelists
-
                 # cpl_nml is the coupling namelist copied from the control to
                 # work directory.
                 cpl_fpath = os.path.join(model.work_path, model.cpl_fname)
@@ -203,8 +202,9 @@ class Access(Model):
                 f90nml.write(cpl_nml, nml_work_path + '~')
                 shutil.move(nml_work_path + '~', nml_work_path)
 
-            if model.model_type == 'cice':
-                if model.prior_restart_path and not self.expt.repeat_run:
+            if ( model.model_type == 'cice'
+                and model.prior_restart_path
+                and not self.expt.repeat_run ):
                     # Set up and check the cice restart files.
                     model.overwrite_restart_ptr(run_start_date,
                                                 previous_runtime,
@@ -257,7 +257,6 @@ class Access(Model):
                 if os.path.exists(work_ice_nml_path):
                     shutil.copy2(work_ice_nml_path, restart_ice_nml_path)
 
-            if model.model_type in ('cice'):
                 # Write the simulation end date to the restart date
                 # namelist.
 
