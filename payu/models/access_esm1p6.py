@@ -11,7 +11,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 from __future__ import print_function
 
 # Standard Library
-import errno
 import os
 import re
 import shutil
