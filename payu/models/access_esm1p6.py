@@ -67,20 +67,6 @@ class AccessEsm1p6(Model):
                 # Simulation length in seconds for new run
                 model.runtime_key = "runtime"
 
-            if model.model_type == 'matm':
-                # Structure of model coupling namelist
-                model.cpl_fname = 'input_atm.nml'
-                model.cpl_group = 'coupling'
-                model.start_date_nml_name = "restart_date.nml"
-                # Experiment initialisation date
-                model.init_date_key = "init_date"
-                # Start date for new run
-                model.inidate_key = "inidate"
-                # Total time in seconds since initialisation date
-                model.runtime0_key = 'truntime0'
-                # Simulation length in seconds for new run
-                model.runtime_key = "runtime"
-
             if model.model_type == 'um':
                 # Additional Cable 3 namelists
 
@@ -122,10 +108,9 @@ class AccessEsm1p6(Model):
                         if os.path.isfile(f_src):
                             make_symlink(f_src, f_dst)
 
-            if model.model_type in ('cice', 'matm'):
+            if model.model_type == 'cice':
 
                 # Update the supplemental OASIS namelists
-
                 # cpl_nml is the coupling namelist copied from the control to
                 # work directory.
                 cpl_fpath = os.path.join(model.work_path, model.cpl_fname)
@@ -226,8 +211,7 @@ class AccessEsm1p6(Model):
                 f90nml.write(cpl_nml, nml_work_path + '~')
                 shutil.move(nml_work_path + '~', nml_work_path)
 
-            if model.model_type == 'cice':
-                if model.prior_restart_path and not self.expt.repeat_run:
+                if  model.prior_restart_path and not self.expt.repeat_run:
                     # Set up and check the cice restart files.
                     model.overwrite_restart_ptr(run_start_date,
                                                 previous_runtime,
@@ -280,7 +264,6 @@ class AccessEsm1p6(Model):
                 if os.path.exists(work_ice_nml_path):
                     shutil.copy2(work_ice_nml_path, restart_ice_nml_path)
 
-            if model.model_type in ('cice', 'matm'):
                 # Write the simulation end date to the restart date
                 # namelist.
 
