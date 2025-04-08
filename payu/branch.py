@@ -292,6 +292,14 @@ def clone(repository: str,
             "and use `payu checkout` if it is the same git repository"
         )
 
+    # Check -b is set when -s/--start-point is set
+    if start_point is not None and new_branch_name is None:
+        raise PayuBranchError(
+            "Starting from a specific commit or tag requires a new branch "
+            "name to be specified. Use the --new-branch/-b flag in payu clone "
+            "to create a new git branch."
+        )
+
     # git clone the repository
     repo = git_clone(repository, control_path, branch)
 
