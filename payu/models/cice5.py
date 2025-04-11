@@ -24,10 +24,6 @@ class Cice5(Cice):
         self.model_type = 'cice5'
         self.default_exec = 'cice'
 
-        # Default repo details
-        self.repo_url = 'https://github.com/OceansAus/cice5.git'
-        self.repo_tag = 'master'
-
         self.config_files = [
             'cice_in.nml',
             'input_ice.nml',
@@ -70,6 +66,21 @@ class Cice5(Cice):
         else:
             return []
 
+    def get_latest_restart_file(self):
+        iced_restart_file = None
+        iced_restart_files = [f for f in self.get_prior_restart_files()
+                              if f.startswith('iced.')]
+
+        if len(iced_restart_files) > 0:
+            iced_restart_file = sorted(iced_restart_files)[-1]
+
+        if iced_restart_file is None:
+            raise FileNotFoundError(
+                f'No iced restart file found in {self.prior_restart_path}'
+            )
+
+        return iced_restart_file
+
     def set_access_timestep(self, t_step):
         # TODO: Figure out some way to move this to the ACCESS driver
         # Re-read ice timestep and move this over there
@@ -87,16 +98,7 @@ class Cice5(Cice):
         Generate restart pointer which points to the latest iced.YYYYMMDD
         restart file.
         """
-        iced_restart_file = None
-        iced_restart_files = [f for f in self.get_prior_restart_files()
-                              if f.startswith('iced.')]
-
-        if len(iced_restart_files) > 0:
-            iced_restart_file = sorted(iced_restart_files)[-1]
-
-        if iced_restart_file is None:
-            raise FileNotFoundError(
-                f'No iced restart file found in {self.prior_restart_path}')
+        iced_restart_file = self.get_latest_restart_file()
 
         res_ptr_path = os.path.join(self.work_init_path,
                                     'ice.restart_file')

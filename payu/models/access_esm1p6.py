@@ -14,16 +14,18 @@ from __future__ import print_function
 import os
 import re
 import shutil
-import sys
 
 # Extensions
 import f90nml
+from netCDF4 import Dataset
+from datetime import date, timedelta
 
 # Local
 from payu.fsops import make_symlink
 from payu.models.model import Model
 import payu.calendar as cal
 
+INIT_DATE = 10101 #aka 0001/01/01
 
 class AccessEsm1p6(Model):
 
@@ -33,31 +35,27 @@ class AccessEsm1p6(Model):
         self.model_type = 'access-esm1.6'
 
         for model in self.expt.models:
-            if model.model_type == 'cice' or model.model_type == 'cice5':
+            if model.model_type == 'cice':
+                raise RuntimeError(
+                    "cice submodel not supported in access-esm1.6 model,"
+                    " either use cice5 submodel or access model"
+                )
+
+            if model.model_type == 'cice5':
                 model.config_files = ['cice_in.nml',
                                       'input_ice.nml']
-                model.optional_config_files = ['input_ice_gfdl.nml',
-                                               'input_ice_monin.nml']
 
                 model.ice_nml_fname = 'cice_in.nml'
 
                 model.access_restarts = ['mice.nc']
-                model.copy_restarts = True
+                model.copy_restarts = True 
 
                 model.set_timestep = model.set_access_timestep
 
-            if model.model_type == 'cice5':
-                model.access_restarts.extend(['u_star.nc', 'sicemass.nc'])
-
-            if model.model_type == 'cice':
-                # The ACCESS build of CICE assumes that restart_dir is 'RESTART'
-                model.get_ptr_restart_dir = lambda : '.'
-
-            if model.model_type == 'cice' or model.model_type == 'cice5':
                 # Structure of model coupling namelist
                 model.cpl_fname = 'input_ice.nml'
                 model.cpl_group = 'coupling'
-                model.start_date_nml_name = "restart_date.nml"
+                # model.start_date_nml_name = "restart_date.nml"
                 # Experiment initialisation date
                 model.init_date_key = "init_date"
                 # Start date for new run
@@ -86,7 +84,7 @@ class AccessEsm1p6(Model):
 
         for model in self.expt.models:
 
-            if model.model_type == 'cice' or model.model_type == 'cice5':
+            if model.model_type == 'cice5':
 
                 # Horrible hack to make a link to o2i.nc in the
                 # work/ice/RESTART directory
@@ -97,8 +95,6 @@ class AccessEsm1p6(Model):
                 if os.path.isfile(f_src):
                     make_symlink(f_src, f_dst)
 
-            if model.model_type == 'cice5':
-
                 # Stage the supplemental input files
                 if model.prior_restart_path:
                     for f_name in model.access_restarts:
@@ -107,8 +103,6 @@ class AccessEsm1p6(Model):
 
                         if os.path.isfile(f_src):
                             make_symlink(f_src, f_dst)
-
-            if model.model_type in ('cice', 'cice5'):
 
                 # Update the supplemental OASIS namelists
                 # cpl_nml is the coupling namelist copied from the control to
@@ -120,44 +114,27 @@ class AccessEsm1p6(Model):
                 # Which calendar are we using, noleap or Gregorian.
                 caltype = cpl_group['caltype']
 
+                # Experiment initialisation date
+                init_date = cal.int_to_date(INIT_DATE)
+
                 # Get timing information for the new run.
                 if model.prior_restart_path and not self.expt.repeat_run:
-                    # Read the start date from the restart date namelist.
-                    start_date_fpath = os.path.join(
-                        model.prior_restart_path,
-                        model.start_date_nml_name
-                    )
 
-                    try:
-                        start_date_nml = f90nml.read(start_date_fpath)[
-                            model.cpl_group]
-                    except FileNotFoundError:
-                        print(
-                            "Missing restart date file for model "
-                            f"{model.model_type}",
-                            file=sys.stderr
-                        )
-                        raise
-
-                    # Experiment initialisation date
-                    init_date = cal.int_to_date(
-                        start_date_nml[model.init_date_key]
-                    )
-
-                    # Start date of new run
-                    run_start_date = cal.int_to_date(
-                        start_date_nml[model.inidate_key]
-                    )
+                    # Read the start date from last the restart
+                    iced_file = model.get_latest_restart_file()
+                    iced_nc = Dataset(os.path.join(model.prior_restart_path, iced_file))
+                    run_start_date = date(
+                        iced_nc.getncattr('nyr'),
+                        iced_nc.getncattr('month'),
+                        iced_nc.getncattr('mday')
+                    ) + timedelta(seconds=float(iced_nc.getncattr('sec')))
+                    iced_nc.close()
 
                     # run_start_date must be after initialisation date
                     if run_start_date < init_date:
                         msg = (
-                            "Restart date 'inidate` in "
-                            f"{model.start_date_nml_name} must not be "
-                            "before initialisation date `init_date. "
-                            "Values provided: \n"
-                            f"inidate={start_date_nml[model.inidate_key]}\n"
-                            f"init_date={start_date_nml[model.init_date_key]}"
+                            f"Restart date in {iced_file} must not be "
+                            "before initialisation date {INIT_DATE}. "
                         )
                         raise ValueError(msg)
 
@@ -171,10 +148,9 @@ class AccessEsm1p6(Model):
                     )
 
                 else:
-                    init_date = cal.int_to_date(
-                        cpl_group[model.init_date_key]
-                    )
                     previous_runtime = 0
+                    # TO-DO: user configurable start date
+                    # e.g. cpl_group[model.inidate_key] or the start date in `config.yaml`
                     run_start_date = init_date
 
                 # Get new runtime for this run. We get this from either the
@@ -197,25 +173,20 @@ class AccessEsm1p6(Model):
                 cpl_group[model.runtime0_key] = previous_runtime
                 cpl_group[model.runtime_key] = int(run_runtime)
 
-                if model.model_type == 'cice':
-                    if self.expt.counter and not self.expt.repeat_run:
-                        cpl_group['jobnum'] = (
-                            1 + self.expt.counter
-                        )
-                    else:
-                        cpl_group['jobnum'] = 1
+                # TO-DO : what is this for, should this be getting written to input_ice?
+                if self.expt.counter and not self.expt.repeat_run:
+                    cpl_group['jobnum'] = (
+                        1 + self.expt.counter
+                    )
+                else:
+                    cpl_group['jobnum'] = 1
 
+                # write coupler namelist
                 nml_work_path = os.path.join(model.work_path, model.cpl_fname)
 
                 # TODO: Does this need to be split into two steps?
                 f90nml.write(cpl_nml, nml_work_path + '~')
                 shutil.move(nml_work_path + '~', nml_work_path)
-
-                if  model.prior_restart_path and not self.expt.repeat_run:
-                    # Set up and check the cice restart files.
-                    model.overwrite_restart_ptr(run_start_date,
-                                                previous_runtime,
-                                                start_date_fpath)
 
         if run_runtime == 0:
             raise Error()
@@ -242,7 +213,7 @@ class AccessEsm1p6(Model):
             return
 
         for model in self.expt.models:
-            if model.model_type in ('cice', 'cice5'):
+            if model.model_type == 'cice5':
 
                 # Copy supplemental restart files to RESTART path
                 for f_name in model.access_restarts:
@@ -265,39 +236,6 @@ class AccessEsm1p6(Model):
                 if os.path.exists(work_ice_nml_path):
                     shutil.copy2(work_ice_nml_path, restart_ice_nml_path)
 
-                # Write the simulation end date to the restart date
-                # namelist.
-
-                # Calculate the end date using information from the work
-                # directory coupling namelist.
-                work_cpl_fpath = os.path.join(model.work_path, model.cpl_fname)
-                work_cpl_nml = f90nml.read(work_cpl_fpath)
-                work_cpl_grp = work_cpl_nml[model.cpl_group]
-
-                # Timing information on the completed run.
-                exp_init_date_int = work_cpl_grp[model.init_date_key]
-                run_start_date_int = work_cpl_grp[model.inidate_key]
-                run_runtime = work_cpl_grp[model.runtime_key]
-                run_caltype = work_cpl_grp["caltype"]
-
-                # Calculate end date of completed run
-                run_end_date = cal.date_plus_seconds(
-                    cal.int_to_date(run_start_date_int),
-                    run_runtime,
-                    run_caltype
-                )
-
-                end_date_dict = {
-                    model.cpl_group: {
-                        model.init_date_key: exp_init_date_int,
-                        model.inidate_key: cal.date_to_int(run_end_date)
-                    }
-                }
-
-                # Write restart date to the restart directory
-                end_date_path = os.path.join(model.restart_path,
-                                             model.start_date_nml_name)
-                f90nml.write(end_date_dict, end_date_path, force=True)
 
     def get_restart_datetime(self, restart_path):
         """Given a restart path, parse the restart files and
