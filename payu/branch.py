@@ -12,6 +12,7 @@ import warnings
 from pathlib import Path
 from typing import Optional
 import shutil
+import sys
 
 from ruamel.yaml import YAML, CommentedMap, constructor
 import git
@@ -42,6 +43,17 @@ To find a branch that has a config file, you can:
 To checkout an existing branch, run:
     payu checkout BRANCH_NAME
 Where BRANCH_NAME is the name of the branch"""
+
+
+def remove_traceback_hook(kind, message, traceback):
+    """Remove traceback for only PayuBranchError"""
+    if kind is PayuBranchError:
+        print(f'{kind.__name__}: {message}', file=sys.stderr)
+    else:
+        sys.__excepthook__(kind, message, traceback)
+
+# Override the default exception hook to remove traceback
+sys.excepthook = remove_traceback_hook
 
 
 def check_restart(restart_path: Path,
