@@ -173,10 +173,10 @@ class AccessEsm1p6(Model):
                 cpl_group[model.runtime0_key] = previous_runtime
                 cpl_group[model.runtime_key] = int(run_runtime)
 
-                # TO-DO : what is this for, should this be getting written to input_ice?
-                if self.expt.counter and not self.expt.repeat_run:
+                # if self.expt.counter and not self.expt.repeat_run:
+                if model.prior_restart_path :
                     cpl_group['jobnum'] = (
-                        1 + self.expt.counter
+                        1 + cpl_group['jobnum']
                     )
                 else:
                     cpl_group['jobnum'] = 1
