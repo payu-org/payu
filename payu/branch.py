@@ -297,7 +297,8 @@ def clone(repository: str,
         raise PayuBranchError(
             "Starting from a specific commit or tag requires a new branch "
             "name to be specified. Use the --new-branch/-b flag in payu clone "
-            "to create a new git branch."
+            "to create a new git branch.\n"
+            "For more infomation on payu clone, run `payu clone --help`"
         )
 
     # git clone the repository
@@ -343,10 +344,11 @@ def clone(repository: str,
         # Remove directory if incomplete checkout
         shutil.rmtree(control_path)
         msg = (
-            "Incomplete checkout. To run payu clone again, modify/remove " +
-            "the checkout new branch flag: --new-branch/-b, or " +
-            "checkout existing branch flag: --branch/-B " +
-            f"\n  Checkout error: {e}"
+            "Incomplete checkout. To run payu clone again, modify/remove "
+            "the checkout new branch flag: --new-branch/-b, or "
+            "checkout existing branch flag: --branch/-B "
+            f"\n  Checkout error: {e}\n"
+            "For more infomation on payu clone, run `payu clone --help`"
         )
         raise PayuBranchError(msg)
     finally:
