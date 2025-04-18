@@ -4,15 +4,31 @@
 :license: Apache License, Version 2.0, see LICENSE for details.
 """
 
+from argparse import RawDescriptionHelpFormatter
 from pathlib import Path
 
 from payu.branch import clone
 import payu.subcommands.args as args
 
 title = 'clone'
-parameters = {'description': ('A wrapper around git clone. Clones a '
-                              'control repository and setup new experiment '
-                              'metadata')}
+parameters = {
+    'description': (
+        'A wrapper around git clone. Clones a control repository and setup '
+        'new experiment metadata'
+    ),
+    'epilog': (
+        'Example usage:\n'
+        '\n  To clone repository and checkout an existing git branch:\n'
+        '    payu clone -B <branch_name> <repository> <local_directory>\n'
+        '\n  To clone and create a new branch from an existing branch:\n'
+        '    payu clone -B <branch_name> -b <new_branch_name> <repository> <local_directory>\n'
+        '\n  To clone and create a new branch from an existing commit or tag:\n'
+        '    payu clone -s <commit_or_tag> -b <new_branch_name> <repository> <local_directory>\n'
+        '\n  To clone and checkout a new branch, and specify a restart path to start from:\n'
+        '    payu clone -b <new_branch_name> -r <path_to_restart_dir> <repository> <local_directory>\n'
+    ),
+    'formatter_class': RawDescriptionHelpFormatter,
+}
 
 arguments = [args.model, args.config, args.laboratory,
              args.keep_uuid, args.clone_branch,

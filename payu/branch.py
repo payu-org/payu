@@ -12,6 +12,7 @@ import warnings
 from pathlib import Path
 from typing import Optional
 import shutil
+import sys
 
 from ruamel.yaml import YAML, CommentedMap, constructor
 import git
@@ -42,6 +43,17 @@ To find a branch that has a config file, you can:
 To checkout an existing branch, run:
     payu checkout BRANCH_NAME
 Where BRANCH_NAME is the name of the branch"""
+
+
+def remove_traceback_hook(kind, message, traceback):
+    """Remove traceback for only PayuBranchError"""
+    if kind is PayuBranchError:
+        print(f'{kind.__name__}: {message}', file=sys.stderr)
+    else:
+        sys.__excepthook__(kind, message, traceback)
+
+# Override the default exception hook to remove traceback
+sys.excepthook = remove_traceback_hook
 
 
 def check_restart(restart_path: Path,
@@ -292,6 +304,15 @@ def clone(repository: str,
             "and use `payu checkout` if it is the same git repository"
         )
 
+    # Check -b is set when -s/--start-point is set
+    if start_point is not None and new_branch_name is None:
+        raise PayuBranchError(
+            "Starting from a specific commit or tag requires a new branch "
+            "name to be specified. Use the --new-branch/-b flag in payu clone "
+            "to create a new git branch.\n"
+            "For more infomation on payu clone, run `payu clone --help`"
+        )
+
     # git clone the repository
     repo = git_clone(repository, control_path, branch)
 
@@ -335,10 +356,11 @@ def clone(repository: str,
         # Remove directory if incomplete checkout
         shutil.rmtree(control_path)
         msg = (
-            "Incomplete checkout. To run payu clone again, modify/remove " +
-            "the checkout new branch flag: --new-branch/-b, or " +
-            "checkout existing branch flag: --branch/-B " +
-            f"\n  Checkout error: {e}"
+            "Incomplete checkout. To run payu clone again, modify/remove "
+            "the checkout new branch flag: --new-branch/-b, or "
+            "checkout existing branch flag: --branch/-B "
+            f"\n  Checkout error: {e}\n"
+            "For more infomation on payu clone, run `payu clone --help`"
         )
         raise PayuBranchError(msg)
     finally:
