@@ -8,7 +8,7 @@ from ruamel.yaml import YAML
 from unittest.mock import patch
 
 from payu.branch import add_restart_to_config, check_restart, switch_symlink
-from payu.branch import checkout_branch, clone, list_branches
+from payu.branch import checkout_branch, clone, list_branches, PayuBranchError
 from payu.metadata import MetadataWarning
 from payu.fsops import read_config
 
@@ -652,6 +652,38 @@ def test_clone_startpoint(start_point_type):
 
     # Latest commit is different (new commit from metadata)
     assert source_repo_commit != cloned_repo.active_branch.object.hexsha
+
+
+def test_clone_startpoint_with_no_new_branch_error():
+    """Test clone when -s/--start-point is used without -b/--new-branch"""
+    # Create a repo to clone
+    source_repo_path = tmpdir / "sourceRepo"
+    source_repo_path.mkdir()
+    source_repo = setup_control_repository(path=source_repo_path)
+
+    # Create branch1
+    branch1 = source_repo.create_head("Branch1")
+    branch1_commit = branch1.object.hexsha
+
+    expected_msg = (
+        "Starting from a specific commit or tag requires a new branch "
+        "name to be specified. Use the --new-branch/-b flag in payu clone "
+        "to create a new git branch."
+    )
+
+    # Run Clone
+    cloned_repo_path = tmpdir / "clonedRepo"
+    with cd(tmpdir):
+        with pytest.raises(PayuBranchError, match=expected_msg):
+            clone(
+                repository=str(source_repo_path),
+                directory=cloned_repo_path,
+                lab_path=labdir,
+                start_point=branch1_commit,
+            )
+
+    # Check cloned repo is not created
+    assert not cloned_repo_path.exists()
 
 
 def test_clone_with_relative_restart_path():
