@@ -39,6 +39,7 @@ from payu.manifest import Manifest
 from payu.calendar import parse_date_offset
 from payu.sync import SyncToRemoteArchive
 from payu.metadata import Metadata
+from payu.telemetry import Telemetry
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -138,6 +139,15 @@ class Experiment(object):
         self.run_id = None
 
         self.user_modules_paths = None
+
+        # Initialize scheduler instance
+        self.scheduler_name = self.config.get('scheduler',
+                                              DEFAULT_SCHEDULER_CONFIG)
+        self.scheduler = scheduler_index[self.scheduler_name]()
+
+        # Initialise telemetry
+        self.telemetry = Telemetry(config=self.config,
+                                   scheduler=self.scheduler)
 
     def init_models(self):
 
@@ -324,12 +334,10 @@ class Experiment(object):
         self.stdout_fname = self.lab.model_type + '.out'
         self.stderr_fname = self.lab.model_type + '.err'
 
-        self.job_fname = 'job.yaml'
         self.env_fname = 'env.yaml'
 
         self.output_fnames = (self.stderr_fname,
                               self.stdout_fname,
-                              self.job_fname,
                               self.env_fname)
 
     def set_output_paths(self):
@@ -671,37 +679,10 @@ class Experiment(object):
         f_err.close()
 
         self.finish_time = datetime.datetime.now()
+        self.run_job_status = rc
 
-        scheduler_name = self.config.get('scheduler', DEFAULT_SCHEDULER_CONFIG)
-        scheduler = scheduler_index[scheduler_name]()
-
-        info = scheduler.get_job_info()
-
-        if info is None:
-            # Not being run under PBS, reverse engineer environment
-            info = {
-                'PAYU_PATH': os.path.dirname(self.payu_path)
-            }
-
-        # Add extra information to save to jobinfo
-        info.update(
-            {
-                'PAYU_CONTROL_DIR': self.control_path,
-                'PAYU_RUN_ID': self.run_id,
-                'PAYU_CURRENT_RUN': self.counter,
-                'PAYU_N_RUNS':  self.n_runs,
-                'PAYU_JOB_STATUS': rc,
-                'PAYU_START_TIME': self.start_time.isoformat(),
-                'PAYU_FINISH_TIME': self.finish_time.isoformat(),
-                'PAYU_WALLTIME': "{0} s".format(
-                    (self.finish_time - self.start_time).total_seconds()
-                ),
-            }
-        )
-
-        # Dump job info
-        with open(self.job_fname, 'w') as file:
-            file.write(yaml.dump(info, default_flow_style=False))
+        # Store job state information
+        self.telemetry.set_run_info(self)
 
         # Remove any empty output files (e.g. logs)
         for fname in os.listdir(self.work_path):
@@ -721,8 +702,8 @@ class Experiment(object):
             error_log_dir = os.path.join(self.archive_path, 'error_logs')
             mkdir_p(error_log_dir)
 
-            # NOTE: This is only implemented for PBS scheduler
-            job_id = scheduler.get_job_id(short=False)
+            # NOTE: This is PBS-specific
+            job_id = self.scheduler.get_job_id(short=False)
 
             if job_id == '' or job_id is None:
                 job_id = str(self.run_id)[:6]
@@ -745,6 +726,12 @@ class Experiment(object):
             error_script = self.userscripts.get('error')
             if error_script:
                 self.run_userscript(error_script)
+
+            # Record run information
+            self.telemetry.set_run_info_filepath(
+                Path(error_log_dir) / f"job.{job_id}.json"
+            )
+            self.telemetry.record_run()
 
             # Terminate payu
             sys.exit('payu: Model exited with error code {0}; aborting.'
@@ -771,6 +758,9 @@ class Experiment(object):
         run_script = self.userscripts.get('run')
         if run_script:
             self.run_userscript(run_script)
+
+        # Set telemetry run info output file to the work directory
+        self.telemetry.set_run_info_filepath(Path(self.work_path) / "job.json")
 
     def archiving(self):
         """
@@ -860,6 +850,11 @@ class Experiment(object):
         # Ensure postprocessing runs if model not collating
         if not collating:
             self.postprocess()
+
+        # Set telemetry job info output file to the archive directory
+        self.telemetry.set_run_info_filepath(
+            Path(self.output_path) / "job.json"
+        )
 
     def collate(self):
         # Setup modules - load user-defined modules
