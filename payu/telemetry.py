@@ -30,13 +30,13 @@ TELEMETRY_VERSION = "1.0.0"
 def get_metadata(metadata: Metadata) -> Optional[Dict[str, Any]]:
     """Returns a dictionary of the experiment metadata to record"""
     metadata_dict = metadata.read_file()
-    info = {
-        'experiment_uuid': metadata_dict.get('experiment_uuid'),
-        'experiment_created': metadata_dict.get('created', None),
-        'experiment_name': metadata_dict.get('name', None),
-        'model': metadata_dict.get('model', None)
+    if len(metadata_dict) == 0:
+        return {}
+
+    return {
+        'experiment_uuid': metadata_dict.get('experiment_uuid', None),
+        'experiment_metadata': metadata_dict
     }
-    return info
 
 
 def get_experiment_run_state(experiment) -> Optional[Dict[str, Any]]:
@@ -52,8 +52,6 @@ def get_experiment_run_state(experiment) -> Optional[Dict[str, Any]]:
             (experiment.finish_time - experiment.start_time).total_seconds(),
         'payu_version': payu.__version__,
         'payu_path': os.path.dirname(experiment.payu_path),
-        'payu_control_dir': experiment.control_path,
-        'payu_archive_dir': experiment.archive_path,
     }
     return info
 
@@ -65,16 +63,9 @@ def get_scheduler_run_info(scheduler: Scheduler) -> Dict[str, Any]:
 
     info = {}
     if scheduler_info is not None:
-        scheduler_info = {key.lower(): val
-                          for key, val in scheduler_info.items()}
-        info = {
-            'scheduler_job_info': scheduler_info,
-            # Storing a version pre-emptively incase scheduler_info dictionary
-            # is modified in the future
-            'scheduler_job_info_version': '1.0',
-            'scheduler_type': scheduler.name,
-            'scheduler_job_id': scheduler_job_id
-        }
+        info['scheduler_job_info'] = scheduler_info
+        info['scheduler_type'] = scheduler.name
+        info['scheduler_job_id'] = scheduler_job_id
     return info
 
 
@@ -153,7 +144,6 @@ def post_telemetry_data(telemetry_url: str,
     print(f"**Debug**: posting telemetry to {telemetry_url}")
     try:
         response = requests.post(telemetry_url, data=json.dumps(data), headers=headers, timeout=request_timeout)
-
         if response.status_code >= 400:
             warnings.warn(
                 f"Error posting telemetry: {response.status_code} - {response.json()}"
@@ -162,6 +152,7 @@ def post_telemetry_data(telemetry_url: str,
         warnings.warn(f"Error posting telemetry: {e}")
 
     print(f"**Debug**: post request took {(datetime.now() - starttime).total_seconds()} seconds")
+
 
 class Telemetry():
     """Telemetry class to store and post telemetry information.
@@ -190,6 +181,8 @@ class Telemetry():
         self.run_info_filepath = filepath
 
     def set_run_info(self, experiment):
+        """Set the run information for the current run. This is
+        called in Experiment class after the model run is complete"""
         self.run_info.update(get_metadata(experiment.metadata))
         self.run_info.update(get_experiment_run_state(experiment))
 

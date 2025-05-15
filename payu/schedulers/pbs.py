@@ -13,36 +13,13 @@ import shlex
 import subprocess
 from typing import Any, Dict, Optional
 
+import json
+from tenacity import retry, stop_after_delay
+
 import payu.envmod as envmod
 from payu.fsops import check_exe_path
 from payu.manifest import Manifest
 from payu.schedulers.scheduler import Scheduler
-
-from tenacity import retry, stop_after_delay
-
-TELEMETRY_JOB_INFO_FIELDS = [
-    "resources_used.cpupercent",
-    "resources_used.cput",
-    "resources_used.mem",
-    "resources_used.vmem",
-    "resources_used.ncpus",
-    "resources_used.walltime",
-    "job_state",
-    "queue",
-    "project",
-    "job_id",
-    "resource_list.jobfs",
-    "resource_list.mem",
-    "resource_list.mpiprocs",
-    "resource_list.ncpus",
-    "resource_list.nodect",
-    "resource_list.storage",
-    "resource_list.walltime",
-    "resource_list.select",
-    "stime",
-    "qtime",
-    "mtime",
-]
 
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
@@ -196,14 +173,9 @@ class PBS(Scheduler):
 
         return jobid
 
-    def get_job_info(self, short: bool = True) -> Optional[Dict[str, Any]]:
+    def get_job_info(self) -> Optional[Dict[str, Any]]:
         """
         Get information about the job from the PBS server
-
-        Parameters
-        ----------
-        short: bool, default True
-            Return shortened form of the job information
 
         Returns
         ----------
@@ -215,32 +187,30 @@ class PBS(Scheduler):
         info = None
 
         if not jobid == '':
-            info = get_qstat_info('-ft {0}'.format(jobid), 'Job Id:')
-
-        if info is not None:
-            # Select the dict for this job (there should only be one
-            # entry in any case)
-            info = info['Job Id: {}'.format(jobid)]
-
-            # Add the jobid to the dict and then return
-            info['Job_ID'] = jobid
-
-            info = {key.lower(): val for key, val in info.items()}
-            if short:
-                # Parse out the selected fields
-                info = {key: val for key, val in info.items()
-                        if key in TELEMETRY_JOB_INFO_FIELDS}
-
-            # Transform keys with ., e.g.
-            # resources_used.cpupercent -> resources_used_cpupercent
-            info = {key.replace('.', '_'): val for key, val in info.items()}
-
-        # TODO: Qstat can output in json using -F json
-        # This gives a pbs_version and parses resourced_used/Resource_List/
-        # Variable list into dictionaries
-        # So could just pass whole object through to telemetry?
+            info = get_job_info_json(jobid)
 
         return info
+
+
+@retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
+def get_job_info_json(job_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get full job information in JSON format from qstat. It is wrapped in retry
+    with timeout to allow for PBS server to be slow to respond.
+
+    If timeout occurs or invalid json, return None
+    """
+    qstat_output = subprocess.run(
+        ["qstat", "-f", "-F", "json", job_id],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    # Parse the JSON output
+    try:
+        return json.loads(qstat_output.stdout)
+    except json.JSONDecodeError:
+        return None
 
 
 def pbs_env_init():

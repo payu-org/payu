@@ -7,7 +7,13 @@ from unittest.mock import patch, Mock
 
 from payu.telemetry import get_external_telemetry_config, post_telemetry_data
 from payu.telemetry import Telemetry
-from payu.telemetry import TELEMETRY_CONFIG, SERVER_URL_FIELD, HOSTNAME_FIELD
+from payu.telemetry import (
+    TELEMETRY_CONFIG,
+    TELEMETRY_URL_FIELD,
+    HOSTNAME_FIELD,
+    TELEMETRY_SERVICE_NAME_FIELD,
+    TELEMETRY_TOKEN_FIELD,
+)
 
 
 @pytest.fixture
@@ -20,8 +26,10 @@ def setup_env(tmp_path):
 def test_get_external_telemetry_config_valid(setup_env):
     config_path = setup_env
     config_data = {
-        SERVER_URL_FIELD: "some/server/url",
-        HOSTNAME_FIELD: "gadi"
+        TELEMETRY_URL_FIELD: "some/server/url",
+        HOSTNAME_FIELD: "gadi",
+        TELEMETRY_SERVICE_NAME_FIELD: "payu",
+        TELEMETRY_TOKEN_FIELD: "some_token",
     }
     with open(config_path, 'w') as f:
         json.dump(config_data, f)
@@ -45,7 +53,9 @@ def test_get_external_telemetry_config_no_file(setup_env):
 def test_get_external_telemetry_config_missing_fields(setup_env):
     config_path = setup_env
     config_data = {
-        SERVER_URL_FIELD: "some/server/url",
+        TELEMETRY_URL_FIELD: "some/server/url",
+        TELEMETRY_SERVICE_NAME_FIELD: "payu",
+        TELEMETRY_TOKEN_FIELD: "some_token",
     }
     with open(config_path, 'w') as f:
         json.dump(config_data, f)
@@ -72,24 +82,6 @@ def test_get_external_telemetry_config_invalid_json(setup_env):
     with pytest.warns(UserWarning, match=expected_warning):
         result = get_external_telemetry_config()
         assert result is None
-
-
-@patch('access_py_telemetry.api.ApiHandler')
-def test_post_telemetry_data_missing_access_py_telemetry(mock_api_handler):
-    """Test import error is caught with a warning if
-    access_py_telemetry module is not available"""
-    mock_api = Mock()
-    mock_api_handler.return_value = mock_api
-
-    expected_warning = (
-        "access_py_telemetry module not found. Skipping posting telemetry."
-    )
-    with patch.dict('sys.modules', {'access_py_telemetry.api': None}):
-        with pytest.warns(UserWarning, match=expected_warning):
-            post_telemetry_data("http://example.com", {}, "service_name",
-                                "function_name")
-
-    mock_api_handler.assert_not_called()
 
 
 @patch('payu.telemetry.get_scheduler_run_info')
@@ -197,8 +189,10 @@ def test_telemetry_payu_run(monkeypatch, tmp_path):
 
     # Create telemetry config and environment variable
     telemetry_config = {
-        "server_url": "test-persistent-session-hostname",
-        "hostname": "test-host"
+        TELEMETRY_URL_FIELD: "some/server/url",
+        HOSTNAME_FIELD: "test-host",
+        TELEMETRY_SERVICE_NAME_FIELD: "payu",
+        TELEMETRY_TOKEN_FIELD: "some_token",
     }
 
     telemetry_config_path = tmp_path / "telemetry_config.json"
@@ -213,20 +207,39 @@ def test_telemetry_payu_run(monkeypatch, tmp_path):
     # Configure job info path during experiment run
     job_info_filepath = tmp_path / "job.json"
     telemetry.set_run_info_filepath(job_info_filepath)
-    # Store & post run job information
-    telemetry.record_run()
 
-    # Should this be tested here - how likely is this to change
-    # - would there be a fixed access_py_telemetry version shipped with payu?
-    from access_py_telemetry.api import ApiHandler
-    record = ApiHandler()._last_record
-    assert record['function'] == 'payu.subcommands.run_cmd.runscript'
-    assert record['args'] == {}
-    assert record['kwargs'] == {}
+    # Mock threading to call the target function directly
+    with patch('threading.Thread') as mock_thread_cls:
+        mock_thread = Mock()
+        mock_thread_cls.return_value = mock_thread
+
+        # Set up the side effect to call the target function directly
+        def start_side_effect():
+            # Get the args and kwargs passed to Thread
+            thread_args = mock_thread_cls.call_args[1].get('args', ())
+            thread_kwargs = mock_thread_cls.call_args[1].get('kwargs', {})
+            # Call the target function directly
+            post_telemetry_data(*thread_args, **thread_kwargs)
+
+        mock_thread.start.side_effect = start_side_effect
+
+        # Mock the post request
+        with patch('requests.post') as mock_post:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"status": "success"}
+            mock_post.return_value = mock_response
+
+            # Store & post run job information
+            telemetry.record_run()
+
+            # Get data from the mock request
+            assert mock_post.called
+            args, kwargs = mock_post.call_args
+            sent_data = json.loads(kwargs.get('data'))
+
+    record = sent_data["telemetry"]
     assert record['experiment_uuid'] == 'test-uuid'
-    assert record['experiment_created'] == '2025-01-01'
-    assert record['experiment_name'] == 'test-expt-name'
-    assert record['model'] == 'test-model'
     assert record['payu_run_id'] == 'test-commit-hash'
     assert record['payu_current_run'] == 0
     assert record['payu_n_runs'] == 0
@@ -236,10 +249,6 @@ def test_telemetry_payu_run(monkeypatch, tmp_path):
     assert record['payu_walltime_seconds'] == 30.0
     assert record['payu_version'] == '2.0.0'
     assert record['payu_path'] == 'path/to/testenv'
-    assert record['payu_control_dir'] == 'path/to/control/dir'
-    assert record['payu_archive_dir'] == 'path/to/archive/dir'
-    assert record['scheduler_type'] == 'test-scheduler'
-    assert record['scheduler_job_id'] == 'test-job-id'
     assert record['hostname'] == 'test-host'
 
     telemetry.clear_run_info()
