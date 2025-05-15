@@ -1,8 +1,9 @@
-from datetime import date
+from datetime import date, datetime
 import json
 import os
 from pathlib import Path
 import requests
+import threading
 from typing import Any, Dict, Optional
 import warnings
 
@@ -17,7 +18,6 @@ TELEMETRY_CONFIG = 'PAYU_TELEMETRY_CONFIG_PATH'
 TELEMETRY_URL_FIELD = "telemetry_url"
 TELEMETRY_TOKEN_FIELD = "telemetry_token"
 TELEMETRY_SERVICE_NAME_FIELD = "telemetry_service_name"
-
 HOSTNAME_FIELD = "hostname"
 
 TELEMETRY_CONFIG_FIELDS = [TELEMETRY_URL_FIELD, TELEMETRY_TOKEN_FIELD, TELEMETRY_SERVICE_NAME_FIELD, HOSTNAME_FIELD]
@@ -25,6 +25,7 @@ TELEMETRY_CONFIG_FIELDS = [TELEMETRY_URL_FIELD, TELEMETRY_TOKEN_FIELD, TELEMETRY
 REQUEST_TIMEOUT = 10
 
 TELEMETRY_VERSION = "1.0.0"
+
 
 def get_metadata(metadata: Metadata) -> Optional[Dict[str, Any]]:
     """Returns a dictionary of the experiment metadata to record"""
@@ -148,15 +149,19 @@ def post_telemetry_data(telemetry_url: str,
         "telemetry": telemetry_data
     }
 
-    response = requests.post(telemetry_url,
-                             data=json.dumps(data),
-                             headers=headers,
-                             timeout=request_timeout)
-    if response.status_code != 201:
-        warnings.warn(
-            f"Error posting telemetry: {response.status_code} "
-            f"{response.text}"
-        )
+    starttime = datetime.now()
+    print(f"**Debug**: posting telemetry to {telemetry_url}")
+    try:
+        response = requests.post(telemetry_url, data=json.dumps(data), headers=headers, timeout=request_timeout)
+
+        if response.status_code >= 400:
+            warnings.warn(
+                f"Error posting telemetry: {response.status_code} - {response.json()}"
+            )
+    except Exception as e:
+        warnings.warn(f"Error posting telemetry: {e}")
+
+    print(f"**Debug**: post request took {(datetime.now() - starttime).total_seconds()} seconds")
 
 class Telemetry():
     """Telemetry class to store and post telemetry information.
@@ -223,15 +228,17 @@ class Telemetry():
         # Add hostname to the run info fields
         self.run_info.update({'hostname': external_config[HOSTNAME_FIELD]})
 
-        try:
-            # Post telemetry data using the built run info fields
-            post_telemetry_data(
-                telemetry_url=external_config[TELEMETRY_URL_FIELD],
-                telemetry_data=self.run_info,
-                telemetry_token=external_config[TELEMETRY_TOKEN_FIELD],
-                telemetry_service_name=external_config[TELEMETRY_SERVICE_NAME_FIELD]
+        starttime = datetime.now()
+
+        # Using threading to run the one post request in the background
+        thread = threading.Thread(
+            target=post_telemetry_data,
+            args=(
+                external_config[TELEMETRY_URL_FIELD],
+                external_config[TELEMETRY_TOKEN_FIELD],
+                self.run_info,
+                external_config[TELEMETRY_SERVICE_NAME_FIELD]
             )
-        except Exception as e:
-            warnings.warn(
-                f"Error posting telemetry: {e}"
-            )
+        )
+        thread.start()
+        print(f"**Debug**: post_telemetry_data took {(datetime.now() - starttime).total_seconds()} seconds")
