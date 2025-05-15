@@ -65,16 +65,9 @@ def get_scheduler_run_info(scheduler: Scheduler) -> Dict[str, Any]:
 
     info = {}
     if scheduler_info is not None:
-        scheduler_info = {key.lower(): val
-                          for key, val in scheduler_info.items()}
-        info = {
-            'scheduler_job_info': scheduler_info,
-            # Storing a version pre-emptively incase scheduler_info dictionary
-            # is modified in the future
-            'scheduler_job_info_version': '1.0',
-            'scheduler_type': scheduler.name,
-            'scheduler_job_id': scheduler_job_id
-        }
+        info['scheduler_job_info'] = scheduler_info
+        info['scheduler_type'] = scheduler.name
+        info['scheduler_job_id'] = scheduler_job_id
     return info
 
 
