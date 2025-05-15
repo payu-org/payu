@@ -1,6 +1,9 @@
+from datetime import date, datetime
 import json
 import os
 from pathlib import Path
+import requests
+import threading
 from typing import Any, Dict, Optional
 import warnings
 
@@ -12,13 +15,16 @@ from payu.schedulers import Scheduler
 TELEMETRY_CONFIG = 'PAYU_TELEMETRY_CONFIG_PATH'
 
 # Required telemetry configuration fields
-SERVER_URL_FIELD = "server_url"
+TELEMETRY_URL_FIELD = "telemetry_url"
+TELEMETRY_TOKEN_FIELD = "telemetry_token"
+TELEMETRY_SERVICE_NAME_FIELD = "telemetry_service_name"
 HOSTNAME_FIELD = "hostname"
-TELEMETRY_CONFIG_FIELDS = [SERVER_URL_FIELD, HOSTNAME_FIELD]
 
-# access-py-telemetry configuration
-PAYU_RUN_SERVICE_NAME = "payu_run"
-API_HANDLER_REQUEST_TIMEOUT = 10
+TELEMETRY_CONFIG_FIELDS = [TELEMETRY_URL_FIELD, TELEMETRY_TOKEN_FIELD, TELEMETRY_SERVICE_NAME_FIELD, HOSTNAME_FIELD]
+
+REQUEST_TIMEOUT = 10
+
+TELEMETRY_VERSION = "1.0.0"
 
 
 def get_metadata(metadata: Metadata) -> Optional[Dict[str, Any]]:
@@ -110,51 +116,52 @@ def get_external_telemetry_config() -> Optional[Dict[str, Any]]:
     return telemetry_config
 
 
-def post_telemetry_data(server_url: str,
-                        extra_fields: Dict[str, Any],
-                        service_name: str,
-                        function_name: str,
-                        request_timeout: int = API_HANDLER_REQUEST_TIMEOUT
+def post_telemetry_data(telemetry_url: str,
+                        telemetry_token: Dict[str, Any],
+                        telemetry_data: Dict[str, Any],
+                        telemetry_service_name: str,
+                        request_timeout: int = REQUEST_TIMEOUT,
                         ) -> None:
-    """Posts telemetry data using the access-py-telemetry API.
+    """Posts telemetry data
 
     Parameters
     ----------
-    server_url: str
+    telemetry_url: str
         Endpoint for the telemetry
-    extra_fields: Dict[str, Any]
-        Extra fields to add to telemetry - this contains any extra metadata and
-        payu run state info
-    service_name: str
-        This service name needs to match one configured in access_py_telemetry
-    function_name: str
-        Each telemetry record will store this function name
-    request_timeout: int, default API_HANDLER_REQUEST_TIMEOUT
+    telemetry_token: str
+        Header token for the telemetry request
+    telemetry_data: Dict[str, Any]
+        Unstructured run information
+    telemetry_service_name: str
+        Service name for the telemetry record
+    request_timeout: int, default REQUEST_TIMEOUT
         Timeout while waiting for request
     """
-    # Check if access_py_telemetry module is available
+    headers = {
+        'Content-type': 'application/json',
+        'Authorization': 'Token ' + telemetry_token
+    }
+
+    data = {
+        "service": telemetry_service_name,
+        "version": TELEMETRY_VERSION,
+        "date": date.today().isoformat(),
+        "telemetry": telemetry_data
+    }
+
+    starttime = datetime.now()
+    print(f"**Debug**: posting telemetry to {telemetry_url}")
     try:
-        from access_py_telemetry.api import ApiHandler
-    except ImportError:
-        warnings.warn(
-            "access_py_telemetry module not found. Skipping posting telemetry."
-        )
-        return
+        response = requests.post(telemetry_url, data=json.dumps(data), headers=headers, timeout=request_timeout)
 
-    # Create telemetry handler
-    api_handler = ApiHandler()
-    api_handler.server_url = server_url
-    api_handler.request_timeout = request_timeout
+        if response.status_code >= 400:
+            warnings.warn(
+                f"Error posting telemetry: {response.status_code} - {response.json()}"
+            )
+    except Exception as e:
+        warnings.warn(f"Error posting telemetry: {e}")
 
-    # Add info to the telemetry server
-    api_handler.add_extra_fields(service_name, extra_fields)
-    api_handler.remove_fields(service_name, ["session_id"])
-
-    # Send telemetry data
-    api_handler.send_api_request(service_name=service_name,
-                                 function_name=function_name,
-                                 args={}, kwargs={})
-
+    print(f"**Debug**: post request took {(datetime.now() - starttime).total_seconds()} seconds")
 
 class Telemetry():
     """Telemetry class to store and post telemetry information.
@@ -221,17 +228,17 @@ class Telemetry():
         # Add hostname to the run info fields
         self.run_info.update({'hostname': external_config[HOSTNAME_FIELD]})
 
-        try:
-            # Post telemetry data using the built run info fields
-            # Using the payu run subcommand as the function name as the
-            # telemetry covers the experiment run
-            post_telemetry_data(
-                server_url=external_config[SERVER_URL_FIELD],
-                extra_fields=self.run_info,
-                service_name=PAYU_RUN_SERVICE_NAME,
-                function_name="payu.subcommands.run_cmd.runscript"
+        starttime = datetime.now()
+
+        # Using threading to run the one post request in the background
+        thread = threading.Thread(
+            target=post_telemetry_data,
+            args=(
+                external_config[TELEMETRY_URL_FIELD],
+                external_config[TELEMETRY_TOKEN_FIELD],
+                self.run_info,
+                external_config[TELEMETRY_SERVICE_NAME_FIELD]
             )
-        except Exception as e:
-            warnings.warn(
-                f"Error posting telemetry: {e}"
-            )
+        )
+        thread.start()
+        print(f"**Debug**: post_telemetry_data took {(datetime.now() - starttime).total_seconds()} seconds")

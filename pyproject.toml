@@ -42,10 +42,8 @@ test = [
     "Sphinx",
     "pytest-cov",
     "mnctools",
-    "access-py-telemetry"
 ]
 mitgcm = ["mnctools>=0.2"]
-telemetry = ["access-py-telemetry"]
 
 [project.scripts]
 payu = "payu.cli:parse"
