@@ -40,7 +40,7 @@ test = [
     "pylint",
     "Sphinx",
     "pytest-cov",
-    "mnctools"
+    "mnctools",
 ]
 mitgcm = ["mnctools>=0.2"]
 
