@@ -2,6 +2,7 @@ from datetime import date, datetime
 import json
 import os
 from pathlib import Path
+import pwd
 import requests
 import threading
 from typing import Any, Dict, Optional
@@ -12,7 +13,8 @@ from payu.metadata import Metadata
 from payu.schedulers import Scheduler
 
 # Environment variable for external telemetry configuration file
-TELEMETRY_CONFIG = 'PAYU_TELEMETRY_CONFIG_PATH'
+TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG"
+TELEMETRY_CONFIG_VERSION = "1-0-0"
 
 # Required telemetry configuration fields
 TELEMETRY_URL_FIELD = "telemetry_url"
@@ -20,7 +22,12 @@ TELEMETRY_TOKEN_FIELD = "telemetry_token"
 TELEMETRY_SERVICE_NAME_FIELD = "telemetry_service_name"
 HOSTNAME_FIELD = "hostname"
 
-TELEMETRY_CONFIG_FIELDS = [TELEMETRY_URL_FIELD, TELEMETRY_TOKEN_FIELD, TELEMETRY_SERVICE_NAME_FIELD, HOSTNAME_FIELD]
+TELEMETRY_CONFIG_FIELDS = [
+    TELEMETRY_URL_FIELD,
+    TELEMETRY_TOKEN_FIELD,
+    TELEMETRY_SERVICE_NAME_FIELD,
+    HOSTNAME_FIELD
+]
 
 REQUEST_TIMEOUT = 10
 
@@ -34,8 +41,19 @@ def get_metadata(metadata: Metadata) -> Optional[Dict[str, Any]]:
         return {}
 
     return {
-        'experiment_uuid': metadata_dict.get('experiment_uuid', None),
         'experiment_metadata': metadata_dict
+    }
+
+
+def get_manifests(experiment) -> Optional[Dict[str, Any]]:
+    """Returns a dictionary of content of input, restart and executable
+    manifest data"""
+    manifests = {}
+    for mf in experiment.manifest.manifests:
+        manifests[mf] = experiment.manifest.manifests[mf].data
+
+    return {
+        "manifests": manifests
     }
 
 
@@ -52,6 +70,10 @@ def get_experiment_run_state(experiment) -> Optional[Dict[str, Any]]:
             (experiment.finish_time - experiment.start_time).total_seconds(),
         'payu_version': payu.__version__,
         'payu_path': os.path.dirname(experiment.payu_path),
+        'payu_config': experiment.config,
+        'user_id':  pwd.getpwuid(os.getuid()).pw_name,
+        'payu_control_path': str(experiment.control_path),
+        'payu_archive_path': str(experiment.archive_path),
     }
     return info
 
@@ -65,7 +87,6 @@ def get_scheduler_run_info(scheduler: Scheduler) -> Dict[str, Any]:
     if scheduler_info is not None:
         info['scheduler_job_info'] = scheduler_info
         info['scheduler_type'] = scheduler.name
-        info['scheduler_job_id'] = scheduler_job_id
     return info
 
 
@@ -73,7 +94,8 @@ def get_external_telemetry_config() -> Optional[Dict[str, Any]]:
     """Loads the external telemetry configuration file.
     If a valid file does not exist, return None"""
     # Check path to telemetry config file exists
-    config_path = Path(os.environ[TELEMETRY_CONFIG])
+    config_dir = Path(os.environ[TELEMETRY_CONFIG])
+    config_path = config_dir / f"{TELEMETRY_CONFIG_VERSION}.json"
     if not (config_path.exists() and config_path.is_file()):
         warnings.warn(
             f"No config file found at {TELEMETRY_CONFIG}: {config_path}. "
@@ -143,15 +165,22 @@ def post_telemetry_data(telemetry_url: str,
     starttime = datetime.now()
     print(f"**Debug**: posting telemetry to {telemetry_url}")
     try:
-        response = requests.post(telemetry_url, data=json.dumps(data), headers=headers, timeout=request_timeout)
+        response = requests.post(
+            telemetry_url,
+            data=json.dumps(data),
+            headers=headers,
+            timeout=request_timeout
+        )
         if response.status_code >= 400:
             warnings.warn(
-                f"Error posting telemetry: {response.status_code} - {response.json()}"
+                f"Error posting telemetry: Status {response.status_code} - "
+                f"{response.json()}"
             )
     except Exception as e:
         warnings.warn(f"Error posting telemetry: {e}")
 
-    print(f"**Debug**: post request took {(datetime.now() - starttime).total_seconds()} seconds")
+    duration = (datetime.now() - starttime).total_seconds()
+    print(f"**Debug**: post request took {duration} seconds")
 
 
 class Telemetry():
@@ -185,6 +214,7 @@ class Telemetry():
         called in Experiment class after the model run is complete"""
         self.run_info.update(get_metadata(experiment.metadata))
         self.run_info.update(get_experiment_run_state(experiment))
+        self.run_info.update(get_manifests(experiment))
 
     def clear_run_info(self):
         self.run_info = {}
@@ -234,4 +264,5 @@ class Telemetry():
             )
         )
         thread.start()
-        print(f"**Debug**: post_telemetry_data took {(datetime.now() - starttime).total_seconds()} seconds")
+        duration = (datetime.now() - starttime).total_seconds()
+        print(f"**Debug**: post_telemetry_data took {duration} seconds")
