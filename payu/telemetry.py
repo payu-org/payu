@@ -34,7 +34,6 @@ def get_metadata(metadata: Metadata) -> Optional[Dict[str, Any]]:
         return {}
 
     return {
-        'experiment_uuid': metadata_dict.get('experiment_uuid', None),
         'experiment_metadata': metadata_dict
     }
 
@@ -65,7 +64,6 @@ def get_scheduler_run_info(scheduler: Scheduler) -> Dict[str, Any]:
     if scheduler_info is not None:
         info['scheduler_job_info'] = scheduler_info
         info['scheduler_type'] = scheduler.name
-        info['scheduler_job_id'] = scheduler_job_id
     return info
 
 
