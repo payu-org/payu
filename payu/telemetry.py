@@ -38,6 +38,18 @@ def get_metadata(metadata: Metadata) -> Optional[Dict[str, Any]]:
     }
 
 
+def get_manifests(experiment) -> Optional[Dict[str, Any]]:
+    """Returns a dictionary of content of input, restart and executable
+    manifest data"""
+    manifests = {}
+    for mf in experiment.manifest.manifests:
+        manifests[mf] = experiment.manifest.manifests[mf].data
+
+    return {
+        "manifests": manifests
+    }
+
+
 def get_experiment_run_state(experiment) -> Optional[Dict[str, Any]]:
     """Returns a dictionary of the experiment run state"""
     info = {
@@ -183,6 +195,7 @@ class Telemetry():
         called in Experiment class after the model run is complete"""
         self.run_info.update(get_metadata(experiment.metadata))
         self.run_info.update(get_experiment_run_state(experiment))
+        self.run_info.update(get_manifests(experiment))
 
     def clear_run_info(self):
         self.run_info = {}
