@@ -2,6 +2,7 @@ from datetime import date, datetime
 import json
 import os
 from pathlib import Path
+import pwd
 import requests
 import threading
 from typing import Any, Dict, Optional
@@ -63,6 +64,10 @@ def get_experiment_run_state(experiment) -> Optional[Dict[str, Any]]:
             (experiment.finish_time - experiment.start_time).total_seconds(),
         'payu_version': payu.__version__,
         'payu_path': os.path.dirname(experiment.payu_path),
+        'payu_config': experiment.config,
+        'user_id':  pwd.getpwuid(os.getuid()).pw_name,
+        'payu_control_path': str(experiment.control_path),
+        'payu_archive_path': str(experiment.archive_path),
     }
     return info
 
