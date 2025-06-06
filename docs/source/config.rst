@@ -172,6 +172,10 @@ configuration.
    modules).
    Various model drivers typically define their own default executable names.
 
+``exe_prefix``
+   Optional string to add in front of the model executable in the MPI run
+   command. This can be useful for configuring profilers or valgrind.
+
 ``submodels``
    If one is running a coupled model containing several submodels, then each
    model is configured individually within a ``submodel`` namespace, such as in
