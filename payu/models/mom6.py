@@ -114,7 +114,7 @@ class Mom6(MomMixin, Fms):
 
         input_nml = f90nml.read(input_fpath)
 
-        if ((self.expt.counter == 0 or self.expt.repeat_run) and
+        if ((self.expt.counter == 0) and
                 self.prior_restart_path is None):
             input_type = 'n'
         else:

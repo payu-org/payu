@@ -133,7 +133,7 @@ class UnifiedModel(Model):
 
 
         # Stage the UM restart file.
-        if self.prior_restart_path and not self.expt.repeat_run:
+        if self.prior_restart_path :
             f_src = os.path.join(self.prior_restart_path, self.restart)
             f_dst = os.path.join(self.work_input_path, self.restart)
 
@@ -170,8 +170,7 @@ class UnifiedModel(Model):
                                              self.restart_calendar_file)
 
         # Modify namelists for a continuation run.
-        if self.prior_restart_path and not self.expt.repeat_run \
-           and os.path.exists(restart_calendar_path):
+        if self.prior_restart_path and os.path.exists(restart_calendar_path):
 
             run_start_date = self.read_calendar_file(restart_calendar_path)
 

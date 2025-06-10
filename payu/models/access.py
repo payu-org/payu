@@ -112,7 +112,7 @@ class Access(Model):
                 caltype = cpl_group['caltype']
 
                 # Get timing information for the new run.
-                if model.prior_restart_path and not self.expt.repeat_run:
+                if model.prior_restart_path:
                     # Read the start date from the restart date namelist.
                     start_date_fpath = os.path.join(
                         model.prior_restart_path,
@@ -202,7 +202,7 @@ class Access(Model):
                 f90nml.write(cpl_nml, nml_work_path + '~')
                 shutil.move(nml_work_path + '~', nml_work_path)
 
-                if  model.prior_restart_path and not self.expt.repeat_run:
+                if  model.prior_restart_path:
                     # Set up and check the cice restart files.
                     model.overwrite_restart_ptr(run_start_date,
                                                 previous_runtime,
