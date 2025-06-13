@@ -12,17 +12,18 @@ import shlex
 import subprocess
 from typing import Any, Dict, Optional
 
+import json
+from tenacity import retry, stop_after_delay
+
 import payu.envmod as envmod
 from payu.fsops import check_exe_path
 from payu.manifest import Manifest
 from payu.schedulers.scheduler import Scheduler
 
-from tenacity import retry, stop_after_delay
-
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
 class PBS(Scheduler):
-    # TODO: __init__
+    name = "pbs"
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
         """Prepare a correct PBS command string"""
@@ -158,7 +159,7 @@ class PBS(Scheduler):
             # Strip off '.rman2'
             jobid = jobid.split('.')[0]
 
-        return(jobid)
+        return jobid
 
     def get_job_info(self) -> Optional[Dict[str, Any]]:
         """
@@ -174,17 +175,30 @@ class PBS(Scheduler):
         info = None
 
         if not jobid == '':
-            info = get_qstat_info('-ft {0}'.format(jobid), 'Job Id:')
-
-        if info is not None:
-            # Select the dict for this job (there should only be one
-            # entry in any case)
-            info = info['Job Id: {}'.format(jobid)]
-
-            # Add the jobid to the dict and then return
-            info['Job_ID'] = jobid
+            info = get_job_info_json(jobid)
 
         return info
+
+
+@retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
+def get_job_info_json(job_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get full job information in JSON format from qstat. It is wrapped in retry
+    with timeout to allow for PBS server to be slow to respond.
+
+    If timeout occurs or invalid json, return None
+    """
+    qstat_output = subprocess.run(
+        ["qstat", "-f", "-F", "json", job_id],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    # Parse the JSON output
+    try:
+        return json.loads(qstat_output.stdout)
+    except json.JSONDecodeError:
+        return None
 
 
 def pbs_env_init():
