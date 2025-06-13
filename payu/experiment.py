@@ -835,6 +835,11 @@ class Experiment(object):
         elif py_libpath not in ld_libpaths.split(':'):
             os.environ['LD_LIBRARY_PATH'] = f'{py_libpath}:{ld_libpaths}'
 
+        # Run archive user script before collation job is submitted
+        archive_script = self.userscripts.get('archive')
+        if archive_script:
+            self.run_userscript(archive_script)
+
         collate_config = self.config.get('collate', {})
         collating = collate_config.get('enable', True)
         if collating:
@@ -852,10 +857,6 @@ class Experiment(object):
                 expt=self.counter
             )
             sp.check_call(shlex.split(cmd))
-
-        archive_script = self.userscripts.get('archive')
-        if archive_script:
-            self.run_userscript(archive_script)
 
         # Ensure postprocessing runs if model not collating
         if not collating:
