@@ -95,7 +95,7 @@ class AccessEsm1p6(Model):
                 if os.path.isfile(f_src):
                     make_symlink(f_src, f_dst)
 
-            if model.model_type == 'cice5':
+            if model.model_type == 'cice5' or model.model_type == 'cice'::
 
                 # Stage the supplemental input files
                 if model.prior_restart_path:
@@ -113,117 +113,116 @@ class AccessEsm1p6(Model):
             cpl_nml = f90nml.read(cpl_fpath)
             cpl_group = cpl_nml[model.cpl_group]
 
-            # Which calendar are we using, noleap or Gregorian.
-            if self.ice_in['setup_nml']['use_leap_years'] :
-                caltype = cal.GREGORIAN
-            else :
-                caltype = cal.NOLEAP
+                if model.ice_in['setup_nml']['use_leap_years'] :
+                    caltype = cal.GREGORIAN
+                else :
+                    caltype = cal.NOLEAP
 
-            # Experiment initialisation date
-            init_date = cal.int_to_date(INIT_DATE)
+                # Experiment initialisation date
+                init_date = cal.int_to_date(INIT_DATE)
 
-            # Get timing information for the new run.
-            if model.prior_restart_path:
+                # Get timing information for the new run.
+                if model.prior_restart_path:
 
-                if model.model_type == 'cice':
-                    # Read the start date from the restart date namelist.
-                    start_date_fpath = os.path.join(
-                        model.prior_restart_path,
-                        model.start_date_nml_name
-                    )
-
-                    try:
-                        start_date_nml = f90nml.read(start_date_fpath)[
-                            model.cpl_group]
-                    except FileNotFoundError:
-                        print(
-                            "Missing restart date file for model "
-                            f"{model.model_type}",
-                            file=sys.stderr
+                    if model.model_type == 'cice':
+                        # Read the start date from the restart date namelist.
+                        start_date_fpath = os.path.join(
+                            model.prior_restart_path,
+                            model.start_date_nml_name
                         )
-                        raise
 
-                    # Experiment initialisation date
-                    init_date = cal.int_to_date(
-                        start_date_nml[model.init_date_key]
+                        try:
+                            start_date_nml = f90nml.read(start_date_fpath)[
+                                model.cpl_group]
+                        except FileNotFoundError:
+                            print(
+                                "Missing restart date file for model "
+                                f"{model.model_type}",
+                                file=sys.stderr
+                            )
+                            raise
+
+                        # Experiment initialisation date
+                        init_date = cal.int_to_date(
+                            start_date_nml[model.init_date_key]
+                        )
+
+                        # Start date of new run
+                        run_start_date = cal.int_to_date(
+                            start_date_nml[model.inidate_key]
+                        )
+
+                    if model.model_type == 'cice5':
+
+                        # Read the start date from last the restart
+                        iced_file = model.get_latest_restart_file()
+                        iced_nc = Dataset(
+                            os.path.join(model.prior_restart_path, iced_file)
+                        )
+                        run_start_date = date(
+                            iced_nc.getncattr('nyr'),
+                            iced_nc.getncattr('month'),
+                            iced_nc.getncattr('mday')
+                        ) + timedelta(seconds=float(iced_nc.getncattr('sec')))
+                        iced_nc.close()
+
+                    # run_start_date must be after initialisation date
+                    if run_start_date < init_date:
+                        msg = (
+                            f"Restart date in cice restarts must not be "
+                            "before initialisation date {INIT_DATE}. "
+                        )
+                        raise ValueError(msg)
+
+                    # Calculate the total number of seconds between the
+                    # initialisation and new run start date,
+                    # to use for the runtime0 field.
+                    previous_runtime = cal.seconds_between_dates(
+                        init_date,
+                        run_start_date,
+                        caltype
                     )
 
-                    # Start date of new run
-                    run_start_date = cal.int_to_date(
-                        start_date_nml[model.inidate_key]
-                    )
+                    cpl_group['jobnum'] = cpl_group['jobnum'] + 1
 
-                if model.model_type == 'cice5':
+                else:
+                    previous_runtime = 0
+                    cpl_group['jobnum'] = 1
+                    run_start_date = init_date
 
-                    # Read the start date from last the restart
-                    iced_file = model.get_latest_restart_file()
-                    iced_nc = Dataset(
-                        os.path.join(model.prior_restart_path, iced_file)
-                    )
-                    run_start_date = date(
-                        iced_nc.getncattr('nyr'),
-                        iced_nc.getncattr('month'),
-                        iced_nc.getncattr('mday')
-                    ) + timedelta(seconds=float(iced_nc.getncattr('sec')))
-                    iced_nc.close()
+                # Set runtime for this run. 
+                if self.expt.runtime:
+                    run_runtime = cal.runtime_from_date(
+                        run_start_date,
+                        self.expt.runtime['years'],
+                        self.expt.runtime['months'],
+                        self.expt.runtime['days'],
+                        self.expt.runtime.get('seconds', 0),
+                        caltype)
+                    if run_runtime <=0 :
+                        raise RuntimeError("invalid runtime specified in config.yaml")
+                else:
+                    raise RuntimeError("runtime missing from config.yaml")
 
-                # run_start_date must be after initialisation date
-                if run_start_date < init_date:
-                    msg = (
-                        f"Restart date in cice restarts must not be "
-                        "before initialisation date {INIT_DATE}. "
-                    )
-                    raise ValueError(msg)
+                # Now write out new run start date and total runtime into the
+                # work directory namelist.
+                cpl_group[model.init_date_key] = cal.date_to_int(init_date)
+                cpl_group[model.inidate_key] = cal.date_to_int(run_start_date)
+                cpl_group[model.runtime0_key] = previous_runtime
+                cpl_group[model.runtime_key] = int(run_runtime)
 
-                # Calculate the total number of seconds between the
-                # initialisation and new run start date,
-                # to use for the runtime0 field.
-                previous_runtime = cal.seconds_between_dates(
-                    init_date,
-                    run_start_date,
-                    caltype
-                )
+                # write coupler namelist
+                nml_work_path = os.path.join(model.work_path, model.cpl_fname)
 
-                cpl_group['jobnum'] = cpl_group['jobnum'] + 1
+                # TODO: Does this need to be split into two steps?
+                f90nml.write(cpl_nml, nml_work_path + '~')
+                shutil.move(nml_work_path + '~', nml_work_path)
 
-            else:
-                previous_runtime = 0
-                cpl_group['jobnum'] = 1
-                run_start_date = init_date
-
-            # Set runtime for this run. 
-            if self.expt.runtime:
-                run_runtime = cal.runtime_from_date(
-                    run_start_date,
-                    self.expt.runtime['years'],
-                    self.expt.runtime['months'],
-                    self.expt.runtime['days'],
-                    self.expt.runtime.get('seconds', 0),
-                    caltype)
-                if run_runtime <=0 :
-                    raise RuntimeError("invalid runtime specified in config.yaml")
-            else:
-                raise RuntimeError("runtime missing from config.yaml")
-
-            # Now write out new run start date and total runtime into the
-            # work directory namelist.
-            cpl_group[model.init_date_key] = cal.date_to_int(init_date)
-            cpl_group[model.inidate_key] = cal.date_to_int(run_start_date)
-            cpl_group[model.runtime0_key] = previous_runtime
-            cpl_group[model.runtime_key] = int(run_runtime)
-
-            # write coupler namelist
-            nml_work_path = os.path.join(model.work_path, model.cpl_fname)
-
-            # TODO: Does this need to be split into two steps?
-            f90nml.write(cpl_nml, nml_work_path + '~')
-            shutil.move(nml_work_path + '~', nml_work_path)
-
-            if  model.prior_restart_path:
-                # Set up and check the cice restart files.
-                model.overwrite_restart_ptr(run_start_date,
-                                            previous_runtime,
-                                            start_date_fpath)
+                if  model.prior_restart_path and model.model_type == 'cice' :
+                    # Set up and check the cice restart files.
+                    model.overwrite_restart_ptr(run_start_date,
+                                                previous_runtime,
+                                                start_date_fpath)
 
 
         # Now change the oasis runtime. This needs to be done after the others.
