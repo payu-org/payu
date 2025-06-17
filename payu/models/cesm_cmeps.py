@@ -148,7 +148,7 @@ class CesmCmeps(Model):
         # Copy configuration files from control path to work path
         self.setup_configuration_files()
 
-        if self.prior_restart_path and not self.expt.repeat_run:
+        if self.prior_restart_path:
             start_type = 'continue'
 
             # Overwrite restart pointer symlinks with copies

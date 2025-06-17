@@ -118,7 +118,7 @@ class AccessEsm1p6(Model):
                 init_date = cal.int_to_date(INIT_DATE)
 
                 # Get timing information for the new run.
-                if model.prior_restart_path and not self.expt.repeat_run:
+                if model.prior_restart_path:
 
                     # Read the start date from last the restart
                     iced_file = model.get_latest_restart_file()
@@ -188,9 +188,17 @@ class AccessEsm1p6(Model):
                 f90nml.write(cpl_nml, nml_work_path + '~')
                 shutil.move(nml_work_path + '~', nml_work_path)
 
+<<<<<<< HEAD
         if run_runtime == 0:
             raise Error()
 
+=======
+                if  model.prior_restart_path:
+                    # Set up and check the cice restart files.
+                    model.overwrite_restart_ptr(run_start_date,
+                                                previous_runtime,
+                                                start_date_fpath)
+>>>>>>> origin/576-repeat_run
 
         # Now change the oasis runtime. This needs to be done after the others.
         for model in self.expt.models:
