@@ -13,7 +13,8 @@ from payu.metadata import Metadata
 from payu.schedulers import Scheduler
 
 # Environment variable for external telemetry configuration file
-TELEMETRY_CONFIG = 'PAYU_TELEMETRY_CONFIG_PATH'
+TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG_PATH"
+TELEMETRY_CONFIG_VERSION = "1-0-0"
 
 # Required telemetry configuration fields
 TELEMETRY_URL_FIELD = "telemetry_url"
@@ -88,7 +89,8 @@ def get_external_telemetry_config() -> Optional[Dict[str, Any]]:
     """Loads the external telemetry configuration file.
     If a valid file does not exist, return None"""
     # Check path to telemetry config file exists
-    config_path = Path(os.environ[TELEMETRY_CONFIG])
+    config_dir = Path(os.environ[TELEMETRY_CONFIG])
+    config_path = config_dir / f"{TELEMETRY_CONFIG_VERSION}.json"
     if not (config_path.exists() and config_path.is_file()):
         warnings.warn(
             f"No config file found at {TELEMETRY_CONFIG}: {config_path}. "
