@@ -62,9 +62,9 @@ class Access(Model):
                 model.runtime0_key = 'runtime0'
                 # Simulation length in seconds for new run
                 model.runtime_key = "runtime"
-            
+
             if model.model_type =='cice5':
-                raise Error("cice5 is not supported with access driver, use access-esm1.6 driver")
+                raise RuntimeError("cice5 is not supported with access driver, use access-esm1.6 driver")
 
 
     def setup(self):
