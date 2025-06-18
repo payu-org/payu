@@ -1,9 +1,11 @@
 from datetime import datetime
 import json
 import os
+from pathlib import Path
 
 import pytest
 from unittest.mock import patch, Mock
+import jsonschema
 
 from payu.telemetry import get_external_telemetry_config, post_telemetry_data
 from payu.telemetry import Telemetry
@@ -15,16 +17,27 @@ from payu.telemetry import (
     TELEMETRY_TOKEN_FIELD,
 )
 
+TELEMETRY_1_0_0_SCHEMA_PATH = (
+    Path(__file__).parent / "resources" / "schema" / "telemetry" / "1-0-0.json"
+)
+
 
 @pytest.fixture
 def setup_env(tmp_path):
-    config_path = tmp_path / "telemetry_config.json"
-    os.environ[TELEMETRY_CONFIG] = str(config_path)
-    return config_path
+    config_dir = tmp_path / "telemetry_config"
+    os.environ[TELEMETRY_CONFIG] = str(config_dir)
+    return config_dir
 
 
-def test_get_external_telemetry_config_valid(setup_env):
-    config_path = setup_env
+@pytest.fixture
+def config_path(tmp_path):
+    """Returns the path to the telemetry config file."""
+    config_dir = tmp_path / "telemetry_config"
+    config_dir.mkdir()
+    return config_dir / "1-0-0.json"
+
+
+def test_get_external_telemetry_config_valid(setup_env, config_path):
     config_data = {
         TELEMETRY_URL_FIELD: "some/server/url",
         HOSTNAME_FIELD: "gadi",
@@ -38,9 +51,7 @@ def test_get_external_telemetry_config_valid(setup_env):
     assert result == config_data
 
 
-def test_get_external_telemetry_config_no_file(setup_env):
-    config_path = setup_env
-
+def test_get_external_telemetry_config_no_file(setup_env, config_path):
     expected_warning = (
         f"No config file found at {TELEMETRY_CONFIG}: {config_path}. "
         "Skipping posting telemetry"
@@ -50,8 +61,7 @@ def test_get_external_telemetry_config_no_file(setup_env):
         assert result is None
 
 
-def test_get_external_telemetry_config_missing_fields(setup_env):
-    config_path = setup_env
+def test_get_external_telemetry_config_missing_fields(setup_env, config_path):
     config_data = {
         TELEMETRY_URL_FIELD: "some/server/url",
         TELEMETRY_SERVICE_NAME_FIELD: "payu",
@@ -70,8 +80,7 @@ def test_get_external_telemetry_config_missing_fields(setup_env):
         assert result is None
 
 
-def test_get_external_telemetry_config_invalid_json(setup_env):
-    config_path = setup_env
+def test_get_external_telemetry_config_invalid_json(setup_env, config_path):
     with open(config_path, 'w') as f:
         f.write("{invalid_json")
 
@@ -129,10 +138,9 @@ def test_telemetry_not_enabled_no_environment_config(monkeypatch):
     assert not telemetry.telemetry_enabled
 
 
-def test_telemetry_not_enabled_config(monkeypatch, tmp_path):
+def test_telemetry_not_enabled_config(monkeypatch, tmp_path, config_path):
     # Set up the environment variable
-    config_path = tmp_path / "telemetry_config.json"
-    monkeypatch.setenv(TELEMETRY_CONFIG, str(config_path))
+    monkeypatch.setenv(TELEMETRY_CONFIG, str(config_path.parent))
 
     config = {
         "telemetry": {
@@ -143,18 +151,20 @@ def test_telemetry_not_enabled_config(monkeypatch, tmp_path):
     assert not telemetry.telemetry_enabled
 
 
-def test_telemetry_enabled(monkeypatch, tmp_path):
+def test_telemetry_enabled(monkeypatch, tmp_path, config_path):
     # Set up the environment variable
-    config_path = tmp_path / "telemetry_config.json"
-    monkeypatch.setenv(TELEMETRY_CONFIG, str(config_path))
+    monkeypatch.setenv(TELEMETRY_CONFIG, str(config_path.parent))
 
     telemetry = Telemetry(config={}, scheduler=None)
     assert telemetry.telemetry_enabled
 
 
 @patch('payu.__version__', new='2.0.0')
-def test_telemetry_payu_run(monkeypatch, tmp_path):
-    """Test whole telemetry build run info and record run"""
+def test_telemetry_payu_run(monkeypatch, tmp_path, config_path):
+    """Test whole telemetry build run info and record run
+
+    It's a bit of complex test as it mocks a lot of class objects and methods
+    """
 
     # Mock out experiment values
     experiment = Mock()
@@ -167,24 +177,68 @@ def test_telemetry_payu_run(monkeypatch, tmp_path):
     experiment.payu_path = "path/to/testenv/payu"
     experiment.control_path = "path/to/control/dir"
     experiment.archive_path = "path/to/archive/dir"
+    experiment.config = {"model": "TEST_MODEL"}
+
+    # Mock manifests
+    test_exe_manifest = {
+        "work/TEST_EXE1": {
+            "fullpath": "/path/to/work/TEST_EXE1",
+            "hashes": {
+                "binhash": "529d8a94bd3c2eac0f54264e2e133d91",
+                "md5": "85d681c54553914b7baa3cf7e02bb299"
+            }
+        }
+    }
+    test_input_manifest = {
+        "work/TEST_INPUT1": {
+            "fullpath": "/path/to/input/TEST_INPUT1",
+            "hashes": {
+                "binhash": "a1b2c3d4e5f67890a1b2c3d4e5f67890",
+                "md5": "1234567890abcdef1234567890abcdef"
+            }
+        },
+        "work/TEST_INPUT2": {
+            "fullpath": "/path/to/input/TEST_INPUT2",
+            "hashes": {
+                "binhash": "0987654321fedcba0987654321fedc",
+                "md5": "fedcba0987654321fedcba0987654321"
+            }
+        }
+    }
+    test_restart_manifest = {}
+    exe_manifest = Mock()
+    exe_manifest.data = test_exe_manifest
+    restart_manifest = Mock()
+    restart_manifest.data = test_restart_manifest
+    input_manifest = Mock()
+    input_manifest.data = test_input_manifest
+    manifests = Mock()
+    manifests.manifests = {
+        "exe": exe_manifest,
+        "restart": restart_manifest,
+        "input": input_manifest,
+    }
+    experiment.manifest = manifests
 
     # Mock metadata
-    metadata = Mock()
-    metadata.read_file.return_value = {
+    test_metadata = {
         "experiment_uuid": "test-uuid",
         "created": "2025-01-01",
         "name": "test-expt-name",
         "model": "test-model"
     }
+    metadata = Mock()
+    metadata.read_file.return_value = test_metadata
     experiment.metadata = metadata
 
     # Mock scheduler
-    scheduler = Mock()
-    scheduler.get_job_id.return_value = "test-job-id"
-    scheduler.get_job_info.return_value = {
+    test_job_info = {
         "job_id": "test-job-id",
         "project": "test-project"
     }
+    scheduler = Mock()
+    scheduler.get_job_id.return_value = "test-job-id"
+    scheduler.get_job_info.return_value = test_job_info
     scheduler.name = "test-scheduler"
 
     # Create telemetry config and environment variable
@@ -195,10 +249,9 @@ def test_telemetry_payu_run(monkeypatch, tmp_path):
         TELEMETRY_TOKEN_FIELD: "some_token",
     }
 
-    telemetry_config_path = tmp_path / "telemetry_config.json"
-    with open(telemetry_config_path, 'w') as f:
+    with open(config_path, 'w') as f:
         json.dump(telemetry_config, f)
-    monkeypatch.setenv(TELEMETRY_CONFIG, str(telemetry_config_path))
+    monkeypatch.setenv(TELEMETRY_CONFIG, str(config_path.parent))
 
     # Setup Telemetry class
     telemetry = Telemetry(config={}, scheduler=scheduler)
@@ -208,17 +261,16 @@ def test_telemetry_payu_run(monkeypatch, tmp_path):
     job_info_filepath = tmp_path / "job.json"
     telemetry.set_run_info_filepath(job_info_filepath)
 
-    # Mock threading to call the target function directly
+    # Mock threading to call post_telemetry_data directly
     with patch('threading.Thread') as mock_thread_cls:
         mock_thread = Mock()
         mock_thread_cls.return_value = mock_thread
 
-        # Set up the side effect to call the target function directly
         def start_side_effect():
             # Get the args and kwargs passed to Thread
             thread_args = mock_thread_cls.call_args[1].get('args', ())
             thread_kwargs = mock_thread_cls.call_args[1].get('kwargs', {})
-            # Call the target function directly
+            # Call the post_telemetry_data function directly
             post_telemetry_data(*thread_args, **thread_kwargs)
 
         mock_thread.start.side_effect = start_side_effect
@@ -239,7 +291,6 @@ def test_telemetry_payu_run(monkeypatch, tmp_path):
             sent_data = json.loads(kwargs.get('data'))
 
     record = sent_data["telemetry"]
-    assert record['experiment_uuid'] == 'test-uuid'
     assert record['payu_run_id'] == 'test-commit-hash'
     assert record['payu_current_run'] == 0
     assert record['payu_n_runs'] == 0
@@ -250,6 +301,19 @@ def test_telemetry_payu_run(monkeypatch, tmp_path):
     assert record['payu_version'] == '2.0.0'
     assert record['payu_path'] == 'path/to/testenv'
     assert record['hostname'] == 'test-host'
+    assert record['payu_control_path'] == 'path/to/control/dir'
+    assert record['payu_archive_path'] == 'path/to/archive/dir'
+    assert record['experiment_metadata'] == test_metadata
+    assert record['manifests']['exe'] == test_exe_manifest
+    assert record['manifests']['input'] == test_input_manifest
+    assert record['manifests']['restart'] == test_restart_manifest
+    assert record['payu_config'] == {"model": "TEST_MODEL"}
+    assert record['scheduler_job_info'] == test_job_info
+
+    # Validate sent record against schema for top level fields
+    with open(TELEMETRY_1_0_0_SCHEMA_PATH, "r") as f:
+        schema = json.load(f)
+    jsonschema.validate(sent_data, schema)
 
     telemetry.clear_run_info()
     assert telemetry.run_info == {}

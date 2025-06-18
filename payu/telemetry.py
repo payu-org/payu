@@ -13,7 +13,7 @@ from payu.metadata import Metadata
 from payu.schedulers import Scheduler
 
 # Environment variable for external telemetry configuration file
-TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG_PATH"
+TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG"
 TELEMETRY_CONFIG_VERSION = "1-0-0"
 
 # Required telemetry configuration fields
@@ -22,7 +22,12 @@ TELEMETRY_TOKEN_FIELD = "telemetry_token"
 TELEMETRY_SERVICE_NAME_FIELD = "telemetry_service_name"
 HOSTNAME_FIELD = "hostname"
 
-TELEMETRY_CONFIG_FIELDS = [TELEMETRY_URL_FIELD, TELEMETRY_TOKEN_FIELD, TELEMETRY_SERVICE_NAME_FIELD, HOSTNAME_FIELD]
+TELEMETRY_CONFIG_FIELDS = [
+    TELEMETRY_URL_FIELD,
+    TELEMETRY_TOKEN_FIELD,
+    TELEMETRY_SERVICE_NAME_FIELD,
+    HOSTNAME_FIELD
+]
 
 REQUEST_TIMEOUT = 10
 
@@ -160,15 +165,22 @@ def post_telemetry_data(telemetry_url: str,
     starttime = datetime.now()
     print(f"**Debug**: posting telemetry to {telemetry_url}")
     try:
-        response = requests.post(telemetry_url, data=json.dumps(data), headers=headers, timeout=request_timeout)
+        response = requests.post(
+            telemetry_url,
+            data=json.dumps(data),
+            headers=headers,
+            timeout=request_timeout
+        )
         if response.status_code >= 400:
             warnings.warn(
-                f"Error posting telemetry: {response.status_code} - {response.json()}"
+                f"Error posting telemetry: Status {response.status_code} - "
+                f"{response.json()}"
             )
     except Exception as e:
         warnings.warn(f"Error posting telemetry: {e}")
 
-    print(f"**Debug**: post request took {(datetime.now() - starttime).total_seconds()} seconds")
+    duration = (datetime.now() - starttime).total_seconds()
+    print(f"**Debug**: post request took {duration} seconds")
 
 
 class Telemetry():
@@ -252,4 +264,5 @@ class Telemetry():
             )
         )
         thread.start()
-        print(f"**Debug**: post_telemetry_data took {(datetime.now() - starttime).total_seconds()} seconds")
+        duration = (datetime.now() - starttime).total_seconds()
+        print(f"**Debug**: post_telemetry_data took {duration} seconds")
