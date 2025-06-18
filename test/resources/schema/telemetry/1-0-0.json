@@ -1,0 +1,114 @@
+{
+    "$id": "https://raw.githubusercontent.com/ACCESS-NRI/schema/main/au.org.access-nri/tracking_services/payu/telemetry/1-0-0.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Telemetry data for payu runs",
+    "description": "Schema for JSON payload sent to tracking_services payu database",
+    "type": "object",
+    "properties": {
+        "service": {
+            "type": "string"
+        },
+        "version": {
+            "type": "string"
+        },
+        "telemetry": {
+            "type": "object",
+            "properties": {
+                "experiment_metadata": {
+                    "type": "object"
+                },
+                "payu_run_id": {
+                    "type": "string"
+                },
+                "payu_current_run": {
+                    "type": "integer"
+                },
+                "payu_n_runs": {
+                    "type": "integer"
+                },
+                "payu_job_status": {
+                    "type": "integer"
+                },
+                "payu_start_time": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "payu_finish_time": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "payu_walltime_seconds": {
+                    "type": "number"
+                },
+                "payu_version": {
+                    "type": "string"
+                },
+                "payu_path": {
+                    "type": "string"
+                },
+                "scheduler_job_info": {
+                    "type": "object"
+                },
+                "scheduler_type": {
+                    "type": "string"
+                },
+                "hostname": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "payu_control_path": {
+                    "type": "string"
+                },
+                "payu_archive_path": {
+                    "type": "string"
+                },
+                "payu_config": {
+                    "type": "object"
+                },
+                "manifests": {
+                    "type": "object",
+                    "properties": {
+                        "input": {
+                            "type": "object"
+                        },
+                        "restart": {
+                            "type": "object"
+                        },
+                        "exe": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "input",
+                        "restart",
+                        "exe"
+                    ]
+                }
+            },
+            "required": [
+                "payu_run_id",
+                "payu_current_run",
+                "payu_n_runs",
+                "payu_job_status",
+                "payu_start_time",
+                "payu_finish_time",
+                "payu_walltime_seconds",
+                "payu_version",
+                "payu_path",
+                "hostname",
+                "user_id",
+                "payu_control_path",
+                "payu_archive_path",
+                "manifests",
+                "payu_config"
+            ]
+        }
+    },
+    "required": [
+        "service",
+        "version",
+        "telemetry"
+    ]
+}
