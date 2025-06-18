@@ -95,7 +95,7 @@ class AccessEsm1p6(Model):
                 if os.path.isfile(f_src):
                     make_symlink(f_src, f_dst)
 
-            if model.model_type == 'cice5' or model.model_type == 'cice'::
+            if model.model_type == 'cice5' or model.model_type == 'cice':
 
                 # Stage the supplemental input files
                 if model.prior_restart_path:

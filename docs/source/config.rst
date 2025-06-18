@@ -514,6 +514,7 @@ Experiment Tracking
 Miscellaneous
 =============
 
+.. _restart:
 ``restart``
    Specify the full path to a restart directory from which to start the run.
    This is known as a "warm start". This option has no effect if there is an
@@ -576,8 +577,10 @@ Miscellaneous
    command-line flag. 
 
 ``repeat``
-   Ignore any restart files and repeat the initial run upon resubmission. This
-   is generally only used for testing purposes, such as bit reproducibility.
+   Remove any archived restart files and repeat the initial run upon resubmission. 
+   The repeated runs start from the same :ref:`user-defined restart <restart>` or 
+   initial condition. This is generally only used for testing purposes, such as bit 
+   reproducibility.
 
 .. _configuring-modules:
 ``modules``
