@@ -106,12 +106,12 @@ class AccessEsm1p6(Model):
                         if os.path.isfile(f_src):
                             make_symlink(f_src, f_dst)
 
-            # Update the supplemental OASIS namelists
-            # cpl_nml is the coupling namelist copied from the control to
-            # work directory.
-            cpl_fpath = os.path.join(model.work_path, model.cpl_fname)
-            cpl_nml = f90nml.read(cpl_fpath)
-            cpl_group = cpl_nml[model.cpl_group]
+                # Update the supplemental OASIS namelists
+                # cpl_nml is the coupling namelist copied from the control to
+                # work directory.
+                cpl_fpath = os.path.join(model.work_path, model.cpl_fname)
+                cpl_nml = f90nml.read(cpl_fpath)
+                cpl_group = cpl_nml[model.cpl_group]
 
                 if model.ice_in['setup_nml']['use_leap_years'] :
                     caltype = cal.GREGORIAN
