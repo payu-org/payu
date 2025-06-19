@@ -15,6 +15,7 @@ from payu.telemetry import (
     HOSTNAME_FIELD,
     TELEMETRY_SERVICE_NAME_FIELD,
     TELEMETRY_TOKEN_FIELD,
+    TELEMETRY_HOST_FIELD,
 )
 
 TELEMETRY_1_0_0_SCHEMA_PATH = (
@@ -43,6 +44,7 @@ def test_get_external_telemetry_config_valid(setup_env, config_path):
         HOSTNAME_FIELD: "gadi",
         TELEMETRY_SERVICE_NAME_FIELD: "payu",
         TELEMETRY_TOKEN_FIELD: "some_token",
+        TELEMETRY_HOST_FIELD: "some_host",
     }
     with open(config_path, 'w') as f:
         json.dump(config_data, f)
@@ -247,6 +249,7 @@ def test_telemetry_payu_run(monkeypatch, tmp_path, config_path):
         HOSTNAME_FIELD: "test-host",
         TELEMETRY_SERVICE_NAME_FIELD: "payu",
         TELEMETRY_TOKEN_FIELD: "some_token",
+        TELEMETRY_HOST_FIELD: "some_host",
     }
 
     with open(config_path, 'w') as f:
@@ -288,7 +291,16 @@ def test_telemetry_payu_run(monkeypatch, tmp_path, config_path):
             # Get data from the mock request
             assert mock_post.called
             args, kwargs = mock_post.call_args
-            sent_data = json.loads(kwargs.get('data'))
+
+    sent_data = json.loads(kwargs.get('data'))
+    assert args == ("some/server/url",)
+    assert kwargs.get('headers') == {
+        'Content-type': 'application/json',
+        'Authorization': 'Token some_token',
+        'HOST': 'some_host',
+    }
+    assert kwargs.get('timeout') == 10
+    assert kwargs.get('verify') is False
 
     record = sent_data["telemetry"]
     assert record['payu_run_id'] == 'test-commit-hash'
