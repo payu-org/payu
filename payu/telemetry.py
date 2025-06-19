@@ -17,17 +17,13 @@ TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG"
 TELEMETRY_CONFIG_VERSION = "1-0-0"
 
 # Required telemetry configuration fields
-TELEMETRY_URL_FIELD = "telemetry_url"
-TELEMETRY_TOKEN_FIELD = "telemetry_token"
-TELEMETRY_SERVICE_NAME_FIELD = "telemetry_service_name"
-HOSTNAME_FIELD = "hostname"
-
-TELEMETRY_CONFIG_FIELDS = [
-    TELEMETRY_URL_FIELD,
-    TELEMETRY_TOKEN_FIELD,
-    TELEMETRY_SERVICE_NAME_FIELD,
-    HOSTNAME_FIELD
-]
+TELEMETRY_CONFIG_FIELDS = {
+    "URL" : "telemetry_url",
+    "TOKEN" : "telemetry_token",
+    "SERVICE_NAME": "telemetry_service_name",
+    "HOST": "telemetry_host",
+    "HOSTNAME": "hostname",
+}
 
 REQUEST_TIMEOUT = 10
 
@@ -117,59 +113,64 @@ def get_external_telemetry_config() -> Optional[Dict[str, Any]]:
         return None
 
     # Check for required fields in the telemetry configuration
-    for field in TELEMETRY_CONFIG_FIELDS:
-        if field not in telemetry_config:
-            warnings.warn(
-                f"Required field '{field}' not found in configuration file "
-                f"at {TELEMETRY_CONFIG}: {config_path}. "
-                "Skipping posting telemetry"
-            )
-            return None
+    missing_fields = TELEMETRY_CONFIG_FIELDS.keys() - telemetry_config.keys()
+    if missing_fields:
+        warnings.warn(
+            f"Required field(s) '{missing_fields}' not found in configuration file "
+            f"at {TELEMETRY_CONFIG}: {config_path}. "
+            "Skipping posting telemetry"
+        )
+        return None
 
     return telemetry_config
 
 
-def post_telemetry_data(telemetry_url: str,
-                        telemetry_token: Dict[str, Any],
-                        telemetry_data: Dict[str, Any],
-                        telemetry_service_name: str,
+def post_telemetry_data(url: str,
+                        token: Dict[str, Any],
+                        data: Dict[str, Any],
+                        service_name: str,
+                        host: str,
                         request_timeout: int = REQUEST_TIMEOUT,
                         ) -> None:
     """Posts telemetry data
 
     Parameters
     ----------
-    telemetry_url: str
+    url: str
         Endpoint for the telemetry
-    telemetry_token: str
+    token: str
         Header token for the telemetry request
-    telemetry_data: Dict[str, Any]
-        Unstructured run information
-    telemetry_service_name: str
+    data: Dict[str, Any]
+        Data to be posted in the telemetry request
+    service_name: str
         Service name for the telemetry record
+    host: str
+        Host for the telemetry record header
     request_timeout: int, default REQUEST_TIMEOUT
         Timeout while waiting for request
     """
     headers = {
         'Content-type': 'application/json',
-        'Authorization': 'Token ' + telemetry_token
+        'Authorization': 'Token ' + token,
+        'HOST': host,
     }
 
     data = {
-        "service": telemetry_service_name,
+        "service": service_name,
         "version": TELEMETRY_VERSION,
         "date": date.today().isoformat(),
-        "telemetry": telemetry_data
+        "telemetry": data
     }
 
     starttime = datetime.now()
-    print(f"**Debug**: posting telemetry to {telemetry_url}")
+    print(f"**Debug**: posting telemetry to {url}")
     try:
         response = requests.post(
-            telemetry_url,
+            url,
             data=json.dumps(data),
             headers=headers,
-            timeout=request_timeout
+            timeout=request_timeout,
+            verify=False
         )
         if response.status_code >= 400:
             warnings.warn(
@@ -256,12 +257,13 @@ class Telemetry():
         # Using threading to run the one post request in the background
         thread = threading.Thread(
             target=post_telemetry_data,
-            args=(
-                external_config[TELEMETRY_URL_FIELD],
-                external_config[TELEMETRY_TOKEN_FIELD],
-                self.run_info,
-                external_config[TELEMETRY_SERVICE_NAME_FIELD]
-            )
+            kwargs= {
+                'url': external_config[TELEMETRY_CONFIG_FIELD['URL']],
+                'token': external_config[TELEMETRY_CONFIG_FIELD['TOKEN']],
+                'data': self.run_info,
+                'service_name': external_config[TELEMETRY_CONFIG_FIELD['SERVICE_NAME']],
+                'host': external_config[TELEMETRY_CONFIG_FIELD['TELEMETRY_HOST']],
+            },
         )
         thread.start()
         duration = (datetime.now() - starttime).total_seconds()

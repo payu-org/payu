@@ -235,36 +235,6 @@ def pbs_env_init():
         sys.exit(1)
 
 
-# Wrap this in retry from tenancity. Keep trying for 10 seconds and
-# even if still fails return None
-@retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
-def get_qstat_info(qflag, header, projects=None, users=None):
-    # qstat command seems to be accessible from the path on PBS jobs
-    cmd = f'qstat {qflag}'
-
-    cmd = shlex.split(cmd)
-    output = subprocess.check_output(cmd)
-    if sys.version_info.major >= 3:
-        output = output.decode()
-
-    entries = (e for e in output.split('{}: '.format(header)) if e)
-
-    # Immediately remove any non-project entries
-    if projects or users:
-        entries = (e for e in entries
-                   if any('project = {}'.format(p) in e for p in projects)
-                   or any('Job_Owner = {}'.format(u) in e for u in users))
-
-    attribs = ((k.split('.')[0], v.replace('\n\t', '').split('\n'))
-               for k, v in (e.split('\n', 1) for e in entries))
-
-    status = {k: dict((kk.strip(), vv.strip())
-              for kk, vv in (att.split('=', 1) for att in v if att))
-              for k, v in attribs}
-
-    return status
-
-
 def encode_mount(mount):
     """
     Turn a mount point point into the keyword used to specify storages,
