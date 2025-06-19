@@ -44,7 +44,7 @@ class AccessEsm1p6(Model):
                 model.ice_nml_fname = 'cice_in.nml'
 
                 model.access_restarts = ['mice.nc']
-                model.copy_restarts = True 
+                model.copy_restarts = True
 
                 model.set_timestep = model.set_access_timestep
 
@@ -85,7 +85,7 @@ class AccessEsm1p6(Model):
 
         for model in self.expt.models:
 
-            if  model.model_type == 'cice' or model.model_type == 'cice5':
+            if model.model_type == 'cice' or model.model_type == 'cice5':
 
                 # Horrible hack to make a link to o2i.nc in the
                 # work/ice/RESTART directory
@@ -96,7 +96,7 @@ class AccessEsm1p6(Model):
                 if os.path.isfile(f_src):
                     make_symlink(f_src, f_dst)
 
-            if model.model_type == 'cice5' or model.model_type == 'cice':
+            if model.model_type == 'cice5':
 
                 # Stage the supplemental input files
                 if model.prior_restart_path:
@@ -107,6 +107,7 @@ class AccessEsm1p6(Model):
                         if os.path.isfile(f_src):
                             make_symlink(f_src, f_dst)
 
+            if model.model_type == 'cice' or model.model_type == 'cice5':
                 # Update the supplemental OASIS namelists
                 # cpl_nml is the coupling namelist copied from the control to
                 # work directory.
@@ -161,7 +162,7 @@ class AccessEsm1p6(Model):
                             os.path.join(model.prior_restart_path, iced_file)
                         )
                         run_start_date = date(
-                            iced_nc.getncattr('nyr'),
+                            iced_nc.getncattr('year'),
                             iced_nc.getncattr('month'),
                             iced_nc.getncattr('mday')
                         ) + timedelta(seconds=float(iced_nc.getncattr('sec')))
@@ -170,8 +171,9 @@ class AccessEsm1p6(Model):
                     # run_start_date must be after initialisation date
                     if run_start_date < init_date:
                         msg = (
-                            f"Restart date in cice restarts must not be "
-                            "before initialisation date {INIT_DATE}. "
+                            f"Restart date ({run_start_date}) in "
+                            f"cice restart ({iced_file}) must not be "
+                            "before initialisation date ({INIT_DATE}). "
                         )
                         raise ValueError(msg)
 
@@ -224,7 +226,6 @@ class AccessEsm1p6(Model):
                     model.overwrite_restart_ptr(run_start_date,
                                                 previous_runtime,
                                                 start_date_fpath)
-
 
         # Now change the oasis runtime. This needs to be done after the others.
         for model in self.expt.models:
