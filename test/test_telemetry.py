@@ -24,18 +24,17 @@ TELEMETRY_1_0_0_SCHEMA_PATH = (
 
 
 @pytest.fixture
-def setup_env(tmp_path):
-    config_dir = tmp_path / "telemetry_config"
-    os.environ[TELEMETRY_CONFIG] = str(config_dir)
-    return config_dir
-
-
-@pytest.fixture
 def config_path(tmp_path):
-    """Returns the path to the telemetry config file."""
+    """Returns the path to the telemetry config file"""
     config_dir = tmp_path / "telemetry_config"
     config_dir.mkdir()
     return config_dir / "1-0-0.json"
+
+
+@pytest.fixture
+def setup_env(config_path, monkeypatch):
+    """Set the telemetry config environment variable for the test"""
+    monkeypatch.setenv(TELEMETRY_CONFIG, str(config_path.parent))
 
 
 def test_get_external_telemetry_config_valid(setup_env, config_path):
@@ -140,10 +139,7 @@ def test_telemetry_not_enabled_no_environment_config(monkeypatch):
     assert not telemetry.telemetry_enabled
 
 
-def test_telemetry_not_enabled_config(monkeypatch, tmp_path, config_path):
-    # Set up the environment variable
-    monkeypatch.setenv(TELEMETRY_CONFIG, str(config_path.parent))
-
+def test_telemetry_not_enabled_config(tmp_path, setup_env):
     config = {
         "telemetry": {
             "enable": False
@@ -153,22 +149,19 @@ def test_telemetry_not_enabled_config(monkeypatch, tmp_path, config_path):
     assert not telemetry.telemetry_enabled
 
 
-def test_telemetry_enabled(monkeypatch, tmp_path, config_path):
-    # Set up the environment variable
-    monkeypatch.setenv(TELEMETRY_CONFIG, str(config_path.parent))
-
+def test_telemetry_enabled(tmp_path, setup_env):
     telemetry = Telemetry(config={}, scheduler=None)
     assert telemetry.telemetry_enabled
 
 
 @patch('payu.__version__', new='2.0.0')
-def test_telemetry_payu_run(monkeypatch, tmp_path, config_path):
+def test_telemetry_payu_run(tmp_path, config_path, setup_env):
     """Test whole telemetry build run info and record run
 
     It's a bit of complex test as it mocks a lot of class objects and methods
     """
 
-    # Mock out experiment values
+    # Mock the experiment values
     experiment = Mock()
     experiment.run_id = "test-commit-hash"
     experiment.counter = 0
@@ -254,7 +247,6 @@ def test_telemetry_payu_run(monkeypatch, tmp_path, config_path):
 
     with open(config_path, 'w') as f:
         json.dump(telemetry_config, f)
-    monkeypatch.setenv(TELEMETRY_CONFIG, str(config_path.parent))
 
     # Setup Telemetry class
     telemetry = Telemetry(config={}, scheduler=scheduler)
