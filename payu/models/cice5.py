@@ -14,7 +14,9 @@ import os
 
 from payu.models.cice import Cice
 from payu.fsops import mkdir_p
-
+import payu.calendar as cal
+from netCDF4 import Dataset
+from datetime import date
 
 class Cice5(Cice):
 
@@ -55,6 +57,12 @@ class Cice5(Cice):
         # Force creation of a dump (restart) file at end of run
         self.ice_in['setup_nml']['dump_last'] = True
 
+        # is it a gregorian or noleap calendar
+        if self.ice_in['setup_nml']['use_leap_years'] :
+            self.caltype = cal.GREGORIAN
+        else :
+            self.caltype = cal.NOLEAP
+
         super(Cice5, self).setup()
 
         # Make log dir
@@ -85,6 +93,30 @@ class Cice5(Cice):
         # TODO: Figure out some way to move this to the ACCESS driver
         # Re-read ice timestep and move this over there
         self.set_local_timestep(t_step)
+
+    def get_restart_date(self):
+        """
+        Read the start date from the last restart file
+        """
+        iced_file = self.get_latest_restart_file()
+        iced_nc = Dataset(
+            os.path.join(self.prior_restart_path, iced_file)
+        )
+        run_start_date = date(
+            iced_nc.getncattr('year'),
+            iced_nc.getncattr('month'),
+            iced_nc.getncattr('mday')
+        )
+        if iced_nc.getncattr('sec') != 0 :
+            msg = (
+                f"Restart attribute sec in "
+                f"cice restart ({iced_file}) must be 0."
+                "All runs must start at midnight."
+                )
+            raise ValueError(msg)
+        iced_nc.close()
+
+        return run_start_date
 
     def _calc_runtime(self):
         """

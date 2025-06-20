@@ -144,7 +144,7 @@ class Access(Model):
                     previous_runtime = cal.seconds_between_dates(
                         init_date,
                         run_start_date,
-                        caltype
+                        model.caltype
                     )
 
                 else:
@@ -163,7 +163,7 @@ class Access(Model):
                         self.expt.runtime['months'],
                         self.expt.runtime['days'],
                         self.expt.runtime.get('seconds', 0),
-                        caltype)
+                        model.caltype)
                 else:
                     run_runtime = cpl_group[model.runtime_key]
 

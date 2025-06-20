@@ -18,7 +18,6 @@ import sys
 
 # Extensions
 import f90nml
-from netCDF4 import Dataset
 from datetime import date, timedelta
 
 # Local
@@ -27,7 +26,8 @@ from payu.models.model import Model
 import payu.calendar as cal
 
 INIT_DATE = 10101 #aka 0001/01/01
-#this is the reference date for time calculations in CICE5
+# this is the reference date for time calculations in CICE5, 
+# see https://github.com/ACCESS-NRI/cice5/issues/25
 
 class AccessEsm1p6(Model):
 
@@ -96,6 +96,13 @@ class AccessEsm1p6(Model):
                 if os.path.isfile(f_src):
                     make_symlink(f_src, f_dst)
 
+                # Update the supplemental OASIS namelists
+                # cpl_nml is the coupling namelist copied from the control to
+                # work directory.
+                cpl_fpath = os.path.join(model.work_path, model.cpl_fname)
+                cpl_nml = f90nml.read(cpl_fpath)
+                cpl_group = cpl_nml[model.cpl_group]
+
             if model.model_type == 'cice5':
 
                 # Stage the supplemental input files
@@ -107,18 +114,11 @@ class AccessEsm1p6(Model):
                         if os.path.isfile(f_src):
                             make_symlink(f_src, f_dst)
 
-            if model.model_type == 'cice' or model.model_type == 'cice5':
-                # Update the supplemental OASIS namelists
-                # cpl_nml is the coupling namelist copied from the control to
-                # work directory.
-                cpl_fpath = os.path.join(model.work_path, model.cpl_fname)
-                cpl_nml = f90nml.read(cpl_fpath)
-                cpl_group = cpl_nml[model.cpl_group]
+            # find calendar, cice5 is determined in cice5 driver
+            if model.model_type == 'cice':
+                model.caltype = cpl_nml[model.cpl_group]['caltype']
 
-                if model.ice_in['setup_nml']['use_leap_years'] :
-                    caltype = cal.GREGORIAN
-                else :
-                    caltype = cal.NOLEAP
+            if model.model_type == 'cice' or model.model_type == 'cice5':
 
                 # Experiment initialisation date
                 init_date = cal.int_to_date(INIT_DATE)
@@ -154,25 +154,14 @@ class AccessEsm1p6(Model):
                             start_date_nml[model.inidate_key]
                         )
 
-                    if model.model_type == 'cice5':
-
-                        # Read the start date from last the restart
-                        iced_file = model.get_latest_restart_file()
-                        iced_nc = Dataset(
-                            os.path.join(model.prior_restart_path, iced_file)
-                        )
-                        run_start_date = date(
-                            iced_nc.getncattr('year'),
-                            iced_nc.getncattr('month'),
-                            iced_nc.getncattr('mday')
-                        ) + timedelta(seconds=float(iced_nc.getncattr('sec')))
-                        iced_nc.close()
+                    elif model.model_type == 'cice5':
+                        run_start_date = model.get_restart_date()
 
                     # run_start_date must be after initialisation date
                     if run_start_date < init_date:
                         msg = (
                             f"Restart date ({run_start_date}) in "
-                            f"cice restart ({iced_file}) must not be "
+                            f"cice restart ('iced') must not be "
                             "before initialisation date ({INIT_DATE}). "
                         )
                         raise ValueError(msg)
@@ -183,7 +172,7 @@ class AccessEsm1p6(Model):
                     previous_runtime = cal.seconds_between_dates(
                         init_date,
                         run_start_date,
-                        caltype
+                        model.caltype
                     )
 
                     cpl_group['jobnum'] = cpl_group['jobnum'] + 1
@@ -200,8 +189,8 @@ class AccessEsm1p6(Model):
                         self.expt.runtime['years'],
                         self.expt.runtime['months'],
                         self.expt.runtime['days'],
-                        self.expt.runtime.get('seconds', 0),
-                        caltype)
+                        0, #secs
+                        model.caltype)
                     if run_runtime <=0 :
                         raise RuntimeError("invalid runtime specified in config.yaml")
                 else:
