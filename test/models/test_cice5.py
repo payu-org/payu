@@ -3,6 +3,7 @@ import shutil
 
 import pytest
 import f90nml
+from copy import deepcopy
 
 import payu
 
@@ -26,10 +27,13 @@ DEFAULT_CICE_NML = {
         "runtype": "initial",
         "npt": 99999,
         "dt": 1,
+        "use_leap_years" : False
     },
     "grid_nml": {"grid_file": "./INPUT/grid.nc", "kmt_file": "./INPUT/kmt.nc"},
     "icefields_nml": {"f_icy": "x"},
 }
+
+
 CICE_NML_NAMES = ["cice_in.nml", "input_ice.nml",
                   "input_ice_gfdl.nml", "input_ice_monin.nml"]
 ICED_RESTART_NAME = "iced.18510101"
@@ -125,8 +129,9 @@ def empty_workdir():
 
 
 @pytest.fixture
-def cice_config_files():
-    cice_nml = DEFAULT_CICE_NML
+def cice_config_files(request):
+    print(request)
+    cice_nml = request.param
 
     with cd(ctrldir):
         # 2. Create config.nml
@@ -142,11 +147,50 @@ def cice_config_files():
             os.remove(name)
 
 
-@pytest.mark.parametrize("config", [DEFAULT_CONFIG],
+BADCAL_CICE_NML = deepcopy(DEFAULT_CICE_NML)
+BADCAL_CICE_NML["setup_nml"].update(use_leap_years="noleap")
+
+NOCAL_CICE_NML = deepcopy(DEFAULT_CICE_NML)
+del NOCAL_CICE_NML["setup_nml"]["use_leap_years"]
+
+@pytest.mark.parametrize("config", 
+                        [DEFAULT_CONFIG],
                          indirect=True)
-def test_setup(config, cice_config_files):
+@pytest.mark.parametrize("cice_config_files", 
+                        [BADCAL_CICE_NML, NOCAL_CICE_NML],
+                         indirect=True)
+def test_setup_fails(config, cice_config_files):
     """
-    # Confirm that payu setup works
+    # Confirm that payu setup fails with an invalid calendar
+    """
+    with cd(ctrldir):
+
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        # Function to test
+        with pytest.raises(Exception):
+            model.setup()
+
+
+LEAP_CICE_NML = deepcopy(DEFAULT_CICE_NML)
+LEAP_CICE_NML["setup_nml"].update(use_leap_years=True)
+
+# expected calendars, see payu/payu/calendar.py
+NOLEAP_CAL = 0
+GREGORIAN_CAL = 1 # actually proleptic_gregorain, as always!
+
+@pytest.mark.parametrize("config", 
+                        [DEFAULT_CONFIG],
+                         indirect=True)
+@pytest.mark.parametrize("cice_config_files,expected_cal", 
+                        [(DEFAULT_CICE_NML,NOLEAP_CAL),
+                         (LEAP_CICE_NML,GREGORIAN_CAL)],
+                         indirect=["cice_config_files"])
+def test_setup(config, cice_config_files, expected_cal):
+    """
+    # Confirm that payu setup fails with an invalid calendar
     """
     with cd(ctrldir):
 
@@ -170,6 +214,9 @@ def test_setup(config, cice_config_files):
     # Check dump_last
     assert input_nml["setup_nml"]["dump_last"] is True
 
+    # Check cal
+    assert model.caltype == expected_cal
+
 
 @pytest.fixture
 def prior_restart_dir_cice5():
@@ -190,6 +237,9 @@ def prior_restart_dir_cice5():
 
 
 @pytest.mark.parametrize("config", [CONFIG_WITH_RESTART],
+                         indirect=True)
+@pytest.mark.parametrize("cice_config_files", 
+                        [DEFAULT_CICE_NML],
                          indirect=True)
 def test_restart_setup(config, cice_config_files, prior_restart_dir_cice5):
     """

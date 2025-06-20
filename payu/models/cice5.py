@@ -57,11 +57,15 @@ class Cice5(Cice):
         # Force creation of a dump (restart) file at end of run
         self.ice_in['setup_nml']['dump_last'] = True
 
+        use_leap_years = self.ice_in['setup_nml']['use_leap_years']
+
         # is it a gregorian or noleap calendar
-        if self.ice_in['setup_nml']['use_leap_years'] :
+        if use_leap_years == True :
             self.caltype = cal.GREGORIAN
-        else :
+        elif use_leap_years == False :
             self.caltype = cal.NOLEAP
+        else :
+            raise ValueError("use_leap_years invalid")
 
         super(Cice5, self).setup()
 
