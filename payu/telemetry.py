@@ -17,7 +17,7 @@ TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG"
 TELEMETRY_CONFIG_VERSION = "1-0-0"
 
 # Required telemetry configuration fields
-TELEMETRY_CONFIG_FIELDS = {
+CONFIG_FIELDS = {
     "URL" : "telemetry_url",
     "TOKEN" : "telemetry_token",
     "SERVICE_NAME": "telemetry_service_name",
@@ -124,10 +124,10 @@ def get_external_telemetry_config() -> Optional[Dict[str, Any]]:
         return None
 
     # Check for required fields in the telemetry configuration
-    missing_fields = TELEMETRY_CONFIG_FIELDS.keys() - telemetry_config.keys()
+    missing_fields = CONFIG_FIELDS.values() - telemetry_config.keys()
     if missing_fields:
         warnings.warn(
-            f"Required field(s) '{missing_fields}' not found in configuration file "
+            f"Required field(s) {missing_fields} not found in configuration file "
             f"at {TELEMETRY_CONFIG}: {config_path}. "
             "Skipping posting telemetry"
         )
@@ -260,17 +260,17 @@ class Telemetry():
             return
 
         # Add hostname to the run info fields
-        self.run_info.update({'hostname': external_config[HOSTNAME_FIELD]})
+        self.run_info['hostname'] = external_config[CONFIG_FIELDS['HOSTNAME']]
 
         # Using threading to run the one post request in the background
         thread = threading.Thread(
             target=post_telemetry_data,
             kwargs= {
-                'url': external_config[TELEMETRY_CONFIG_FIELD['URL']],
-                'token': external_config[TELEMETRY_CONFIG_FIELD['TOKEN']],
+                'url': external_config[CONFIG_FIELDS['URL']],
+                'token': external_config[CONFIG_FIELDS['TOKEN']],
                 'data': self.run_info,
-                'service_name': external_config[TELEMETRY_CONFIG_FIELD['SERVICE_NAME']],
-                'host': external_config[TELEMETRY_CONFIG_FIELD['TELEMETRY_HOST']],
+                'service_name': external_config[CONFIG_FIELDS['SERVICE_NAME']],
+                'host': external_config[CONFIG_FIELDS['HOST']],
             },
         )
         thread.start()
