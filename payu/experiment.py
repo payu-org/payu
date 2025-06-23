@@ -874,7 +874,7 @@ class Experiment(object):
         # Run archive user script before collation job is submitted
         archive_script = self.userscripts.get('archive')
         if archive_script:
-            self.run_userscript(archive_script)
+            self.run_userscript(archive_script, 'archive')
 
         collate_config = self.config.get('collate', {})
         collating = collate_config.get('enable', True)
