@@ -9,14 +9,7 @@ import jsonschema
 
 from payu.telemetry import get_external_telemetry_config, post_telemetry_data
 from payu.telemetry import Telemetry
-from payu.telemetry import (
-    TELEMETRY_CONFIG,
-    TELEMETRY_URL_FIELD,
-    HOSTNAME_FIELD,
-    TELEMETRY_SERVICE_NAME_FIELD,
-    TELEMETRY_TOKEN_FIELD,
-    TELEMETRY_HOST_FIELD,
-)
+from payu.telemetry import TELEMETRY_CONFIG
 
 TELEMETRY_1_0_0_SCHEMA_PATH = (
     Path(__file__).parent / "resources" / "schema" / "telemetry" / "1-0-0.json"
@@ -39,11 +32,11 @@ def setup_env(config_path, monkeypatch):
 
 def test_get_external_telemetry_config_valid(setup_env, config_path):
     config_data = {
-        TELEMETRY_URL_FIELD: "some/server/url",
-        HOSTNAME_FIELD: "gadi",
-        TELEMETRY_SERVICE_NAME_FIELD: "payu",
-        TELEMETRY_TOKEN_FIELD: "some_token",
-        TELEMETRY_HOST_FIELD: "some_host",
+        "telemetry_url": "some/server/url",
+        "hostname": "gadi",
+        "telemetry_service_name": "payu",
+        "telemetry_token": "some_token",
+        "telemetry_host": "some_host",
     }
     with open(config_path, 'w') as f:
         json.dump(config_data, f)
@@ -62,17 +55,29 @@ def test_get_external_telemetry_config_no_file(setup_env, config_path):
         assert result is None
 
 
-def test_get_external_telemetry_config_missing_fields(setup_env, config_path):
+@pytest.mark.parametrize("missing_field", [
+    "telemetry_url",
+    "hostname",
+    "telemetry_service_name",
+    "telemetry_token",
+    "telemetry_host"
+])
+def test_get_external_telemetry_config_missing_fields(setup_env, config_path,
+                                                      missing_field):
     config_data = {
-        TELEMETRY_URL_FIELD: "some/server/url",
-        TELEMETRY_SERVICE_NAME_FIELD: "payu",
-        TELEMETRY_TOKEN_FIELD: "some_token",
+        "telemetry_url": "some/server/url",
+        "hostname": "gadi",
+        "telemetry_service_name": "payu",
+        "telemetry_token": "some_token",
+        "telemetry_host": "some_host",
     }
+    # Remove the specified missing field
+    config_data.pop(missing_field)
     with open(config_path, 'w') as f:
         json.dump(config_data, f)
 
     expected_warning = (
-        f"Required field '{HOSTNAME_FIELD}' not found in "
+        rf"Required field\(s\) {set([missing_field])} not found in "
         f"configuration file at {TELEMETRY_CONFIG}: {config_path}. "
         "Skipping posting telemetry"
     )
@@ -249,11 +254,11 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
 
     # Create telemetry config and environment variable
     telemetry_config = {
-        TELEMETRY_URL_FIELD: "some/server/url",
-        HOSTNAME_FIELD: "test-host",
-        TELEMETRY_SERVICE_NAME_FIELD: "payu",
-        TELEMETRY_TOKEN_FIELD: "some_token",
-        TELEMETRY_HOST_FIELD: "some_host",
+        "telemetry_url": "some/server/url",
+        "hostname": "test-host",
+        "telemetry_service_name": "payu",
+        "telemetry_token": "some_token",
+        "telemetry_host": "some_host",
     }
 
     with open(config_path, 'w') as f:
