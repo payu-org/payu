@@ -171,20 +171,21 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
     """
 
     # Mock the experiment values
-    experiment = Mock()
-    experiment.run_id = "test-commit-hash"
-    experiment.counter = 0
-    experiment.n_runs = 0
-    experiment.run_job_status = 0
-    experiment.start_time = datetime(2025, 1, 1, 0, 0, 0)
-    experiment.finish_time = datetime(2025, 1, 1, 0, 0, 30)
-    experiment.payu_path = "path/to/testenv/payu"
-    experiment.control_path = "path/to/control/dir"
-    experiment.archive_path = "path/to/archive/dir"
-    experiment.config = {"model": "TEST_MODEL"}
+    run_info = {
+        "payu_run_id": "test-commit-hash",
+        "payu_current_run": 0,
+        "payu_n_runs": 0,
+        "payu_job_status": 0,
+        "payu_version": "2.0.0",
+        "payu_path": "path/to/testenv",
+        "payu_control_path": "path/to/control/dir",
+        "payu_archive_path": "path/to/archive/dir",
+        "user_id": "test_user",
+        "payu_config": {"model": "TEST_MODEL"},
+    }
 
     # Mock timings
-    experiment.timings = {
+    timings = {
         "payu_start_time": datetime(2025, 1, 1, tzinfo=timezone.utc),
         "payu_setup_duration_seconds": 5.0239,
         "archive_userscript_duration_seconds": 2.0342,
@@ -229,7 +230,6 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
         "restart": restart_manifest,
         "input": input_manifest,
     }
-    experiment.manifest = manifests
 
     # Mock metadata
     test_metadata = {
@@ -240,7 +240,6 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
     }
     metadata = Mock()
     metadata.read_file.return_value = test_metadata
-    experiment.metadata = metadata
 
     # Mock scheduler
     test_job_info = {
@@ -267,7 +266,9 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
     # Setup Telemetry class
     telemetry = Telemetry(config={}, scheduler=scheduler)
     # Save run state information during experiment run
-    telemetry.set_run_info(experiment=experiment)
+    telemetry.set_run_info(run_info=run_info,
+                           metadata=metadata,
+                           manifests=manifests)
     # Configure job info path during experiment run
     job_info_filepath = tmp_path / "job.json"
     telemetry.set_run_info_filepath(job_info_filepath)
@@ -294,7 +295,7 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
             mock_post.return_value = mock_response
 
             # Store & post run job information
-            telemetry.record_run(timings=experiment.timings)
+            telemetry.record_run(timings=timings)
 
             # Get data from the mock request
             assert mock_post.called

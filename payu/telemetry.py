@@ -2,7 +2,6 @@ import datetime
 import json
 import os
 from pathlib import Path
-import pwd
 import requests
 import threading
 from typing import Any, Dict, Optional
@@ -41,33 +40,16 @@ def get_metadata(metadata: Metadata) -> Optional[Dict[str, Any]]:
     }
 
 
-def get_manifests(experiment) -> Optional[Dict[str, Any]]:
+def get_manifests(experiment_manifests) -> Optional[Dict[str, Any]]:
     """Returns a dictionary of content of input, restart and executable
     manifest data"""
     manifests = {}
-    for mf in experiment.manifest.manifests:
-        manifests[mf] = experiment.manifest.manifests[mf].data
+    for mf in experiment_manifests.manifests:
+        manifests[mf] = experiment_manifests.manifests[mf].data
 
     return {
         "manifests": manifests
     }
-
-
-def get_experiment_run_state(experiment) -> Optional[Dict[str, Any]]:
-    """Returns a dictionary of the experiment run state"""
-    info = {
-        'payu_run_id': experiment.run_id,
-        'payu_current_run': experiment.counter,
-        'payu_n_runs':  experiment.n_runs,
-        'payu_job_status': experiment.run_job_status,
-        'payu_version': payu.__version__,
-        'payu_path': os.path.dirname(experiment.payu_path),
-        'payu_config': experiment.config,
-        'user_id':  pwd.getpwuid(os.getuid()).pw_name,
-        'payu_control_path': str(experiment.control_path),
-        'payu_archive_path': str(experiment.archive_path),
-    }
-    return info
 
 
 def get_timings(timings: Dict[str, int]) -> Dict[str, int]:
@@ -216,12 +198,12 @@ class Telemetry():
         in different stages the Experiment class"""
         self.run_info_filepath = filepath
 
-    def set_run_info(self, experiment):
+    def set_run_info(self, run_info, metadata, manifests):
         """Set the run information for the current run. This is
         called in Experiment class after the model run is complete"""
-        self.run_info.update(get_metadata(experiment.metadata))
-        self.run_info.update(get_experiment_run_state(experiment))
-        self.run_info.update(get_manifests(experiment))
+        self.run_info.update(run_info)
+        self.run_info.update(get_metadata(metadata))
+        self.run_info.update(get_manifests(manifests))
 
     def clear_run_info(self):
         self.run_info = {}

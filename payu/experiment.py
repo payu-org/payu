@@ -23,6 +23,7 @@ import sysconfig
 import time
 from pathlib import Path
 import warnings
+import pwd
 
 # Extensions
 import yaml
@@ -713,8 +714,11 @@ class Experiment(object):
         self.timings["payu_model_run_duration_seconds"] = runcmd_elapsed_time
 
         # Store job state information
-        # Could add method in Experiment class #NOTE
-        self.telemetry.set_run_info(experiment=self)
+        self.telemetry.set_run_info(
+            run_info=self.run_info(),
+            manifests=self.manifest,
+            metadata=self.metadata
+        )
 
         # Remove any empty output files (e.g. logs)
         for fname in os.listdir(self.work_path):
@@ -793,6 +797,21 @@ class Experiment(object):
 
         # Set telemetry run info output file to the work directory
         self.telemetry.set_run_info_filepath(Path(self.work_path) / "job.json")
+
+    def run_info(self):
+        """Return a dictionary with current run state information"""
+        return {
+            'payu_run_id': self.run_id,
+            'payu_current_run': self.counter,
+            'payu_n_runs':  self.n_runs,
+            'payu_job_status': self.run_job_status,
+            'payu_version': payu.__version__,
+            'payu_path': os.path.dirname(self.payu_path),
+            'payu_config': self.config,
+            'user_id':  pwd.getpwuid(os.getuid()).pw_name,
+            'payu_control_path': str(self.control_path),
+            'payu_archive_path': str(self.archive_path),
+        }
 
     def archiving(self):
         """
