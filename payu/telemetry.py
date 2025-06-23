@@ -1,4 +1,4 @@
-from datetime import date, datetime
+import datetime
 import json
 import os
 from pathlib import Path
@@ -60,10 +60,6 @@ def get_experiment_run_state(experiment) -> Optional[Dict[str, Any]]:
         'payu_current_run': experiment.counter,
         'payu_n_runs':  experiment.n_runs,
         'payu_job_status': experiment.run_job_status,
-        'payu_start_time': experiment.start_time.isoformat(),
-        'payu_finish_time': experiment.finish_time.isoformat(),
-        'payu_walltime_seconds':
-            (experiment.finish_time - experiment.start_time).total_seconds(),
         'payu_version': payu.__version__,
         'payu_path': os.path.dirname(experiment.payu_path),
         'payu_config': experiment.config,
@@ -72,6 +68,21 @@ def get_experiment_run_state(experiment) -> Optional[Dict[str, Any]]:
         'payu_archive_path': str(experiment.archive_path),
     }
     return info
+
+
+def get_timings(timings: Dict[str, int]) -> Dict[str, int]:
+    """Returns a dictionary of the timings for the run"""
+    # Add finish time and payu walltime
+    start_time = timings['payu_start_time']
+    finish_time = datetime.datetime.now(datetime.timezone.utc)
+    # Convert start and end times to isoformat strings
+    timings['payu_start_time'] = start_time.isoformat()
+    timings['payu_finish_time'] = finish_time.isoformat()
+    elapsed_time = finish_time - start_time
+    timings['payu_total_duration_seconds'] = elapsed_time.total_seconds()
+    return {
+        'timings': timings
+    }
 
 
 def get_scheduler_run_info(scheduler: Scheduler) -> Dict[str, Any]:
@@ -158,12 +169,10 @@ def post_telemetry_data(url: str,
     data = {
         "service": service_name,
         "version": TELEMETRY_VERSION,
-        "date": date.today().isoformat(),
+        "date": datetime.date.today().isoformat(),
         "telemetry": data
     }
 
-    starttime = datetime.now()
-    print(f"**Debug**: posting telemetry to {url}")
     try:
         response = requests.post(
             url,
@@ -179,9 +188,6 @@ def post_telemetry_data(url: str,
             )
     except Exception as e:
         warnings.warn(f"Error posting telemetry: {e}")
-
-    duration = (datetime.now() - starttime).total_seconds()
-    print(f"**Debug**: post request took {duration} seconds")
 
 
 class Telemetry():
@@ -220,7 +226,7 @@ class Telemetry():
     def clear_run_info(self):
         self.run_info = {}
 
-    def record_run(self):
+    def record_run(self, timings):
         """
         Build information for the current run and write it to a JSON file.
         If telemetry is configured, post the telemetry job information
@@ -230,8 +236,12 @@ class Telemetry():
         # as they only get updated periodically
         self.run_info.update(get_scheduler_run_info(self.scheduler))
 
+        # Add timings to the run info
+        self.run_info.update(get_timings(timings))
+
         # Write run job information to a JSON file
         if self.run_info_filepath is None:
+            # TODO: raise an error instead of warning?
             warnings.warn(
                 "Run job output file is not defined"
             )
@@ -252,8 +262,6 @@ class Telemetry():
         # Add hostname to the run info fields
         self.run_info.update({'hostname': external_config[HOSTNAME_FIELD]})
 
-        starttime = datetime.now()
-
         # Using threading to run the one post request in the background
         thread = threading.Thread(
             target=post_telemetry_data,
@@ -266,5 +274,3 @@ class Telemetry():
             },
         )
         thread.start()
-        duration = (datetime.now() - starttime).total_seconds()
-        print(f"**Debug**: post_telemetry_data took {duration} seconds")

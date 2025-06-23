@@ -135,11 +135,11 @@ def runscript():
         expt.archive(force_prune_restarts=run_args.force_prune_restarts)
 
         # Record job information for experiment run
-        expt.telemetry.record_run()
+        expt.telemetry.record_run(timings=expt.timings)
 
         # Reset run information before the next run
         expt.telemetry.clear_run_info()
-        expt.start_time = datetime.datetime.now(datetime.timezone.utc)
+        expt.init_timings()
 
         # Finished runs
         if expt.n_runs == 0:
