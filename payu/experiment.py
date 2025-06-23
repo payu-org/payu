@@ -11,6 +11,7 @@ from __future__ import print_function
 # Standard Library
 import datetime
 import errno
+from functools import wraps
 import os
 import re
 import resource
@@ -19,6 +20,7 @@ import shlex
 import shutil
 import subprocess as sp
 import sysconfig
+import time
 from pathlib import Path
 
 # Extensions
@@ -48,10 +50,26 @@ core_modules = ['python', 'payu']
 # Default payu parameters
 default_restart_freq = 5
 
+def timeit(time_name):
+    """Decorator to time a function and store the elapsed time in seconds
+    to the timings dictionary in the class"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            start_time = time.perf_counter()
+            result = func(self, *args, **kwargs)
+            elapsed_time = time.perf_counter() - start_time
+            self.timings[time_name] = elapsed_time
+            return result
+        return wrapper
+    return decorator
+
 
 class Experiment(object):
 
+    @timeit("payu_init_duration_seconds")
     def __init__(self, lab, reproduce=False, force=False, metadata_off=False):
+        self.init_timings()
         self.lab = lab
         # Check laboratory directories are writable
         self.lab.initialize()
@@ -61,9 +79,6 @@ class Experiment(object):
             self.force = os.environ.get('PAYU_FORCE', False)
         else:
             self.force = force
-
-        # Set start_time to the current time in UTC
-        self.start_time = datetime.datetime.now(datetime.timezone.utc)
 
         # Initialise experiment metadata - uuid and experiment name
         self.metadata = Metadata(Path(lab.archive_path), disabled=metadata_off)
@@ -125,7 +140,7 @@ class Experiment(object):
 
         init_script = self.userscripts.get('init')
         if init_script:
-            self.run_userscript(init_script)
+            self.run_userscript(init_script, 'init')
 
         self.runlog = Runlog(self)
 
@@ -149,6 +164,12 @@ class Experiment(object):
         # Initialise telemetry
         self.telemetry = Telemetry(config=self.config,
                                    scheduler=self.scheduler)
+
+    def init_timings(self):
+        """Initialize an timings dictionary with the current time."""
+        self.timings = {
+            "payu_start_time": datetime.datetime.now(datetime.timezone.utc),
+        }
 
     def init_models(self):
 
@@ -430,6 +451,7 @@ class Experiment(object):
                 "required to run this configuration."
             )
 
+    @timeit("payu_setup_duration_seconds")
     def setup(self, force_archive=False):
         # Check version
         self.check_payu_version()
@@ -495,7 +517,7 @@ class Experiment(object):
 
         setup_script = self.userscripts.get('setup')
         if setup_script:
-            self.run_userscript(setup_script)
+            self.run_userscript(setup_script, 'setup')
 
         # Profiler setup
         expt_profs = self.config.get('profilers', [])
@@ -515,6 +537,7 @@ class Experiment(object):
         if self.archiving():
             self.get_restarts_to_prune()
 
+    @timeit("payu_run_duration_seconds")
     def run(self, *user_flags):
         self.load_modules()
 
@@ -667,6 +690,7 @@ class Experiment(object):
         # NOTE: This may not be necessary, since env seems to be getting
         # correctly updated.  Need to look into this.
         print(cmd)
+        runcmd_start_time = time.perf_counter()
         if env:
             # TODO: Replace with mpirun -x flag inputs
             proc = sp.Popen(shlex.split(cmd), stdout=f_out, stderr=f_err,
@@ -675,15 +699,16 @@ class Experiment(object):
             rc = proc.returncode
         else:
             rc = sp.call(shlex.split(cmd), stdout=f_out, stderr=f_err)
-
         f_out.close()
         f_err.close()
 
-        self.finish_time = datetime.datetime.now(datetime.timezone.utc)
         self.run_job_status = rc
+        runcmd_elapsed_time = time.perf_counter() - runcmd_start_time
+        self.timings["payu_model_run_duration_seconds"] = runcmd_elapsed_time
 
         # Store job state information
-        self.telemetry.set_run_info(self)
+        # Could add method in Experiment class #NOTE
+        self.telemetry.set_run_info(experiment=self)
 
         # Remove any empty output files (e.g. logs)
         for fname in os.listdir(self.work_path):
@@ -726,13 +751,13 @@ class Experiment(object):
 
             error_script = self.userscripts.get('error')
             if error_script:
-                self.run_userscript(error_script)
+                self.run_userscript(error_script, 'error')
 
             # Record run information
             self.telemetry.set_run_info_filepath(
                 Path(error_log_dir) / f"job.{job_id}.json"
             )
-            self.telemetry.record_run()
+            self.telemetry.record_run(timings=self.timings)
 
             # Terminate payu
             sys.exit('payu: Model exited with error code {0}; aborting.'
@@ -758,7 +783,7 @@ class Experiment(object):
 
         run_script = self.userscripts.get('run')
         if run_script:
-            self.run_userscript(run_script)
+            self.run_userscript(run_script, 'run')
 
         # Set telemetry run info output file to the work directory
         self.telemetry.set_run_info_filepath(Path(self.work_path) / "job.json")
@@ -771,6 +796,7 @@ class Experiment(object):
         archive_config = self.config.get('archive', {})
         return archive_config.get('enable', True)
 
+    @timeit("payu_archive_duration_seconds")
     def archive(self, force_prune_restarts=False):
         if not self.archiving():
             print('payu: not archiving due to config.yaml setting.')
@@ -849,6 +875,10 @@ class Experiment(object):
             )
             sp.check_call(shlex.split(cmd))
 
+        archive_script = self.userscripts.get('archive')
+        if archive_script:
+            self.run_userscript(archive_script, 'archive')
+
         # Ensure postprocessing runs if model not collating
         if not collating:
             self.postprocess()
@@ -909,7 +939,7 @@ class Experiment(object):
         envmod.setup()
         pre_sync_script = self.userscripts.get('sync')
         if pre_sync_script:
-            self.run_userscript(pre_sync_script)
+            self.run_userscript(pre_sync_script, 'sync')
 
         # Run rsync commmands
         SyncToRemoteArchive(self).run()
@@ -937,12 +967,20 @@ class Experiment(object):
             }
         )
 
-    def run_userscript(self, script_cmd: str):
+    def run_userscript(self, script_cmd: str, type: str):
         """Run a user defined script or subcommand at various stages of the
-        payu submissions"""
-        self.set_userscript_env_vars()
-        run_script_command(script_cmd,
-                           control_path=Path(self.control_path))
+        payu submissions. Save the time taken in seconds to run the
+        userscripts"""
+        start_time = time.perf_counter()
+        try:
+            self.set_userscript_env_vars()
+            run_script_command(script_cmd,
+                               control_path=Path(self.control_path))
+        except Exception as e:
+            raise
+        finally:
+            elapsed_time = time.perf_counter() - start_time
+            self.timings[f"{type}_userscript_duration_seconds"] = elapsed_time
 
     def sweep(self, hard_sweep=False):
         # TODO: Fix the IO race conditions!
