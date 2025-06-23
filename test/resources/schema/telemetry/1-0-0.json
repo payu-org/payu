@@ -29,17 +29,6 @@
                 "payu_job_status": {
                     "type": "integer"
                 },
-                "payu_start_time": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "payu_finish_time": {
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "payu_walltime_seconds": {
-                    "type": "number"
-                },
                 "payu_version": {
                     "type": "string"
                 },
@@ -85,6 +74,27 @@
                         "restart",
                         "exe"
                     ]
+                },
+                "timings": {
+                    "type": "object",
+                    "properties": {
+                        "payu_start_time": {
+                            "type": "string",
+                            "format": "date-time"
+                        },
+                        "payu_finish_time": {
+                            "type": "string",
+                            "format": "date-time"
+                        },
+                        "payu_walltime": {
+                            "type": "number"
+                        }
+                    },
+                    "required": [
+                        "payu_start_time",
+                        "payu_finish_time",
+                        "payu_total_duration_seconds"
+                    ]
                 }
             },
             "required": [
@@ -92,9 +102,6 @@
                 "payu_current_run",
                 "payu_n_runs",
                 "payu_job_status",
-                "payu_start_time",
-                "payu_finish_time",
-                "payu_walltime_seconds",
                 "payu_version",
                 "payu_path",
                 "hostname",
@@ -102,7 +109,8 @@
                 "payu_control_path",
                 "payu_archive_path",
                 "manifests",
-                "payu_config"
+                "payu_config",
+                "timings"
             ]
         }
     },

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -9,14 +9,7 @@ import jsonschema
 
 from payu.telemetry import get_external_telemetry_config, post_telemetry_data
 from payu.telemetry import Telemetry
-from payu.telemetry import (
-    TELEMETRY_CONFIG,
-    TELEMETRY_URL_FIELD,
-    HOSTNAME_FIELD,
-    TELEMETRY_SERVICE_NAME_FIELD,
-    TELEMETRY_TOKEN_FIELD,
-    TELEMETRY_HOST_FIELD,
-)
+from payu.telemetry import TELEMETRY_CONFIG
 
 TELEMETRY_1_0_0_SCHEMA_PATH = (
     Path(__file__).parent / "resources" / "schema" / "telemetry" / "1-0-0.json"
@@ -39,11 +32,11 @@ def setup_env(config_path, monkeypatch):
 
 def test_get_external_telemetry_config_valid(setup_env, config_path):
     config_data = {
-        TELEMETRY_URL_FIELD: "some/server/url",
-        HOSTNAME_FIELD: "gadi",
-        TELEMETRY_SERVICE_NAME_FIELD: "payu",
-        TELEMETRY_TOKEN_FIELD: "some_token",
-        TELEMETRY_HOST_FIELD: "some_host",
+        "telemetry_url": "some/server/url",
+        "hostname": "gadi",
+        "telemetry_service_name": "payu",
+        "telemetry_token": "some_token",
+        "telemetry_host": "some_host",
     }
     with open(config_path, 'w') as f:
         json.dump(config_data, f)
@@ -62,17 +55,29 @@ def test_get_external_telemetry_config_no_file(setup_env, config_path):
         assert result is None
 
 
-def test_get_external_telemetry_config_missing_fields(setup_env, config_path):
+@pytest.mark.parametrize("missing_field", [
+    "telemetry_url",
+    "hostname",
+    "telemetry_service_name",
+    "telemetry_token",
+    "telemetry_host"
+])
+def test_get_external_telemetry_config_missing_fields(setup_env, config_path,
+                                                      missing_field):
     config_data = {
-        TELEMETRY_URL_FIELD: "some/server/url",
-        TELEMETRY_SERVICE_NAME_FIELD: "payu",
-        TELEMETRY_TOKEN_FIELD: "some_token",
+        "telemetry_url": "some/server/url",
+        "hostname": "gadi",
+        "telemetry_service_name": "payu",
+        "telemetry_token": "some_token",
+        "telemetry_host": "some_host",
     }
+    # Remove the specified missing field
+    config_data.pop(missing_field)
     with open(config_path, 'w') as f:
         json.dump(config_data, f)
 
     expected_warning = (
-        f"Required field '{HOSTNAME_FIELD}' not found in "
+        rf"Required field\(s\) {set([missing_field])} not found in "
         f"configuration file at {TELEMETRY_CONFIG}: {config_path}. "
         "Skipping posting telemetry"
     )
@@ -97,17 +102,21 @@ def test_get_external_telemetry_config_invalid_json(setup_env, config_path):
 @patch('payu.telemetry.get_scheduler_run_info')
 @patch('payu.telemetry.get_external_telemetry_config')
 @patch('payu.telemetry.post_telemetry_data')
+@patch('payu.telemetry.get_timings')
 def test_telemetry_record_run_no_telemetry_config(
+    mock_get_timings,
     mock_post_telemetry_data,
     mock_telemetry_get_external_config,
     mock_telemetry_scheduler_run_info,
-    tmp_path
+    tmp_path,
 ):
     mock_telemetry_scheduler_run_info.return_value = {
         "test_field": "test_value"
     }
     mock_telemetry_get_external_config.return_value = None
     mock_post_telemetry_data.return_value = None
+    timings = {}
+    mock_get_timings.return_value = timings
 
     # Setup Telemetry class
     telemetry = Telemetry(config={}, scheduler=None)
@@ -116,7 +125,7 @@ def test_telemetry_record_run_no_telemetry_config(
     telemetry.telemetry_enabled = False
 
     # Run method
-    telemetry.record_run()
+    telemetry.record_run(timings={})
 
     # Check post telemetry method was not called
     mock_telemetry_get_external_config.assert_not_called()
@@ -162,17 +171,25 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
     """
 
     # Mock the experiment values
-    experiment = Mock()
-    experiment.run_id = "test-commit-hash"
-    experiment.counter = 0
-    experiment.n_runs = 0
-    experiment.run_job_status = 0
-    experiment.start_time = datetime(2025, 1, 1, 0, 0, 0)
-    experiment.finish_time = datetime(2025, 1, 1, 0, 0, 30)
-    experiment.payu_path = "path/to/testenv/payu"
-    experiment.control_path = "path/to/control/dir"
-    experiment.archive_path = "path/to/archive/dir"
-    experiment.config = {"model": "TEST_MODEL"}
+    run_info = {
+        "payu_run_id": "test-commit-hash",
+        "payu_current_run": 0,
+        "payu_n_runs": 0,
+        "payu_job_status": 0,
+        "payu_version": "2.0.0",
+        "payu_path": "path/to/testenv",
+        "payu_control_path": "path/to/control/dir",
+        "payu_archive_path": "path/to/archive/dir",
+        "user_id": "test_user",
+        "payu_config": {"model": "TEST_MODEL"},
+    }
+
+    # Mock timings
+    timings = {
+        "payu_start_time": datetime(2025, 1, 1, tzinfo=timezone.utc),
+        "payu_setup_duration_seconds": 5.0239,
+        "archive_userscript_duration_seconds": 2.0342,
+    }
 
     # Mock manifests
     test_exe_manifest = {
@@ -213,7 +230,6 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
         "restart": restart_manifest,
         "input": input_manifest,
     }
-    experiment.manifest = manifests
 
     # Mock metadata
     test_metadata = {
@@ -224,7 +240,6 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
     }
     metadata = Mock()
     metadata.read_file.return_value = test_metadata
-    experiment.metadata = metadata
 
     # Mock scheduler
     test_job_info = {
@@ -238,11 +253,11 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
 
     # Create telemetry config and environment variable
     telemetry_config = {
-        TELEMETRY_URL_FIELD: "some/server/url",
-        HOSTNAME_FIELD: "test-host",
-        TELEMETRY_SERVICE_NAME_FIELD: "payu",
-        TELEMETRY_TOKEN_FIELD: "some_token",
-        TELEMETRY_HOST_FIELD: "some_host",
+        "telemetry_url": "some/server/url",
+        "hostname": "test-host",
+        "telemetry_service_name": "payu",
+        "telemetry_token": "some_token",
+        "telemetry_host": "some_host",
     }
 
     with open(config_path, 'w') as f:
@@ -251,7 +266,9 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
     # Setup Telemetry class
     telemetry = Telemetry(config={}, scheduler=scheduler)
     # Save run state information during experiment run
-    telemetry.set_run_info(experiment=experiment)
+    telemetry.set_run_info(run_info=run_info,
+                           metadata=metadata,
+                           manifests=manifests)
     # Configure job info path during experiment run
     job_info_filepath = tmp_path / "job.json"
     telemetry.set_run_info_filepath(job_info_filepath)
@@ -278,7 +295,7 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
             mock_post.return_value = mock_response
 
             # Store & post run job information
-            telemetry.record_run()
+            telemetry.record_run(timings=timings)
 
             # Get data from the mock request
             assert mock_post.called
@@ -299,9 +316,6 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
     assert record['payu_current_run'] == 0
     assert record['payu_n_runs'] == 0
     assert record['payu_job_status'] == 0
-    assert record['payu_start_time'] == '2025-01-01T00:00:00'
-    assert record['payu_finish_time'] == '2025-01-01T00:00:30'
-    assert record['payu_walltime_seconds'] == 30.0
     assert record['payu_version'] == '2.0.0'
     assert record['payu_path'] == 'path/to/testenv'
     assert record['hostname'] == 'test-host'
@@ -313,6 +327,10 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
     assert record['manifests']['restart'] == test_restart_manifest
     assert record['payu_config'] == {"model": "TEST_MODEL"}
     assert record['scheduler_job_info'] == test_job_info
+    assert record["timings"]["payu_start_time"] == "2025-01-01T00:00:00+00:00"
+    assert record["timings"]["payu_setup_duration_seconds"] == 5.0239
+    assert 'payu_finish_time' in record['timings']
+    assert 'payu_total_duration_seconds' in record['timings']
 
     # Validate sent record against schema for top level fields
     with open(TELEMETRY_1_0_0_SCHEMA_PATH, "r") as f:

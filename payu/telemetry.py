@@ -1,8 +1,7 @@
-from datetime import date, datetime
+import datetime
 import json
 import os
 from pathlib import Path
-import pwd
 import requests
 import threading
 from typing import Any, Dict, Optional
@@ -17,7 +16,7 @@ TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG"
 TELEMETRY_CONFIG_VERSION = "1-0-0"
 
 # Required telemetry configuration fields
-TELEMETRY_CONFIG_FIELDS = {
+CONFIG_FIELDS = {
     "URL" : "telemetry_url",
     "TOKEN" : "telemetry_token",
     "SERVICE_NAME": "telemetry_service_name",
@@ -41,37 +40,31 @@ def get_metadata(metadata: Metadata) -> Optional[Dict[str, Any]]:
     }
 
 
-def get_manifests(experiment) -> Optional[Dict[str, Any]]:
+def get_manifests(experiment_manifests) -> Optional[Dict[str, Any]]:
     """Returns a dictionary of content of input, restart and executable
     manifest data"""
     manifests = {}
-    for mf in experiment.manifest.manifests:
-        manifests[mf] = experiment.manifest.manifests[mf].data
+    for mf in experiment_manifests.manifests:
+        manifests[mf] = experiment_manifests.manifests[mf].data
 
     return {
         "manifests": manifests
     }
 
 
-def get_experiment_run_state(experiment) -> Optional[Dict[str, Any]]:
-    """Returns a dictionary of the experiment run state"""
-    info = {
-        'payu_run_id': experiment.run_id,
-        'payu_current_run': experiment.counter,
-        'payu_n_runs':  experiment.n_runs,
-        'payu_job_status': experiment.run_job_status,
-        'payu_start_time': experiment.start_time.isoformat(),
-        'payu_finish_time': experiment.finish_time.isoformat(),
-        'payu_walltime_seconds':
-            (experiment.finish_time - experiment.start_time).total_seconds(),
-        'payu_version': payu.__version__,
-        'payu_path': os.path.dirname(experiment.payu_path),
-        'payu_config': experiment.config,
-        'user_id':  pwd.getpwuid(os.getuid()).pw_name,
-        'payu_control_path': str(experiment.control_path),
-        'payu_archive_path': str(experiment.archive_path),
+def get_timings(timings: Dict[str, int]) -> Dict[str, int]:
+    """Returns a dictionary of the timings for the run"""
+    # Add finish time and payu walltime
+    start_time = timings['payu_start_time']
+    finish_time = datetime.datetime.now(datetime.timezone.utc)
+    # Convert start and end times to isoformat strings
+    timings['payu_start_time'] = start_time.isoformat()
+    timings['payu_finish_time'] = finish_time.isoformat()
+    elapsed_time = finish_time - start_time
+    timings['payu_total_duration_seconds'] = elapsed_time.total_seconds()
+    return {
+        'timings': timings
     }
-    return info
 
 
 def get_scheduler_run_info(scheduler: Scheduler) -> Dict[str, Any]:
@@ -113,10 +106,10 @@ def get_external_telemetry_config() -> Optional[Dict[str, Any]]:
         return None
 
     # Check for required fields in the telemetry configuration
-    missing_fields = TELEMETRY_CONFIG_FIELDS.keys() - telemetry_config.keys()
+    missing_fields = CONFIG_FIELDS.values() - telemetry_config.keys()
     if missing_fields:
         warnings.warn(
-            f"Required field(s) '{missing_fields}' not found in configuration file "
+            f"Required field(s) {missing_fields} not found in configuration file "
             f"at {TELEMETRY_CONFIG}: {config_path}. "
             "Skipping posting telemetry"
         )
@@ -158,12 +151,10 @@ def post_telemetry_data(url: str,
     data = {
         "service": service_name,
         "version": TELEMETRY_VERSION,
-        "date": date.today().isoformat(),
+        "date": datetime.date.today().isoformat(),
         "telemetry": data
     }
 
-    starttime = datetime.now()
-    print(f"**Debug**: posting telemetry to {url}")
     try:
         response = requests.post(
             url,
@@ -179,9 +170,6 @@ def post_telemetry_data(url: str,
             )
     except Exception as e:
         warnings.warn(f"Error posting telemetry: {e}")
-
-    duration = (datetime.now() - starttime).total_seconds()
-    print(f"**Debug**: post request took {duration} seconds")
 
 
 class Telemetry():
@@ -210,17 +198,17 @@ class Telemetry():
         in different stages the Experiment class"""
         self.run_info_filepath = filepath
 
-    def set_run_info(self, experiment):
+    def set_run_info(self, run_info, metadata, manifests):
         """Set the run information for the current run. This is
         called in Experiment class after the model run is complete"""
-        self.run_info.update(get_metadata(experiment.metadata))
-        self.run_info.update(get_experiment_run_state(experiment))
-        self.run_info.update(get_manifests(experiment))
+        self.run_info.update(run_info)
+        self.run_info.update(get_metadata(metadata))
+        self.run_info.update(get_manifests(manifests))
 
     def clear_run_info(self):
         self.run_info = {}
 
-    def record_run(self):
+    def record_run(self, timings):
         """
         Build information for the current run and write it to a JSON file.
         If telemetry is configured, post the telemetry job information
@@ -230,8 +218,12 @@ class Telemetry():
         # as they only get updated periodically
         self.run_info.update(get_scheduler_run_info(self.scheduler))
 
+        # Add timings to the run info
+        self.run_info.update(get_timings(timings))
+
         # Write run job information to a JSON file
         if self.run_info_filepath is None:
+            # TODO: raise an error instead of warning?
             warnings.warn(
                 "Run job output file is not defined"
             )
@@ -250,21 +242,17 @@ class Telemetry():
             return
 
         # Add hostname to the run info fields
-        self.run_info.update({'hostname': external_config[HOSTNAME_FIELD]})
-
-        starttime = datetime.now()
+        self.run_info['hostname'] = external_config[CONFIG_FIELDS['HOSTNAME']]
 
         # Using threading to run the one post request in the background
         thread = threading.Thread(
             target=post_telemetry_data,
             kwargs= {
-                'url': external_config[TELEMETRY_CONFIG_FIELD['URL']],
-                'token': external_config[TELEMETRY_CONFIG_FIELD['TOKEN']],
+                'url': external_config[CONFIG_FIELDS['URL']],
+                'token': external_config[CONFIG_FIELDS['TOKEN']],
                 'data': self.run_info,
-                'service_name': external_config[TELEMETRY_CONFIG_FIELD['SERVICE_NAME']],
-                'host': external_config[TELEMETRY_CONFIG_FIELD['TELEMETRY_HOST']],
+                'service_name': external_config[CONFIG_FIELDS['SERVICE_NAME']],
+                'host': external_config[CONFIG_FIELDS['HOST']],
             },
         )
         thread.start()
-        duration = (datetime.now() - starttime).total_seconds()
-        print(f"**Debug**: post_telemetry_data took {duration} seconds")
