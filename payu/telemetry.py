@@ -53,8 +53,9 @@ def get_manifests(experiment_manifests) -> Optional[Dict[str, Any]]:
 
 
 def get_timings(timings: Dict[str, int]) -> Dict[str, int]:
-    """Returns a dictionary of the timings for the run"""
-    # Add finish time and payu walltime
+    """Returns a dictionary of the timings for the run.
+    Adds end time and total duration of the experiment run so far.
+    """
     start_time = timings['payu_start_time']
     finish_time = datetime.datetime.now(datetime.timezone.utc)
     # Convert start and end times to isoformat strings
@@ -171,14 +172,13 @@ def post_telemetry_data(url: str,
     except Exception as e:
         warnings.warn(f"Error posting telemetry: {e}")
 
-
 class Telemetry():
     """Telemetry class to store and post telemetry information.
     Currently these class methods are accessed during an Experiment run -
     so in payu.Experiment class and in the payu run subcommand.
     """
 
-    def __init__(self, config, scheduler):
+    def __init__(self, config):
 
         self.run_info = {}
         self.run_info_filepath = None
@@ -189,8 +189,6 @@ class Telemetry():
             config.get('telemetry', {}).get('enable', True)
             and TELEMETRY_CONFIG in os.environ
         )
-
-        self.scheduler = scheduler
 
     def set_run_info_filepath(self, filepath: Path):
         """This file path will be different depending depending if there
@@ -205,25 +203,29 @@ class Telemetry():
         self.run_info.update(get_metadata(metadata))
         self.run_info.update(get_manifests(manifests))
 
-    def clear_run_info(self):
-        self.run_info = {}
-
-    def record_run(self, timings):
+    def record_run(self, timings, scheduler, run_status):
         """
         Build information for the current run and write it to a JSON file.
         If telemetry is configured, post the telemetry job information
         """
+        # Skip telemetry if no run information has been set, e.g. the model
+        # has not been run
+        if self.run_info == {}:
+            return
+
         # Query the scheduler just before recording the run information to
         # try get the most up-to-date information of the usage statistics
         # as they only get updated periodically
-        self.run_info.update(get_scheduler_run_info(self.scheduler))
+        self.run_info.update(get_scheduler_run_info(scheduler))
 
-        # Add timings to the run info
+        # Add timings to the run info and add end time and total run duration
         self.run_info.update(get_timings(timings))
+
+        # Add run status
+        self.run_info['payu_run_status'] = run_status
 
         # Write run job information to a JSON file
         if self.run_info_filepath is None:
-            # TODO: raise an error instead of warning?
             warnings.warn(
                 "Run job output file is not defined"
             )

@@ -26,7 +26,10 @@
                 "payu_n_runs": {
                     "type": "integer"
                 },
-                "payu_job_status": {
+                "payu_model_run_status": {
+                    "type": "integer"
+                },
+                "payu_run_status": {
                     "type": "integer"
                 },
                 "payu_version": {
@@ -101,7 +104,8 @@
                 "payu_run_id",
                 "payu_current_run",
                 "payu_n_runs",
-                "payu_job_status",
+                "payu_run_status",
+                "payu_model_run_status",
                 "payu_version",
                 "payu_path",
                 "hostname",
