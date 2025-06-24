@@ -14,7 +14,9 @@ import os
 
 from payu.models.cice import Cice
 from payu.fsops import mkdir_p
-
+import payu.calendar as cal
+from netCDF4 import Dataset
+import cftime
 
 class Cice5(Cice):
 
@@ -23,10 +25,6 @@ class Cice5(Cice):
 
         self.model_type = 'cice5'
         self.default_exec = 'cice'
-
-        # Default repo details
-        self.repo_url = 'https://github.com/OceansAus/cice5.git'
-        self.repo_tag = 'master'
 
         self.config_files = [
             'cice_in.nml',
@@ -59,6 +57,17 @@ class Cice5(Cice):
         # Force creation of a dump (restart) file at end of run
         self.ice_in['setup_nml']['dump_last'] = True
 
+        use_leap_years = self.ice_in['setup_nml']['use_leap_years']
+
+        if use_leap_years == True :
+            self.caltype = cal.GREGORIAN
+            self.cal_str = "proleptic_gregorian"
+        elif use_leap_years == False :
+            self.caltype = cal.NOLEAP
+            self.cal_str = "noleap"
+        else :
+            raise ValueError("use_leap_years invalid")
+
         super(Cice5, self).setup()
 
         # Make log dir
@@ -70,10 +79,65 @@ class Cice5(Cice):
         else:
             return []
 
+    def get_latest_restart_file(self, restart_path = None):
+        """
+        Given a restart path, parse the restart files and return the latest in 
+        that folder. If restart_path not provided, then default to the latest
+        restart in the latest restart folder. Only used by esm1.6 driver but 
+        should work in other drivers.
+        """
+        iced_restart_file = None
+        if not restart_path :
+            #find latest
+            restart_path = self.get_prior_restart_files()
+
+        iced_restart_files = [f for f in restart_path if f.startswith('iced.')]
+
+        if len(iced_restart_files) > 0:
+            iced_restart_file = sorted(iced_restart_files)[-1]
+
+        if iced_restart_file is None:
+            raise FileNotFoundError(
+                f'No iced restart file found in {self.prior_restart_path}'
+            )
+
+        return iced_restart_file
+
     def set_access_timestep(self, t_step):
         # TODO: Figure out some way to move this to the ACCESS driver
         # Re-read ice timestep and move this over there
         self.set_local_timestep(t_step)
+
+    def get_restart_datetime(self, restart_path = None):
+        """
+        Given a restart path, parse the restart files and return a cftime 
+        datetime. If restart_path not provided, then default to the latest.
+        ( esm1.6 is the only model with the "year" attribute in restart files. 
+        See https://github.com/ACCESS-NRI/cice5/issues/45 )
+        """
+        iced_file = self.get_latest_restart_file(restart_path)
+        if not restart_path :
+            restart_f = os.path.join(self.prior_restart_path, iced_file)
+        else :
+            restart_f = os.path.join(restart_path, iced_file)
+
+        iced_nc = Dataset(restart_f)
+        run_start_date = cftime.datetime(
+            year = iced_nc.getncattr('year'),
+            month = iced_nc.getncattr('month'),
+            day = iced_nc.getncattr('mday') ,
+            calendar = self.cal_str
+        )
+        if iced_nc.getncattr('sec') != 0 :
+            msg = (
+                f"Restart attribute sec in "
+                f"cice restart ({iced_file}) must be 0."
+                "All runs must start at midnight."
+                )
+            raise ValueError(msg)
+        iced_nc.close()
+
+        return run_start_date
 
     def _calc_runtime(self):
         """
@@ -87,16 +151,7 @@ class Cice5(Cice):
         Generate restart pointer which points to the latest iced.YYYYMMDD
         restart file.
         """
-        iced_restart_file = None
-        iced_restart_files = [f for f in self.get_prior_restart_files()
-                              if f.startswith('iced.')]
-
-        if len(iced_restart_files) > 0:
-            iced_restart_file = sorted(iced_restart_files)[-1]
-
-        if iced_restart_file is None:
-            raise FileNotFoundError(
-                f'No iced restart file found in {self.prior_restart_path}')
+        iced_restart_file = self.get_latest_restart_file()
 
         res_ptr_path = os.path.join(self.work_init_path,
                                     'ice.restart_file')

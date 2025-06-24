@@ -3,6 +3,8 @@ import shutil
 
 import pytest
 import f90nml
+from copy import deepcopy
+from netCDF4 import Dataset
 
 import payu
 
@@ -26,13 +28,16 @@ DEFAULT_CICE_NML = {
         "runtype": "initial",
         "npt": 99999,
         "dt": 1,
+        "use_leap_years" : False
     },
     "grid_nml": {"grid_file": "./INPUT/grid.nc", "kmt_file": "./INPUT/kmt.nc"},
     "icefields_nml": {"f_icy": "x"},
 }
+
+
 CICE_NML_NAMES = ["cice_in.nml", "input_ice.nml",
                   "input_ice_gfdl.nml", "input_ice_monin.nml"]
-ICED_RESTART_NAME = "iced.18510101"
+ICED_RESTART_NAME = "iced."
 RESTART_POINTER_NAME = "ice.restart_file"
 
 DEFAULT_CONFIG = {
@@ -125,8 +130,8 @@ def empty_workdir():
 
 
 @pytest.fixture
-def cice_config_files():
-    cice_nml = DEFAULT_CICE_NML
+def cice_config_files(request):
+    cice_nml = request.param
 
     with cd(ctrldir):
         # 2. Create config.nml
@@ -142,11 +147,47 @@ def cice_config_files():
             os.remove(name)
 
 
-@pytest.mark.parametrize("config", [DEFAULT_CONFIG],
+BADCAL_CICE_NML = deepcopy(DEFAULT_CICE_NML)
+BADCAL_CICE_NML["setup_nml"].update(use_leap_years="noleap")
+
+NOCAL_CICE_NML = deepcopy(DEFAULT_CICE_NML)
+del NOCAL_CICE_NML["setup_nml"]["use_leap_years"]
+
+@pytest.mark.parametrize("config", 
+                        [DEFAULT_CONFIG],
                          indirect=True)
-def test_setup(config, cice_config_files):
+@pytest.mark.parametrize("cice_config_files", 
+                        [BADCAL_CICE_NML, NOCAL_CICE_NML],
+                         indirect=True)
+def test_setup_fails(config, cice_config_files):
     """
-    # Confirm that payu setup works
+    # Confirm that payu setup fails with an invalid calendar
+    """
+    with cd(ctrldir):
+
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        # Function to test
+        with pytest.raises(Exception):
+            model.setup()
+
+
+LEAP_CICE_NML = deepcopy(DEFAULT_CICE_NML)
+LEAP_CICE_NML["setup_nml"].update(use_leap_years=True)
+
+@pytest.mark.parametrize("config", 
+                        [DEFAULT_CONFIG],
+                         indirect=True)
+@pytest.mark.parametrize("cice_config_files,expected_cal", 
+                        [(DEFAULT_CICE_NML,"noleap"),
+                         (LEAP_CICE_NML,"proleptic_gregorian")],
+                         indirect=["cice_config_files"])
+def test_setup(config, cice_config_files, expected_cal):
+    """
+    # Confirm that payu setup works when inputs are valid.
+    # Confrim expected calendar is set
     """
     with cd(ctrldir):
 
@@ -170,18 +211,34 @@ def test_setup(config, cice_config_files):
     # Check dump_last
     assert input_nml["setup_nml"]["dump_last"] is True
 
+    # Check cal
+    assert model.cal_str == expected_cal
+
 
 @pytest.fixture
-def prior_restart_dir_cice5():
+def prior_restart_dir_cice5(request):
     """
-    Create fake prior restart files required by CICE5's setup.
+    Create fake prior restart files (at rdate) required by CICE5's setup.
     """
+    y,m,d,s = request.param
+    rdate = f"{y:04d}{m:02d}{d:02d}"
+
     prior_restart_path = RESTART_PATH
     os.mkdir(prior_restart_path)
 
     # Restart files required by CICE5 setup
-    (prior_restart_path/ICED_RESTART_NAME).touch()
-    (prior_restart_path/RESTART_POINTER_NAME).touch()
+    ncfile = Dataset(
+        prior_restart_path/f"{ICED_RESTART_NAME}{rdate}", 
+        mode='w', format='NETCDF4')
+    # set restart time
+    ncfile.setncattr("year",y)
+    ncfile.setncattr("month",m)
+    ncfile.setncattr("mday",d)
+    ncfile.setncattr("sec",s)
+    ncfile.close()
+
+    with open(prior_restart_path/RESTART_POINTER_NAME, 'w') as rpointer:
+        rpointer.write(f"{ICED_RESTART_NAME}{rdate}")
 
     yield prior_restart_path
 
@@ -189,9 +246,15 @@ def prior_restart_dir_cice5():
     shutil.rmtree(prior_restart_path)
 
 
-@pytest.mark.parametrize("config", [CONFIG_WITH_RESTART],
-                         indirect=True)
-def test_restart_setup(config, cice_config_files, prior_restart_dir_cice5):
+@pytest.mark.parametrize("config", [CONFIG_WITH_RESTART], indirect=True)
+@pytest.mark.parametrize("cice_config_files", [DEFAULT_CICE_NML], indirect=True)
+@pytest.mark.parametrize("prior_restart_dir_cice5,expected_date",
+                        [([1,1,1,0],"00010101"), #first valid date
+                        ([9999,12,31,0],"99991231")], #last date
+                        indirect=["prior_restart_dir_cice5"])
+def test_restart_setup(
+    config, cice_config_files, prior_restart_dir_cice5, expected_date
+    ):
     """
     Test that seting up an experiment from a cloned control directory
     works when a restart directory is specified.
@@ -204,12 +267,36 @@ def test_restart_setup(config, cice_config_files, prior_restart_dir_cice5):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, reproduce=False)
         model = expt.models[0]
-
         # Function to test
         model.setup()
 
     # Check restart files were copied to work directory.
     cice_work_restart_files = os.listdir(model.work_restart_path)
 
-    for file in [ICED_RESTART_NAME, RESTART_POINTER_NAME]:
+    for file in [ICED_RESTART_NAME+expected_date, RESTART_POINTER_NAME]:
         assert file in cice_work_restart_files
+
+    assert model.get_restart_datetime().strftime("%Y%m%d") == expected_date
+
+@pytest.mark.parametrize("config", [CONFIG_WITH_RESTART], indirect=True)
+@pytest.mark.parametrize("cice_config_files", [DEFAULT_CICE_NML], indirect=True)
+@pytest.mark.parametrize("prior_restart_dir_cice5",
+                        [([1,1,1,1]), #small invalid number of secs
+                        ([9999,12,31,86399])], #large invalid number of secs
+                        indirect=["prior_restart_dir_cice5"])
+def test_bad_rdate(
+    config, cice_config_files, prior_restart_dir_cice5,
+    ):
+    """
+    Test get_restart_datetime fails with invalid restart date
+    """
+    # Setup experiment
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+        # Function to test
+        model.setup()
+
+    with pytest.raises(Exception):
+        model.get_restart_datetime()
