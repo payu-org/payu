@@ -14,6 +14,7 @@ import os
 
 from payu.models.cice import Cice
 from payu.fsops import mkdir_p
+import payu.calendar as cal
 from netCDF4 import Dataset
 import cftime
 
