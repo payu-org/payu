@@ -115,17 +115,22 @@ def test_telemetry_record_run_no_telemetry_config(
     }
     mock_telemetry_get_external_config.return_value = None
     mock_post_telemetry_data.return_value = None
-    timings = {}
+    timings = {
+        "payu_total_duration_seconds": 10.0
+    }
     mock_get_timings.return_value = timings
 
     # Setup Telemetry class
-    telemetry = Telemetry(config={}, scheduler=None)
+    telemetry = Telemetry(config={})
     job_info_filepath = tmp_path / "job.json"
     telemetry.set_run_info_filepath(job_info_filepath)
     telemetry.telemetry_enabled = False
+    telemetry.run_info = {
+        "payu_current_run": 0
+    }
 
     # Run method
-    telemetry.record_run(timings={})
+    telemetry.record_run(timings={}, scheduler=None, run_status=0)
 
     # Check post telemetry method was not called
     mock_telemetry_get_external_config.assert_not_called()
@@ -135,7 +140,10 @@ def test_telemetry_record_run_no_telemetry_config(
     assert job_info_filepath.exists()
     with open(job_info_filepath, 'r') as f:
         assert json.load(f) == {
-            "test_field": "test_value"
+            "payu_current_run": 0,
+            "test_field": "test_value",
+            "payu_total_duration_seconds": 10.0,
+            "payu_run_status": 0,
         }
 
 
@@ -144,7 +152,7 @@ def test_telemetry_not_enabled_no_environment_config(monkeypatch):
     if TELEMETRY_CONFIG in os.environ:
         monkeypatch.delenv(TELEMETRY_CONFIG, raising=False)
 
-    telemetry = Telemetry(config={}, scheduler=None)
+    telemetry = Telemetry(config={})
     assert not telemetry.telemetry_enabled
 
 
@@ -154,12 +162,12 @@ def test_telemetry_not_enabled_config(tmp_path, setup_env):
             "enable": False
         }
     }
-    telemetry = Telemetry(config=config, scheduler=None)
+    telemetry = Telemetry(config=config)
     assert not telemetry.telemetry_enabled
 
 
 def test_telemetry_enabled(tmp_path, setup_env):
-    telemetry = Telemetry(config={}, scheduler=None)
+    telemetry = Telemetry(config={})
     assert telemetry.telemetry_enabled
 
 
@@ -175,7 +183,7 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
         "payu_run_id": "test-commit-hash",
         "payu_current_run": 0,
         "payu_n_runs": 0,
-        "payu_job_status": 0,
+        "payu_model_run_status": 0,
         "payu_version": "2.0.0",
         "payu_path": "path/to/testenv",
         "payu_control_path": "path/to/control/dir",
@@ -264,7 +272,7 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
         json.dump(telemetry_config, f)
 
     # Setup Telemetry class
-    telemetry = Telemetry(config={}, scheduler=scheduler)
+    telemetry = Telemetry(config={})
     # Save run state information during experiment run
     telemetry.set_run_info(run_info=run_info,
                            metadata=metadata,
@@ -295,7 +303,9 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
             mock_post.return_value = mock_response
 
             # Store & post run job information
-            telemetry.record_run(timings=timings)
+            telemetry.record_run(timings=timings,
+                                 scheduler=scheduler,
+                                 run_status=0)
 
             # Get data from the mock request
             assert mock_post.called
@@ -315,7 +325,7 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
     assert record['payu_run_id'] == 'test-commit-hash'
     assert record['payu_current_run'] == 0
     assert record['payu_n_runs'] == 0
-    assert record['payu_job_status'] == 0
+    assert record['payu_model_run_status'] == 0
     assert record['payu_version'] == '2.0.0'
     assert record['payu_path'] == 'path/to/testenv'
     assert record['hostname'] == 'test-host'
@@ -331,11 +341,9 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
     assert record["timings"]["payu_setup_duration_seconds"] == 5.0239
     assert 'payu_finish_time' in record['timings']
     assert 'payu_total_duration_seconds' in record['timings']
+    assert record['payu_run_status'] == 0
 
     # Validate sent record against schema for top level fields
     with open(TELEMETRY_1_0_0_SCHEMA_PATH, "r") as f:
         schema = json.load(f)
     jsonschema.validate(sent_data, schema)
-
-    telemetry.clear_run_info()
-    assert telemetry.run_info == {}
