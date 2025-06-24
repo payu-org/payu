@@ -59,8 +59,10 @@ class Cice5(Cice):
         use_leap_years = self.ice_in['setup_nml']['use_leap_years']
 
         if use_leap_years == True :
+            self.caltype = cal.GREGORIAN
             self.cal_str = "proleptic_gregorian"
         elif use_leap_years == False :
+            self.caltype = cal.NOLEAP
             self.cal_str = "noleap"
         else :
             raise ValueError("use_leap_years invalid")
