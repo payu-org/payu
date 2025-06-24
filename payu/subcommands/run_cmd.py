@@ -1,4 +1,3 @@
-import datetime
 import os
 import argparse
 
@@ -131,22 +130,26 @@ def runscript():
               ''.format(expt.n_runs, n_runs_per_submit, subrun))
 
         expt.setup()
-        expt.run()
-        expt.archive(force_prune_restarts=run_args.force_prune_restarts)
-
-        # Record job information for experiment run
-        expt.telemetry.record_run(timings=expt.timings)
-
-        # Reset run information before the next run
-        expt.telemetry.clear_run_info()
-        expt.init_timings()
+        run_status = 1
+        try:
+            expt.run()
+            expt.archive(force_prune_restarts=run_args.force_prune_restarts)
+            run_status = 0
+        finally:
+            # Record job information for experiment run
+            expt.telemetry.record_run(timings=expt.timings,
+                                      scheduler=expt.scheduler,
+                                      run_status=run_status)
 
         # Finished runs
         if expt.n_runs == 0:
             break
 
-        # Need to manually increment the run counter if still looping
+        # Check if still looping
         if n_runs_per_submit > 1 and subrun < n_runs_per_submit:
+            # Re-initialise the experiment method timings
+            expt.init_timings()
+            # Need to manually increment the run counter if still looping
             expt.counter += 1
             # Re-initialize manifest: important to clear out restart manifest
             # note no attempt to preserve reproduce flag, it makes no sense
