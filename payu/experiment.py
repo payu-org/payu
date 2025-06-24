@@ -68,8 +68,6 @@ def timeit(time_name):
 
 
 class Experiment(object):
-
-    @timeit("payu_init_duration_seconds")
     def __init__(self, lab, reproduce=False, force=False, metadata_off=False):
         self.init_timings()
         self.lab = lab
@@ -162,10 +160,6 @@ class Experiment(object):
         self.scheduler_name = self.config.get('scheduler',
                                               DEFAULT_SCHEDULER_CONFIG)
         self.scheduler = scheduler_index[self.scheduler_name]()
-
-        # Initialise telemetry
-        self.telemetry = Telemetry(config=self.config,
-                                   scheduler=self.scheduler)
 
     def init_timings(self):
         """Initialize an timings dictionary with the current time."""
@@ -461,6 +455,9 @@ class Experiment(object):
 
     @timeit("payu_setup_duration_seconds")
     def setup(self, force_archive=False):
+        # Initialise telemetry
+        self.telemetry = Telemetry(config=self.config)
+
         # Check version
         self.check_payu_version()
 
@@ -713,6 +710,8 @@ class Experiment(object):
         runcmd_elapsed_time = time.perf_counter() - runcmd_start_time
         self.timings["payu_model_run_duration_seconds"] = runcmd_elapsed_time
 
+        # Set payu telemetry output file to the work directory
+        self.telemetry.set_run_info_filepath(Path(self.work_path) / "job.json")
         # Store job state information
         self.telemetry.set_run_info(
             run_info=self.run_info(),
@@ -744,6 +743,11 @@ class Experiment(object):
             if job_id == '' or job_id is None:
                 job_id = str(self.run_id)[:6]
 
+            # Set telemetry output file to the error log directory
+            self.telemetry.set_run_info_filepath(
+                Path(error_log_dir) / f"job.{job_id}.json"
+            )
+
             for fname in self.output_fnames:
 
                 src = os.path.join(self.control_path, fname)
@@ -762,12 +766,6 @@ class Experiment(object):
             error_script = self.userscripts.get('error')
             if error_script:
                 self.run_userscript(error_script, 'error')
-
-            # Record run information
-            self.telemetry.set_run_info_filepath(
-                Path(error_log_dir) / f"job.{job_id}.json"
-            )
-            self.telemetry.record_run(timings=self.timings)
 
             # Terminate payu
             sys.exit('payu: Model exited with error code {0}; aborting.'
@@ -795,16 +793,13 @@ class Experiment(object):
         if run_script:
             self.run_userscript(run_script, 'run')
 
-        # Set telemetry run info output file to the work directory
-        self.telemetry.set_run_info_filepath(Path(self.work_path) / "job.json")
-
     def run_info(self):
         """Return a dictionary with current run state information"""
         return {
             'payu_run_id': self.run_id,
             'payu_current_run': self.counter,
             'payu_n_runs':  self.n_runs,
-            'payu_job_status': self.run_job_status,
+            'payu_model_run_status': self.run_job_status,
             'payu_version': payu.__version__,
             'payu_path': os.path.dirname(self.payu_path),
             'payu_config': self.config,
@@ -852,6 +847,9 @@ class Experiment(object):
             sys.exit('payu: error: Output path already exists.')
 
         movetree(self.work_path, self.output_path)
+
+        # Set telemetry job info output file to the archive directory
+        self.telemetry.set_run_info_filepath(Path(self.output_path) / "job.json")
 
         # Remove any outdated restart files
         try:
@@ -907,11 +905,6 @@ class Experiment(object):
         # Ensure postprocessing runs if model not collating
         if not collating:
             self.postprocess()
-
-        # Set telemetry job info output file to the archive directory
-        self.telemetry.set_run_info_filepath(
-            Path(self.output_path) / "job.json"
-        )
 
     def collate(self):
         # Setup modules - load user-defined modules
@@ -1001,9 +994,8 @@ class Experiment(object):
             self.set_userscript_env_vars()
             run_script_command(script_cmd,
                                control_path=Path(self.control_path))
-        except Exception as e:
-            raise
         finally:
+            # Always record the time taken
             elapsed_time = time.perf_counter() - start_time
             self.timings[f"{type}_userscript_duration_seconds"] = elapsed_time
 
