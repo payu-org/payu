@@ -14,9 +14,8 @@ import os
 
 from payu.models.cice import Cice
 from payu.fsops import mkdir_p
-import payu.calendar as cal
 from netCDF4 import Dataset
-from datetime import date
+import cftime
 
 class Cice5(Cice):
 
@@ -59,11 +58,10 @@ class Cice5(Cice):
 
         use_leap_years = self.ice_in['setup_nml']['use_leap_years']
 
-        # is it a gregorian or noleap calendar
         if use_leap_years == True :
-            self.caltype = cal.GREGORIAN
+            self.cal_str = "proleptic_gregorian"
         elif use_leap_years == False :
-            self.caltype = cal.NOLEAP
+            self.cal_str = "noleap"
         else :
             raise ValueError("use_leap_years invalid")
 
@@ -78,10 +76,19 @@ class Cice5(Cice):
         else:
             return []
 
-    def get_latest_restart_file(self):
+    def get_latest_restart_file(self, restart_path = None):
+        """
+        Given a restart path, parse the restart files and return the latest in 
+        that folder. If restart_path not provided, then default to the latest
+        restart in the latest restart folder. Only used by esm1.6 driver but 
+        should work in other drivers.
+        """
         iced_restart_file = None
-        iced_restart_files = [f for f in self.get_prior_restart_files()
-                              if f.startswith('iced.')]
+        if not restart_path :
+            #find latest
+            restart_path = self.get_prior_restart_files()
+
+        iced_restart_files = [f for f in restart_path if f.startswith('iced.')]
 
         if len(iced_restart_files) > 0:
             iced_restart_file = sorted(iced_restart_files)[-1]
@@ -98,18 +105,25 @@ class Cice5(Cice):
         # Re-read ice timestep and move this over there
         self.set_local_timestep(t_step)
 
-    def get_restart_date(self):
+    def get_restart_datetime(self, restart_path = None):
         """
-        Read the start date from the last restart file
+        Given a restart path, parse the restart files and return a cftime 
+        datetime. If restart_path not provided, then default to the latest.
+        ( esm1.6 is the only model with the "year" attribute in restart files. 
+        See https://github.com/ACCESS-NRI/cice5/issues/45 )
         """
-        iced_file = self.get_latest_restart_file()
-        iced_nc = Dataset(
-            os.path.join(self.prior_restart_path, iced_file)
-        )
-        run_start_date = date(
-            iced_nc.getncattr('year'),
-            iced_nc.getncattr('month'),
-            iced_nc.getncattr('mday')
+        iced_file = self.get_latest_restart_file(restart_path)
+        if not restart_path :
+            restart_f = os.path.join(self.prior_restart_path, iced_file)
+        else :
+            restart_f = os.path.join(restart_path, iced_file)
+
+        iced_nc = Dataset(restart_f)
+        run_start_date = cftime.datetime(
+            year = iced_nc.getncattr('year'),
+            month = iced_nc.getncattr('month'),
+            day = iced_nc.getncattr('mday') ,
+            calendar = self.cal_str
         )
         if iced_nc.getncattr('sec') != 0 :
             msg = (

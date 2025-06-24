@@ -18,7 +18,7 @@ import sys
 
 # Extensions
 import f90nml
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 # Local
 from payu.fsops import make_symlink
@@ -155,7 +155,11 @@ class AccessEsm1p6(Model):
                         )
 
                     elif model.model_type == 'cice5':
-                        run_start_date = model.get_restart_date()
+                        # get_restart_datetime returns cftime objects, 
+                        # convert to datetime
+                        run_start_date = datetime.fromisoformat(
+                            model.get_restart_datetime().isoformat()
+                        ).date()
 
                     # run_start_date must be after initialisation date
                     if run_start_date < init_date:
