@@ -605,7 +605,7 @@ class Experiment(object):
             if model_npernode:
                 if model_npernode % 2 == 0:
                     npernode_flag = ('-map-by ppr:{0}:socket'
-                                     ''.format(model_npernode / 2))
+                                     ''.format(model_npernode // 2))
                 else:
                     npernode_flag = ('-map-by ppr:{0}:node'
                                      ''.format(model_npernode))
