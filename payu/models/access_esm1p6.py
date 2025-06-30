@@ -200,11 +200,14 @@ class AccessEsm1p6(Model):
                 else:
                     raise RuntimeError("runtime missing from config.yaml")
 
-                # Now write out new run start date and total runtime into the
-                # work directory namelist.
-                cpl_group[model.init_date_key] = cal.date_to_int(init_date)
-                cpl_group[model.inidate_key] = cal.date_to_int(run_start_date)
-                cpl_group[model.runtime0_key] = previous_runtime
+                # CICE5 start date read directly from restart
+                if model.model_type == "cice":
+                    # Now write out new run start date and total runtime into the
+                    # work directory namelist.
+                    cpl_group[model.init_date_key] = cal.date_to_int(init_date)
+                    cpl_group[model.inidate_key] = cal.date_to_int(run_start_date)
+                    cpl_group[model.runtime0_key] = previous_runtime
+
                 cpl_group[model.runtime_key] = int(run_runtime)
 
                 # write coupler namelist
