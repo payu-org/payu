@@ -603,7 +603,7 @@ class Experiment(object):
             model_npernode = model.config.get('npernode')
             # TODO: New Open MPI format?
             if model_npernode:
-                 npernode_flag = ('-map-by ppr:{0}:node'
+                npernode_flag = ('-map-by ppr:{0}:node'
                                   ''.format(model_npernode))
 
                 if self.config.get('scalasca', False):
