@@ -67,6 +67,7 @@ def timeit(time_name):
 
 
 class Experiment(object):
+    @timeit("payu_init_duration_seconds")
     def __init__(self, lab, reproduce=False, force=False, metadata_off=False):
         self.init_timings()
         self.lab = lab
