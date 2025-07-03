@@ -200,7 +200,7 @@ class AccessEsm1p6(Model):
                 else:
                     raise RuntimeError("runtime missing from config.yaml")
 
-                # CICE5 start date read directly from restart
+                # Namelist dates only required for CICE4
                 if model.model_type == "cice":
                     # Now write out new run start date and total runtime into the
                     # work directory namelist.
