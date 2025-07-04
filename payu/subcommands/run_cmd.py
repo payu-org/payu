@@ -18,7 +18,6 @@ arguments = [args.model, args.config, args.initial, args.nruns,
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
            reproduce=False, force=False, force_prune_restarts=False):
-
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
     pbs_vars = cli.set_env_vars(init_run=init_run,
@@ -111,7 +110,6 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
 
 def runscript():
-
     parser = argparse.ArgumentParser()
     for arg in arguments:
         parser.add_argument(*arg['flags'], **arg['parameters'])
@@ -120,6 +118,7 @@ def runscript():
 
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)
+
     expt = Experiment(lab, reproduce=run_args.reproduce, force=run_args.force)
 
     n_runs_per_submit = expt.config.get('runspersub', 1)
@@ -131,15 +130,26 @@ def runscript():
               ''.format(expt.n_runs, n_runs_per_submit, subrun))
 
         expt.setup()
-        expt.run()
-        expt.archive(force_prune_restarts=run_args.force_prune_restarts)
+        run_status = 1
+        try:
+            expt.run()
+            expt.archive(force_prune_restarts=run_args.force_prune_restarts)
+            run_status = 0
+        finally:
+            # Record job information for experiment run
+            expt.telemetry.record_run(timings=expt.timings,
+                                      scheduler=expt.scheduler,
+                                      run_status=run_status)
 
         # Finished runs
         if expt.n_runs == 0:
             break
 
-        # Need to manually increment the run counter if still looping
+        # Check if still looping
         if n_runs_per_submit > 1 and subrun < n_runs_per_submit:
+            # Re-initialise the experiment method timings
+            expt.init_timings()
+            # Need to manually increment the run counter if still looping
             expt.counter += 1
             # Re-initialize manifest: important to clear out restart manifest
             # note no attempt to preserve reproduce flag, it makes no sense

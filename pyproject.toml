@@ -31,7 +31,8 @@ dependencies = [
     "cftime",
     "GitPython >=3.1.40",
     "ruamel.yaml >=0.18.5",
-    "packaging"
+    "packaging",
+    "jsonschema"
 ]
 
 [project.optional-dependencies]
@@ -40,7 +41,7 @@ test = [
     "pylint",
     "Sphinx",
     "pytest-cov",
-    "mnctools"
+    "mnctools",
 ]
 mitgcm = ["mnctools>=0.2"]
 

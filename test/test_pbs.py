@@ -239,4 +239,4 @@ def test_run():
 def test_tenacity():
 
     # This should fail and do nothing
-    pbs.get_qstat_info()
+    pbs.get_job_info_json()

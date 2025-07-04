@@ -1,4 +1,5 @@
 import copy
+import datetime
 from pathlib import Path
 import pytest
 import shutil
@@ -259,7 +260,6 @@ def test_check_payu_version_configured_invalid_version(minimum_version):
                 expt.check_payu_version()
 
 
-
 # model.expt.runlog.enabled is used in code for writing runlog
 # it can be set as runlog:true or runlog:enable:true in config.yaml
 @pytest.mark.parametrize(
@@ -290,3 +290,42 @@ def test_runlog_enable(runlog, enabled):
         model = expt.models[0]
 
     assert model.expt.runlog.enabled == enabled
+
+
+def test_setup_telemetry_and_timing():
+    """Check telemetry and timings are initialised and payu setup
+    time is recorded"""
+    config = copy.deepcopy(config_orig)
+
+    # Add setup userscript
+    config['userscripts'] = {
+        'setup': 'echo "Running setup userscript"'
+    }
+
+    # Setup files
+    write_config(config)
+    make_exe()
+    make_inputs()
+    make_config_files()
+
+    # Check telemetry is enabled in the experiment
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+
+        # Test timings are initialized
+        assert expt.timings is not None
+        assert "payu_start_time" in expt.timings
+        assert isinstance(expt.timings['payu_start_time'], datetime.datetime)
+        assert len(expt.timings) == 1
+
+        expt.setup()
+
+    # Check telemetry is initialized in setup
+    assert expt.telemetry is not None
+    # Check setup method time has been recorded
+    assert len(expt.timings) == 3
+    assert 'payu_setup_duration_seconds' in expt.timings
+    assert isinstance(expt.timings['payu_setup_duration_seconds'], float)
+    assert 'setup_userscript_duration_seconds' in expt.timings
+    assert isinstance(expt.timings['setup_userscript_duration_seconds'], float)
