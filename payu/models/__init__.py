@@ -17,6 +17,7 @@ from payu.models.um import UnifiedModel
 from payu.models.ww3 import WW3
 from payu.models.qgcm import Qgcm
 from payu.models.yatm import Yatm
+from payu.models.roms import Roms
 
 from payu.models.model import Model
 
@@ -33,6 +34,7 @@ index = {
     'mom':        Mom,
     'nemo':       Nemo,
     'oasis':      Oasis,
+    'roms':       Roms,
     'test':       Test,
     'um':         UnifiedModel,
     'ww3':        WW3,
