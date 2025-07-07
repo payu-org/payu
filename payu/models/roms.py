@@ -43,7 +43,7 @@ class Roms(Model):
                 f"control directory: {self.control_path}"
             )
 
-        self.config_files.append(self.config['model_config'])
+        self.config_files.append(model_config)
 
         super(Roms, self).setup()
 
