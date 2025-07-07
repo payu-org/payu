@@ -146,7 +146,7 @@ class Experiment(object):
         assert self.model_name
 
         model_fields = ['model', 'exe', 'input', 'ncpus', 'npernode', 'build',
-                        'mpthreads', 'exe_prefix']
+                        'mpthreads', 'exe_prefix', 'model_config']
 
         # XXX: Temporarily adding this to model config...
         model_fields += ['mask']
