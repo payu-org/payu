@@ -47,3 +47,6 @@ class Roms(Model):
 
         super(Roms, self).setup()
 
+        # Set the model config file to be added after the executable
+        # in the model run command
+        self.exec_postfix = model_config

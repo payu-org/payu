@@ -42,6 +42,7 @@ class Model(object):
         self.exec_prefix = None
         self.exec_path = None
         self.exec_name = None
+        self.exec_postfix = None
         self.codebase_path = None
         self.work_path_local = None
         self.work_input_path_local = None

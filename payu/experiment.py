@@ -631,6 +631,9 @@ class Experiment(object):
             # older MPI libraries complained executable was not in PATH
             model_prog.append(os.path.join(model.work_path, model.exec_name))
 
+            if model.exec_postfix:
+                model_prog.append(model.exec_postfix)
+
             mpi_progs.append(' '.join(model_prog))
 
         # List all loaded environment modules
