@@ -7,6 +7,8 @@ import threading
 from typing import Any, Dict, Optional
 import warnings
 
+import cftime
+
 import payu
 from payu.metadata import Metadata
 from payu.schedulers import Scheduler
@@ -78,6 +80,28 @@ def get_scheduler_run_info(scheduler: Scheduler) -> Dict[str, Any]:
         info['scheduler_job_info'] = scheduler_info
         info['scheduler_type'] = scheduler.name
     return info
+
+
+def transform_model_datetimes(
+        datetimes: Dict[str, cftime.datetime]
+    ) -> Dict[str, str]:
+    """Transforms model cftime datetimes to a dictionary with ISO-format
+    strings"""
+    transformed = {}
+    calendar = None
+    for key, value in datetimes.items():
+        if isinstance(value, cftime.datetime):
+            # Convert cftime datetime to ISO format string
+            transformed[key] = value.isoformat()
+            calendar = str(value.calendar)
+        else:
+            warnings.warn(
+                f"Expected cftime.datetime for model datetimes, "
+                f"but got {type(value).__name__}"
+            )
+    if calendar:
+        transformed['model_calendar'] = calendar
+    return transformed
 
 
 def get_external_telemetry_config() -> Optional[Dict[str, Any]]:
@@ -202,6 +226,12 @@ class Telemetry():
         self.run_info.update(run_info)
         self.run_info.update(get_metadata(metadata))
         self.run_info.update(get_manifests(manifests))
+
+    def set_model_datetimes(self, datetimes):
+        """Add the internal model times for the current run to the run
+        information, and transform times to strings so they are
+        JSON serializable"""
+        self.run_info.update(transform_model_datetimes(datetimes))
 
     def record_run(self, timings, scheduler, run_status):
         """
