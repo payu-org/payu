@@ -52,6 +52,7 @@ core_modules = ['python', 'payu']
 # Default payu parameters
 default_restart_freq = 5
 
+
 def timeit(time_name):
     """Decorator to time a function and store the elapsed time in seconds
     to the timings dictionary in the class"""
@@ -812,6 +813,26 @@ class Experiment(object):
             'payu_archive_path': str(self.archive_path),
         }
 
+    def get_model_restart_datetimes(self):
+        """Return dictionary of current and previous restart datetimes
+        for the model. Catches any exceptions raised"""
+        restart_path = self.restart_path
+        prior_restart_path = self.prior_restart_path
+        datetimes = {}
+        try:
+            restart_dt = self.model.get_restart_datetime(restart_path)
+            datetimes = {'model_finish_time': restart_dt}
+            if prior_restart_path is not None:
+                prior_restart_dt = self.model.get_restart_datetime(
+                    prior_restart_path
+                )
+                datetimes['model_start_time'] = prior_restart_dt
+        except Exception:
+            # Ignore if model does not support parsing restart datetimes
+            # or if there was error during file parsing
+            pass
+        return datetimes
+
     def archiving(self):
         """
         Determine whether to run archive step based on config.yaml settings.
@@ -853,7 +874,11 @@ class Experiment(object):
         movetree(self.work_path, self.output_path)
 
         # Set telemetry job info output file to the archive directory
-        self.telemetry.set_run_info_filepath(Path(self.output_path) / "job.json")
+        self.telemetry.set_run_info_filepath(
+            Path(self.output_path) / "job.json"
+        )
+        # Record model restart datetimes in telemetry
+        self.telemetry.set_model_datetimes(self.get_model_restart_datetimes())
 
         # Remove any outdated restart files
         try:

@@ -2,14 +2,19 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
-
-import pytest
 from unittest.mock import patch, Mock
-import jsonschema
 
-from payu.telemetry import get_external_telemetry_config, post_telemetry_data
-from payu.telemetry import Telemetry
-from payu.telemetry import TELEMETRY_CONFIG
+import cftime
+import jsonschema
+import pytest
+
+from payu.telemetry import (
+    transform_model_datetimes,
+    get_external_telemetry_config,
+    post_telemetry_data,
+    Telemetry,
+    TELEMETRY_CONFIG,
+)
 
 TELEMETRY_1_0_0_SCHEMA_PATH = (
     Path(__file__).parent / "resources" / "schema" / "telemetry" / "1-0-0.json"
@@ -347,3 +352,50 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env):
     with open(TELEMETRY_1_0_0_SCHEMA_PATH, "r") as f:
         schema = json.load(f)
     jsonschema.validate(sent_data, schema)
+
+
+@pytest.mark.parametrize("datetimes, transformed_datetimes", [
+    (
+        {
+            "model_end_time": cftime.datetime(2025, 2, 1, calendar='julian'),
+            "model_start_time": cftime.datetime(2025, 1, 1, calendar='julian'),
+        },
+        {
+            "model_end_time": "2025-02-01T00:00:00",
+            "model_calendar": "julian",
+            "model_start_time": "2025-01-01T00:00:00",
+        }
+    ),
+    ({}, {}),
+    (
+        {
+            "model_end_time": cftime.datetime(2025, 2, 1, calendar='standard'),
+        },
+        {
+            "model_end_time": "2025-02-01T00:00:00",
+            "model_calendar": "standard",
+        }
+    ),
+])
+def test_transform_model_datetime(datetimes, transformed_datetimes):
+    """Test the transform_model_datetimes converts cftime datetimes to ISO
+    format strings and calendars"""
+    result = transform_model_datetimes(datetimes)
+    assert result == transformed_datetimes
+
+
+def test_transform_model_datetime_warning():
+    """Test the transform_model_datetimes raises a warning
+    for unexpected type"""
+    expected_warning = (
+        "Expected cftime.datetime for model datetimes, "
+        "but got datetime"
+    )
+    with pytest.warns(UserWarning, match=expected_warning):
+        result = transform_model_datetimes(
+            {
+                "model_end_time": datetime(2025, 1, 1, 12, 0, 0),
+                "model_start_time": datetime(2025, 1, 1, 0, 0, 0),
+            }
+        )
+    assert result == {}

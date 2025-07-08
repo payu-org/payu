@@ -7,6 +7,8 @@ import threading
 from typing import Any, Dict, Optional
 import warnings
 
+import cftime
+
 import payu
 from payu.metadata import Metadata
 from payu.schedulers import Scheduler
@@ -17,8 +19,8 @@ TELEMETRY_CONFIG_VERSION = "1-0-0"
 
 # Required telemetry configuration fields
 CONFIG_FIELDS = {
-    "URL" : "telemetry_url",
-    "TOKEN" : "telemetry_token",
+    "URL": "telemetry_url",
+    "TOKEN": "telemetry_token",
     "SERVICE_NAME": "telemetry_service_name",
     "HOST": "telemetry_host",
     "HOSTNAME": "hostname",
@@ -80,6 +82,28 @@ def get_scheduler_run_info(scheduler: Scheduler) -> Dict[str, Any]:
     return info
 
 
+def transform_model_datetimes(
+            datetimes: Dict[str, cftime.datetime]
+        ) -> Dict[str, str]:
+    """Transforms model cftime datetimes to a dictionary with ISO-format
+    strings"""
+    transformed = {}
+    calendar = None
+    for key, value in datetimes.items():
+        if isinstance(value, cftime.datetime):
+            # Convert cftime datetime to ISO format string
+            transformed[key] = value.isoformat()
+            calendar = str(value.calendar)
+        else:
+            warnings.warn(
+                f"Expected cftime.datetime for model datetimes, "
+                f"but got {type(value).__name__}"
+            )
+    if calendar:
+        transformed['model_calendar'] = calendar
+    return transformed
+
+
 def get_external_telemetry_config() -> Optional[Dict[str, Any]]:
     """Loads the external telemetry configuration file.
     If a valid file does not exist, return None"""
@@ -110,8 +134,8 @@ def get_external_telemetry_config() -> Optional[Dict[str, Any]]:
     missing_fields = CONFIG_FIELDS.values() - telemetry_config.keys()
     if missing_fields:
         warnings.warn(
-            f"Required field(s) {missing_fields} not found in configuration file "
-            f"at {TELEMETRY_CONFIG}: {config_path}. "
+            f"Required field(s) {missing_fields} not found in configuration "
+            f"file at {TELEMETRY_CONFIG}: {config_path}. "
             "Skipping posting telemetry"
         )
         return None
@@ -172,6 +196,7 @@ def post_telemetry_data(url: str,
     except Exception as e:
         warnings.warn(f"Error posting telemetry: {e}")
 
+
 class Telemetry():
     """Telemetry class to store and post telemetry information.
     Currently these class methods are accessed during an Experiment run -
@@ -202,6 +227,12 @@ class Telemetry():
         self.run_info.update(run_info)
         self.run_info.update(get_metadata(metadata))
         self.run_info.update(get_manifests(manifests))
+
+    def set_model_datetimes(self, datetimes):
+        """Add the internal model times for the current run to the run
+        information, and transform times to strings so they are
+        JSON serializable"""
+        self.run_info.update(transform_model_datetimes(datetimes))
 
     def record_run(self, timings, scheduler, run_status):
         """
@@ -249,7 +280,7 @@ class Telemetry():
         # Using threading to run the one post request in the background
         thread = threading.Thread(
             target=post_telemetry_data,
-            kwargs= {
+            kwargs={
                 'url': external_config[CONFIG_FIELDS['URL']],
                 'token': external_config[CONFIG_FIELDS['TOKEN']],
                 'data': self.run_info,
