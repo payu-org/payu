@@ -259,37 +259,6 @@ def make_cice5_restart_dir(start_date,
         rpointer.write(f"{ICED_RESTART_NAME}{rdate}")
 
 
-@pytest.fixture
-def prior_restart_dir_cice5(request):
-    """
-    Create fake prior restart files (at rdate) required by CICE5's setup.
-    """
-    y,m,d,s = request.param
-    rdate = f"{y:04d}{m:02d}{d:02d}"
-
-    prior_restart_path = RESTART_PATH
-    os.mkdir(prior_restart_path)
-
-    # Restart files required by CICE5 setup
-    ncfile = Dataset(
-        prior_restart_path/f"{ICED_RESTART_NAME}{rdate}", 
-        mode='w', format='NETCDF4')
-    # set restart time
-    ncfile.setncattr("year",y)
-    ncfile.setncattr("month",m)
-    ncfile.setncattr("mday",d)
-    ncfile.setncattr("sec",s)
-    ncfile.close()
-
-    with open(prior_restart_path/RESTART_POINTER_NAME, 'w') as rpointer:
-        rpointer.write(f"{ICED_RESTART_NAME}{rdate}")
-
-    yield prior_restart_path
-
-    # Teardown
-    shutil.rmtree(prior_restart_path)
-
-
 @pytest.mark.parametrize("config", [CONFIG_WITH_RESTART], indirect=True)
 @pytest.mark.parametrize("cice_config_files", [DEFAULT_CICE_NML], indirect=True)
 @pytest.mark.parametrize("start_date, expected_date",
