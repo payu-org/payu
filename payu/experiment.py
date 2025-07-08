@@ -52,6 +52,7 @@ core_modules = ['python', 'payu']
 # Default payu parameters
 default_restart_freq = 5
 
+
 def timeit(time_name):
     """Decorator to time a function and store the elapsed time in seconds
     to the timings dictionary in the class"""
@@ -870,7 +871,9 @@ class Experiment(object):
         movetree(self.work_path, self.output_path)
 
         # Set telemetry job info output file to the archive directory
-        self.telemetry.set_run_info_filepath(Path(self.output_path) / "job.json")
+        self.telemetry.set_run_info_filepath(
+            Path(self.output_path) / "job.json"
+        )
         # Record model restart datetimes in telemetry
         self.telemetry.set_model_datetimes(self.get_model_restart_datetimes())
 
