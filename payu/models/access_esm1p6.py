@@ -166,7 +166,7 @@ class AccessEsm1p6(Model):
                         msg = (
                             f"Restart date ({run_start_date}) in "
                             f"cice restart ('iced') must not be "
-                            "before initialisation date ({INIT_DATE}). "
+                            f"before initialisation date ({INIT_DATE}). "
                         )
                         raise ValueError(msg)
 

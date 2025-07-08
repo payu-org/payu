@@ -1,6 +1,7 @@
 import os
 import shutil
 
+import cftime
 import pytest
 import f90nml
 from copy import deepcopy
@@ -12,6 +13,7 @@ from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, expt_workdir
 from test.common import workdir, expt_archive_dir, ctrldir_basename
 from test.common import write_config, config_path, write_metadata
+from test.common import make_expt_archive_dir, remove_expt_archive_dirs
 from test.common import make_exe
 
 verbose = True
@@ -115,6 +117,15 @@ def teardown_module(module):
 
 
 @pytest.fixture(autouse=True)
+def teardown():
+    # Run test
+    yield
+
+    # Remove any created restart files
+    remove_expt_archive_dirs(type='restart')
+
+
+@pytest.fixture(autouse=True)
 def empty_workdir():
     """
     Model setup tests require a clean work directory and symlink from
@@ -215,6 +226,39 @@ def test_setup(config, cice_config_files, expected_cal):
     assert model.cal_str == expected_cal
 
 
+def make_cice5_restart_dir(start_date,
+                           restart_index=0,
+                           additional_path=None):
+    """
+    Create fake prior restart files (at rdate) required by CICE5's setup.
+    """
+    year = start_date.year
+    month = start_date.month
+    day = start_date.day
+    seconds = start_date.hour * 3600 + start_date.minute * 60 + start_date.second
+
+    # Create restart directory
+    restart_path = make_expt_archive_dir(type='restart',
+                                         index=restart_index,
+                                         additional_path=additional_path)
+
+    rdate = f"{year:04d}{month:02d}{day:02d}"
+
+    # Restart files required by CICE5 setup
+    ncfile = Dataset(
+        os.path.join(restart_path, f"{ICED_RESTART_NAME}{rdate}"),
+        mode='w', format='NETCDF4')
+    # set restart time
+    ncfile.setncattr("year",year)
+    ncfile.setncattr("month",month)
+    ncfile.setncattr("mday",day)
+    ncfile.setncattr("sec",seconds)
+    ncfile.close()
+
+    with open(os.path.join(restart_path, RESTART_POINTER_NAME), 'w') as rpointer:
+        rpointer.write(f"{ICED_RESTART_NAME}{rdate}")
+
+
 @pytest.fixture
 def prior_restart_dir_cice5(request):
     """
@@ -248,12 +292,16 @@ def prior_restart_dir_cice5(request):
 
 @pytest.mark.parametrize("config", [CONFIG_WITH_RESTART], indirect=True)
 @pytest.mark.parametrize("cice_config_files", [DEFAULT_CICE_NML], indirect=True)
-@pytest.mark.parametrize("prior_restart_dir_cice5,expected_date",
-                        [([1,1,1,0],"00010101"), #first valid date
-                        ([9999,12,31,0],"99991231")], #last date
-                        indirect=["prior_restart_dir_cice5"])
+@pytest.mark.parametrize("start_date, expected_date",
+                         [
+                            (cftime.datetime(1, 1, 1, calendar="proleptic_gregorian"), #first valid date
+                             "00010101"),
+                            (cftime.datetime(9999, 12, 31, calendar="proleptic_gregorian"), #last date
+                             "99991231")
+                         ]
+                        )
 def test_restart_setup(
-    config, cice_config_files, prior_restart_dir_cice5, expected_date
+    config, cice_config_files, start_date, expected_date
     ):
     """
     Test that seting up an experiment from a cloned control directory
@@ -261,7 +309,7 @@ def test_restart_setup(
 
     Use a restart directory mimicking the CICE5 files required by setup.
     """
-
+    make_cice5_restart_dir(start_date)
     # Setup experiment
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
@@ -276,20 +324,21 @@ def test_restart_setup(
     for file in [ICED_RESTART_NAME+expected_date, RESTART_POINTER_NAME]:
         assert file in cice_work_restart_files
 
-    assert model.get_restart_datetime().strftime("%Y%m%d") == expected_date
+    assert model.get_restart_datetime(model.prior_restart_path).strftime("%Y%m%d") == expected_date
 
 @pytest.mark.parametrize("config", [CONFIG_WITH_RESTART], indirect=True)
 @pytest.mark.parametrize("cice_config_files", [DEFAULT_CICE_NML], indirect=True)
-@pytest.mark.parametrize("prior_restart_dir_cice5",
-                        [([1,1,1,1]), #small invalid number of secs
-                        ([9999,12,31,86399])], #large invalid number of secs
-                        indirect=["prior_restart_dir_cice5"])
+@pytest.mark.parametrize("start_date",
+                         [cftime.datetime(1, 1, 1, second=1), #small invalid number of secs
+                          cftime.datetime(9999, 12, 31, hour=23, minute=59, second=59)], #large invalid number of secs
+                        )
 def test_bad_rdate(
-    config, cice_config_files, prior_restart_dir_cice5,
+    config, cice_config_files, start_date,
     ):
     """
     Test get_restart_datetime fails with invalid restart date
     """
+    make_cice5_restart_dir(start_date)
     # Setup experiment
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))

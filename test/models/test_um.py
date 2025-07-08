@@ -9,6 +9,8 @@ import yaml
 
 import payu
 
+from payu.models.um import UM_DATE_FORMAT
+
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir
 from test.common import config as config_orig
@@ -23,6 +25,7 @@ verbose = True
 # Global config
 config = copy.deepcopy(config_orig)
 
+UM_RES_FILE = "um.res.yaml"
 
 def setup_module(module):
     """
@@ -74,8 +77,7 @@ def teardown():
     remove_expt_archive_dirs(type='restart')
 
 
-def make_atmosphere_restart_dir(calendar_file_name,
-                                date,
+def make_atmosphere_restart_dir(date,
                                 restart_index=0,
                                 additional_path=None):
     """Create tests restart directory with um.res.yaml file"""
@@ -85,37 +87,33 @@ def make_atmosphere_restart_dir(calendar_file_name,
                                          additional_path=additional_path)
 
     # Create um.res.yaml file
-    calendar_file_path = os.path.join(restart_path,
-                                      calendar_file_name)
+    calendar_file_path = os.path.join(restart_path, UM_RES_FILE)
 
     with open(calendar_file_path, 'w') as um_cal_file:
-        um_cal_file.write(yaml.dump({'end_date': date},
+        date_str = date.strftime(UM_DATE_FORMAT)
+        um_cal_file.write(yaml.dump({'end_date': date_str},
                                     default_flow_style=False))
 
 
 @pytest.mark.parametrize(
-    "date, expected_cftime",
+    "date",
     [
         # The UM driver only uses the proleptic Gregorian calendar.
         (
-            datetime.datetime(1900, 2, 1),
             cftime.datetime(1900, 2, 1, calendar="proleptic_gregorian")
         ),
         (
-            datetime.datetime(1000, 11, 12, 12, 23, 34),
             cftime.datetime(1000, 11, 12, 12, 23, 34,
                             calendar="proleptic_gregorian")
         ),
         (
-            datetime.datetime(101, 1, 1),
             cftime.datetime(101, 1, 1, calendar="proleptic_gregorian")
         ),
         (
-            datetime.datetime(400, 2, 29),
             cftime.datetime(400, 2, 29, calendar="proleptic_gregorian")
         ),
     ])
-def test_um_get_restart_datetime(date, expected_cftime):
+def test_um_get_restart_datetime(date):
     """
     Check the UM driver correctly reads restart dates as cftime
     objects.
@@ -124,9 +122,8 @@ def test_um_get_restart_datetime(date, expected_cftime):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, reproduce=False)
 
-    calendar_file_name = expt.model.restart_calendar_file
-    make_atmosphere_restart_dir(calendar_file_name, date)
+    make_atmosphere_restart_dir(date)
 
     restart_path = list_expt_archive_dirs()[0]
     parsed_run_dt = expt.model.get_restart_datetime(restart_path)
-    assert parsed_run_dt == expected_cftime
+    assert parsed_run_dt == date

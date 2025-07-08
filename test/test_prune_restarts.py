@@ -2,6 +2,7 @@ import copy
 import shutil
 
 import pytest
+import cftime
 
 import payu
 
@@ -81,12 +82,11 @@ def create_test_2Y_1_month_frequency_restarts():
             if (year == 1900 and month == 1) or (year == 1902 and month > 2):
                 # Ignore the first date and dates from 1902/03/01 onwards
                 continue
-            restart_dts.append(f"{year}-{month}-01 00:00:00")
+            restart_dts.append(cftime.datetime(year, month, 1, calendar="noleap"))
 
     for index, run_dt in enumerate(restart_dts):
-        make_ocean_restart_dir(start_dt="1900-01-01 00:00:00",
+        make_ocean_restart_dir(start_dt=cftime.datetime(1900, 1, 1, calendar="noleap"),
                                run_dt=run_dt,
-                               calendar=4,
                                restart_index=index,
                                additional_path='ocean')
 
@@ -153,49 +153,49 @@ def test_force_prune_restarts(restart_freq,
     "restarts, restart_freq, restart_history, expected_restart_indices",
     [
         ([
-            (0, "1901-01-01 00:00:00"),
-            (3, "1904-01-01 00:00:00"),
-            (4, "1905-01-01 00:00:00"),
-            (5, "1906-01-01 00:00:00"),
-            (6, "1907-01-01 00:00:00")
+            (0, cftime.datetime(1901, 1, 1, calendar="noleap")),
+            (3, cftime.datetime(1904, 1, 1, calendar="noleap")),
+            (4, cftime.datetime(1905, 1, 1, calendar="noleap")),
+            (5, cftime.datetime(1906, 1, 1, calendar="noleap")),
+            (6, cftime.datetime(1907, 1, 1, calendar="noleap"))
         ], "3YS", None, [4, 5]),
         ([
-            (0, "1901-01-01 00:00:00"),
-            (3, "1904-01-01 00:00:00"),
-            (4, "1905-01-01 00:00:00"),
-            (5, "1906-01-01 00:00:00"),
-            (6, "1907-01-01 00:00:00")
+            (0, cftime.datetime(1901, 1, 1, calendar="noleap")),
+            (3, cftime.datetime(1904, 1, 1, calendar="noleap")),
+            (4, cftime.datetime(1905, 1, 1, calendar="noleap")),
+            (5, cftime.datetime(1906, 1, 1, calendar="noleap")),
+            (6, cftime.datetime(1907, 1, 1, calendar="noleap"))
         ], "3YS", 2, [4]),
         ([
-            (0, "1901-01-01 00:00:00"),
-            (1, "1902-01-01 00:00:00"),
-            (2, "1903-01-01 00:00:00"),
-            (3, "1904-01-01 00:00:00"),
-            (4, "1905-01-01 00:00:00")
+            (0, cftime.datetime(1901, 1, 1, calendar="noleap")),
+            (1, cftime.datetime(1902, 1, 1, calendar="noleap")),
+            (2, cftime.datetime(1903, 1, 1, calendar="noleap")),
+            (3, cftime.datetime(1904, 1, 1, calendar="noleap")),
+            (4, cftime.datetime(1905, 1, 1, calendar="noleap"))
         ], "2YS", 1, []),
         ([
-            (0, "1901-01-01 00:00:00"),
-            (1, "1902-01-01 00:00:00"),
-            (2, "1903-01-01 00:00:00"),
-            (3, "1904-01-01 00:00:00"),
-            (4, "1905-01-01 00:00:00")
+            (0, cftime.datetime(1901, 1, 1, calendar="noleap")),
+            (1, cftime.datetime(1902, 1, 1, calendar="noleap")),
+            (2, cftime.datetime(1903, 1, 1, calendar="noleap")),
+            (3, cftime.datetime(1904, 1, 1, calendar="noleap")),
+            (4, cftime.datetime(1905, 1, 1, calendar="noleap"))
         ], "2YS", None, []),
         ([
-            (0, "1901-01-01 00:00:00"),
-            (2, "1903-01-01 00:00:00"),
-            (3, "1904-01-01 00:00:00"),
+            (0, cftime.datetime(1901, 1, 1, calendar="noleap")),
+            (2, cftime.datetime(1903, 1, 1, calendar="noleap")),
+            (3, cftime.datetime(1904, 1, 1, calendar="noleap")),
         ], 2, None, []),
         ([
-            (0, "1901-01-01 00:00:00"),
-            (2, "1903-01-01 00:00:00"),
-            (3, "1904-01-01 00:00:00"),
-            (4, "1905-01-01 00:00:00"),
+            (0, cftime.datetime(1901, 1, 1, calendar="noleap")),
+            (2, cftime.datetime(1903, 1, 1, calendar="noleap")),
+            (3, cftime.datetime(1904, 1, 1, calendar="noleap")),
+            (4, cftime.datetime(1905, 1, 1, calendar="noleap")),
         ], 2, None, [3]),
         ([
-            (2, "1903-01-01 00:00:00"),
-            (4, "1905-01-01 00:00:00"),
-            (6, "1907-01-01 00:00:00"),
-            (8, "1909-01-01 00:00:00"),
+            (2, cftime.datetime(1903, 1, 1, calendar="noleap")),
+            (4, cftime.datetime(1905, 1, 1, calendar="noleap")),
+            (6, cftime.datetime(1907, 1, 1, calendar="noleap")),
+            (8, cftime.datetime(1909, 1, 1, calendar="noleap")),
         ], 4, None, []),
     ])
 def test_prune_restarts(restarts,
@@ -204,9 +204,8 @@ def test_prune_restarts(restarts,
                         expected_restart_indices):
     # Create restart files
     for index, datetime in restarts:
-        make_ocean_restart_dir(start_dt="1900-01-01 00:00:00",
+        make_ocean_restart_dir(start_dt=cftime.datetime(1900, 1, 1, calendar="noleap"),
                                run_dt=datetime,
-                               calendar=4,
                                restart_index=index,
                                additional_path='ocean')
 
@@ -234,13 +233,12 @@ def test_prune_restarts_ignores_empty_restart_dirs():
     write_test_config(restart_freq='1YS')
 
     # Create restart files
-    restart_datetimes = [(4, "1903-01-01 00:00:00"),
-                         (5, "1903-06-01 00:00:00"),
-                         (6, "1905-01-01 00:00:00")]
+    restart_datetimes = [(4, cftime.datetime(1903, 1, 1, calendar="noleap")),
+                         (5, cftime.datetime(1903, 6, 1, calendar="noleap")),
+                         (6, cftime.datetime(1905, 1, 1, calendar="noleap"))]
     for index, datetime in restart_datetimes:
-        make_ocean_restart_dir(start_dt="1900-01-01 00:00:00",
+        make_ocean_restart_dir(start_dt=cftime.datetime(1900, 1, 1, calendar="noleap"),
                                run_dt=datetime,
-                               calendar=4,
                                restart_index=index,
                                additional_path='ocean')
 

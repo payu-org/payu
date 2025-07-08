@@ -73,13 +73,7 @@ class Cice5(Cice):
         # Make log dir
         mkdir_p(os.path.join(self.work_path, 'log'))
 
-    def get_prior_restart_files(self):
-        if self.prior_restart_path is not None:
-            return sorted(os.listdir(self.prior_restart_path))
-        else:
-            return []
-
-    def get_latest_restart_file(self, restart_path = None):
+    def get_latest_restart_file(self, restart_path=None):
         """
         Given a restart path, parse the restart files and return the latest in 
         that folder. If restart_path not provided, then default to the latest
@@ -89,16 +83,16 @@ class Cice5(Cice):
         iced_restart_file = None
         if not restart_path :
             #find latest
-            restart_path = self.get_prior_restart_files()
+            restart_path = self.prior_restart_path
 
-        iced_restart_files = [f for f in restart_path if f.startswith('iced.')]
+        iced_restart_files = [f for f in os.listdir(restart_path) if f.startswith('iced.')]
 
         if len(iced_restart_files) > 0:
             iced_restart_file = sorted(iced_restart_files)[-1]
 
         if iced_restart_file is None:
             raise FileNotFoundError(
-                f'No iced restart file found in {self.prior_restart_path}'
+                f'No iced restart file found in {restart_path}'
             )
 
         return iced_restart_file
@@ -108,7 +102,7 @@ class Cice5(Cice):
         # Re-read ice timestep and move this over there
         self.set_local_timestep(t_step)
 
-    def get_restart_datetime(self, restart_path = None):
+    def get_restart_datetime(self, restart_path):
         """
         Given a restart path, parse the restart files and return a cftime 
         datetime. If restart_path not provided, then default to the latest.
@@ -116,10 +110,7 @@ class Cice5(Cice):
         See https://github.com/ACCESS-NRI/cice5/issues/45 )
         """
         iced_file = self.get_latest_restart_file(restart_path)
-        if not restart_path :
-            restart_f = os.path.join(self.prior_restart_path, iced_file)
-        else :
-            restart_f = os.path.join(restart_path, iced_file)
+        restart_f = os.path.join(restart_path, iced_file)
 
         iced_nc = Dataset(restart_f)
         run_start_date = cftime.datetime(

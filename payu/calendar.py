@@ -5,6 +5,10 @@ from dateutil.relativedelta import relativedelta
 import cftime
 
 NOLEAP, GREGORIAN = range(2)
+CALNAME = {
+    NOLEAP: "noleap",
+    GREGORIAN: "proleptic_gregorian"
+}
 
 
 def int_to_date(date):
