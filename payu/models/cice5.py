@@ -105,7 +105,7 @@ class Cice5(Cice):
     def get_restart_datetime(self, restart_path):
         """
         Given a restart path, parse the restart files and return a cftime 
-        datetime. If restart_path not provided, then default to the latest.
+        datetime.
         ( esm1.6 is the only model with the "year" attribute in restart files. 
         See https://github.com/ACCESS-NRI/cice5/issues/45 )
         """

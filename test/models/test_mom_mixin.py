@@ -78,7 +78,7 @@ def make_ocean_restart_dir(start_dt,
                            additional_path=None):
     """Create tests restart directory with ocean_solo.res file"""
     if start_dt.calendar != run_dt.calendar:
-        raise ValueError(f"Inconsistend calendars forstart_dt: {start_dt.calendar}"
+        raise ValueError(f"Inconsistent calendars for start_dt: {start_dt.calendar}"
                          f" and run_dt: {run_dt.calendar}")
     calendar = run_dt.calendar
 
