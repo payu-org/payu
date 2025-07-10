@@ -316,5 +316,5 @@ def test_bad_rdate(
         # Function to test
         model.setup()
 
-    with pytest.raises(Exception):
-        model.get_restart_datetime()
+    with pytest.raises(ValueError, match="Restart attribute sec"):
+        model.get_restart_datetime(model.prior_restart_dir)

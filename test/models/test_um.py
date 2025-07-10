@@ -9,7 +9,7 @@ import yaml
 
 import payu
 
-from payu.models.um import UM_DATE_FORMAT
+from payu.models.um import UM_DATE_FORMAT, UM_CFTIME_CALENDAR
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir
@@ -98,19 +98,18 @@ def make_atmosphere_restart_dir(date,
 @pytest.mark.parametrize(
     "date",
     [
-        # The UM driver only uses the proleptic Gregorian calendar.
         (
-            cftime.datetime(1900, 2, 1, calendar="proleptic_gregorian")
+            cftime.datetime(1900, 2, 1, calendar=UM_CFTIME_CALENDAR)
         ),
         (
             cftime.datetime(1000, 11, 12, 12, 23, 34,
-                            calendar="proleptic_gregorian")
+                            calendar=UM_CFTIME_CALENDAR)
         ),
         (
-            cftime.datetime(101, 1, 1, calendar="proleptic_gregorian")
+            cftime.datetime(101, 1, 1, calendar=UM_CFTIME_CALENDAR)
         ),
         (
-            cftime.datetime(400, 2, 29, calendar="proleptic_gregorian")
+            cftime.datetime(400, 2, 29, calendar=UM_CFTIME_CALENDAR)
         ),
     ])
 def test_um_get_restart_datetime(date):

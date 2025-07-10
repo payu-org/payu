@@ -83,7 +83,13 @@ class Cice5(Cice):
         iced_restart_file = None
         if not restart_path :
             #find latest
-            restart_path = self.prior_restart_path
+            if self.prior_restart_path is not None:
+                restart_path = self.prior_restart_path
+            else:
+                raise RuntimeError(
+                    f"No prior {self.model_type} restart directory.\n"
+                    "Unable to identify latest restart file."
+                )
 
         iced_restart_files = [f for f in os.listdir(restart_path) if f.startswith('iced.')]
 
@@ -113,7 +119,7 @@ class Cice5(Cice):
         restart_f = os.path.join(restart_path, iced_file)
 
         iced_nc = Dataset(restart_f)
-        run_start_date = cftime.datetime(
+        restart_date = cftime.datetime(
             year = iced_nc.getncattr('year'),
             month = iced_nc.getncattr('month'),
             day = iced_nc.getncattr('mday') ,
@@ -128,7 +134,7 @@ class Cice5(Cice):
             raise ValueError(msg)
         iced_nc.close()
 
-        return run_start_date
+        return restart_date
 
     def _calc_runtime(self):
         """

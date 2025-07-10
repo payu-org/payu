@@ -27,6 +27,8 @@ from payu.models.model import Model
 import payu.calendar as cal
 
 UM_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+# UM in access always uses proleptic gregorian calendar
+UM_CFTIME_CALENDAR = "proleptic_gregorian"
 
 class UnifiedModel(Model):
 
@@ -211,7 +213,7 @@ class UnifiedModel(Model):
 
         Returns
         -------
-        datetime.datetime or datetime.date
+        cftime.datetime
         """
         if not os.path.exists(restart_calendar_path):
             raise FileNotFoundError(
@@ -223,7 +225,7 @@ class UnifiedModel(Model):
 
         restart_date = cftime.datetime.strptime(date_info['end_date'],
                                                 UM_DATE_FORMAT,
-                                                calendar="proleptic_gregorian")
+                                                calendar=UM_CFTIME_CALENDAR)
 
         return restart_date
 
