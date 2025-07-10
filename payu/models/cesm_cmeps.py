@@ -12,6 +12,7 @@ from __future__ import print_function
 
 import os
 import re
+import glob
 import shutil
 import cftime
 from warnings import warn
@@ -319,7 +320,16 @@ class CesmCmeps(Model):
             except FileNotFoundError:
                 # TODO: copied this from other models. Surely we want to exit here or something
                 print(f"payu: error: Model has not produced pointer file {pointer}")
-        
+
+        # In case restart files have parallel pieces, such as (*.nc.0000, *.nc.0001)
+        tmp_restart_files = []
+        for f_src in restart_files:
+            tmp_restart_files.extend(glob.glob(f_src + ".*"))
+            if os.path.exists(f_src):
+                tmp_restart_files.append(f_src)
+
+        restart_files = tmp_restart_files
+
         for f_src in restart_files + pointer_files:
             name = os.path.basename(f_src)
             f_dst = os.path.join(self.restart_path, name)
