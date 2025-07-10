@@ -21,7 +21,6 @@ import payu
 import payu.envmod as envmod
 from payu.fsops import is_conda
 from payu.models import index as supported_models
-from payu.telemetry import TELEMETRY_CONFIG
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 import payu.subcommands
 
@@ -157,10 +156,6 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
     for var in module_env_vars:
         if var in os.environ:
             payu_env_vars[var] = os.environ[var]
-
-    # Pass through telemetry config path
-    if TELEMETRY_CONFIG in os.environ:
-        payu_env_vars[TELEMETRY_CONFIG] = os.environ[TELEMETRY_CONFIG]
 
     return payu_env_vars
 
