@@ -158,7 +158,7 @@ class AccessEsm1p6(Model):
                         # get_restart_datetime returns cftime objects, 
                         # convert to datetime
                         run_start_date = datetime.fromisoformat(
-                            model.get_restart_datetime().isoformat()
+                            model.get_restart_datetime(model.prior_restart_path).isoformat()
                         ).date()
 
                     # run_start_date must be after initialisation date

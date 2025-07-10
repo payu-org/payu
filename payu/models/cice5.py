@@ -73,24 +73,13 @@ class Cice5(Cice):
         # Make log dir
         mkdir_p(os.path.join(self.work_path, 'log'))
 
-    def get_latest_restart_file(self, restart_path=None):
+    def get_latest_restart_file(self, restart_path):
         """
-        Given a restart path, parse the restart files and return the latest in 
-        that folder. If restart_path not provided, then default to the latest
-        restart in the latest restart folder. Only used by esm1.6 driver but 
+        Given a restart path, parse the restart files and return the latest in
+        that folder. Only used by esm1.6 driver but
         should work in other drivers.
         """
         iced_restart_file = None
-        if not restart_path :
-            #find latest
-            if self.prior_restart_path is not None:
-                restart_path = self.prior_restart_path
-            else:
-                raise RuntimeError(
-                    f"No prior {self.model_type} restart directory.\n"
-                    "Unable to identify latest restart file."
-                )
-
         iced_restart_files = [f for f in os.listdir(restart_path) if f.startswith('iced.')]
 
         if len(iced_restart_files) > 0:
@@ -146,9 +135,15 @@ class Cice5(Cice):
     def _make_restart_ptr(self):
         """
         Generate restart pointer which points to the latest iced.YYYYMMDD
-        restart file.
+        restart file in the prior restart directory.
         """
-        iced_restart_file = self.get_latest_restart_file()
+        if self.prior_restart_path is None:
+            raise RuntimeError(
+                f"{self.model_type}._make_restart_pointer called with no "
+                "available prior restart directory."
+            )
+
+        iced_restart_file = self.get_latest_restart_file(self.prior_restart_path)
 
         res_ptr_path = os.path.join(self.work_init_path,
                                     'ice.restart_file')
