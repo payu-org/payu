@@ -1,7 +1,7 @@
 import copy
+import datetime
 import os
 import shutil
-import datetime
 
 import pytest
 import cftime
@@ -408,10 +408,9 @@ def test_access_get_mom_restart_datetime(two_model_config,
     the mom submodel by default.
     """
     # Create 1 mom restart directory
-    start_dt = "1900-01-01 00:00:00"
-    run_dt = "1900-02-01 00:00:00"
-    calendar = 3  # proleptic Gregorian
-    make_ocean_restart_dir(start_dt, run_dt, calendar, additional_path="ocean")
+    start_dt = cftime.datetime(1900, 1, 1, calendar="proleptic_gregorian")
+    run_dt = cftime.datetime(1900, 2, 1, calendar="proleptic_gregorian")
+    make_ocean_restart_dir(start_dt, run_dt, additional_path="ocean")
 
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
@@ -451,8 +450,8 @@ def test_access_get_um_restart_datetime(um_only_config, remove_restart_dirs):
     the UM submodel is present.
     """
     # Create UM restart directory
-    date = datetime.datetime(100, 1, 1)
-    make_atmosphere_restart_dir("um.res.yaml", date,
+    date = cftime.datetime(100, 1, 1, calendar="proleptic_gregorian")
+    make_atmosphere_restart_dir(date,
                                 additional_path="atmosphere")
 
     with cd(ctrldir):
@@ -461,5 +460,4 @@ def test_access_get_um_restart_datetime(um_only_config, remove_restart_dirs):
 
     restart_path = list_expt_archive_dirs()[0]
     parsed_run_dt = expt.model.get_restart_datetime(restart_path)
-    assert parsed_run_dt == cftime.datetime(100, 1, 1,
-                                            calendar="proleptic_gregorian")
+    assert parsed_run_dt == date
