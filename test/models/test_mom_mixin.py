@@ -2,6 +2,8 @@ import copy
 import os
 import shutil
 
+from collections import namedtuple
+
 import pytest
 import cftime
 
@@ -72,6 +74,11 @@ def teardown():
     remove_expt_archive_dirs(type='restart')
 
 
+# Mimic cftime.datetime objects in order to provide invalid dates
+# to make_ocean_restart_dir
+DateTuple = namedtuple("DateTuple", "year month day hour minute second calendar")
+
+
 def make_ocean_restart_dir(start_dt,
                            run_dt,
                            restart_index=0,
@@ -82,20 +89,27 @@ def make_ocean_restart_dir(start_dt,
                          f" and run_dt: {run_dt.calendar}")
     calendar = run_dt.calendar
 
-    cal_id={
+    cal_id = {
         "": 0,
         "360_day": 1,
         "julian": 2,
         "proleptic_gregorian": 3,
         "noleap": 4
     }
+
+    try:
+        cal_int = cal_id[calendar]
+    except KeyError:
+        # Allow for invalid calendars to be specified
+        cal_int = calendar
+
     # Create restart directory
     restart_path = make_expt_archive_dir(type='restart',
                                          index=restart_index,
                                          additional_path=additional_path)
 
     # Create ocean_solo.res file
-    lines = (f"{cal_id[calendar]:6d}        "
+    lines = (f"{cal_int:6d}        "
              "(Calendar: no_calendar=0, thirty_day_months=1, julian=2, "
              "gregorian=3, noleap=4)\n")
 
@@ -133,7 +147,15 @@ def convert_date_string_to_array(dt_string):
         cftime.datetime(1900, 2, 1, calendar="noleap"),
         cftime.datetime(1900, 6, 1, calendar="proleptic_gregorian"),
         cftime.datetime(1000, 11, 12, 12, 23, 34, calendar="julian"),
-        cftime.datetime(1900, 2, 30, calendar="360_day")
+        cftime.datetime(1900, 2, 30, calendar="360_day"),
+        cftime.datetime(1, 1, 1, calendar="noleap"),
+        cftime.datetime(9999, 12, 31, calendar="noleap"),
+        cftime.datetime(1, 1, 1, calendar="proleptic_gregorian"),
+        cftime.datetime(9999, 12, 31, calendar="proleptic_gregorian"),
+        cftime.datetime(1, 1, 1, calendar="julian"),
+        cftime.datetime(9999, 12, 31, calendar="julian"),
+        cftime.datetime(1, 1, 1, calendar="360_day"),
+        cftime.datetime(9999, 12, 30, calendar="360_day")
     ])
 def test_mom_get_restart_datetime(run_dt):
     # Create 1 mom restart directory
@@ -147,3 +169,33 @@ def test_mom_get_restart_datetime(run_dt):
     restart_path = list_expt_archive_dirs()[0]
     parsed_run_dt = expt.model.get_restart_datetime(restart_path)
     assert parsed_run_dt == run_dt
+
+
+@pytest.mark.parametrize(
+    "run_dt,expected_error",
+    [
+        (DateTuple(1, 2, 31, 0, 0, 0, "proleptic_gregorian"),
+         ValueError),  # Bad day of month
+        (DateTuple(534, 13, 1, 0, 0, 0, "proleptic_gregorian"),
+         ValueError),  # Bad month
+        (DateTuple(1, 1, 1, 0, 0, 0, 21),
+         KeyError),  # Bad calendar
+        (DateTuple(1, 1, 1, 0, 0, 0, -1),
+         KeyError)  # Bad calendar
+
+    ])
+def test_mom_bad_get_restart_datetime(run_dt, expected_error):
+    """
+    Test that get_restart_datetime fails when reading invalid dates.
+    """
+    # Create 1 mom restart directory
+    start_dt = DateTuple(1900, 1, 1, 0, 0, 0, run_dt.calendar)
+    make_ocean_restart_dir(start_dt, run_dt)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+
+    restart_path = list_expt_archive_dirs()[0]
+    with pytest.raises(expected_error):
+        expt.model.get_restart_datetime(restart_path)

@@ -308,7 +308,7 @@ class AccessEsm1p6(Model):
         return a cftime datetime (for date-based restart pruning)"""
 
         # Use mom by default and um if ocean not present
-        model_types = ['mom', 'um']
+        model_types = ['mom', 'um', 'cice5']
 
         return self.get_restart_datetime_using_submodel(restart_path,
                                                         model_types)

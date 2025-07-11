@@ -21,7 +21,6 @@ from test.common import config_path
 from test.models.test_um import make_atmosphere_restart_dir
 from test.models.test_mom_mixin import make_ocean_restart_dir
 from payu.calendar import GREGORIAN, NOLEAP
-from payu.models.um import UM_CFTIME_CALENDAR
 
 
 verbose = True
@@ -451,7 +450,7 @@ def test_access_get_um_restart_datetime(um_only_config, remove_restart_dirs):
     the UM submodel is present.
     """
     # Create UM restart directory
-    date = cftime.datetime(100, 1, 1, calendar=UM_CFTIME_CALENDAR)
+    date = cftime.datetime(100, 1, 1, calendar="proleptic_gregorian")
     make_atmosphere_restart_dir(date,
                                 additional_path="atmosphere")
 
