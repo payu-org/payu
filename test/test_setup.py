@@ -1,4 +1,5 @@
 import copy
+import os
 from pathlib import Path
 import pytest
 import shutil
@@ -11,7 +12,7 @@ from .common import tmpdir, ctrldir, labdir, workdir
 from .common import payu_init, payu_setup
 from .common import config as config_orig
 from .common import write_config
-from .common import make_exe, make_inputs
+from .common import make_exe, make_inputs, make_expt_archive_dir
 
 # Config files in the test model driver
 CONFIG_FILES = ['data', 'diag', 'input.nml']
@@ -38,13 +39,19 @@ def setup_and_teardown():
         print(e)
 
 
-def test_init():
-    write_config(config_orig)
+def init_experiment(config):
+    """Helper function to initialize an experiment with a given config."""
+    write_config(config)
+    make_inputs()
 
-    # Initialise a payu laboratory
     with cd(ctrldir):
-        payu_init(None, None, str(labdir))
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        return expt
 
+
+def test_init():
+    init_experiment(config_orig)
     # Check all the correct directories have been created
     for subdir in ['bin', 'input', 'archive', 'codebase']:
         assert((labdir / subdir).is_dir())
@@ -259,7 +266,6 @@ def test_check_payu_version_configured_invalid_version(minimum_version):
                 expt.check_payu_version()
 
 
-
 # model.expt.runlog.enabled is used in code for writing runlog
 # it can be set as runlog:true or runlog:enable:true in config.yaml
 @pytest.mark.parametrize(
@@ -280,13 +286,67 @@ def test_runlog_enable(runlog, enabled):
     else:
         config['runlog'] = runlog
 
-    write_config(config)
-
-    make_inputs()
-
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    expt = init_experiment(config)
+    model = expt.models[0]
 
     assert model.expt.runlog.enabled == enabled
+
+
+def test_set_prior_restart_path_no_restarts_in_archive():
+    """Test that prior restart path is set to None if no restarts in archive."""
+    expt = init_experiment(config_orig)
+    assert expt.prior_restart_path is None
+
+
+def test_set_prior_restart_path_with_restart_in_archive(tmp_path):
+    """Test prior restart path is set to restart directory in archive"""
+    # Create an external restart directory
+    user_restart = tmp_path / "external_restart"
+    user_restart.mkdir(parents=True, exist_ok=True)
+
+    # Add restart to config
+    config = copy.deepcopy(config_orig)
+    config["restart"] = str(user_restart)
+
+    # Make an archive directory with a restart
+    make_expt_archive_dir(type='restart', index=9)
+
+    expt = init_experiment(config)
+    assert expt.prior_restart_path == os.path.join(expt.archive_path, 'restart009')
+
+
+def test_set_prior_restart_path_with_non_zero_counter_and_no_restarts():
+    """Test set prior restart path raises an error if the prior restart
+    is not found"""
+    os.environ['PAYU_CURRENT_RUN'] = '10'
+    error_msg = (
+        "No prior restart directory found in archive or "
+        "specified in config.yaml"
+    )
+    with pytest.raises(RuntimeError, match=error_msg):
+        expt = init_experiment(config_orig)
+
+
+def test_set_prior_restart_path_with_non_zero_counter_and_restart(tmp_path):
+    """Test prior restart path is set to restart directory in config.yaml
+    when PAYU_CURRENT_RUN is set to non-zero"""
+    os.environ['PAYU_CURRENT_RUN'] = '10'
+
+    # Create an external restart directory
+    user_restart = tmp_path / 'restart009'
+    user_restart.mkdir(parents=True, exist_ok=True)
+
+    # Add restart to config
+    config = copy.deepcopy(config_orig)
+    config['restart'] = str(user_restart)
+    msg = r'Starting run from restart directory \(in config.yaml\):*'
+    with pytest.warns(UserWarning, match=msg):
+        expt = init_experiment(config)
+    assert expt.prior_restart_path == str(user_restart)
+
+    # Test error is raised if restart directory does not exist
+    user_restart.rmdir()
+
+    error_msg = rf'No restart directory found at {user_restart}.*'
+    with pytest.raises(ValueError, match=error_msg):
+        expt = init_experiment(config)

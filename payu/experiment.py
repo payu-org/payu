@@ -20,6 +20,7 @@ import shutil
 import subprocess as sp
 import sysconfig
 from pathlib import Path
+import warnings
 
 # Extensions
 import yaml
@@ -208,11 +209,9 @@ class Experiment(object):
         try:
             output_dirs = list_archive_dirs(archive_path=self.archive_path,
                                             dir_type=output_type)
-        except EnvironmentError as exc:
-            if exc.errno == errno.ENOENT:
-                output_dirs = None
-            else:
-                raise
+        except FileNotFoundError:
+            # Archive path does not exist yet
+            return None
 
         if output_dirs and len(output_dirs):
             return int(output_dirs[-1].lstrip(output_type))
@@ -357,12 +356,21 @@ class Experiment(object):
         self.restart_path = os.path.join(self.archive_path, restart_dir)
 
         # Prior restart path
-
+        # Check if there are any restart directories in archive
+        no_restarts = self.max_output_index(output_type="restart") is None
         # Check if a user restart directory is avaiable
         user_restart_dir = self.config.get('restart')
-        if (self.counter == 0 or self.repeat_run) and user_restart_dir:
-            # TODO: Some user friendliness needed...
-            assert (os.path.isdir(user_restart_dir))
+        if (no_restarts or self.repeat_run) and user_restart_dir:
+            if not os.path.isdir(user_restart_dir):
+                raise ValueError(
+                    f"No restart directory found at {user_restart_dir}. "
+                    "Check 'restart:' field in config.yaml."
+                )
+            if self.counter > 0 and not self.repeat_run:
+                warnings.warn(
+                    "Starting run from restart directory (in config.yaml): "
+                    f"{user_restart_dir}"
+                )
             self.prior_restart_path = user_restart_dir
         else:
             prior_restart_dir = 'restart{0:03}'.format(self.counter - 1)
@@ -373,9 +381,10 @@ class Experiment(object):
             else:
                 self.prior_restart_path = None
                 if self.counter > 0 and not self.repeat_run:
-                    # TODO: This warning should be replaced with an abort in
-                    #       setup
-                    print('payu: warning: No restart files found.')
+                    raise RuntimeError(
+                        "No prior restart directory found in archive "
+                        "or specified in config.yaml"
+                    )
 
         for model in self.models:
             model.set_model_output_paths()
