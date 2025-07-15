@@ -19,6 +19,8 @@ CONFIG_FILES = ['data', 'diag', 'input.nml']
 OPTIONAL_CONFIG_FILES = ['opt_data']
 INPUT_NML_FILENAME = 'input.nml'
 
+config_orig = copy.deepcopy(config_orig)
+
 
 @pytest.fixture(autouse=True)
 def setup_and_teardown():
@@ -315,10 +317,10 @@ def test_set_prior_restart_path_with_restart_in_archive(tmp_path):
     assert expt.prior_restart_path == os.path.join(expt.archive_path, 'restart009')
 
 
-def test_set_prior_restart_path_with_non_zero_counter_and_no_restarts():
+def test_set_prior_restart_with_non_zero_counter_and_no_restarts(monkeypatch):
     """Test set prior restart path raises an error if the prior restart
     is not found"""
-    os.environ['PAYU_CURRENT_RUN'] = '10'
+    monkeypatch.setenv('PAYU_CURRENT_RUN', '10')
     error_msg = (
         "No prior restart directory found in archive or "
         "specified in config.yaml"
@@ -327,9 +329,11 @@ def test_set_prior_restart_path_with_non_zero_counter_and_no_restarts():
         expt = init_experiment(config_orig)
 
 
-def test_set_prior_restart_path_with_non_zero_counter_and_restart(tmp_path):
+def test_set_prior_restart_with_non_zero_counter_and_restart(tmp_path,
+                                                             monkeypatch):
     """Test prior restart path is set to restart directory in config.yaml
     when PAYU_CURRENT_RUN is set to non-zero"""
+    monkeypatch.setenv("PAYU_CURRENT_RUN", "10")
     os.environ['PAYU_CURRENT_RUN'] = '10'
 
     # Create an external restart directory
