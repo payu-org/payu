@@ -158,7 +158,7 @@ class AccessEsm1p6(Model):
                         # get_restart_datetime returns cftime objects, 
                         # convert to datetime
                         run_start_date = datetime.fromisoformat(
-                            model.get_restart_datetime().isoformat()
+                            model.get_restart_datetime(model.prior_restart_path).isoformat()
                         ).date()
 
                     # run_start_date must be after initialisation date
@@ -166,7 +166,7 @@ class AccessEsm1p6(Model):
                         msg = (
                             f"Restart date ({run_start_date}) in "
                             f"cice restart ('iced') must not be "
-                            "before initialisation date ({INIT_DATE}). "
+                            f"before initialisation date ({INIT_DATE}). "
                         )
                         raise ValueError(msg)
 
@@ -308,7 +308,7 @@ class AccessEsm1p6(Model):
         return a cftime datetime (for date-based restart pruning)"""
 
         # Use mom by default and um if ocean not present
-        model_types = ['mom', 'um']
+        model_types = ['mom', 'um', 'cice5']
 
         return self.get_restart_datetime_using_submodel(restart_path,
                                                         model_types)
