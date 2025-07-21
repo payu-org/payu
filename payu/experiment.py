@@ -381,7 +381,7 @@ class Experiment(object):
             else:
                 self.prior_restart_path = None
                 if self.counter > 0 and not self.repeat_run:
-                    raise RuntimeError(
+                    warnings.warn(
                         "No prior restart directory found in archive "
                         "or specified in config.yaml"
                     )
