@@ -17,7 +17,6 @@ import shutil
 import string
 
 # Extensions
-import cftime
 import f90nml
 import yaml
 
@@ -212,7 +211,7 @@ class UnifiedModel(Model):
 
         Returns
         -------
-        cftime.datetime
+        datetime.datetime or datetime.date
         """
         if not os.path.exists(restart_calendar_path):
             raise FileNotFoundError(
