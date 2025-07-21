@@ -132,7 +132,11 @@ class PBS(Scheduler):
 
         # Check for custom container launcher script environment variable
         launcher_script = os.environ.get('ENV_LAUNCHER_SCRIPT_PATH')
-        if launcher_script and Path(launcher_script).is_file():
+        if (
+            launcher_script
+            and Path(launcher_script).is_file()
+            and os.access(launcher_script, os.X_OK)
+        ):
             # Prepend the container launcher script to the python command
             # so the python executable is accessible in the container
             python_exe = f'{launcher_script} {python_exe}'
