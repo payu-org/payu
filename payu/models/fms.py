@@ -109,6 +109,8 @@ def fms_collate(model):
         # the output
         collate_flags = " ".join([collate_flags, '-o'])
         envmod.lib_update(required_libs(mppnc_path), 'libmpi.so')
+        # List all loaded environment modules
+        envmod.module("list")
 
     # Import list of collated files to ignore
     collate_ignore = collate_config.get('ignore')
