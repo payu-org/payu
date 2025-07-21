@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import sys
+from unittest.mock import patch
 
 import pdb
 import pytest
@@ -234,6 +235,47 @@ def test_run():
 
         assert(args.remaining[-2].endswith('python'))
         assert(args.remaining[-1].endswith(payu_cmd))
+
+
+@patch("payu.schedulers.pbs.pbs_env_init", return_value=True)
+@patch("payu.schedulers.pbs.check_exe_path", side_effect=lambda x, y: y)
+@pytest.mark.parametrize(
+    "env_exists,file_exists,file_exe,expected_cmd",
+    [
+        # Test backwards compatibility with no launcher script
+        (False, False, False, "/path/to/python payu-run"),
+        # With only launcher script env set
+        (True, False, False, "/path/to/python payu-run"),
+        # With launch script env and file exists
+        (True, True, False, "/path/to/python payu-run"),
+        # With launch script env, file exists, and file is executable
+        (True, True, True, "{tmp_path}/launcher.sh /path/to/python payu-run")
+    ],
+)
+def test_submit_launcher_script_setting(
+    mock_pbs_env_init, mock_check_exe_path,
+    env_exists, file_exists, file_exe, expected_cmd, tmp_path, monkeypatch
+):
+    config = {
+        "control_path": "/path/to/experiment"
+    }
+
+    # Setup based on test parameters
+    if env_exists:
+        monkeypatch.setenv("ENV_LAUNCHER_SCRIPT_PATH",
+                           f"{tmp_path}/launcher.sh")
+    if file_exists:
+        launcher_script_path = tmp_path / "launcher.sh"
+        launcher_script_path.write_text("#!/bin/bash\necho 'Running...'\n")
+        if file_exe:
+            launcher_script_path.chmod(0o755)
+
+    # Generate the qsub command
+    pbs_cmd = pbs.PBS().submit("payu-run", config,
+                               python_exe="/path/to/python")
+
+    _, cmd = pbs_cmd.split("--")
+    assert cmd.strip() == expected_cmd.format(tmp_path=tmp_path)
 
 
 def test_tenacity():

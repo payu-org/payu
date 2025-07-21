@@ -6,6 +6,7 @@
 
 # Standard library
 import os
+from pathlib import Path
 import re
 import sys
 import shlex
@@ -128,6 +129,17 @@ class PBS(Scheduler):
         # Set up environment modules here for PBS.
         envmod.setup()
         envmod.module('load', 'pbs')
+
+        # Check for custom container launcher script environment variable
+        launcher_script = os.environ.get('ENV_LAUNCHER_SCRIPT_PATH')
+        if (
+            launcher_script
+            and Path(launcher_script).is_file()
+            and os.access(launcher_script, os.X_OK)
+        ):
+            # Prepend the container launcher script to the python command
+            # so the python executable is accessible in the container
+            python_exe = f'{launcher_script} {python_exe}'
 
         # Construct job submission command
         cmd = 'qsub {flags} -- {python} {script}'.format(
