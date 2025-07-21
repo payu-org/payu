@@ -231,8 +231,7 @@ class UnifiedModel(Model):
                 f"Calendar file: {restart_calendar_path}"
             )
 
-        # Convert to cftime.datetime
-        return cal.date_to_cftime(restart_date, UM_CFTIME_CALENDAR)
+        return restart_date
 
     def get_restart_datetime(self, restart_path):
         """
@@ -251,7 +250,10 @@ class UnifiedModel(Model):
                                      self.restart_calendar_file)
 
         restart_date = self.read_calendar_file(calendar_path)
-        return restart_date
+
+        # Date-based restart pruning requires cftime.datetime object and
+        # Payu UM always uses proleptic Gregorian calendar
+        return cal.date_to_cftime(restart_date, UM_CFTIME_CALENDAR)
 
 
 def date_to_um_dump_date(date):
