@@ -17,7 +17,6 @@ import shutil
 import string
 
 # Extensions
-import cftime
 import f90nml
 import yaml
 
@@ -26,7 +25,6 @@ from payu.fsops import mkdir_p, make_symlink
 from payu.models.model import Model
 import payu.calendar as cal
 
-UM_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 # UM in access always uses proleptic gregorian calendar
 UM_CFTIME_CALENDAR = "proleptic_gregorian"
 
@@ -213,7 +211,7 @@ class UnifiedModel(Model):
 
         Returns
         -------
-        cftime.datetime
+        datetime.datetime or datetime.date
         """
         if not os.path.exists(restart_calendar_path):
             raise FileNotFoundError(
@@ -223,9 +221,13 @@ class UnifiedModel(Model):
         with open(restart_calendar_path, 'r') as calendar_file:
             date_info = yaml.safe_load(calendar_file)
 
-        restart_date = cftime.datetime.strptime(date_info['end_date'],
-                                                UM_DATE_FORMAT,
-                                                calendar=UM_CFTIME_CALENDAR)
+        restart_date = date_info['end_date']
+        if not isinstance(restart_date, datetime.date):
+            raise TypeError(
+                "Failed to parse restart calendar file contents into "
+                "datetime object. "
+                f"Calendar file: {restart_calendar_path}"
+            )
 
         return restart_date
 
@@ -246,7 +248,10 @@ class UnifiedModel(Model):
                                      self.restart_calendar_file)
 
         restart_date = self.read_calendar_file(calendar_path)
-        return restart_date
+
+        # Date-based restart pruning requires cftime.datetime object and
+        # Payu UM always uses proleptic Gregorian calendar
+        return cal.date_to_cftime(restart_date, UM_CFTIME_CALENDAR)
 
 
 def date_to_um_dump_date(date):
