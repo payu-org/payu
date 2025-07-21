@@ -223,11 +223,16 @@ class UnifiedModel(Model):
         with open(restart_calendar_path, 'r') as calendar_file:
             date_info = yaml.safe_load(calendar_file)
 
-        restart_date = cftime.datetime.strptime(date_info['end_date'],
-                                                UM_DATE_FORMAT,
-                                                calendar=UM_CFTIME_CALENDAR)
+        restart_date = date_info['end_date']
+        if not isinstance(restart_date, datetime.date):
+            raise TypeError(
+                "Failed to parse restart calendar file contents into "
+                "datetime object. "
+                f"Calendar file: {restart_calendar_path}"
+            )
 
-        return restart_date
+        # Convert to cftime.datetime
+        return cal.date_to_cftime(restart_date, UM_CFTIME_CALENDAR)
 
     def get_restart_datetime(self, restart_path):
         """

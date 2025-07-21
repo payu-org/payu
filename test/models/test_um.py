@@ -90,8 +90,14 @@ def make_atmosphere_restart_dir(date,
     calendar_file_path = os.path.join(restart_path, UM_RES_FILE)
 
     with open(calendar_file_path, 'w') as um_cal_file:
-        date_str = date.strftime(UM_DATE_FORMAT)
-        um_cal_file.write(yaml.dump({'end_date': date_str},
+        # yaml parser expects datetime.datetime object
+        date_out = datetime.datetime(date.year,
+                                     date.month,
+                                     date.day,
+                                     date.hour,
+                                     date.minute,
+                                     date.second)
+        um_cal_file.write(yaml.dump({'end_date': date_out},
                                     default_flow_style=False))
 
 
