@@ -273,8 +273,6 @@ class Experiment(object):
         for mod in self.modules:
             envmod.module('load', mod)
 
-        envmod.module('list')
-
         for prof in self.profilers:
             prof.load_modules()
 
@@ -625,6 +623,9 @@ class Experiment(object):
             model_prog.append(os.path.join(model.work_path, model.exec_name))
 
             mpi_progs.append(' '.join(model_prog))
+
+        # List all loaded environment modules
+        envmod.module("list")
 
         cmd = '{runcmd} {flags} {exes}'.format(
             runcmd=mpi_runcmd,
