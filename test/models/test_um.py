@@ -9,8 +9,6 @@ import yaml
 
 import payu
 
-from payu.models.um import UM_DATE_FORMAT
-
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir
 from test.common import config as config_orig

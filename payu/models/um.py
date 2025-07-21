@@ -26,7 +26,6 @@ from payu.fsops import mkdir_p, make_symlink
 from payu.models.model import Model
 import payu.calendar as cal
 
-UM_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 # UM in access always uses proleptic gregorian calendar
 UM_CFTIME_CALENDAR = "proleptic_gregorian"
 
