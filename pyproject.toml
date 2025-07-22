@@ -31,7 +31,8 @@ dependencies = [
     "cftime",
     "GitPython >=3.1.40",
     "ruamel.yaml >=0.18.5",
-    "packaging"
+    "packaging",
+    "netCDF4",
 ]
 
 [project.optional-dependencies]
