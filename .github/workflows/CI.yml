@@ -47,9 +47,12 @@ jobs:
           auto-activate-base: false
           show-channel-urls: true
 
-      - name: Run conda build
-        shell: bash -el {0}
-        run: conda build . --no-anaconda-upload
+      - name: Build conda package
+        uses: ACCESS-NRI/action-build-and-upload-conda-packages@v2.0.1
+        with:
+          meta_yaml_dir: conda
+          label: main
+          upload: false
 
   tests:
     name: Tests
