@@ -73,6 +73,16 @@ class Cice5(Cice):
         # Make log dir
         mkdir_p(os.path.join(self.work_path, 'log'))
 
+    def get_prior_restart_files(self):
+        """
+        Overrides the super method to avoid printing an error if there are no
+        prior restart files found
+        """
+        if self.prior_restart_path is not None:
+            return sorted(os.listdir(self.prior_restart_path))
+        else:
+            return []
+
     def get_latest_restart_file(self, restart_path):
         """
         Given a restart path, parse the restart files and return the latest in
