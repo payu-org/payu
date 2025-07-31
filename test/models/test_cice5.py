@@ -200,10 +200,9 @@ def test_Experiment_fails(config, cice_config_files):
     """
     with cd(ctrldir):
 
-        with pytest.raises(Exception):
-            lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        with pytest.raises(RuntimeError, match='`restart_dir`'):
             expt = payu.experiment.Experiment(lab, reproduce=False)
-
 
 LEAP_CICE_NML = deepcopy(DEFAULT_CICE_NML)
 LEAP_CICE_NML["setup_nml"].update(use_leap_years=True)
