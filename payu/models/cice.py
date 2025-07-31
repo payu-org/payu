@@ -134,7 +134,7 @@ class Cice(Model):
             res_path = os.path.join(self.work_path, res_path)
         self.work_restart_path = res_path
 
-        work_out_path = os.path.normpath(setup_nml.get('history_dir', None))
+        work_out_path = os.path.normpath(setup_nml.get('history_dir', ''))
 
         if not os.path.isabs(work_out_path):
             work_out_path = os.path.join(self.work_path, work_out_path)
