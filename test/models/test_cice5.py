@@ -172,7 +172,7 @@ del NOCAL_CICE_NML["setup_nml"]["use_leap_years"]
                          indirect=True)
 def test_setup_fails(config, cice_config_files):
     """
-    # Confirm that payu setup fails with an invalid calendar
+    Confirm that payu setup fails with an invalid calendar 
     """
     with cd(ctrldir):
 
@@ -184,15 +184,40 @@ def test_setup_fails(config, cice_config_files):
         with pytest.raises(Exception):
             model.setup()
 
+# with no restart_dir, payu should fail as payu just move the restart_dir wholesale for setup/archve
+NORES_CICE_NML = deepcopy(DEFAULT_CICE_NML)
+del NORES_CICE_NML["setup_nml"]["restart_dir"]
+
+@pytest.mark.parametrize("config", 
+                        [DEFAULT_CONFIG],
+                         indirect=True)
+@pytest.mark.parametrize("cice_config_files", 
+                        [NORES_CICE_NML],
+                         indirect=True)
+def test_Experiment_fails(config, cice_config_files):
+    """
+    Confirm that payu fails with a missing restart dir
+    """
+    with cd(ctrldir):
+
+        with pytest.raises(Exception):
+            lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+            expt = payu.experiment.Experiment(lab, reproduce=False)
+
 
 LEAP_CICE_NML = deepcopy(DEFAULT_CICE_NML)
 LEAP_CICE_NML["setup_nml"].update(use_leap_years=True)
+
+# with no history_dir, payu should use the default (which is the same as the exe directory)
+NOHIST_CICE_NML = deepcopy(DEFAULT_CICE_NML)
+del NORES_CICE_NML["setup_nml"]["history_dir"]
 
 @pytest.mark.parametrize("config", 
                         [DEFAULT_CONFIG],
                          indirect=True)
 @pytest.mark.parametrize("cice_config_files,expected_cal", 
                         [(DEFAULT_CICE_NML,"noleap"),
+                         (NOHIST_CICE_NML,"noleap"),
                          (LEAP_CICE_NML,"proleptic_gregorian")],
                          indirect=["cice_config_files"])
 def test_setup(config, cice_config_files, expected_cal):

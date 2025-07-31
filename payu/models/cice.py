@@ -73,7 +73,12 @@ class Cice(Model):
         # Assume local paths are relative to the work path
         setup_nml = self.ice_in['setup_nml']
 
-        res_path = os.path.normpath(setup_nml['restart_dir'])
+        try:
+            res_path = os.path.normpath(setup_nml['restart_dir'])
+        except KeyError:
+            raise RuntimeError(
+                f"`restart_dir` must be set in {self.ice_nml_fname} for payu to run"
+            )
         input_dir = setup_nml.get('input_dir', None)
 
         if input_dir is None:
@@ -129,7 +134,7 @@ class Cice(Model):
             res_path = os.path.join(self.work_path, res_path)
         self.work_restart_path = res_path
 
-        work_out_path = os.path.normpath(setup_nml['history_dir'])
+        work_out_path = os.path.normpath(setup_nml.get('history_dir', None))
 
         if not os.path.isabs(work_out_path):
             work_out_path = os.path.join(self.work_path, work_out_path)
