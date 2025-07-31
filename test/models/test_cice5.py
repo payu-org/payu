@@ -210,7 +210,7 @@ LEAP_CICE_NML["setup_nml"].update(use_leap_years=True)
 
 # with no history_dir, payu should use the default (which is the same as the exe directory)
 NOHIST_CICE_NML = deepcopy(DEFAULT_CICE_NML)
-del NORES_CICE_NML["setup_nml"]["history_dir"]
+del NOHIST_CICE_NML["setup_nml"]["history_dir"]
 
 @pytest.mark.parametrize("config", 
                         [DEFAULT_CONFIG],
