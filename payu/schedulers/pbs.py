@@ -13,36 +13,33 @@ import shlex
 import subprocess
 from typing import Any, Dict, Optional
 
+from tenacity import retry, stop_after_delay
+from hpcpy import PBSClient
+
 import payu.envmod as envmod
 from payu.fsops import check_exe_path
 from payu.manifest import Manifest
-from payu.schedulers.scheduler import Scheduler
-
-from tenacity import retry, stop_after_delay
-
+from payu.schedulers.scheduler import Scheduler, JOB_SCRIPT_TEMPLATE
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
 class PBS(Scheduler):
     # TODO: __init__
 
-    def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
-        """Prepare a correct PBS command string"""
+    def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None,
+               dry_run=False):
+        """Submit a job using HPCpy PBS client"""
 
-        pbs_env_init()
+        # TODO: Is pbs_env_init() still required?
+        # pbs_env_init()
 
         # Initialisation
         if pbs_vars is None:
             pbs_vars = {}
 
-        # Necessary for testing
         if python_exe is None:
             python_exe = sys.executable
 
         pbs_flags = []
-
-        pbs_queue = pbs_config.get('queue', 'normal')
-        pbs_flags.append('-q {queue}'.format(queue=pbs_queue))
-
         pbs_project = pbs_config.get('project', os.environ['PROJECT'])
         pbs_flags.append('-P {project}'.format(project=pbs_project))
 
@@ -76,12 +73,6 @@ class PBS(Scheduler):
             sys.exit(-1)
         else:
             pbs_flags.append('-j {join}'.format(join=pbs_join))
-
-        # Append environment variables to qsub command
-        # TODO: Support full export of environment variables: `qsub -V`
-        pbs_vstring = ','.join('{0}={1}'.format(k, v)
-                               for k, v in pbs_vars.items())
-        pbs_flags.append('-v ' + pbs_vstring)
 
         storages = set()
         storage_config = pbs_config.get('storage', {})
@@ -120,15 +111,13 @@ class PBS(Scheduler):
         storages.update(find_mounts(extra_search_paths, mounts))
         storages.update(find_mounts(get_manifest_paths(), mounts))
 
-        # Add storage flags. Note that these are sorted to get predictable
-        # behaviour for testing
-        pbs_flags_extend = '+'.join(sorted(storages))
-        if pbs_flags_extend:
-            pbs_flags.append("-l storage={}".format(pbs_flags_extend))
+        # Sort the storages for testing
+        storages = sorted(list(storages))
 
+        # TODO: Is this still needed?
         # Set up environment modules here for PBS.
-        envmod.setup()
-        envmod.module('load', 'pbs')
+        # envmod.setup()
+        # envmod.module('load', 'pbs')
 
         # Check for custom container launcher script environment variable
         launcher_script = os.environ.get('ENV_LAUNCHER_SCRIPT_PATH')
@@ -141,14 +130,20 @@ class PBS(Scheduler):
             # so the python executable is accessible in the container
             python_exe = f'{launcher_script} {python_exe}'
 
-        # Construct job submission command
-        cmd = 'qsub {flags} -- {python} {script}'.format(
-            flags=' '.join(pbs_flags),
-            python=python_exe,
-            script=pbs_script
+        client = PBSClient()
+        job = client.submit(
+            dry_run=dry_run,
+            directives=pbs_flags,
+            queue=pbs_config.get("queue", "normal"),
+            variables=pbs_vars,
+            storage=storages,
+            job_script=JOB_SCRIPT_TEMPLATE,
+            render=True,
+            python_exe=python_exe,
+            payu_exe=pbs_script,
         )
+        return job
 
-        return cmd
 
     def get_job_id(self, short: bool = True) -> Optional[str]:
         """Get PBS job ID
