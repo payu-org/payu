@@ -175,7 +175,7 @@ def test_run():
         config['modules'] = {}
         config['modules']['use'] = ['/f/data/mm01', '/f/data/mm02/test/modules']
 
-        cmd = sched.submit(payu_cmd, config, pbs_vars, python_exe)
+        cmd = sched.submit(payu_cmd, config, pbs_vars, python_exe, dry_run=True)
 
         print(cmd)
 
@@ -187,7 +187,7 @@ def test_run():
         parser.add_argument('-P', type=str, required=True)
         parser.add_argument('-N', type=str, required=True)
         parser.add_argument('-v', metavar='KEY-VALUE',
-                            nargs='+', required=True)
+                            nargs=1, required=True) # Assuming one key-value pair
         parser.add_argument('-j', type=str, required=True)
         parser.add_argument('-l', metavar='KEY=VALUE',
                             nargs='+', action='append', required=True)
@@ -227,14 +227,20 @@ def test_run():
 
         env = {}
         for env_var in args.v:
-            k, v = env_var.split('=')
-            env[k] = v
+            print("Environment variable:", env_var)
+            if '=' in env_var:
+                k, v = env_var.split('=')
+                env[k] = v
 
         assert('PAYU_PATH' in env)
         assert(env['PAYU_PATH'] == str(payu_path))
 
-        assert(args.remaining[-2].endswith('python'))
-        assert(args.remaining[-1].endswith(payu_cmd))
+        script_path = args.remaining[-1]
+        with open(script_path, 'r') as f:
+            script_content = f.readlines()
+        assert script_content[0] == '#!/bin/bash\n'
+        assert script_content[-1].split()[-2].endswith('python')
+        assert script_content[-1].split()[-1].endswith(payu_cmd)
 
 
 @patch("payu.schedulers.pbs.pbs_env_init", return_value=True)
@@ -272,10 +278,12 @@ def test_submit_launcher_script_setting(
 
     # Generate the qsub command
     pbs_cmd = pbs.PBS().submit("payu-run", config,
-                               python_exe="/path/to/python")
-
-    _, cmd = pbs_cmd.split("--")
-    assert cmd.strip() == expected_cmd.format(tmp_path=tmp_path)
+                               python_exe="/path/to/python", dry_run=True)
+    script_path = pbs_cmd.split()[-1]
+    with open(script_path, 'r') as f:
+        script_content = f.readlines()
+    assert script_content[0] == '#!/bin/bash\n'
+    assert script_content[-1] == expected_cmd.format(tmp_path=tmp_path)
 
 
 def test_tenacity():
