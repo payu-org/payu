@@ -227,7 +227,6 @@ def test_run():
 
         env = {}
         for env_var in args.v:
-            print("Environment variable:", env_var)
             if '=' in env_var:
                 k, v = env_var.split('=')
                 env[k] = v

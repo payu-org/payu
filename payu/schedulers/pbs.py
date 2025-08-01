@@ -19,10 +19,7 @@ from hpcpy import PBSClient
 import payu.envmod as envmod
 from payu.fsops import check_exe_path
 from payu.manifest import Manifest
-from payu.schedulers.scheduler import Scheduler
-
-
-JOB_SCRIPT_TEMPLATE =  Path(__file__).parent / 'payu-submit.sh'
+from payu.schedulers.scheduler import Scheduler, JOB_SCRIPT_TEMPLATE
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
 class PBS(Scheduler):
