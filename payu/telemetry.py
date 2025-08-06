@@ -318,6 +318,14 @@ def write_queued_job_file(
     )
 
 
+def remove_job_file(file_path: Path) -> None:
+    """Remove the queued job file in the control path if it exists"""
+    if file_path.exists():
+        file_path.unlink()
+        if not any(file_path.parent.iterdir()):
+            file_path.parent.rmdir()
+
+
 def setup_run_job_file(
             control_path: Path,
             work_path: Path,
@@ -383,10 +391,22 @@ def setup_run_job_file(
     )
 
     # Remove the queued job file if it exists
-    if queued_job_file_path.exists():
-        queued_job_file_path.unlink()
-        if not any(queued_job_file_path.parent.iterdir()):
-            queued_job_file_path.parent.rmdir()
+    remove_job_file(file_path=queued_job_file_path)
+
+
+def update_job_file(
+            file_path: Path,
+            data: dict[str, Any],
+        ):
+    """
+    Update the job file with the provided data
+    """
+    run_info = read_job_file(file_path)
+    run_info.update(data)
+    atomic_write_file(
+        file_path=file_path,
+        data=run_info
+    )
 
 
 def update_run_job_file(
@@ -412,11 +432,8 @@ def update_run_job_file(
     model_restart_datetimes: Optional[dict[str, Any]], default None
         Model restart datetimes to add to the run job file
     """
-    # Read existing run info
-    job_file_path = get_job_file_path(base_path=base_path)
-    run_info = read_job_file(job_file_path)
-
     # Update the stage and any extra info if provided
+    run_info = {}
     if stage:
         run_info['stage'] = stage
     if manifests:
@@ -426,8 +443,9 @@ def update_run_job_file(
     if extra_info:
         run_info.update(extra_info)
 
-    # Write back to the file
-    atomic_write_file(
+    # Read existing run info
+    job_file_path = get_job_file_path(base_path=base_path)
+    update_job_file(
         file_path=job_file_path,
         data=run_info
     )
@@ -586,9 +604,7 @@ def query_job_info(control_path: Path,
     job_file_path = find_run_job_file(search_paths)
 
     if job_file_path is None:
-        raise FileNotFoundError(
-            "No payu-run job file found in control, work or output directories"
-        )
+        return {}
 
     # Read the job file
     data = read_job_file(job_file_path)
@@ -624,37 +640,90 @@ def query_job_info(control_path: Path,
 
     return status_data
 
- 
+
+def update_all_job_files(
+            data: dict[str, Any],
+            scheduler: Scheduler
+    ) -> None:
+    """Update the queried job information with the latest data
+    TODO: Parse the stdout files to get the exit status (though this
+    requires scheduler methods..)
+    """
+
+    # Get all jobs status and exit codes from the scheduler
+    all_jobs = scheduler.get_all_jobs_status()
+    if all_jobs is None:
+        warnings.warn(
+            "Failed to get jobs status from the scheduler"
+        )
+        return
+
+    for run_number, jobs in data.get('runs', {}).items():
+        data = jobs['run']
+
+        job_id = data.get('job_id')
+        if job_id is None or job_id == '':
+            # No job ID, nothing to update
+            continue
+        elif job_id not in all_jobs:
+            # If the job is not in the scheduler's job list, it has
+            # exited or deleted
+            if data['stage'] == 'queued':
+                remove_job_file(file_path=Path(data['job_file']))
+            elif data['stage'] != 'completed':
+                # Job has exited before completion
+                update_job_file(
+                    file_path=Path(data['job_file']),
+                    data={
+                        'stage': 'completed',
+                        'payu_run_status': 1
+                    }
+                )
+        elif all_jobs[job_id].get('exit_status', None) is not None:
+            if data['stage'] == 'queued':
+                # Job may have exited on startup, remove the queued file
+                remove_job_file(file_path=Path(data['job_file']))
+            elif data['stage'] != 'completed':
+                # Update the job file with the exit status
+                update_job_file(
+                    file_path=Path(data['job_file']),
+                    data={
+                        'stage': 'completed',
+                        'payu_run_status': all_jobs[job_id]['exit_status']
+                    }
+                )
+
+
 def display_job_info(data: dict[str, Any]) -> None:
     """
     Display the job information in a human-readable format
 
-    TODO: How to make this more readable?? The --json option is currently
+    TODO: How to make this more readable?? As the --json option is currently
     better..
+    Otherwise just remove this function and always use --json option
     """
-    if 'runs' in data:
-        for run_number, jobs in data['runs'].items():
-            run_info = jobs['run']
-            print(f"Run {run_number}:")
-            if run_info['job_id'] != None and run_info['job_id'] != '':
-                print(f" Job ID: {run_info['job_id'] }")
-            if run_info['stage'] == 'completed':
-                exit_status = (
-                    "Run completed successfully"
-                    if run_info['exit_status'] == 0
-                    else "Run failed"
-                )
-                print(f" {exit_status}")
-            else:
-                print(f" Stage: {run_info['stage']}")
-            if run_info["model_exit_status"] != None:
-                print(
-                    f" Model run command exited with code: "
-                    f"{run_info['model_exit_status']}"
-                )
-            if run_info["stdout_file"] != None:
-                print(f" STDOUT File: {run_info['stdout_file']}")
-            if run_info["stderr_file"] != None:
-                print(f" STDERR File: {run_info['stderr_file']}")
-            if run_info["job_file"] != None:
-                print(f" Job File: {run_info['job_file']}")
+    for run_number, jobs in data.get('runs', {}).items():
+        run_info = jobs['run']
+        print(f"Run {run_number}:")
+        if run_info['job_id'] != None and run_info['job_id'] != '':
+            print(f" Job ID: {run_info['job_id'] }")
+        if run_info['stage'] == 'completed':
+            exit_status = (
+                "Run completed successfully"
+                if run_info['exit_status'] == 0
+                else "Run failed"
+            )
+            print(f" {exit_status}")
+        else:
+            print(f" Stage: {run_info['stage']}")
+        if run_info["model_exit_status"] != None:
+            print(
+                f" Model run command exited with code: "
+                f"{run_info['model_exit_status']}"
+            )
+        if run_info["stdout_file"] != None:
+            print(f" STDOUT File: {run_info['stdout_file']}")
+        if run_info["stderr_file"] != None:
+            print(f" STDERR File: {run_info['stderr_file']}")
+        if run_info["job_file"] != None:
+            print(f" Job File: {run_info['job_file']}")

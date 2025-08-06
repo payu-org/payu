@@ -309,3 +309,13 @@ json_output = {
         'help': 'Output the results in JSON format'
     }
 }
+
+update_jobs = {
+    'flags': ['--update'],
+    'parameters': {
+        'dest': 'update_jobs',
+        'action': 'store_true',
+        'default': False,
+        'help': 'Update the job files with the latest data from the scheduler'
+    }
+}
