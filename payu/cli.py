@@ -171,10 +171,11 @@ def submit_job(script, config, vars=None):
     cmd = sched.submit(script, config, vars)
     print(cmd)
 
-    result = subprocess.check_call(shlex.split(cmd), capture_output=True)
+    result = subprocess.run(shlex.split(cmd), capture_output=True, check=True)
 
     # Decode stdout and extract the job ID which is last for both PBS and Slurm
     result = result.stdout.decode("utf8").strip()
+    print(result)
     job_id = result.split()[-1]
 
     return job_id, sched.name
