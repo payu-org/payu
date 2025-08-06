@@ -108,7 +108,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
         pbs_config['mem'] = '{0}GB'.format(pbs_mem)
 
-    job_id = cli.submit_job('payu-run', pbs_config, pbs_vars)
+    job_id, scheduler = cli.submit_job('payu-run', pbs_config, pbs_vars)
 
     # This could be done as part of submit_job eventually, but for now
     # it's only used by the run command.
@@ -116,6 +116,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
         control_path=Path(pbs_config.get('control_path')),
         job_id=job_id,
         type='payu-run',
+        scheduler_type=scheduler,
     )
 
 

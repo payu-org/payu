@@ -298,3 +298,14 @@ metadata_off = {
         'help': 'Disable experiment metadata and UUID generation and commits'
     }
 }
+
+# Json output option
+json_output = {
+    'flags': ['--json'],
+    'parameters': {
+        'dest': 'json_output',
+        'action': 'store_true',
+        'default': False,
+        'help': 'Output the results in JSON format'
+    }
+}

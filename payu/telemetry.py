@@ -336,6 +336,7 @@ def setup_run_job_file(
     """
     # Get the job ID from the scheduler
     scheduler_job_id = scheduler.get_job_id(short=False)
+    scheduler_type = scheduler.name
 
     # Check if there's an existing queued job file (there might not be one if
     # running payu-run directly on login node)
@@ -358,6 +359,7 @@ def setup_run_job_file(
     # Build the data to write to the file
     data = {
         'scheduler_job_id': scheduler_job_id,
+        'scheduler_type': scheduler_type,
         'stage': 'setup'
     }
     # Add metadata
@@ -368,15 +370,15 @@ def setup_run_job_file(
 
     # Write the file to the work directory
     atomic_write_file(
-        filepath=get_job_file_path(base_path=work_path),
+        file_path=get_job_file_path(base_path=work_path),
         data=data
     )
 
     # Remove the queued job file if it exists
     if queued_job_file_path.exists():
         queued_job_file_path.unlink()
-    if not any(queued_job_file_path.parent.iterdir()):
-        queued_job_file_path.parent.rmdir()
+        if not any(queued_job_file_path.parent.iterdir()):
+            queued_job_file_path.parent.rmdir()
 
 
 def update_run_job_file(
@@ -418,7 +420,7 @@ def update_run_job_file(
 
     # Write back to the file
     atomic_write_file(
-        filepath=job_file_path,
+        file_path=job_file_path,
         data=run_info
     )
 
@@ -480,7 +482,7 @@ def record_run(
 
     # Write run job information to a JSON file
     atomic_write_file(
-        filepath=run_job_file,
+        file_path=run_job_file,
         data=run_info
     )
 
@@ -503,3 +505,162 @@ def record_run(
         run_info=run_info,
         config=config
     )
+
+
+def find_scheduler_log_path(
+            pattern: str,
+            control_path: Path,
+            archive_path: Path,
+        ) -> Path:
+    """Given a glob pattern, find the scheduler log file either in
+    the control path or in the archive path"""
+    # First search the control path
+    filename = glob.glob(str(control_path / pattern))
+    if len(filename) == 1:
+        return Path(filename[0])
+    # Search the pbs-logs directory in the archive path
+    filename = glob.glob(str(archive_path / 'pbs_logs' / pattern))
+    if len(filename) == 1:
+        return Path(filename[0])
+    # If not found, return None
+    return None
+
+
+def find_scheduler_logs(
+            job_id: str,
+            control_path: Path,
+            archive_path: Path,
+            type: str = 'pbs',
+        ) -> tuple[Optional[Path], Optional[Path]]:
+    """Find the stdout and stderr log files for the scheduler job ID"""
+    #TODO: Support non-default stderr and stdout file names
+    if type == 'pbs':
+        # For PBS, the log files are named .o<jobid> and .e<jobid>
+        job_id = job_id.split('.')[0]  # Remove any suffix
+        stdout_pattern = f"*.o{job_id}"
+        stderr_pattern = f"*.e{job_id}"
+    elif type == 'slurm':
+        # For Slurm, the default log files are named slurm-<jobid>.out
+        stdout_pattern = f"slurm-{job_id}.out"
+        stderr_pattern = f"slurm-{job_id}.err"
+    else:
+        return None, None # Unknown scheduler type
+
+    # Find the stdout and stderr log files
+    stdout_path = find_scheduler_log_path(
+        pattern=stdout_pattern,
+        control_path=control_path,
+        archive_path=archive_path
+    )
+    stderr_path = find_scheduler_log_path(
+        pattern=stderr_pattern,
+        control_path=control_path,
+        archive_path=archive_path
+    )
+    return stdout_path, stderr_path
+
+
+def query_job_info(control_path: Path,
+                   work_path: Path,
+                   archive_path: Path) -> Optional[dict[str, Any]]:
+    """
+    Query the job information for the latest run job file
+    and find job stdout/stderr logs if they exist
+    """
+    # Search for latest run job file
+    # First check for queued jobs, running jobs in work directory,
+    # then finally check for the latest output directory for finished jobs
+    search_paths = [control_path, work_path]
+    outputs = list_archive_dirs(archive_path=archive_path, dir_type='output')
+    latest_output = outputs[-1] if outputs else None
+    if latest_output:
+        search_paths.append(archive_path / latest_output)
+    job_file_path = find_run_job_file(search_paths)
+
+    if job_file_path is None:
+        raise FileNotFoundError(
+            "No payu-run job file found in control, work or output directories"
+        )
+
+    # Read the job file
+    data = read_job_file(job_file_path)
+
+    # Build the data file
+    status_data = {}
+
+    if 'queued' == data.get('stage'):
+        status_data['queued'] = {
+            'payu-run': {
+                'job_id': data['scheduler_job_id'],
+            }
+        }
+        return status_data
+
+    if 'experiment_uuid' in data.get('experiment_metadata', {}):
+        uuid = data['experiment_metadata']['experiment_uuid']
+        status_data['experiment_uuid'] = uuid
+
+    stdout, stderr = find_scheduler_logs(
+        job_id=data.get('scheduler_job_id'),
+        control_path=control_path,
+        archive_path=archive_path,
+        type=data.get('scheduler_type')
+    )
+    run_info = {
+        'job_id': data.get('scheduler_job_id'),
+        'stage': data.get('stage'),
+        'exit_status': data.get('payu_run_status'),
+        'model_exit_status': data.get('payu_model_run_status'),
+        'stdout_file': str(stdout) if stdout else None,
+        'stderr_file': str(stderr) if stderr else None,
+        'job_file': str(job_file_path),
+    }
+    # TODO: Extend with collate, sync when they are implemented
+    status_data['runs'] = {
+        data.get('payu_current_run'): {
+            'run': run_info
+        }
+    }
+
+    return status_data
+
+ 
+def display_job_info(data: dict[str, Any]) -> None:
+    """
+    Display the job information in a human-readable format
+
+    TODO: How to make this more readable?? The --json option is currently
+    better..
+    """
+    # Check for queued jobs:
+    if 'queued' in data:
+        for job_type, job_info in data['queued'].items():
+            print(
+                f"{job_type} job is queued with Job ID: {job_info['job_id']}"
+            )
+    if 'runs' in data:
+        for run_number, jobs in data['runs'].items():
+            run_info = jobs['run']
+            print(f"Run {run_number}:")
+            if run_info['job_id'] != None and run_info['job_id'] != '':
+                print(f" Job ID: {run_info['job_id'] }")
+            if run_info['stage'] == 'completed':
+                exit_status = (
+                    "Run completed successfully"
+                    if run_info['exit_status'] == 0
+                    else "Run failed"
+                )
+                print(f" {exit_status}")
+            else:
+                print(f" Stage: {run_info['stage']}")
+            if run_info["model_exit_status"] != None:
+                print(
+                    f" Model run command exited with code: "
+                    f"{run_info['model_exit_status']}"
+                )
+            if run_info["stdout_file"] != None:
+                print(f" STDOUT File: {run_info['stdout_file']}")
+            if run_info["stderr_file"] != None:
+                print(f" STDERR File: {run_info['stderr_file']}")
+            if run_info["job_file"] != None:
+                print(f" Job File: {run_info['job_file']}")
