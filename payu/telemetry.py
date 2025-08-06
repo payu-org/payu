@@ -283,7 +283,9 @@ def write_queued_job_file(
             control_path: Path,
             job_id: str,
             type: str,
-            scheduler_type: str
+            scheduler: Scheduler,
+            metadata: Metadata,
+            current_run: int
         ) -> None:
     """Initialise the queued job file in the control path with the job ID
 
@@ -295,15 +297,21 @@ def write_queued_job_file(
         Job ID of the queued job
     type: str
         Type of the job, e.g. 'payu-run'
-    scheduler_type: str
+    scheduler: Scheduler
         Type of the scheduler used for the job, e.g. 'pbs', 'slurm'
+    metadata: Metadata
+        Metadata object for the run - used to get uuid if it exists
+    current_run: int
+        Current run number for the queued job
     """
     job_file_path = get_job_file_path(control_path, type)
     data = {
         'scheduler_job_id': job_id,
-        'scheduler_type': scheduler_type,
-        'stage': 'queued'
+        'scheduler_type': scheduler.name,
+        'stage': 'queued',
+        'payu_current_run': current_run,
     }
+    data.update(get_metadata(metadata))
     atomic_write_file(
         file_path=job_file_path,
         data=data
@@ -588,14 +596,6 @@ def query_job_info(control_path: Path,
     # Build the data file
     status_data = {}
 
-    if 'queued' == data.get('stage'):
-        status_data['queued'] = {
-            'payu-run': {
-                'job_id': data['scheduler_job_id'],
-            }
-        }
-        return status_data
-
     if 'experiment_uuid' in data.get('experiment_metadata', {}):
         uuid = data['experiment_metadata']['experiment_uuid']
         status_data['experiment_uuid'] = uuid
@@ -632,12 +632,6 @@ def display_job_info(data: dict[str, Any]) -> None:
     TODO: How to make this more readable?? The --json option is currently
     better..
     """
-    # Check for queued jobs:
-    if 'queued' in data:
-        for job_type, job_info in data['queued'].items():
-            print(
-                f"{job_type} job is queued with Job ID: {job_info['job_id']}"
-            )
     if 'runs' in data:
         for run_number, jobs in data['runs'].items():
             run_info = jobs['run']

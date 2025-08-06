@@ -108,15 +108,24 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
         pbs_config['mem'] = '{0}GB'.format(pbs_mem)
 
-    job_id, scheduler = cli.submit_job('payu-run', pbs_config, pbs_vars)
+    # Run experiment initialisation to update metadata,
+    # and determine the run counter and uuid before job submission
+    lab = Laboratory(model_type, config_path, lab_path)
+    expt = Experiment(lab, reproduce=reproduce, force=force)
+
+    job_id = cli.submit_job('payu-run', pbs_config, pbs_vars)
+
+    current_run = init_run if init_run is not None else expt.counter
 
     # This could be done as part of submit_job eventually, but for now
     # it's only used by the run command.
     write_queued_job_file(
-        control_path=Path(pbs_config.get('control_path')),
+        control_path=Path(expt.control_path),
         job_id=job_id,
         type='payu-run',
-        scheduler_type=scheduler,
+        scheduler=expt.scheduler,
+        metadata=expt.metadata,
+        current_run=current_run,
     )
 
 
