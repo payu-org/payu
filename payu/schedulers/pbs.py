@@ -192,6 +192,28 @@ class PBS(Scheduler):
         return info
 
 
+    def get_all_jobs_status(self) -> Optional[Dict[str, Any]]:
+        """
+        Get information about all jobs from the PBS server
+
+        Returns
+        ----------
+        Optional[Dict[str, Any]]
+            Dictionary of information extracted from qstat output
+        """
+        info = get_all_job_info_json()
+        if info is None:
+            return None
+        job_statuses = {}
+        jobs = info.get('Jobs', {})
+        for job_id, job_info in jobs.items():
+            job_statuses[job_id] = {
+                'job_state': job_info.get('job_state'),
+                'exit_status': job_info.get('Exit_status'),
+            }
+        return job_statuses
+
+
 @retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
 def get_job_info_json(job_id: str) -> Optional[Dict[str, Any]]:
     """
@@ -202,6 +224,28 @@ def get_job_info_json(job_id: str) -> Optional[Dict[str, Any]]:
     """
     qstat_output = subprocess.run(
         ["qstat", "-f", "-F", "json", job_id],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    # Parse the JSON output
+    try:
+        return json.loads(qstat_output.stdout)
+    except json.JSONDecodeError:
+        return None
+
+
+@retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
+def get_all_job_info_json() -> Optional[Dict[str, Any]]:
+    """
+    Get full job information in JSON format from qstat for all jobs.
+    It is wrapped in retry with timeout to allow for PBS server to be slow
+    to respond.
+
+    If timeout occurs or invalid json, return None
+    """
+    qstat_output = subprocess.run(
+        ["qstat", "-f", "-F", "json"],
         capture_output=True,
         text=True,
         check=True,
