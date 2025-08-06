@@ -1,5 +1,6 @@
 import os
 import argparse
+from pathlib import Path
 
 from payu import cli
 from payu.experiment import Experiment
@@ -7,6 +8,7 @@ from payu.laboratory import Laboratory
 import payu.subcommands.args as args
 from payu import fsops
 from payu.manifest import Manifest
+from payu.telemetry import write_queued_job_file, record_run
 
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
@@ -106,7 +108,15 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
         pbs_config['mem'] = '{0}GB'.format(pbs_mem)
 
-    cli.submit_job('payu-run', pbs_config, pbs_vars)
+    job_id = cli.submit_job('payu-run', pbs_config, pbs_vars)
+
+    # This could be done as part of submit_job eventually, but for now
+    # it's only used by the run command.
+    write_queued_job_file(
+        control_path=Path(pbs_config.get('control_path')),
+        job_id=job_id,
+        type='payu-run',
+    )
 
 
 def runscript():
@@ -130,16 +140,24 @@ def runscript():
               ''.format(expt.n_runs, n_runs_per_submit, subrun))
 
         expt.setup()
-        run_status = 1
         try:
             expt.run()
             expt.archive(force_prune_restarts=run_args.force_prune_restarts)
             run_status = 0
+        except:
+            run_status = 1
         finally:
             # Record job information for experiment run
-            expt.telemetry.record_run(timings=expt.timings,
-                                      scheduler=expt.scheduler,
-                                      run_status=run_status)
+            record_run(
+                timings=expt.timings,
+                scheduler=expt.scheduler,
+                run_status=run_status,
+                config=expt.config,
+                control_path=Path(expt.control_path),
+                archive_path=Path(expt.archive_path),
+                output_path=Path(expt.output_path),
+                work_path=Path(expt.work_path)
+            )
 
         # Finished runs
         if expt.n_runs == 0:

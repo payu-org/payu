@@ -43,7 +43,7 @@ from payu.manifest import Manifest
 from payu.calendar import parse_date_offset
 from payu.sync import SyncToRemoteArchive
 from payu.metadata import Metadata
-from payu.telemetry import Telemetry
+import payu.telemetry as telemetry
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -457,9 +457,6 @@ class Experiment(object):
 
     @timeit("payu_setup_duration_seconds")
     def setup(self, force_archive=False):
-        # Initialise telemetry
-        self.telemetry = Telemetry(config=self.config)
-
         # Check version
         self.check_payu_version()
 
@@ -480,6 +477,15 @@ class Experiment(object):
                          .format(path=self.work_path))
 
         mkdir_p(self.work_path)
+
+        # Setup the payu run job file
+        telemetry.setup_run_job_file(
+            control_path=Path(self.control_path),
+            work_path=Path(self.work_path),
+            scheduler=self.scheduler,
+            metadata=self.metadata,
+            extra_info=self.setup_run_info()
+        )
 
         if force_archive:
             mkdir_p(self.archive_path)
@@ -696,6 +702,13 @@ class Experiment(object):
         if self.runlog.enabled:
             self.runlog.commit()
 
+        # Update run info file
+        telemetry.update_run_job_file(
+            base_path=Path(self.work_path),
+            stage='model-run',
+            manifests=self.manifest,
+            extra_info=self.run_info()
+        )
         # NOTE: This may not be necessary, since env seems to be getting
         # correctly updated.  Need to look into this.
         print(cmd)
@@ -715,13 +728,10 @@ class Experiment(object):
         runcmd_elapsed_time = time.perf_counter() - runcmd_start_time
         self.timings["payu_model_run_duration_seconds"] = runcmd_elapsed_time
 
-        # Set payu telemetry output file to the work directory
-        self.telemetry.set_run_info_filepath(Path(self.work_path) / "job.json")
-        # Store job state information
-        self.telemetry.set_run_info(
-            run_info=self.run_info(),
-            manifests=self.manifest,
-            metadata=self.metadata
+        # Update telemetry file
+        telemetry.update_run_job_file(
+            base_path=Path(self.work_path),
+            extra_info=self.model_run_info(),
         )
 
         # Remove any empty output files (e.g. logs)
@@ -747,11 +757,6 @@ class Experiment(object):
 
             if job_id == '' or job_id is None:
                 job_id = str(self.run_id)[:6]
-
-            # Set telemetry output file to the error log directory
-            self.telemetry.set_run_info_filepath(
-                Path(error_log_dir) / f"job.{job_id}.json"
-            )
 
             for fname in self.output_fnames:
 
@@ -798,19 +803,30 @@ class Experiment(object):
         if run_script:
             self.run_userscript(run_script, 'run')
 
-    def run_info(self):
-        """Return a dictionary with current run state information"""
+    def setup_run_info(self):
+        """Return a dictionary with initial run state information"""
         return {
-            'payu_run_id': self.run_id,
             'payu_current_run': self.counter,
             'payu_n_runs':  self.n_runs,
-            'payu_model_run_status': self.run_job_status,
             'payu_version': payu.__version__,
             'payu_path': os.path.dirname(self.payu_path),
             'payu_config': self.config,
             'user_id':  pwd.getpwuid(os.getuid()).pw_name,
             'payu_control_path': str(self.control_path),
             'payu_archive_path': str(self.archive_path),
+        }
+
+    def run_info(self):
+        """Return a dictionary with run state information (pre model run)"""
+        # WHAT IS THE RUN ID WHEN NOT A GIT REPO OR RUNLOG OFF??
+        return {
+            'payu_run_id': self.run_id,
+        }
+
+    def model_run_info(self):
+        """Return a dictionary with run state information after model run"""
+        return {
+            'payu_model_run_status': self.run_job_status,
         }
 
     def get_model_restart_datetimes(self):
@@ -847,6 +863,11 @@ class Experiment(object):
             print('payu: not archiving due to config.yaml setting.')
             return
 
+        # Update telemetry run info stage
+        telemetry.update_run_job_file(
+            base_path=Path(self.work_path),
+            stage='archive',
+        )
         # Check there is a work directory, otherwise bail
         if not os.path.exists(self.work_sym_path):
             sys.exit('payu: error: No work directory to archive.')
@@ -873,12 +894,11 @@ class Experiment(object):
 
         movetree(self.work_path, self.output_path)
 
-        # Set telemetry job info output file to the archive directory
-        self.telemetry.set_run_info_filepath(
-            Path(self.output_path) / "job.json"
-        )
         # Record model restart datetimes in telemetry
-        self.telemetry.set_model_datetimes(self.get_model_restart_datetimes())
+        telemetry.update_run_job_file(
+            base_path=Path(self.output_path),
+            model_restart_datetimes=self.get_model_restart_datetimes()
+        )
 
         # Remove any outdated restart files
         try:
