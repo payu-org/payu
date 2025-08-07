@@ -306,20 +306,8 @@ class CesmCmeps(Model):
                     self.work_path, pointer,
                     ) for pointer in self.rpointers
             ]
-        restart_files = []
-        for pointer in pointer_files:
-            try:
-                with open(pointer,"r") as f:
-                    for restart in f.readlines():
-                        restart_files.append(
-                            os.path.join(
-                                self.work_path, restart.rstrip(),
-                                )
-                            )
-            except FileNotFoundError:
-                # TODO: copied this from other models. Surely we want to exit here or something
-                print(f"payu: error: Model has not produced pointer file {pointer}")
-        
+        restart_files = self._collect_restart_files(pointer_files)
+
         for f_src in restart_files + pointer_files:
             name = os.path.basename(f_src)
             f_dst = os.path.join(self.restart_path, name)
@@ -332,6 +320,37 @@ class CesmCmeps(Model):
                 f_dst = os.path.join(self.restart_path, name)
                 shutil.move(f_src, f_dst)
             os.rmdir(self.work_restart_path)
+
+    def _collect_restart_files(self, pointer_files):
+        restart_files = set()
+        for pointer in pointer_files:
+            # rpointer file not exist
+            if not os.path.exists(pointer):
+                raise FileNotFoundError(
+                    f"payu: rpointer file {pointer} does not exist!"
+                    )
+
+            with open(pointer, "r") as f:
+                for restart in f.readlines():
+                    target_restart_path = os.path.join(self.work_path, restart.rstrip())
+
+                    if os.path.exists(target_restart_path):
+                        restart_files.add(target_restart_path)
+                        continue
+
+                    # In case containing split restart files, such as (*.nc.0000, *.nc.0001)
+                    # This is only relevant for MOM6
+                    if "mom" in target_restart_path:
+                        split_files = sorted(glob.glob(target_restart_path + ".[0-9][0-9][0-9][0-9]"))
+                        if split_files:
+                            restart_files.update(split_files)
+                            continue
+
+                    raise FileNotFoundError(
+                        f"payu: restart file {target_restart_path} listed in the rpointer file {pointer} does not exist!"
+                        )
+
+        return list(restart_files)
 
     def collate(self):
         
