@@ -310,6 +310,7 @@ json_output = {
     }
 }
 
+# Update jobs option
 update_jobs = {
     'flags': ['--update'],
     'parameters': {
@@ -317,5 +318,26 @@ update_jobs = {
         'action': 'store_true',
         'default': False,
         'help': 'Update the job files with the latest data from the scheduler'
+    }
+}
+
+# Display all jobs option
+all_jobs = {
+    'flags': ['--all'],
+    'parameters': {
+        'dest': 'all_jobs',
+        'action': 'store_true',
+        'default': False,
+        'help': 'Display information about all jobs, not just the current one'
+    }
+}
+
+# Display specific run number
+run_number = {
+    'flags': ['-n'],
+    'parameters': {
+        'dest': 'run_number',
+        'action': 'store',
+        'help': 'Display information about a specific run number'
     }
 }

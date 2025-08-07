@@ -586,57 +586,104 @@ def find_scheduler_logs(
     return stdout_path, stderr_path
 
 
+def get_job_file_list(
+            control_path: Path,
+            work_path: Path,
+            archive_path: Path,
+            run_number: Optional[int] = None,
+            all: Optional[bool] = False
+        ) -> list[Path]:
+    """
+    Get a list of payu run job files to search
+    """
+    search_paths = [control_path, work_path]
+    outputs = list_archive_dirs(archive_path=archive_path,
+                                dir_type='output')
+    if not outputs:
+        # If no output directories, return the run job file only
+        pass
+    elif run_number is not None and f'output{run_number:03}' in outputs:
+        search_paths.append(archive_path / f'output{run_number:03}')
+    elif all:
+        search_paths.extend([archive_path / output for output in outputs])
+    else:
+        # Only find the latest payu run job file
+        search_paths.append(archive_path / outputs[-1])
+        job_file = find_run_job_file(search_paths)
+        return [] if job_file is None else [job_file]
+
+    # Find all run job files in the search paths
+    files = []
+    for path in search_paths:
+        file = find_run_job_file([path])
+        if file is not None:
+            files.append(file)
+    return files
+
+
 def query_job_info(control_path: Path,
                    work_path: Path,
-                   archive_path: Path) -> Optional[dict[str, Any]]:
+                   archive_path: Path,
+                   run_number: Optional[int] = None,
+                   all: Optional[bool] = False
+                   ) -> Optional[dict[str, Any]]:
     """
     Query the job information for the latest run job file
     and find job stdout/stderr logs if they exist
     """
-    # Search for latest run job file
-    # First check for queued jobs, running jobs in work directory,
-    # then finally check for the latest output directory for finished jobs
-    search_paths = [control_path, work_path]
-    outputs = list_archive_dirs(archive_path=archive_path, dir_type='output')
-    latest_output = outputs[-1] if outputs else None
-    if latest_output:
-        search_paths.append(archive_path / latest_output)
-    job_file_path = find_run_job_file(search_paths)
-
-    if job_file_path is None:
+    job_files = get_job_file_list(
+        control_path=control_path,
+        work_path=work_path,
+        archive_path=archive_path,
+        run_number=run_number,
+        all=all
+    )
+    if job_files == []:
         return {}
-
-    # Read the job file
-    data = read_job_file(job_file_path)
 
     # Build the data file
     status_data = {}
 
-    if 'experiment_uuid' in data.get('experiment_metadata', {}):
-        uuid = data['experiment_metadata']['experiment_uuid']
-        status_data['experiment_uuid'] = uuid
+    for job_file in job_files:
+        # Read the job file
+        data = read_job_file(job_file)
 
-    stdout, stderr = find_scheduler_logs(
-        job_id=data.get('scheduler_job_id'),
-        control_path=control_path,
-        archive_path=archive_path,
-        type=data.get('scheduler_type')
-    )
-    run_info = {
-        'job_id': data.get('scheduler_job_id'),
-        'stage': data.get('stage'),
-        'exit_status': data.get('payu_run_status'),
-        'model_exit_status': data.get('payu_model_run_status'),
-        'stdout_file': str(stdout) if stdout else None,
-        'stderr_file': str(stderr) if stderr else None,
-        'job_file': str(job_file_path),
-    }
-    # TODO: Extend with collate, sync when they are implemented
-    status_data['runs'] = {
-        data.get('payu_current_run'): {
-            'run': run_info
+        # Filter out jobs that aren't the specified run number
+        if run_number is not None and data['payu_current_run'] != run_number:
+            continue
+
+        if 'experiment_uuid' in data.get('experiment_metadata', {}):
+            uuid = data['experiment_metadata']['experiment_uuid']
+            status_data['experiment_uuid'] = uuid
+
+        stdout, stderr = find_scheduler_logs(
+            job_id=data.get('scheduler_job_id'),
+            control_path=control_path,
+            archive_path=archive_path,
+            type=data.get('scheduler_type')
+        )
+        run_info = {
+            'job_id': data.get('scheduler_job_id'),
+            'stage': data.get('stage'),
+            'exit_status': data.get('payu_run_status'),
+            'model_exit_status': data.get('payu_model_run_status'),
+            'stdout_file': str(stdout) if stdout else None,
+            'stderr_file': str(stderr) if stderr else None,
+            'job_file': str(job_file),
         }
-    }
+        # TODO: Extend with collate, sync when they are implemented
+        if 'runs' not in status_data:
+            status_data['runs'] = {}
+        status_data['runs'][data['payu_current_run']] = {'run': run_info}
+
+    # Ensure runs are sorted by run number
+    if 'runs' in status_data:
+        # Sort runs by run number (key)
+        sorted_runs = dict(sorted(
+            status_data['runs'].items(),
+            key=lambda item: int(item[0])
+        ))
+        status_data['runs'] = sorted_runs
 
     return status_data
 

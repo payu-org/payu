@@ -19,11 +19,11 @@ parameters = {'description': 'Display payu run information'}
 
 arguments = [
     args.laboratory, args.json_output, args.update_jobs,
+    args.all_jobs, args.run_number
 ]
 
+def runcmd(lab_path, json_output, update_jobs, all_jobs, run_number):
 
-def runcmd(lab_path, json_output, update_jobs):
-    
     # Suppress output to os.devnull
     with redirect_stdout(open(os.devnull, 'w')):
         lab = Laboratory(lab_path)
@@ -31,19 +31,26 @@ def runcmd(lab_path, json_output, update_jobs):
         # metadata
         expt = Experiment(lab)
 
+    run_number = int(run_number) if run_number is not None else None
+
     data = query_job_info(
         control_path=Path(expt.control_path),
         work_path=Path(expt.work_path),
-        archive_path=Path(expt.archive_path)
+        archive_path=Path(expt.archive_path),
+        run_number=run_number,
+        all=all_jobs
     )
     if update_jobs:
-        # Update the job files with the latest data from the scheduler
-        data = update_all_job_files(data, expt.scheduler)
-        # Rerun querying job files to get the latest data
+        # Update the job files in data with the latest information
+        # from the scheduler
+        update_all_job_files(data, expt.scheduler)
+        # Rerun parsing job files to get the latest data
         data = query_job_info(
             control_path=Path(expt.control_path),
             work_path=Path(expt.work_path),
-            archive_path=Path(expt.archive_path)
+            archive_path=Path(expt.archive_path),
+            run_number=run_number,
+            all=all_jobs
         )
 
     if json_output:
