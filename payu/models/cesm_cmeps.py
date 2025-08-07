@@ -347,7 +347,7 @@ class CesmCmeps(Model):
                 # use the control directory path
                 runconfig_path = os.path.join(self.expt.control_path, NUOPC_CONFIG)
         # .setup is not run when collate is called so need to get components
-        self.get_runconfig(self.output_path)
+        self.get_runconfig(os.path.dirname(runconfig_path))
         self.get_components()
         
         if "mom" in self.components.values():
