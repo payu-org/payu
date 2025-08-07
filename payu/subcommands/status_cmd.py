@@ -8,7 +8,7 @@ import json
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
-from payu.telemetry import (
+from payu.status import (
     query_job_info,
     display_job_info,
     update_all_job_files
