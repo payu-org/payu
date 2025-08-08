@@ -272,36 +272,39 @@ def update_all_job_files(
                 )
 
 
+def print_line(label: str, key: Any, data: dict[str, Any]) -> None:
+    """Print a line with label and value from the data,
+    if it is defined"""
+    value = data.get(key)
+    label_width = 18
+    if value is not None and value != "":
+        print(f"  {label:<{label_width}} {value}")
+
+
 def display_job_info(data: dict[str, Any]) -> None:
     """
-    Display the job information in a human-readable format
-
-    TODO: Make this more readable?? As the --json option is currently
-    better.. Otherwise just remove this function and always use --json option
-    as the default
+    Display the job information in a human-readable way
     """
-    for run_number, jobs in data.get("runs", {}).items():
+    runs = data.get("runs", {})
+    if not runs:
+        print("No run information available.")
+        return
+
+    for run_number, jobs in runs.items():
         run_info = jobs["run"]
-        print(f"Run {run_number}:")
-        if run_info["job_id"] is not None and run_info["job_id"] != "":
-            print(f" Job ID: {run_info['job_id'] }")
-        if run_info["stage"] == "completed":
-            exit_status = (
-                "Run completed successfully"
-                if run_info["exit_status"] == 0
-                else "Run failed"
-            )
-            print(f" {exit_status}")
-        else:
-            print(f" Stage: {run_info['stage']}")
-        if run_info["model_exit_status"] is not None:
-            print(
-                f" Model run command exited with code: "
-                f"{run_info['model_exit_status']}"
-            )
-        if run_info["stdout_file"] is not None:
-            print(f" STDOUT File: {run_info['stdout_file']}")
-        if run_info["stderr_file"] is not None:
-            print(f" STDERR File: {run_info['stderr_file']}")
-        if run_info["job_file"] is not None:
-            print(f" Job File: {run_info['job_file']}")
+        print("=" * 40)
+        print(f"Run: {run_number}")
+        print_line("Job ID", "job_id", run_info)
+        print_line("Stage", "stage", run_info)
+        exit_status = run_info.get("exit_status")
+        if exit_status is not None:
+            status_str = "Success" if exit_status == 0 else "Failed"
+            print(f"  Exit Status:       {exit_status} ({status_str})")
+        model_exit = run_info.get("model_exit_status")
+        if model_exit is not None:
+            status_str = "Success" if model_exit == 0 else "Failed"
+            print(f"  Model Exit Code:   {model_exit} ({status_str})")
+        print_line("Output Log", "stdout_file", run_info)
+        print_line("Error Log", "stderr_file", run_info)
+        print_line("Job File", "job_file", run_info)
+    print("=" * 40)
