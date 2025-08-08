@@ -19,10 +19,10 @@ parameters = {'description': 'Display payu run information'}
 
 arguments = [
     args.laboratory, args.json_output, args.update_jobs,
-    args.all_jobs, args.run_number
+    args.all_runs, args.run_number
 ]
 
-def runcmd(lab_path, json_output, update_jobs, all_jobs, run_number):
+def runcmd(lab_path, json_output, update_jobs, all_runs, run_number):
 
     # Suppress output to os.devnull
     with redirect_stdout(open(os.devnull, 'w')):
@@ -38,7 +38,7 @@ def runcmd(lab_path, json_output, update_jobs, all_jobs, run_number):
         work_path=Path(expt.work_path),
         archive_path=Path(expt.archive_path),
         run_number=run_number,
-        all=all_jobs
+        all_runs=all_runs
     )
     if update_jobs:
         # Update the job files in data with the latest information
@@ -50,7 +50,7 @@ def runcmd(lab_path, json_output, update_jobs, all_jobs, run_number):
             work_path=Path(expt.work_path),
             archive_path=Path(expt.archive_path),
             run_number=run_number,
-            all=all_jobs
+            all_runs=all_runs
         )
 
     if json_output:

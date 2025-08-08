@@ -321,14 +321,14 @@ update_jobs = {
     }
 }
 
-# Display all jobs option
-all_jobs = {
+# Display all runs option
+all_runs = {
     'flags': ['--all'],
     'parameters': {
-        'dest': 'all_jobs',
+        'dest': 'all_runs',
         'action': 'store_true',
         'default': False,
-        'help': 'Display information about all jobs, not just the current one'
+        'help': 'Display information about all runs, not just the latest run'
     }
 }
 
