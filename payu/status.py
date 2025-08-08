@@ -5,7 +5,6 @@ scheduler stdout/stderr logs, and querying the scheduler
 """
 
 import glob
-import json
 from pathlib import Path
 from typing import Any, Optional
 import warnings
@@ -21,44 +20,55 @@ from payu.telemetry import (
 )
 
 
+def find_file_match(
+            pattern: str,
+            path: Path
+        ) -> Optional[Path]:
+    """Find a file matching the pattern in the given path"""
+    files = glob.glob(str(path / pattern))
+    if len(files) >= 1:
+        if len(files) != 1:
+            warnings.warn(
+                f"Multiple files found for pattern {pattern} in path {path}: "
+                f"{files}."
+            )
+        return Path(files[0])
+    return None
+
+
 def find_scheduler_log_path(
             pattern: str,
             control_path: Path,
             archive_path: Path,
-        ) -> Path:
+        ) -> Optional[Path]:
     """Given a glob pattern, find the scheduler log file either in
-    the control path or in the archive path"""
-    # First search the control path
-    filename = glob.glob(str(control_path / pattern))
-    if len(filename) == 1:
-        return Path(filename[0])
-    # Search the pbs-logs directory in the archive path
-    filename = glob.glob(str(archive_path / 'pbs_logs' / pattern))
-    if len(filename) == 1:
-        return Path(filename[0])
-    # If not found, return None
-    return None
+    the control path or in the archive's pbs_logs path"""
+    file = find_file_match(pattern, control_path)
+    if file is None:
+        file = find_file_match(pattern, archive_path / "pbs_logs")
+    return file
 
 
 def find_scheduler_logs(
             job_id: str,
             control_path: Path,
             archive_path: Path,
-            type: str = 'pbs',
+            type: str = "pbs",
         ) -> tuple[Optional[Path], Optional[Path]]:
     """Find the stdout and stderr log files for the scheduler job ID"""
     #TODO: Support non-default stderr and stdout file names
-    if type == 'pbs':
+    if type == "pbs":
         # For PBS, the log files are named .o<jobid> and .e<jobid>
-        job_id = job_id.split('.')[0]  # Remove any suffix
+        job_id = job_id.split(".")[0]  # Remove any suffix
         stdout_pattern = f"*.o{job_id}"
         stderr_pattern = f"*.e{job_id}"
-    elif type == 'slurm':
+    elif type == "slurm":
         # For Slurm, the default log files are named slurm-<jobid>.out
         stdout_pattern = f"slurm-{job_id}.out"
         stderr_pattern = f"slurm-{job_id}.err"
     else:
-        return None, None # Unknown scheduler type
+        # Unknown scheduler type (could be running locally)
+        return None, None
 
     # Find the stdout and stderr log files
     stdout_path = find_scheduler_log_path(
@@ -79,7 +89,7 @@ def get_job_file_list(
             work_path: Path,
             archive_path: Path,
             run_number: Optional[int] = None,
-            all: Optional[bool] = False
+            all_runs: Optional[bool] = False
         ) -> list[Path]:
     """
     Generate a list of run job files to query for job information.
@@ -87,8 +97,8 @@ def get_job_file_list(
     that is either in the control, work or latest archive output directory.
     Otherwise it returns any queued or running jobs,
     and either:
-     - all completed jobs in archive if `all` is True,
      - completed job in the selected output if `run_number` is specified
+     - all completed jobs in archive if `all_runs` is True,
 
     Filtering the files here, reduces the number of files to read and parse
     later on
@@ -97,14 +107,15 @@ def get_job_file_list(
     outputs = list_archive_dirs(archive_path=archive_path,
                                 dir_type='output')
     if not outputs:
-        # If no output directories, return the run job file only
+        # If no output directories, return any queued or running jobs
         pass
-    elif run_number is not None and f'output{run_number:03}' in outputs:
-        search_paths.append(archive_path / f'output{run_number:03}')
-    elif all:
+    elif run_number is not None and f"output{run_number:03}" in outputs:
+        search_paths.append(archive_path / f"output{run_number:03}")
+    elif all_runs:
         search_paths.extend([archive_path / output for output in outputs])
     else:
-        # Only find the latest payu run job file
+        # Only return latest payu run job file
+        # Note: Priority in search is given to running and queued jobs
         search_paths.append(archive_path / outputs[-1])
         job_file = find_run_job_file(search_paths)
         return [] if job_file is None else [job_file]
@@ -123,7 +134,7 @@ def query_job_info(
             work_path: Path,
             archive_path: Path,
             run_number: Optional[int] = None,
-            all: Optional[bool] = False
+            all_runs: Optional[bool] = False
         ) -> Optional[dict[str, Any]]:
     """
     Generate a dictionary of jobs information (exit status, stage), 
@@ -133,7 +144,7 @@ def query_job_info(
     any that is queued or running, or the latest archived output
 
     If `run_number` is specified, it will return the jobs for that run number
-    If `all` is True, it will include all jobs in the archive
+    If `all_runs` is True, it will also include all jobs in the archive
     for every run number
 
     # TODO: Extend with collate, sync when their job files are implemented
@@ -143,7 +154,7 @@ def query_job_info(
         work_path=work_path,
         archive_path=archive_path,
         run_number=run_number,
-        all=all
+        all_runs=all_runs
     )
     if job_files == []:
         return {}
@@ -159,43 +170,42 @@ def query_job_info(
         if run_number is not None and data['payu_current_run'] != run_number:
             continue
 
-        if 'experiment_uuid' in data.get('experiment_metadata', {}):
-            uuid = data['experiment_metadata']['experiment_uuid']
-            status_data['experiment_uuid'] = uuid
+        if "experiment_uuid" in data.get("experiment_metadata", {}):
+            uuid = data["experiment_metadata"]["experiment_uuid"]
+            status_data["experiment_uuid"] = uuid
 
         stdout, stderr = find_scheduler_logs(
-            job_id=data.get('scheduler_job_id'),
+            job_id=data.get("scheduler_job_id"),
             control_path=control_path,
             archive_path=archive_path,
-            type=data.get('scheduler_type')
+            type=data.get("scheduler_type")
         )
         run_info = {
-            'job_id': data.get('scheduler_job_id'),
-            'stage': data.get('stage'),
-            'exit_status': data.get('payu_run_status'),
-            'model_exit_status': data.get('payu_model_run_status'),
-            'stdout_file': str(stdout) if stdout else None,
-            'stderr_file': str(stderr) if stderr else None,
-            'job_file': str(job_file),
+            "job_id": data.get("scheduler_job_id"),
+            "stage": data.get("stage"),
+            "exit_status": data.get("payu_run_status"),
+            "model_exit_status": data.get("payu_model_run_status"),
+            "stdout_file": str(stdout) if stdout else None,
+            "stderr_file": str(stderr) if stderr else None,
+            "job_file": str(job_file),
         }
-        if 'runs' not in status_data:
-            status_data['runs'] = {}
-        status_data['runs'][data['payu_current_run']] = {'run': run_info}
+        if "runs" not in status_data:
+            status_data["runs"] = {}
+        status_data["runs"][data["payu_current_run"]] = {"run": run_info}
 
     # Ensure runs are sorted by run number
-    if 'runs' in status_data:
-        # Sort runs by run number (key)
+    if "runs" in status_data:
         sorted_runs = dict(sorted(
-            status_data['runs'].items(),
+            status_data["runs"].items(),
             key=lambda item: int(item[0])
         ))
-        status_data['runs'] = sorted_runs
+        status_data["runs"] = sorted_runs
 
     return status_data
 
 
 def update_all_job_files(
-            data: dict[str, Any],
+            status_data: dict[str, Any],
             scheduler: Scheduler
     ) -> None:
     """
@@ -226,72 +236,75 @@ def update_all_job_files(
         )
         return
 
-    for run_number, jobs in data.get('runs', {}).items():
-        data = jobs['run']
+    for run_number, jobs in status_data.get("runs", {}).items():
+        data = jobs["run"]
 
-        job_id = data.get('job_id')
-        if job_id is None or job_id == '':
+        job_id = data.get("job_id")
+        if job_id is None or job_id == "":
             # No job ID, nothing to update
             continue
         elif job_id not in all_jobs:
             # If the job is not in the scheduler's job list, it has
             # exited or deleted
-            if data['stage'] == 'queued':
-                remove_job_file(file_path=Path(data['job_file']))
-            elif data['stage'] != 'completed':
+            if data["stage"] == "queued":
+                remove_job_file(file_path=Path(data["job_file"]))
+            elif data["stage"] != "completed":
                 # Job has exited before payu has completed
                 update_job_file(
-                    file_path=Path(data['job_file']),
+                    file_path=Path(data["job_file"]),
                     data={
-                        'stage': 'completed',
-                        'payu_run_status': 1
+                        "stage": "completed",
+                        "payu_run_status": 1
                     }
                 )
-        elif all_jobs[job_id].get('exit_status', None) is not None:
-            if data['stage'] == 'queued':
+        elif all_jobs[job_id].get("exit_status", None) is not None:
+            if data["stage"] == "queued":
                 # Job may have exited on startup, remove the queued file
-                remove_job_file(file_path=Path(data['job_file']))
-            elif data['stage'] != 'completed':
+                remove_job_file(file_path=Path(data["job_file"]))
+            elif data["stage"] != "completed":
                 # Update the job file with the exit status
                 update_job_file(
-                    file_path=Path(data['job_file']),
+                    file_path=Path(data["job_file"]),
                     data={
-                        'stage': 'completed',
-                        'payu_run_status': all_jobs[job_id]['exit_status']
+                        "stage": "completed",
+                        "payu_run_status": all_jobs[job_id]["exit_status"]
                     }
                 )
+
+
+def print_line(label: str, key: Any, data: dict[str, Any]) -> None:
+    """Print a line with label and value from the data,
+    if it is defined"""
+    value = data.get(key)
+    label_width = 18
+    if value is not None and value != "":
+        print(f"  {label:<{label_width}} {value}")
 
 
 def display_job_info(data: dict[str, Any]) -> None:
     """
-    Display the job information in a human-readable format
-
-    TODO: Make this more readable?? As the --json option is currently
-    better.. Otherwise just remove this function and always use --json option
-    as the default
+    Display the job information in a human-readable way
     """
-    for run_number, jobs in data.get('runs', {}).items():
-        run_info = jobs['run']
-        print(f"Run {run_number}:")
-        if run_info['job_id'] != None and run_info['job_id'] != '':
-            print(f" Job ID: {run_info['job_id'] }")
-        if run_info['stage'] == 'completed':
-            exit_status = (
-                "Run completed successfully"
-                if run_info['exit_status'] == 0
-                else "Run failed"
-            )
-            print(f" {exit_status}")
-        else:
-            print(f" Stage: {run_info['stage']}")
-        if run_info["model_exit_status"] != None:
-            print(
-                f" Model run command exited with code: "
-                f"{run_info['model_exit_status']}"
-            )
-        if run_info["stdout_file"] != None:
-            print(f" STDOUT File: {run_info['stdout_file']}")
-        if run_info["stderr_file"] != None:
-            print(f" STDERR File: {run_info['stderr_file']}")
-        if run_info["job_file"] != None:
-            print(f" Job File: {run_info['job_file']}")
+    runs = data.get("runs", {})
+    if not runs:
+        print("No run information available.")
+        return
+
+    for run_number, jobs in runs.items():
+        run_info = jobs["run"]
+        print("=" * 40)
+        print(f"Run: {run_number}")
+        print_line("Job ID", "job_id", run_info)
+        print_line("Stage", "stage", run_info)
+        exit_status = run_info.get("exit_status")
+        if exit_status is not None:
+            status_str = "Success" if exit_status == 0 else "Failed"
+            print(f"  Exit Status:       {exit_status} ({status_str})")
+        model_exit = run_info.get("model_exit_status")
+        if model_exit is not None:
+            status_str = "Success" if model_exit == 0 else "Failed"
+            print(f"  Model Exit Code:   {model_exit} ({status_str})")
+        print_line("Output Log", "stdout_file", run_info)
+        print_line("Error Log", "stderr_file", run_info)
+        print_line("Job File", "job_file", run_info)
+    print("=" * 40)

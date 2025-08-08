@@ -44,7 +44,7 @@ def get_metadata(metadata: Metadata) -> Optional[dict[str, Any]]:
         return {}
 
     return {
-        'experiment_metadata': metadata_dict
+        "experiment_metadata": metadata_dict
     }
 
 
@@ -64,15 +64,15 @@ def get_timings(timings: dict[str, int]) -> dict[str, int]:
     """Returns a dictionary of the timings for the run.
     Adds end time and total duration of the experiment run so far.
     """
-    start_time = timings['payu_start_time']
+    start_time = timings["payu_start_time"]
     finish_time = datetime.datetime.now(datetime.timezone.utc)
     # Convert start and end times to isoformat strings
-    timings['payu_start_time'] = start_time.isoformat()
-    timings['payu_finish_time'] = finish_time.isoformat()
+    timings["payu_start_time"] = start_time.isoformat()
+    timings["payu_finish_time"] = finish_time.isoformat()
     elapsed_time = finish_time - start_time
-    timings['payu_total_duration_seconds'] = elapsed_time.total_seconds()
+    timings["payu_total_duration_seconds"] = elapsed_time.total_seconds()
     return {
-        'timings': timings
+        "timings": timings
     }
 
 
@@ -83,8 +83,9 @@ def get_scheduler_run_info(scheduler: Scheduler) -> dict[str, Any]:
 
     info = {}
     if scheduler_info is not None:
-        info['scheduler_job_info'] = scheduler_info
-        info['scheduler_type'] = scheduler.name
+        info["scheduler_job_id"] = scheduler_job_id
+        info["scheduler_job_info"] = scheduler_info
+        info["scheduler_type"] = scheduler.name
     return info
 
 
@@ -106,7 +107,7 @@ def transform_model_datetimes(
                 f"but got {type(value).__name__}"
             )
     if calendar:
-        transformed['model_calendar'] = calendar
+        transformed["model_calendar"] = calendar
     return transformed
 
 
@@ -174,9 +175,9 @@ def post_telemetry_data(url: str,
         Timeout while waiting for request
     """
     headers = {
-        'Content-type': 'application/json',
-        'Authorization': 'Token ' + token,
-        'HOST': host,
+        "Content-type": "application/json",
+        "Authorization": "Token " + token,
+        "HOST": host,
     }
 
     data = {
@@ -209,14 +210,14 @@ def record_telemetry(run_info: dict[str, Any],
     # Check for config.yaml option to disable telemetry, and if an
     # environment variable for an external telemetry config file is set
     telemetry_enabled = (
-        config.get('telemetry', {}).get('enable', True)
+        config.get("telemetry", {}).get("enable", True)
         and TELEMETRY_CONFIG in os.environ
     )
     if not telemetry_enabled:
         return
 
     # Skip telemetry if model was not run
-    if 'payu_model_run_status' not in run_info:
+    if "payu_model_run_status" not in run_info:
         return
 
     # Check for valid external telemetry configuration file
@@ -226,17 +227,17 @@ def record_telemetry(run_info: dict[str, Any],
         return
 
     # Add hostname to the run info fields
-    run_info['hostname'] = external_config[CONFIG_FIELDS['HOSTNAME']]
+    run_info["hostname"] = external_config[CONFIG_FIELDS["HOSTNAME"]]
 
     # Using threading to run the one post request in the background
     thread = threading.Thread(
         target=post_telemetry_data,
         kwargs={
-            'url': external_config[CONFIG_FIELDS['URL']],
-            'token': external_config[CONFIG_FIELDS['TOKEN']],
-            'data': run_info,
-            'service_name': external_config[CONFIG_FIELDS['SERVICE_NAME']],
-            'host': external_config[CONFIG_FIELDS['HOST']],
+            "url": external_config[CONFIG_FIELDS["URL"]],
+            "token": external_config[CONFIG_FIELDS["TOKEN"]],
+            "data": run_info,
+            "service_name": external_config[CONFIG_FIELDS["SERVICE_NAME"]],
+            "host": external_config[CONFIG_FIELDS["HOST"]],
         },
     )
     thread.start()
@@ -269,14 +270,14 @@ def atomic_write_file(
     os.replace(temp_name, file_path)
 
 
-def get_job_file_path(base_path: Path, type: str = 'payu-run') -> Path:
+def get_job_file_path(base_path: Path, type: str = "payu-run") -> Path:
     """Return the path to the run job file given the base path"""
-    return base_path / 'payu-jobs' / f'{type}.json'
+    return base_path / "payu-jobs" / f"{type}.json"
 
 
 def read_job_file(file_path: Path) -> dict[str, Any]:
     """Read the json file and return it's contents"""
-    if not file_path.exists() or not file_path.is_file():
+    if not (file_path.exists() and file_path.is_file()):
         raise FileNotFoundError(f"Job file not found: {file_path}")
     with open(file_path, 'r') as f:
         return json.load(f)
@@ -309,10 +310,10 @@ def write_queued_job_file(
     """
     job_file_path = get_job_file_path(control_path, type)
     data = {
-        'scheduler_job_id': job_id,
-        'scheduler_type': scheduler.name,
-        'stage': 'queued',
-        'payu_current_run': current_run,
+        "scheduler_job_id": job_id,
+        "scheduler_type": scheduler.name,
+        "stage": "queued",
+        "payu_current_run": current_run,
     }
     data.update(get_metadata(metadata))
     atomic_write_file(
@@ -365,7 +366,7 @@ def setup_run_job_file(
         queued_job_data = read_job_file(queued_job_file_path)
 
         # Check job ID matches
-        queued_id = queued_job_data.get('scheduler_job_id')
+        queued_id = queued_job_data.get("scheduler_job_id")
         if queued_id != scheduler_job_id:
             # Should it raise an error or just warn?
             raise RuntimeError(
@@ -377,9 +378,9 @@ def setup_run_job_file(
 
     # Build the data to write to the file
     data = {
-        'scheduler_job_id': scheduler_job_id,
-        'scheduler_type': scheduler_type,
-        'stage': 'setup'
+        "scheduler_job_id": scheduler_job_id,
+        "scheduler_type": scheduler_type,
+        "stage": "setup"
     }
     # Add metadata
     data.update(get_metadata(metadata))
@@ -400,9 +401,10 @@ def setup_run_job_file(
 def update_job_file(
             file_path: Path,
             data: dict[str, Any],
-        ):
+        ) -> dict[str, Any]:
     """
     Update the job file with the provided data
+    and return the updated data
     """
     run_info = read_job_file(file_path)
     run_info.update(data)
@@ -410,6 +412,7 @@ def update_job_file(
         file_path=file_path,
         data=run_info
     )
+    return run_info
 
 
 def update_run_job_file(
@@ -438,7 +441,7 @@ def update_run_job_file(
     # Update the stage and any extra info if provided
     run_info = {}
     if stage:
-        run_info['stage'] = stage
+        run_info["stage"] = stage
     if manifests:
         run_info.update(get_manifests(manifests))
     if model_restart_datetimes:
@@ -494,36 +497,36 @@ def record_run(
     if run_job_file is None:
         # No job file found, skip telemetry
         return
-    # Read the existing run job file
-    run_info = read_job_file(run_job_file)
 
-    # Add timings to the run info and add end time and total run duration
-    run_info.update(get_timings(timings))
-
-    # Add run status
-    run_info['payu_run_status'] = run_status
-    run_info['stage'] = 'completed'
+    # Additional information to the run info
+    run_info = {
+        "payu_run_status": run_status,
+        "stage": "completed",
+    }
 
     # Query the scheduler just before recording the run information to
     # try get the most up-to-date information of the usage statistics
     # as they only get updated periodically
     run_info.update(get_scheduler_run_info(scheduler))
 
-    # Write run job information to a JSON file
-    atomic_write_file(
+    # Add timings to the run info and add end time and total run duration
+    run_info.update(get_timings(timings))
+
+    # Update the run job file
+    run_info = update_job_file(
         file_path=run_job_file,
         data=run_info
     )
 
     # If model exited with errors, copy the updated run job file to the
     # error logs directory
-    if ('payu_model_run_status' in run_info
-            and run_info['payu_model_run_status'] != 0):
-        error_logs_path = Path(archive_path) / 'error-logs'
+    if ("payu_model_run_status" in run_info
+            and run_info["payu_model_run_status"] != 0):
+        error_logs_path = Path(archive_path) / "error_logs"
         error_logs_path.mkdir(parents=True, exist_ok=True)
-        job_id = run_info.get('scheduler_job_id')
-        if job_id != '' and job_id is not None:
-            job_id = job_id.split('.')[0]  # Remove any suffix
+        job_id = run_info.get("scheduler_job_id")
+        if job_id != "" and job_id is not None:
+            job_id = job_id.split(".")[0]  # Remove any suffix
             error_filename = f"{run_job_file.stem}.{job_id}.json"
         else:
             error_filename = run_job_file.name

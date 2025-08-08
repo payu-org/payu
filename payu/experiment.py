@@ -818,7 +818,6 @@ class Experiment(object):
 
     def run_info(self):
         """Return a dictionary with run state information (pre model run)"""
-        # WHAT IS THE RUN ID WHEN NOT A GIT REPO OR RUNLOG OFF??
         return {
             'payu_run_id': self.run_id,
         }
