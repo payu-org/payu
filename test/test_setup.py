@@ -6,6 +6,8 @@ import pytest
 import shutil
 from unittest.mock import patch
 
+import json
+
 import payu
 
 from .common import cd, make_random_file, get_manifests
@@ -357,42 +359,55 @@ def test_set_prior_restart_with_non_zero_counter_and_restart(tmp_path,
         expt = init_experiment(config)
 
 
-def test_setup_telemetry_and_timing():
-    """Check telemetry and timings are initialised and payu setup
+def test_setup_timing():
+    """Check timings are initialised and payu setup
     time is recorded"""
+    make_exe()
+    make_inputs()
+    make_config_files()
     config = copy.deepcopy(config_orig)
-
     # Add setup userscript
     config['userscripts'] = {
         'setup': 'echo "Running setup userscript"'
     }
 
-    # Setup files
-    write_config(config)
-    make_exe()
-    make_inputs()
-    make_config_files()
+    # Initialize the experiment
+    expt = init_experiment(config)
+    # Test timings are initialized
+    assert expt.timings is not None
+    assert "payu_start_time" in expt.timings
+    assert isinstance(expt.timings['payu_start_time'], datetime.datetime)
+    assert "payu_init_duration_seconds" in expt.timings
+    assert isinstance(expt.timings['payu_init_duration_seconds'], float)
+    assert len(expt.timings) == 2
 
-    # Check telemetry is enabled in the experiment
     with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-
-        # Test timings are initialized
-        assert expt.timings is not None
-        assert "payu_start_time" in expt.timings
-        assert isinstance(expt.timings['payu_start_time'], datetime.datetime)
-        assert "payu_init_duration_seconds" in expt.timings
-        assert isinstance(expt.timings['payu_init_duration_seconds'], float)
-        assert len(expt.timings) == 2
-
         expt.setup()
 
-    # Check telemetry is initialized in setup
-    assert expt.telemetry is not None
     # Check setup method time has been recorded
     assert len(expt.timings) == 4
     assert 'payu_setup_duration_seconds' in expt.timings
     assert isinstance(expt.timings['payu_setup_duration_seconds'], float)
     assert 'setup_userscript_duration_seconds' in expt.timings
     assert isinstance(expt.timings['setup_userscript_duration_seconds'], float)
+
+
+def test_setup_telemetry_file():
+    """Check job file used for telemetry is created at setup"""
+    make_exe()
+    make_inputs()
+    make_config_files()
+
+    # Check telemetry is enabled in the experiment
+    expt = init_experiment(config_orig)
+    with cd(ctrldir):
+        # Run setup
+        expt.setup()
+
+    path = Path(expt.work_path) / 'payu-jobs' / 'payu-run.json'
+    assert path.exists() and path.is_file()
+
+    with open(path, 'r') as f:
+        data = json.load(f)
+    assert data['stage'] == 'setup'
+    assert data['payu_current_run'] == 0
