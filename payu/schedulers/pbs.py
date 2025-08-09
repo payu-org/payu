@@ -186,7 +186,7 @@ class PBS(Scheduler):
 
         info = None
 
-        if not jobid == '':
+        if not jobid == '' and jobid is not None:
             info = get_job_info_json(jobid)
 
         return info
@@ -201,7 +201,7 @@ class PBS(Scheduler):
         Optional[Dict[str, Any]]
             Dictionary of information extracted from qstat output
         """
-        info = get_all_job_info_json()
+        info = get_job_info_json()
         if info is None:
             return None
         job_statuses = {}
@@ -215,40 +215,21 @@ class PBS(Scheduler):
 
 
 @retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
-def get_job_info_json(job_id: str) -> Optional[Dict[str, Any]]:
+def get_job_info_json(
+            job_id: Optional[str] = None
+        ) -> Optional[Dict[str, Any]]:
     """
     Get full job information in JSON format from qstat. It is wrapped in retry
     with timeout to allow for PBS server to be slow to respond.
-
+    If job_id is provided, get info for that job; otherwise, get info for
+    all jobs.
     If timeout occurs or invalid json, return None
     """
+    cmd = ["qstat", "-f", "-F", "json"]
+    if job_id:
+        cmd.append(job_id)
     qstat_output = subprocess.run(
-        ["qstat", "-f", "-F", "json", job_id],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    # Parse the JSON output
-    try:
-        return json.loads(qstat_output.stdout)
-    except json.JSONDecodeError:
-        return None
-
-
-@retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
-def get_all_job_info_json() -> Optional[Dict[str, Any]]:
-    """
-    Get full job information in JSON format from qstat for all jobs.
-    It is wrapped in retry with timeout to allow for PBS server to be slow
-    to respond.
-
-    If timeout occurs or invalid json, return None
-    """
-    qstat_output = subprocess.run(
-        ["qstat", "-f", "-F", "json"],
-        capture_output=True,
-        text=True,
-        check=True,
+        cmd, capture_output=True, text=True, check=True,
     )
     # Parse the JSON output
     try:

@@ -749,7 +749,7 @@ class Experiment(object):
             error_log_dir = os.path.join(self.archive_path, 'error_logs')
             mkdir_p(error_log_dir)
 
-            # NOTE: This is PBS-specific
+            # NOTE: This is only implemented for PBS scheduler
             job_id = self.scheduler.get_job_id(short=False)
 
             if job_id == '' or job_id is None:
