@@ -166,7 +166,7 @@ class Experiment(object):
     def init_timings(self):
         """Initialize an timings dictionary with the current time."""
         self.timings = {
-            "payu_start_time": datetime.datetime.now(datetime.timezone.utc),
+            "payu_start_time": datetime.datetime.now(),
         }
 
     def init_models(self):
@@ -752,7 +752,7 @@ class Experiment(object):
             error_log_dir = os.path.join(self.archive_path, 'error_logs')
             mkdir_p(error_log_dir)
 
-            # NOTE: This is PBS-specific
+            # NOTE: This is only implemented for PBS scheduler
             job_id = self.scheduler.get_job_id(short=False)
 
             if job_id == '' or job_id is None:
@@ -945,10 +945,6 @@ class Experiment(object):
                 expt=self.counter
             )
             sp.check_call(shlex.split(cmd))
-
-        archive_script = self.userscripts.get('archive')
-        if archive_script:
-            self.run_userscript(archive_script, 'archive')
 
         # Ensure postprocessing runs if model not collating
         if not collating:
