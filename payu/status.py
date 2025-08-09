@@ -278,7 +278,7 @@ def print_line(label: str, key: Any, data: dict[str, Any]) -> None:
     value = data.get(key)
     label_width = 18
     if value is not None and value != "":
-        print(f"  {label:<{label_width}} {value}")
+        print(f"  {f'{label}:':<{label_width}} {value}")
 
 
 def display_job_info(data: dict[str, Any]) -> None:

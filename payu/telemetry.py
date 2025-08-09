@@ -526,7 +526,6 @@ def record_run(
         error_logs_path.mkdir(parents=True, exist_ok=True)
         job_id = run_info.get("scheduler_job_id")
         if job_id != "" and job_id is not None:
-            job_id = job_id.split(".")[0]  # Remove any suffix
             error_filename = f"{run_job_file.stem}.{job_id}.json"
         else:
             error_filename = run_job_file.name
