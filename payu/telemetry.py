@@ -65,7 +65,7 @@ def get_timings(timings: dict[str, int]) -> dict[str, int]:
     Adds end time and total duration of the experiment run so far.
     """
     start_time = timings["payu_start_time"]
-    finish_time = datetime.datetime.now(datetime.timezone.utc)
+    finish_time = datetime.datetime.now()
     # Convert start and end times to isoformat strings
     timings["payu_start_time"] = start_time.isoformat()
     timings["payu_finish_time"] = finish_time.isoformat()

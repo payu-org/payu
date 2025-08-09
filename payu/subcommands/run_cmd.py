@@ -156,6 +156,7 @@ def runscript():
             run_status = 0
         except:
             run_status = 1
+            raise
         finally:
             # Record job information for experiment run
             record_run(

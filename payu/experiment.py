@@ -166,7 +166,7 @@ class Experiment(object):
     def init_timings(self):
         """Initialize an timings dictionary with the current time."""
         self.timings = {
-            "payu_start_time": datetime.datetime.now(datetime.timezone.utc),
+            "payu_start_time": datetime.datetime.now(),
         }
 
     def init_models(self):
@@ -942,10 +942,6 @@ class Experiment(object):
                 expt=self.counter
             )
             sp.check_call(shlex.split(cmd))
-
-        archive_script = self.userscripts.get('archive')
-        if archive_script:
-            self.run_userscript(archive_script, 'archive')
 
         # Ensure postprocessing runs if model not collating
         if not collating:

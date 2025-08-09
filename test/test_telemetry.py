@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 import json
 import os
 from pathlib import Path
@@ -465,7 +465,7 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env,
         mock_thread.start.side_effect = start_side_effect
 
         timings = {
-            'payu_start_time': datetime(2025, 1, 1, tzinfo=timezone.utc)
+            'payu_start_time': datetime(2025, 1, 1)
         }
 
         # Mock the post request
@@ -526,7 +526,7 @@ def test_record_run_error_logs(
         }, f)
 
     record_run(
-        timings={'payu_start_time': datetime(2025, 1, 1, tzinfo=timezone.utc)},
+        timings={'payu_start_time': datetime(2025, 1, 1)},
         scheduler=mock_scheduler,
         run_status=1,
         config={},
@@ -550,7 +550,7 @@ def test_record_run_error_logs(
     assert data['payu_model_run_status'] == 1
     assert data['stage'] == 'completed'
     assert data['scheduler_job_id'] == 'test-job-id'
-    assert data['timings']['payu_start_time'] == "2025-01-01T00:00:00+00:00"
+    assert data['timings']['payu_start_time'] == "2025-01-01T00:00:00"
 
     # Check log file was copied with errors
     error_log_dir = tmp_path / 'archive' / 'error_logs'
