@@ -148,9 +148,8 @@ def runscript():
 
         print('nruns: {0} nruns_per_submit: {1} subrun: {2}'
               ''.format(expt.n_runs, n_runs_per_submit, subrun))
-
-        expt.setup()
         try:
+            expt.setup()
             expt.run()
             expt.archive(force_prune_restarts=run_args.force_prune_restarts)
             run_status = 0
