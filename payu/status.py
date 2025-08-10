@@ -56,7 +56,11 @@ def find_scheduler_logs(
             type: str = "pbs",
         ) -> tuple[Optional[Path], Optional[Path]]:
     """Find the stdout and stderr log files for the scheduler job ID"""
-    #TODO: Support non-default stderr and stdout file names
+    if job_id is None or job_id == "":
+        # No job ID - payu job could have run locally
+        return None, None
+
+    # TODO: Support non-default stderr and stdout file names
     if type == "pbs":
         # For PBS, the log files are named .o<jobid> and .e<jobid>
         job_id = job_id.split(".")[0]  # Remove any suffix
@@ -67,7 +71,7 @@ def find_scheduler_logs(
         stdout_pattern = f"slurm-{job_id}.out"
         stderr_pattern = f"slurm-{job_id}.err"
     else:
-        # Unknown scheduler type (could be running locally)
+        warnings.warn(f"Unsupported scheduler type: {type}")
         return None, None
 
     # Find the stdout and stderr log files
@@ -104,13 +108,16 @@ def get_job_file_list(
     later on
     """
     search_paths = [control_path, work_path]
-    outputs = list_archive_dirs(archive_path=archive_path,
-                                dir_type='output')
+    outputs = []
+    if archive_path.exists():
+        outputs = list_archive_dirs(archive_path=archive_path,
+                                    dir_type='output')
     if not outputs:
         # If no output directories, return any queued or running jobs
         pass
-    elif run_number is not None and f"output{run_number:03}" in outputs:
-        search_paths.append(archive_path / f"output{run_number:03}")
+    elif run_number is not None:
+        if f"output{run_number:03}" in outputs:
+            search_paths.append(archive_path / f"output{run_number:03}")
     elif all_runs:
         search_paths.extend([archive_path / output for output in outputs])
     else:
@@ -137,7 +144,7 @@ def query_job_info(
             all_runs: Optional[bool] = False
         ) -> Optional[dict[str, Any]]:
     """
-    Generate a dictionary of jobs information (exit status, stage), 
+    Generate a dictionary of jobs information (exit status, stage),
     and mapping stdout and stderr files.
 
     By default, this uses the latest run job file - e.g.
@@ -207,7 +214,7 @@ def query_job_info(
 def update_all_job_files(
             status_data: dict[str, Any],
             scheduler: Scheduler
-    ) -> None:
+        ) -> None:
     """
     Update job files in the queried job information
 
