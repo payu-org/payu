@@ -209,11 +209,10 @@ def record_telemetry(run_info: dict[str, Any],
     """If configured, post the telemetry data for the payu run"""
     # Check for config.yaml option to disable telemetry, and if an
     # environment variable for an external telemetry config file is set
-    telemetry_enabled = (
+    if not (
         config.get("telemetry", {}).get("enable", True)
         and TELEMETRY_CONFIG in os.environ
-    )
-    if not telemetry_enabled:
+    ):
         return
 
     # Skip telemetry if model was not run
