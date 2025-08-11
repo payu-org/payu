@@ -10,6 +10,7 @@ import subprocess
 from pathlib import Path
 
 from payu.models.model import Model
+from payu.fsops import mkdir_p
 
 config_files = ['varinfo_seacofs.yaml']
 optional_config_files = []
@@ -50,3 +51,21 @@ class Roms(Model):
         # Set the model config file to be added after the executable
         # in the model run command
         self.exec_postfix = model_config
+
+    def archive(self, **kwargs):
+
+        # Remove symbolic links
+        for f in os.listdir(self.work_input_path):
+            f_path = os.path.join(self.work_input_path, f)
+            if os.path.islink(f_path):
+                os.remove(f_path)
+
+        # Archive the restart files
+        mkdir_p(self.restart_path)
+        restart_files = [frst for frst in os.listdir(self.work_path) if 'rst' in frst]
+        for frst in restart_files:
+            f_src = os.path.join(self.work_path, frst)
+            shutil.move(f_src, self.restart_path)
+
+    def collate(self):
+        pass
