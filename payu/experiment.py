@@ -146,7 +146,7 @@ class Experiment(object):
         assert self.model_name
 
         model_fields = ['model', 'exe', 'input', 'ncpus', 'npernode', 'build',
-                        'mpthreads', 'exe_prefix']
+                        'mpthreads', 'exe_prefix', 'model_config']
 
         # XXX: Temporarily adding this to model config...
         model_fields += ['mask']
@@ -630,6 +630,9 @@ class Experiment(object):
             # Use the full path to symlinked exec_name in work as some
             # older MPI libraries complained executable was not in PATH
             model_prog.append(os.path.join(model.work_path, model.exec_name))
+
+            if model.exec_postfix:
+                model_prog.append(model.exec_postfix)
 
             mpi_progs.append(' '.join(model_prog))
 
