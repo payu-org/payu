@@ -334,18 +334,11 @@ class CesmCmeps(Model):
             os.rmdir(self.work_restart_path)
 
     def collate(self):
-        self.output_path = os.path.realpath(os.path.abspath(self.output_path))
-        runconfig_path = os.path.join(self.expt.control_path, NUOPC_CONFIG)
-
-        if not os.path.exists(runconfig_path):
-            raise FileNotFoundError(
-                f"{NUOPC_CONFIG} is not found in control directory: {runconfig_path}!"
-            )
 
         # .setup is not run when collate is called so need to get components
-        self.get_runconfig(os.path.dirname(runconfig_path))
+        self.get_runconfig(self.control_path)
         self.get_components()
-        
+
         if "mom" in self.components.values():
             fms_collate(self)
         else:
