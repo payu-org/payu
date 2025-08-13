@@ -334,11 +334,11 @@ class CesmCmeps(Model):
             os.rmdir(self.work_restart_path)
 
     def collate(self):
-        
+
         # .setup is not run when collate is called so need to get components
-        self.get_runconfig(self.output_path)
+        self.get_runconfig(self.control_path)
         self.get_components()
-        
+
         if "mom" in self.components.values():
             fms_collate(self)
         else:
