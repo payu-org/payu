@@ -120,9 +120,9 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
     # This could be done as part of submit_job eventually, but for now
     # it's only used by the run command.
     write_queued_job_file(
-        control_path=Path(expt.control_path),
+        archive_path=Path(expt.archive_path),
         job_id=job_id,
-        type='payu-run',
+        type='run',
         scheduler=expt.scheduler,
         metadata=expt.metadata,
         current_run=current_run,
@@ -148,6 +148,8 @@ def runscript():
 
         print('nruns: {0} nruns_per_submit: {1} subrun: {2}'
               ''.format(expt.n_runs, n_runs_per_submit, subrun))
+        # Set job filepath for the payu run
+        expt.set_job_file(type='run')
         try:
             expt.setup()
             expt.run()
@@ -163,10 +165,7 @@ def runscript():
                 scheduler=expt.scheduler,
                 run_status=run_status,
                 config=expt.config,
-                control_path=Path(expt.control_path),
-                archive_path=Path(expt.archive_path),
-                output_path=Path(expt.output_path),
-                work_path=Path(expt.work_path)
+                file_path=expt.job_file,
             )
 
         # Finished runs

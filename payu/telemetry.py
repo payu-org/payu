@@ -113,7 +113,8 @@ def transform_model_datetimes(
 
 def get_external_telemetry_config() -> Optional[dict[str, Any]]:
     """Loads the external telemetry configuration file.
-    If a valid file does not exist, return None"""
+    If a valid file does not exist, return None
+    """
     # Check path to telemetry config file exists
     config_dir = Path(os.environ[TELEMETRY_CONFIG])
     config_path = config_dir / f"{TELEMETRY_CONFIG_VERSION}.json"
@@ -208,15 +209,13 @@ def record_telemetry(run_info: dict[str, Any],
                      config: dict[str, Any]) -> None:
     """If configured, post the telemetry data for the payu run"""
     # Check for config.yaml option to disable telemetry, and if an
-    # environment variable for an external telemetry config file is set
+    # environment variable for an external telemetry config file is set,
+    # and whether the model was run
     if not (
         config.get("telemetry", {}).get("enable", True)
         and TELEMETRY_CONFIG in os.environ
+        and "payu_model_run_status" in run_info
     ):
-        return
-
-    # Skip telemetry if model was not run
-    if "payu_model_run_status" not in run_info:
         return
 
     # Check for valid external telemetry configuration file
@@ -269,21 +268,56 @@ def atomic_write_file(
     os.replace(temp_name, file_path)
 
 
-def get_job_file_path(base_path: Path, type: str = "payu-run") -> Path:
-    """Return the path to the run job file given the base path"""
-    return base_path / "payu-jobs" / f"{type}.json"
+def get_job_file_path_with_id(
+            archive_path: Path,
+            run_number: int,
+            job_id: str,
+            type: str = "run",
+        ) -> Path:
+    """Return the path to the run job file given the archive path
+    following the format:
+    <archive_path>/payu_jobs/<run_number>/<type>/<job_id>.json
+    """
+    return (
+        archive_path / "payu_jobs" / str(run_number) / type / f"{job_id}.json"
+    )
+
+
+def get_job_file_path(
+            archive_path: Path,
+            run_number: int,
+            timings: dict[str, Any],
+            scheduler: Scheduler,
+            type: str = "run",
+        ) -> Path:
+    """Return the path to the run job file given the archive path"""
+    scheduler_job_id = scheduler.get_job_id(short=False)
+    if scheduler_job_id is None or scheduler_job_id == "":
+        # Job may be running locally, so use the start time as file ID
+        file_id = timings["payu_start_time"].strftime("%Y%m%d%H%M%S")
+    else:
+        # Use the scheduler job ID as file ID
+        file_id = scheduler_job_id
+
+    file_path = get_job_file_path_with_id(
+        archive_path=archive_path,
+        run_number=run_number,
+        job_id=file_id,
+        type='run'
+    )
+    return file_path
 
 
 def read_job_file(file_path: Path) -> dict[str, Any]:
     """Read the json file and return it's contents"""
-    if not (file_path.exists() and file_path.is_file()):
-        raise FileNotFoundError(f"Job file not found: {file_path}")
+    if not file_path.exists():
+        return {}
     with open(file_path, 'r') as f:
         return json.load(f)
 
 
 def write_queued_job_file(
-            control_path: Path,
+            archive_path: Path,
             job_id: str,
             type: str,
             scheduler: Scheduler,
@@ -294,12 +328,12 @@ def write_queued_job_file(
 
     Parameters
     ----------
-    control_path: Path
-        Path to the control directory for the run
+    archive_path: Path
+        Path to the archive directory for the experiment
     job_id: str
         Job ID of the queued job
     type: str
-        Type of the job, e.g. 'payu-run'
+        Type of the job, e.g. 'run'
     scheduler: Scheduler
         Type of the scheduler used for the job, e.g. 'pbs', 'slurm'
     metadata: Metadata
@@ -307,7 +341,12 @@ def write_queued_job_file(
     current_run: int
         Current run number for the queued job
     """
-    job_file_path = get_job_file_path(control_path, type)
+    job_file_path = get_job_file_path_with_id(
+        archive_path,
+        run_number=current_run,
+        job_id=job_id,
+        type=type
+    )
     data = {
         "scheduler_job_id": job_id,
         "scheduler_type": scheduler.name,
@@ -315,37 +354,42 @@ def write_queued_job_file(
         "payu_current_run": current_run,
     }
     data.update(get_metadata(metadata))
-    atomic_write_file(
-        file_path=job_file_path,
-        data=data
-    )
+    atomic_write_file(file_path=job_file_path, data=data)
 
 
 def remove_job_file(file_path: Path) -> None:
-    """Remove the queued job file in the control path if it exists"""
-    if file_path.exists():
-        file_path.unlink()
-        if not any(file_path.parent.iterdir()):
-            file_path.parent.rmdir()
+    """Remove the queued job file in the control path if it exists
+    and <run_number>/<type> directory if is empty
+    """
+    if not file_path.exists():
+        return
+
+    file_path.unlink()
+    # File format is <run_number>/run/<job_id>.json
+    # So should remove <run_number>/run/ if empty
+    if not any(file_path.parent.iterdir()):
+        file_path.parent.rmdir()
+        if not any(file_path.parent.parent.iterdir()):
+            file_path.parent.parent.rmdir()
 
 
 def setup_run_job_file(
-            control_path: Path,
-            work_path: Path,
+            file_path: Optional[Path],
             scheduler: Scheduler,
             metadata: Metadata,
             extra_info: Optional[dict[str, Any]] = None
         ) -> None:
-    """Setup the job file for the running payu-run job in the work directory.
-    Remove any existing queued payu-run job file if it exists in the
-    control directory.
+    """
+    Add setup information to the run job file
 
     Parameters
     ----------
-    control_path: Path
-        Path to the control directory for the run
-    work_path: Path
-        Path to the work directory for the run
+    file_path: Path
+        Path to the run job file in the archive directory
+    current_run: int
+        Current run number for the queued job
+    timings: dict[str, Any]
+        Timings for the run
     scheduler: Scheduler
         Scheduler object for the run - used to get job ID
     metadata: Metadata
@@ -353,27 +397,14 @@ def setup_run_job_file(
     extra_info: Optional[dict[str, Any]], default None
         Any raw information to add directly to the run job file
     """
+    if file_path is None:
+        # This might be payu setup being run on it's own,
+        # so skip setting up the run job file
+        return
+
     # Get the job ID from the scheduler
     scheduler_job_id = scheduler.get_job_id(short=False)
     scheduler_type = scheduler.name
-
-    # Check if there's an existing queued job file (there might not be one if
-    # running payu-run directly on login node)
-    queued_job_file_path = get_job_file_path(base_path=control_path)
-    if queued_job_file_path.exists():
-        # If it exists, read the file
-        queued_job_data = read_job_file(queued_job_file_path)
-
-        # Check job ID matches
-        queued_id = queued_job_data.get("scheduler_job_id")
-        if queued_id != scheduler_job_id:
-            # Should it raise an error or just warn?
-            raise RuntimeError(
-                f"Job ID in queued payu run file does not "
-                f"match the current scheduler job ID: "
-                f"{queued_id} != {scheduler_job_id}.\n"
-                "This could indicate multiple payu runs in parallel"
-            )
 
     # Build the data to write to the file
     data = {
@@ -387,14 +418,8 @@ def setup_run_job_file(
     # Add extra information if provided
     data.update(extra_info or {})
 
-    # Write the file to the work directory
-    atomic_write_file(
-        file_path=get_job_file_path(base_path=work_path),
-        data=data
-    )
-
-    # Remove the queued job file if it exists
-    remove_job_file(file_path=queued_job_file_path)
+    # Write the file
+    atomic_write_file(file_path=file_path, data=data)
 
 
 def update_job_file(
@@ -407,15 +432,12 @@ def update_job_file(
     """
     run_info = read_job_file(file_path)
     run_info.update(data)
-    atomic_write_file(
-        file_path=file_path,
-        data=run_info
-    )
+    atomic_write_file(file_path=file_path, data=run_info)
     return run_info
 
 
 def update_run_job_file(
-            base_path: Path,
+            file_path: Path,
             stage: Optional[str] = None,
             extra_info: Optional[dict[str, Any]] = None,
             manifests: Optional[dict[str, Any]] = None,
@@ -426,8 +448,8 @@ def update_run_job_file(
 
     Parameters
     ----------
-    base_path: Path
-        Base path where the run job file is located (e.g. work or output path)
+    file_path: Path
+        Path to the run job file to update
     stage: Optional[str], default None
         Stage of the run to update in the job file
     extra_info: Optional[dict[str, Any]], default None
@@ -437,7 +459,6 @@ def update_run_job_file(
     model_restart_datetimes: Optional[dict[str, Any]], default None
         Model restart datetimes to add to the run job file
     """
-    # Update the stage and any extra info if provided
     run_info = {}
     if stage:
         run_info["stage"] = stage
@@ -448,12 +469,7 @@ def update_run_job_file(
     if extra_info:
         run_info.update(extra_info)
 
-    # Read existing run info
-    job_file_path = get_job_file_path(base_path=base_path)
-    update_job_file(
-        file_path=job_file_path,
-        data=run_info
-    )
+    update_job_file(file_path=file_path, data=run_info)
 
 
 def record_run(
@@ -461,10 +477,7 @@ def record_run(
             scheduler: Scheduler,
             run_status: int,
             config: dict[str, Any],
-            archive_path: Path,
-            control_path: Path,
-            work_path: Path,
-            output_path: Path,
+            file_path: Path,
         ) -> None:
     """Record the run information for the current run and post telemetry
     if enabled
@@ -480,28 +493,11 @@ def record_run(
         Status of the payu run as a whole, 0 for success, 1 for failure
     config: dict[str, Any]
         Configuration (config.yaml) - used to check if telemetry is enabled
-    archive_path: Path
-        Path to the archive directory for the run
-    control_path: Path
-        Path to the control directory for the run
-    work_path: Path
-        Path to the work directory for the run
-    output_path: Path
-        Path to the output directory for the run
+    file_path: Path
+        Path to the run job file to update
     """
-    # Find the pre-existing run job file - this path will be different
-    # depending if there are model errors, whether archive runs or not, or
-    # if payu exits during initialisation
-    run_job_file = find_run_job_file([output_path, work_path, control_path])
-    if run_job_file is None:
-        # No job file found, skip telemetry
-        return
-
     # Additional information to the run info
-    run_info = {
-        "payu_run_status": run_status,
-        "stage": "completed",
-    }
+    run_info = {"payu_run_status": run_status, "stage": "completed"}
 
     # Query the scheduler just before recording the run information to
     # try get the most up-to-date information of the usage statistics
@@ -512,26 +508,6 @@ def record_run(
     run_info.update(get_timings(timings))
 
     # Update the run job file
-    run_info = update_job_file(
-        file_path=run_job_file,
-        data=run_info
-    )
+    run_info = update_job_file(file_path=file_path, data=run_info)
 
-    # If model exited with errors, copy the updated run job file to the
-    # error logs directory
-    if ("payu_model_run_status" in run_info
-            and run_info["payu_model_run_status"] != 0):
-        error_logs_path = Path(archive_path) / "error_logs"
-        error_logs_path.mkdir(parents=True, exist_ok=True)
-        job_id = run_info.get("scheduler_job_id")
-        if job_id != "" and job_id is not None:
-            error_filename = f"{run_job_file.stem}.{job_id}.json"
-        else:
-            error_filename = run_job_file.name
-
-        shutil.copy(run_job_file, error_logs_path / error_filename)
-
-    record_telemetry(
-        run_info=run_info,
-        config=config
-    )
+    record_telemetry(run_info=run_info, config=config)

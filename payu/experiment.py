@@ -162,6 +162,19 @@ class Experiment(object):
         self.scheduler_name = self.config.get('scheduler',
                                               DEFAULT_SCHEDULER_CONFIG)
         self.scheduler = scheduler_index[self.scheduler_name]()
+        self.job_file = None
+
+
+    def set_job_file(self, type='run'):
+        """Set the job file for the payu job"""
+        self.job_file = telemetry.get_job_file_path(
+            archive_path=Path(self.archive_path),
+            run_number=self.counter,
+            timings=self.timings,
+            scheduler=self.scheduler,
+            type=type,
+        )
+
 
     def init_timings(self):
         """Initialize an timings dictionary with the current time."""
@@ -460,6 +473,14 @@ class Experiment(object):
         # Check version
         self.check_payu_version()
 
+        # Setup the payu run job file
+        telemetry.setup_run_job_file(
+            file_path=self.job_file,
+            scheduler=self.scheduler,
+            metadata=self.metadata,
+            extra_info=self.setup_run_info()
+        )
+
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
             sys.exit('payu: error: Output path already exists: '
@@ -477,15 +498,6 @@ class Experiment(object):
                          .format(path=self.work_path))
 
         mkdir_p(self.work_path)
-
-        # Setup the payu run job file
-        telemetry.setup_run_job_file(
-            control_path=Path(self.control_path),
-            work_path=Path(self.work_path),
-            scheduler=self.scheduler,
-            metadata=self.metadata,
-            extra_info=self.setup_run_info()
-        )
 
         if force_archive:
             mkdir_p(self.archive_path)
@@ -704,7 +716,7 @@ class Experiment(object):
 
         # Update run info file
         telemetry.update_run_job_file(
-            base_path=Path(self.work_path),
+            file_path=self.job_file,
             stage='model-run',
             manifests=self.manifest,
             extra_info=self.run_info()
@@ -730,7 +742,7 @@ class Experiment(object):
 
         # Update telemetry file
         telemetry.update_run_job_file(
-            base_path=Path(self.work_path),
+            file_path=self.job_file,
             extra_info=self.model_run_info(),
         )
 
@@ -864,7 +876,7 @@ class Experiment(object):
 
         # Update telemetry run info stage
         telemetry.update_run_job_file(
-            base_path=Path(self.work_path),
+            file_path=self.job_file,
             stage='archive',
         )
         # Check there is a work directory, otherwise bail
@@ -895,7 +907,7 @@ class Experiment(object):
 
         # Record model restart datetimes in telemetry
         telemetry.update_run_job_file(
-            base_path=Path(self.output_path),
+            file_path=self.job_file,
             model_restart_datetimes=self.get_model_restart_datetimes()
         )
 

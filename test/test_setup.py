@@ -392,19 +392,19 @@ def test_setup_timing():
     assert isinstance(expt.timings['setup_userscript_duration_seconds'], float)
 
 
-def test_setup_telemetry_file():
+def test_setup_telemetry_file(tmp_path):
     """Check job file used for telemetry is created at setup"""
     make_exe()
     make_inputs()
     make_config_files()
 
-    # Check telemetry is enabled in the experiment
     expt = init_experiment(config_orig)
     with cd(ctrldir):
+        expt.job_file = tmp_path / 'job-id.json'
         # Run setup
         expt.setup()
 
-    path = Path(expt.work_path) / 'payu-jobs' / 'payu-run.json'
+    path = tmp_path / 'job-id.json'
     assert path.exists() and path.is_file()
 
     with open(path, 'r') as f:

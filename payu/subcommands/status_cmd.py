@@ -35,7 +35,6 @@ def runcmd(lab_path, json_output, update_jobs, all_runs, run_number):
 
     data = query_job_info(
         control_path=Path(expt.control_path),
-        work_path=Path(expt.work_path),
         archive_path=Path(expt.archive_path),
         run_number=run_number,
         all_runs=all_runs
@@ -47,7 +46,6 @@ def runcmd(lab_path, json_output, update_jobs, all_runs, run_number):
         # Rerun parsing job files to get the latest data
         data = query_job_info(
             control_path=Path(expt.control_path),
-            work_path=Path(expt.work_path),
             archive_path=Path(expt.archive_path),
             run_number=run_number,
             all_runs=all_runs

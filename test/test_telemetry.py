@@ -15,6 +15,7 @@ from payu.telemetry import (
     TELEMETRY_CONFIG,
     record_run,
     record_telemetry,
+    get_job_file_path,
     write_queued_job_file,
     setup_run_job_file,
     update_run_job_file
@@ -273,19 +274,21 @@ def test_write_queued_job_file(tmp_path, mock_scheduler, mock_metadata):
     """Test queued job file is written correctly"""
 
     write_queued_job_file(
-        control_path=tmp_path / "control",
-        job_id="test-job-id",
-        type="payu-test",
+        archive_path=tmp_path / "archive",
+        job_id="test-id",
+        type="run",
         scheduler=mock_scheduler,
         metadata=mock_metadata,
         current_run=99
     )
-    queued_file = tmp_path / "control" / "payu-jobs" / "payu-test.json"
+    queued_file = (
+        tmp_path / "archive" / "payu_jobs" / str(99) / "run" / "test-id.json"
+    )
     assert queued_file.exists()
     with open(queued_file, 'r') as f:
         assert json.load(f) == {
             "stage": "queued",
-            "scheduler_job_id": "test-job-id",
+            "scheduler_job_id": "test-id",
             "scheduler_type": "test-scheduler",
             "experiment_metadata": {
                 "experiment_uuid": "test-uuid"
@@ -294,16 +297,22 @@ def test_write_queued_job_file(tmp_path, mock_scheduler, mock_metadata):
         }
 
 
-def test_setup_run_job_file(tmp_path, mock_scheduler, mock_metadata):
+@pytest.mark.parametrize("queued_file", [True, False])
+def test_setup_run_job_file(tmp_path, mock_scheduler, mock_metadata,
+                            queued_file):
     """Test the run job file is created with the correct data"""
+    job_info_filepath = tmp_path / "archive-payu-jobs" / "payu-run.json"
+    if queued_file:
+        job_info_filepath.parent.mkdir(parents=True, exist_ok=True)
+        with open(job_info_filepath, 'w') as f:
+            json.dump({"stage": "queued", "scheduler_job_id": "test-id"}, f)
+
     setup_run_job_file(
-        control_path=tmp_path / "control",
-        work_path=tmp_path / "work",
+        file_path=job_info_filepath,
         scheduler=mock_scheduler,
         metadata=mock_metadata
     )
 
-    job_info_filepath = tmp_path / "work" / "payu-jobs" / "payu-run.json"
     assert job_info_filepath.exists()
     with open(job_info_filepath, 'r') as f:
         assert json.load(f) == {
@@ -316,58 +325,17 @@ def test_setup_run_job_file(tmp_path, mock_scheduler, mock_metadata):
         }
 
 
-def test_setup_run_job_file_queued_file(tmp_path, mock_scheduler,
-                                        mock_metadata):
-    """Test the queued file is removed"""
-    queued_file = tmp_path / "control" / "payu-jobs" / "payu-run.json"
-    queued_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(queued_file, 'w') as f:
-        json.dump({"stage": "queued", "scheduler_job_id": "test-job-id"}, f)
-
-    setup_run_job_file(
-        control_path=tmp_path / "control",
-        work_path=tmp_path / "work",
-        scheduler=mock_scheduler,
-        metadata=mock_metadata
-    )
-
-    # Expect the queued file and parent directory to be removed
-    assert not queued_file.exists()
-    assert not queued_file.parent.exists()
-
-
-def test_setup_run_job_file_job_id_different(tmp_path, mock_scheduler,
-                                             mock_metadata):
-    """Test the queued and setup job IDs match"""
-    queued_file = tmp_path / "control" / "payu-jobs" / "payu-run.json"
-    queued_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(queued_file, 'w') as f:
-        json.dump(
-            {"stage": "queued", "scheduler_job_id": "different-job-id"}, f
-        )
-
-    error_msg = r"Job ID in queued payu run file does not match *"
-    with pytest.raises(RuntimeError, match=error_msg):
-        setup_run_job_file(
-            control_path=tmp_path / "control",
-            work_path=tmp_path / "work",
-            scheduler=mock_scheduler,
-            metadata=mock_metadata
-        )
-
-
 def test_update_run_job_file(tmp_path, mock_manifests):
     """Test update that runs at model runs and archive"""
 
-    run_job_file = tmp_path / "work" / "payu-jobs" / "payu-run.json"
-    run_job_file.parent.mkdir(parents=True, exist_ok=True)
+    run_job_file = tmp_path / "payu-run-id.json"
     with open(run_job_file, 'w') as f:
         json.dump({
             "payu_current_run": 0,
         }, f)
 
     update_run_job_file(
-        base_path=tmp_path / "work",
+        file_path=run_job_file,
         stage="model-run",
         manifests=mock_manifests,
         model_restart_datetimes={
@@ -406,10 +374,21 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env,
     Test all telemetry methods run in sequence (as if it was a real
     payu run job), and check posted telemetry data is valid with the schema.
     """
+    timings = {
+        'payu_start_time': datetime(2025, 1, 1)
+    }
+
+    # Set jobfile path=
+    file_path = get_job_file_path(
+        archive_path=tmp_path / "archive",
+        run_number=0,
+        timings=timings,
+        scheduler=mock_scheduler,
+        type="run"
+    )
     # Run setup job file to create the job file
     setup_run_job_file(
-        control_path=tmp_path / "control",
-        work_path=tmp_path / "work",
+        file_path=file_path,
         scheduler=mock_scheduler,
         metadata=mock_metadata,
         extra_info={
@@ -426,25 +405,24 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env,
     )
     # Before model run
     update_run_job_file(
-        base_path=tmp_path / "work",
+        file_path=file_path,
         stage='model-run',
         manifests=mock_manifests,
         extra_info={"payu_run_id": "test-commit-hash"}
     )
     # Post model run
     update_run_job_file(
-        base_path=tmp_path / "work",
+        file_path=file_path,
         extra_info={"payu_model_run_status": 0}
     )
     # Pre-archive
     update_run_job_file(
-        base_path=tmp_path / "work",
+        file_path=file_path,
         stage='archive',
     )
-    movetree(tmp_path / "work", tmp_path / "archive" / "output000")
     # During archive
     update_run_job_file(
-        base_path=tmp_path / "archive" / "output000",
+        file_path=file_path,
         model_restart_datetimes={
             "model_end_time": cftime.datetime(2025, 1, 1, calendar='julian'),
         }
@@ -464,10 +442,6 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env,
 
         mock_thread.start.side_effect = start_side_effect
 
-        timings = {
-            'payu_start_time': datetime(2025, 1, 1)
-        }
-
         # Mock the post request
         with patch('requests.post') as mock_post:
             mock_response = Mock()
@@ -481,10 +455,7 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env,
                 scheduler=mock_scheduler,
                 run_status=0,
                 config={},
-                archive_path=tmp_path / "archive",
-                control_path=tmp_path / "control",
-                work_path=tmp_path / "work",
-                output_path=tmp_path / "archive" / "output000",
+                file_path=file_path,
             )
 
             # Get data from the mock request
@@ -507,55 +478,3 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env,
     with open(TELEMETRY_1_0_0_SCHEMA_PATH, "r") as f:
         schema = json.load(f)
     jsonschema.validate(sent_data, schema)
-
-
-def test_record_run_error_logs(
-    mock_post_telemetry_data,
-    mock_telemetry_get_external_config,
-    mock_scheduler,
-    tmp_path,
-):
-    # Add a job file to the output path
-    output_path = tmp_path / "archive" / "output000"
-    job_info_filepath = output_path / "payu-jobs" / "payu-run.json"
-    job_info_filepath.parent.mkdir(parents=True, exist_ok=True)
-    with open(job_info_filepath, 'w') as f:
-        json.dump({
-            "payu_current_run": 0,
-            'payu_model_run_status': 1,
-        }, f)
-
-    record_run(
-        timings={'payu_start_time': datetime(2025, 1, 1)},
-        scheduler=mock_scheduler,
-        run_status=1,
-        config={},
-        archive_path=tmp_path / "archive",
-        control_path=tmp_path / "control",
-        work_path=tmp_path / "work",
-        output_path=output_path,
-    )
-
-    # Check post telemetry method was not called
-    mock_telemetry_get_external_config.assert_not_called()
-    mock_post_telemetry_data.assert_not_called()
-
-    # Check job file was updated
-    assert job_info_filepath.exists()
-    with open(job_info_filepath, 'r') as f:
-        data = json.load(f)
-
-    assert data['payu_current_run'] == 0
-    assert data['payu_run_status'] == 1
-    assert data['payu_model_run_status'] == 1
-    assert data['stage'] == 'completed'
-    assert data['scheduler_job_id'] == 'test-job-id'
-    assert data['timings']['payu_start_time'] == "2025-01-01T00:00:00"
-
-    # Check log file was copied with errors
-    error_log_dir = tmp_path / 'archive' / 'error_logs'
-    error_file = error_log_dir / 'payu-run.test-job-id.json'
-    assert error_file.exists()
-    with open(error_file, 'r') as f:
-        error_data = json.load(f)
-    assert error_data == data
