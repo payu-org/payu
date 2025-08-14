@@ -3,7 +3,7 @@ import pytest
 
 from payu.status import (
     find_file_match,
-    find_scheduler_log_path,
+    get_scheduler_log,
     find_scheduler_logs,
     get_job_file_list,
     query_job_info
@@ -21,10 +21,7 @@ def test_find_file_match_no_match(tmp_path):
     result = find_file_match(pattern="*.nonexistent", path=tmp_path)
     assert result is None
 
-    result = find_file_match(
-        pattern="*.o146702704",
-        path=tmp_path / "nonexistent_dir"
-    )
+    result = find_file_match(pattern="*.o146702704", path=tmp_path / "dne")
     assert result is None
 
     empty_dir = tmp_path / "empty_dir"
@@ -48,7 +45,7 @@ def test_find_file_match_multiple_matches(tmp_path):
     "base_dir",
     ["control", "archive/pbs_logs", None]
 )
-def test_find_scheduler_log_path(tmp_path, base_dir):
+def test_get_scheduler_log(tmp_path, base_dir):
     if base_dir is None:
         file_path = None
     else:
@@ -56,7 +53,7 @@ def test_find_scheduler_log_path(tmp_path, base_dir):
         file_path.mkdir(parents=True, exist_ok=True)
         file_path.touch()
 
-    result = find_scheduler_log_path(
+    result = get_scheduler_log(
         pattern="*.o123",
         control_path=tmp_path / "control",
         archive_path=tmp_path / "archive",

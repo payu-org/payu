@@ -354,25 +354,23 @@ def write_queued_job_file(
         "payu_current_run": current_run,
     }
     data.update(get_metadata(metadata))
-    atomic_write_file(
-        file_path=job_file_path,
-        data=data
-    )
+    atomic_write_file(file_path=job_file_path, data=data)
 
 
 def remove_job_file(file_path: Path) -> None:
     """Remove the queued job file in the control path if it exists
     and <run_number>/<type> directory if is empty
     """
-    if file_path.exists():
-        file_path.unlink()
-        # File format is <run_number>/run/<job_id>.json
-        # So should remove <run_number>/run/ if empty
-        if not any(file_path.parent.iterdir()):
-            file_path.parent.rmdir()
-            if not any(file_path.parent.parent.iterdir()):
-                # Remove the parent directory if it's empty
-                file_path.parent.parent.rmdir()
+    if not file_path.exists():
+        return
+
+    file_path.unlink()
+    # File format is <run_number>/run/<job_id>.json
+    # So should remove <run_number>/run/ if empty
+    if not any(file_path.parent.iterdir()):
+        file_path.parent.rmdir()
+        if not any(file_path.parent.parent.iterdir()):
+            file_path.parent.parent.rmdir()
 
 
 def setup_run_job_file(
@@ -421,10 +419,7 @@ def setup_run_job_file(
     data.update(extra_info or {})
 
     # Write the file
-    atomic_write_file(
-        file_path=file_path,
-        data=data
-    )
+    atomic_write_file(file_path=file_path, data=data)
 
 
 def update_job_file(
@@ -437,10 +432,7 @@ def update_job_file(
     """
     run_info = read_job_file(file_path)
     run_info.update(data)
-    atomic_write_file(
-        file_path=file_path,
-        data=run_info
-    )
+    atomic_write_file(file_path=file_path, data=run_info)
     return run_info
 
 
@@ -505,10 +497,7 @@ def record_run(
         Path to the run job file to update
     """
     # Additional information to the run info
-    run_info = {
-        "payu_run_status": run_status,
-        "stage": "completed",
-    }
+    run_info = {"payu_run_status": run_status, "stage": "completed"}
 
     # Query the scheduler just before recording the run information to
     # try get the most up-to-date information of the usage statistics
@@ -519,12 +508,6 @@ def record_run(
     run_info.update(get_timings(timings))
 
     # Update the run job file
-    run_info = update_job_file(
-        file_path=file_path,
-        data=run_info
-    )
+    run_info = update_job_file(file_path=file_path, data=run_info)
 
-    record_telemetry(
-        run_info=run_info,
-        config=config
-    )
+    record_telemetry(run_info=run_info, config=config)
