@@ -89,57 +89,54 @@ def find_scheduler_logs(
 
 
 def get_job_file_list(
-            control_path: Path,
-            work_path: Path,
             archive_path: Path,
             run_number: Optional[int] = None,
             all_runs: Optional[bool] = False
         ) -> list[Path]:
     """
     Generate a list of run job files to query for job information.
-    By default, this will return the latest run job file
-    that is either in the control, work or latest archive output directory.
-    Otherwise it returns any queued or running jobs,
-    and either:
-     - completed job in the selected output if `run_number` is specified
+    This will return:
+     - latest run job file by default
+     - jobs for selected run if `run_number` is specified
      - all completed jobs in archive if `all_runs` is True,
 
     Filtering the files here, reduces the number of files to read and parse
     later on
     """
-    search_paths = [control_path, work_path]
-    outputs = []
-    if archive_path.exists():
-        outputs = list_archive_dirs(archive_path=archive_path,
-                                    dir_type='output')
-    if not outputs:
-        # If no output directories, return any queued or running jobs
-        pass
-    elif run_number is not None:
-        if f"output{run_number:03}" in outputs:
-            search_paths.append(archive_path / f"output{run_number:03}")
-    elif all_runs:
-        search_paths.extend([archive_path / output for output in outputs])
-    else:
-        # Only return latest payu run job file
-        # Note: Priority in search is given to running and queued jobs
-        search_paths.append(archive_path / outputs[-1])
-        job_file = find_run_job_file(search_paths)
-        return [] if job_file is None else [job_file]
 
-    # Find all run job files in the search paths
-    files = []
-    for path in search_paths:
-        file = find_run_job_file([path])
-        if file is not None:
-            files.append(file)
-    return files
+    run_payu_logs = archive_path / "payu_jobs"
+    if not run_payu_logs.exists():
+        # No run job files found, return empty list
+        return []
+    elif run_number is not None:
+        # Find any job files for that run number
+        run = run_payu_logs / str(run_number) / "run"
+        if run.exists():
+            return list(run.glob("*.json"))
+        else:
+            # No job files found for that run number
+            return []
+    elif all_runs:
+        # Find all run job files in the payu_jobs directory
+        return list(run_payu_logs.glob("*/run/*.json"))
+    else:
+        # Find the latest run number directory
+        runs = []
+        for path in run_payu_logs.iterdir():
+            if path.is_dir() and path.name.isdigit():
+                runs.append(int(path.name))
+        if runs == []:
+            # No runs found, return empty list
+            return []
+        else:
+            latest_run = max(runs)
+            # Find the latest run
+            return list(run_payu_logs.glob(f"{latest_run}/run/*.json"))
 
 
 def query_job_info(
-            control_path: Path,
-            work_path: Path,
             archive_path: Path,
+            control_path: Path,
             run_number: Optional[int] = None,
             all_runs: Optional[bool] = False
         ) -> Optional[dict[str, Any]]:
@@ -157,8 +154,6 @@ def query_job_info(
     # TODO: Extend with collate, sync when their job files are implemented
     """
     job_files = get_job_file_list(
-        control_path=control_path,
-        work_path=work_path,
         archive_path=archive_path,
         run_number=run_number,
         all_runs=all_runs
@@ -172,10 +167,6 @@ def query_job_info(
     for job_file in job_files:
         # Read the job file
         data = read_job_file(job_file)
-
-        # Filter out jobs that aren't the specified run number
-        if run_number is not None and data['payu_current_run'] != run_number:
-            continue
 
         if "experiment_uuid" in data.get("experiment_metadata", {}):
             uuid = data["experiment_metadata"]["experiment_uuid"]
@@ -198,7 +189,10 @@ def query_job_info(
         }
         if "runs" not in status_data:
             status_data["runs"] = {}
-        status_data["runs"][data["payu_current_run"]] = {"run": run_info}
+        if data["payu_current_run"] not in status_data["runs"]:
+            # If the run number is not in the status data, add it
+            status_data["runs"][data["payu_current_run"]] = {"run": []}
+        status_data["runs"][data["payu_current_run"]]["run"].append(run_info)
 
     # Ensure runs are sorted by run number
     if "runs" in status_data:
