@@ -228,7 +228,7 @@ def update_all_job_files(
     As this job queries the scheduler for running jobs, it is recommended to
     not run this method too frequently. NCI may consider repeated queries
     to the scheduler in quick succession as an attack. This is also why
-    this method only queiries the scheduler once for all jobs
+    this method only queries the scheduler once for all jobs
 
     TODO: Parse the stdout files to get the exit status (though this will
     require specific scheduler methods..)
@@ -252,7 +252,7 @@ def update_all_job_files(
             continue
         elif job_id not in all_jobs:
             # If the job is not in the scheduler's job list, it has
-            # exited or deleted
+            # exited or been deleted
             if data["stage"] == "queued":
                 remove_job_file(file_path=Path(data["job_file"]))
             elif data["stage"] != "completed":
