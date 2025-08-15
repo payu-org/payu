@@ -472,6 +472,9 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env,
     assert kwargs.get('timeout') == 10
     assert kwargs.get('verify') is False
 
+    assert sent_data["service"] == "payu"
+    assert sent_data["version"] == "1.0.0"
+
     record = sent_data["telemetry"]
 
     # Validate sent record against schema for top level fields

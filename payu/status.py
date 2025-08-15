@@ -4,7 +4,6 @@ payu runs by inspecting the job files generated for telemetry,
 scheduler stdout/stderr logs, and querying the scheduler
 """
 
-import glob
 from pathlib import Path
 from typing import Any, Optional
 import warnings
