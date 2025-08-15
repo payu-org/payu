@@ -281,4 +281,4 @@ def test_submit_launcher_script_setting(
 def test_tenacity():
 
     # This should fail and do nothing
-    pbs.get_qstat_info()
+    pbs.get_job_info_json()
