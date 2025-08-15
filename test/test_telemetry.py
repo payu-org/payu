@@ -325,6 +325,29 @@ def test_setup_run_job_file(tmp_path, mock_scheduler, mock_metadata,
         }
 
 
+def test_setup_run_job_file_no_path(mock_scheduler, mock_metadata):
+    """Test setup_run_job_file returns early if no file path is provided
+    e.g. in payu setup command"""
+    setup_run_job_file(
+        file_path=None,
+        scheduler=mock_scheduler,
+        metadata=mock_metadata
+    )
+    assert not mock_scheduler.get_job_id.called
+
+
+def test_update_run_job_file_no_path(mock_manifests):
+    """Test update_run_job_file returns early if no file path is provided
+    e.g. in payu archive command"""
+    with patch('payu.telemetry.get_manifests') as mock_get_manifests:
+        update_run_job_file(
+            file_path=None,
+            stage="model-run",
+            manifests=mock_manifests,
+        )
+        assert not mock_get_manifests.called
+
+
 def test_update_run_job_file(tmp_path, mock_manifests):
     """Test update that runs at model runs and archive"""
 

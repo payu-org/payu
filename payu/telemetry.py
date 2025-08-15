@@ -446,6 +446,10 @@ def update_run_job_file(
     model_restart_datetimes: Optional[dict[str, Any]], default None
         Model restart datetimes to add to the run job file
     """
+    if file_path is None:
+        # This might be payu archive being run on it's own, skip recording file
+        return
+
     run_info = {}
     if stage:
         run_info["stage"] = stage
