@@ -229,19 +229,25 @@ def get_job_info_json(
     cmd = ["qstat", "-f", "-F", "json"]
     if job_id:
         cmd.append(job_id)
-    qstat_output = subprocess.run(
-        cmd, capture_output=True, text=True, check=True,
-    )
+
     # Parse the JSON output
     try:
+        qstat_output = subprocess.run(
+            cmd, capture_output=True, text=True, check=True,
+        )
         return json.loads(qstat_output.stdout)
     except json.JSONDecodeError as e:
         warnings.warn(
-            f"Failed to decode JSON output from qstat output:"
-            f"\n Command: {' '.join(cmd)}"
+            f"Failed to decode JSON output from qstat command: {' '.join(cmd)}"
             f"\n Error: {e}"
         )
-        return None
+        raise
+    except subprocess.CalledProcessError as e:
+        warnings.warn(
+            f"Failed to run qstat command: {' '.join(cmd)}"
+            f"\n Error: {e}"
+        )
+        raise
 
 
 def pbs_env_init():
