@@ -488,7 +488,7 @@ def record_run(
         Path to the run job file to update
     """
     # Additional information to the run info
-    run_info = {"payu_run_status": run_status, "stage": "completed"}
+    run_info = {"payu_run_status": run_status}
 
     # Query the scheduler just before recording the run information to
     # try get the most up-to-date information of the usage statistics
