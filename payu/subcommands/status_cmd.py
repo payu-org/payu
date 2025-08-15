@@ -9,7 +9,7 @@ from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
 from payu.status import (
-    query_job_info,
+    build_job_info,
     display_job_info,
     update_all_job_files
 )
@@ -33,7 +33,7 @@ def runcmd(lab_path, json_output, update_jobs, all_runs, run_number):
 
     run_number = int(run_number) if run_number is not None else None
 
-    data = query_job_info(
+    data = build_job_info(
         control_path=Path(expt.control_path),
         archive_path=Path(expt.archive_path),
         run_number=run_number,
@@ -44,7 +44,7 @@ def runcmd(lab_path, json_output, update_jobs, all_runs, run_number):
         # from the scheduler
         update_all_job_files(data, expt.scheduler)
         # Rerun parsing job files to get the latest data
-        data = query_job_info(
+        data = build_job_info(
             control_path=Path(expt.control_path),
             archive_path=Path(expt.archive_path),
             run_number=run_number,
