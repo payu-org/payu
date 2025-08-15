@@ -184,7 +184,6 @@ def post_telemetry_data(url: str,
     data = {
         "service": service_name,
         "version": TELEMETRY_VERSION,
-        "date": datetime.date.today().isoformat(),
         "telemetry": data
     }
 
@@ -239,18 +238,6 @@ def record_telemetry(run_info: dict[str, Any],
         },
     )
     thread.start()
-
-
-def find_run_job_file(paths: list[Path]) -> Optional[Path]:
-    """Find the run job file in the specified paths.
-    This file path will be different depending if there are model errors,
-    whether archive runs or not, or if payu
-    exits during initialisation"""
-    for path in paths:
-        run_file = get_job_file_path(path)
-        if run_file.exists() and run_file.is_file():
-            return run_file
-    return None
 
 
 def atomic_write_file(

@@ -12,6 +12,7 @@ import sys
 import shlex
 import subprocess
 from typing import Any, Dict, Optional
+import warnings
 
 import json
 from tenacity import retry, stop_after_delay
@@ -234,7 +235,12 @@ def get_job_info_json(
     # Parse the JSON output
     try:
         return json.loads(qstat_output.stdout)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        warnings.warn(
+            f"Failed to decode JSON output from qstat output:"
+            f"\n Command: {' '.join(cmd)}"
+            f"\n Error: {e}"
+        )
         return None
 
 
