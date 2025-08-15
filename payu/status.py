@@ -105,7 +105,7 @@ def get_job_file_list(
     return list(latest_run.glob("run/*.json"))
 
 
-def query_job_info(
+def build_job_info(
             archive_path: Path,
             control_path: Path,
             run_number: Optional[int] = None,
@@ -116,7 +116,7 @@ def query_job_info(
     and mapping stdout and stderr files.
 
     This reads files for the specified run number, all runs,
-    or the latest run by default.
+    or the latest run.
 
     # TODO: Extend with collate, sync when their job files are implemented
     """
@@ -148,6 +148,7 @@ def query_job_info(
             "stdout_file": str(stdout) if stdout else None,
             "stderr_file": str(stderr) if stderr else None,
             "job_file": str(job_file),
+            "start_time": data.get("timings", {}).get("payu_start_time"),
         }
 
         run_num = data["payu_current_run"]
@@ -157,6 +158,19 @@ def query_job_info(
     status_data["runs"] = dict(
         sorted(runs.items(), key=lambda item: int(item[0]))
     )
+    # Sort internal jobs by start time
+    for run_num, run_jobs in status_data["runs"].items():
+        run_jobs["run"].sort(key=lambda x: (
+            # Put queued jobs at the end (None start_time)
+            x.get("start_time") is None,
+            # Sort by start time
+            x.get("start_time") or ""
+        ))
+
+    if not all_runs:
+        # Use latest run job
+        for run_num, run_jobs in status_data["runs"].items():
+            run_jobs["run"] = [run_jobs["run"][-1]]
 
     return status_data
 
