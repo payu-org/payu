@@ -207,9 +207,12 @@ def update_all_job_files(
                 # No job ID, nothing to update
                 continue
 
+            # Get the stage and job file from the file data
             stage = data["stage"]
             job_file = Path(data["job_file"])
+            run_status = data.get("exit_status")
 
+            # Get job status from the scheduler data
             job_status = all_jobs.get(job_id)
             exit_status = job_status.get("exit_status") if job_status else None
 
@@ -217,19 +220,19 @@ def update_all_job_files(
                 # Job not found in scheduler
                 if stage == "queued":
                     remove_job_file(file_path=job_file)
-                elif stage != "completed":
+                elif run_status is not None:
+                    # Run status isn't set, so job must have exited earlier
                     update_job_file(
                         file_path=job_file,
-                        data={"stage": "completed", "payu_run_status": 1}
+                        data={"payu_run_status": 1}
                     )
             elif exit_status is not None:
                 if stage == "queued":
                     remove_job_file(file_path=job_file)
-                elif stage != "completed":
+                elif run_status is not None:
                     update_job_file(
                         file_path=job_file,
                         data={
-                            "stage": "completed",
                             "payu_run_status": exit_status
                         }
                     )
