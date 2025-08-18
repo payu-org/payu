@@ -67,6 +67,42 @@ def teardown_cmeps_config():
     os.remove(config_path)
 
 
+def _isolate_create_workdir(model, case):
+    # isolate each case
+    case_workdir = os.path.join(model.work_path, case)
+    if os.path.exists(case_workdir):
+        shutil.rmtree(case_workdir)
+    os.makedirs(case_workdir, exist_ok=True)
+    model.work_path = case_workdir
+
+
+def _write_pointer_files(work_path, pointers):
+    pointer_files = []
+    for pointer_name, pointer_content in pointers.items():
+        pointer_path = os.path.join(work_path, pointer_name)
+        if "\n" not in pointer_content:
+            pointer_content = pointer_content + "\n"
+        with open(pointer_path, "w") as f:
+            f.write(pointer_content)
+        pointer_files.append(pointer_path)
+    return pointer_files
+
+
+def _create_files(work_path, relpaths):
+    for relpath in relpaths:
+        temp_path = os.path.join(work_path, relpath)
+        os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+        open(temp_path, 'a').close()
+
+
+def _create_split_files(work_path, bases, *, splits):
+    for base in bases:
+        for split in splits:
+            temp_path = os.path.join(work_path, f"{base}.{split:04d}")
+            os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+            open(temp_path, 'a').close()
+
+
 # Mock runconfig for some tests
 # valid minimum nuopc.runconfig for _setup_checks
 MOCK_IO_RUNCONF = {
@@ -421,95 +457,7 @@ def test_get_restart_datetime_badcal(start_dt, calendar, cmeps_calendar, expecte
     teardown_cmeps_config()
     remove_expt_archive_dirs(type='restart')
 
-# Collect restart files test
-@pytest.mark.parametrize(
-    "case, pointers, expected_present, expected_absent",
-    [
-        (
-            "correct_mom_no_split",
-            {
-                "rpointer.cpl": "access-om3.cpl.r.1900-01-01-00000.nc",
-                "rpointer.ice": "access-om3.cice.r.1900-01-01-00000.nc",
-                "rpointer.ocn":(
-                    "access-om3.mom6.r.1900-01-01-00000.nc\n"
-                    "access-om3.mom6.r.1900-01-01-00000_1.nc\n"
-                    "access-om3.mom6.r.1900-01-01-00000_2.nc\n"
-                ),
-                "rpointer.rof": "access-om3.drof.r.1900-01-01-00000.nc",
-                "rpointer.atm": "access-om3.datm.r.1900-01-01-00000.nc",
-            },
-            [
-                "access-om3.cpl.r.1900-01-01-00000.nc",
-                "access-om3.cice.r.1900-01-01-00000.nc",
-                "access-om3.mom6.r.1900-01-01-00000.nc",
-                "access-om3.mom6.r.1900-01-01-00000_1.nc",
-                "access-om3.mom6.r.1900-01-01-00000_2.nc",
-                "access-om3.drof.r.1900-01-01-00000.nc",
-                "access-om3.datm.r.1900-01-01-00000.nc"
-            ],
-            # None on purpose
-            [ ]
-        ),
-        (
-            "correct_mom_with_split",
-            {
-                "rpointer.cpl": "access-om3.cpl.r.1900-01-01-00000.nc",
-                "rpointer.ice": "access-om3.cice.r.1900-01-01-00000.nc",
-                "rpointer.ocn":(
-                    "access-om3.mom6.r.1900-01-01-00000.nc\n"
-                    "access-om3.mom6.r.1900-01-01-00000_1.nc\n"
-                    "access-om3.mom6.r.1900-01-01-00000_2.nc\n"
-                ),
-                "rpointer.rof": "access-om3.drof.r.1900-01-01-00000.nc",
-                "rpointer.atm": "access-om3.datm.r.1900-01-01-00000.nc",
-            },
-            [
-                "access-om3.cpl.r.1900-01-01-00000.nc",
-                "access-om3.cice.r.1900-01-01-00000.nc",
-                "access-om3.mom6.r.1900-01-01-00000.nc.0000",
-                "access-om3.mom6.r.1900-01-01-00000.nc.0001",
-                "access-om3.mom6.r.1900-01-01-00000.nc.0002",
-                "access-om3.mom6.r.1900-01-01-00000_1.nc.0000",
-                "access-om3.mom6.r.1900-01-01-00000_1.nc.0001",
-                "access-om3.mom6.r.1900-01-01-00000_1.nc.0002",
-                "access-om3.mom6.r.1900-01-01-00000_2.nc.0000",
-                "access-om3.mom6.r.1900-01-01-00000_2.nc.0001",
-                "access-om3.mom6.r.1900-01-01-00000_2.nc.0002",
-                "access-om3.drof.r.1900-01-01-00000.nc",
-                "access-om3.datm.r.1900-01-01-00000.nc"
-            ],
-            # None on purpose
-            [ ]
-        ),
-        (
-            "incorrect_parallel",
-            {
-                "rpointer.cpl": "access-om3.cpl.r.1900-01-01-00000.nc",
-                "rpointer.ice": "access-om3.cice.r.1900-01-01-00000.nc",
-                "rpointer.ocn":(
-                    "access-om3.mom6.r.1900-01-01-00000.nc\n"
-                    "access-om3.mom6.r.1900-01-01-00000_1.nc\n"
-                    "access-om3.mom6.r.1900-01-01-00000_2.nc\n"
-                ),
-                "rpointer.rof": "access-om3.drof.r.1900-01-01-00000.nc",
-                "rpointer.atm": "access-om3.datm.r.1900-01-01-00000.nc",
-            },
-            # only coupler restart present
-            [
-                "access-om3.cpl.r.1900-01-01-00000.nc",
-            ],
-            [
-                "access-om3.drof.r.1900-01-01-00000.nc",
-                "access-om3.datm.r.1900-01-01-00000.nc",
-                "access-om3.cice.r.1900-01-01-00000.nc",
-                "access-om3.mom6.r.1900-01-01-00000.nc",
-                "access-om3.mom6.r.1900-01-01-00000_1.nc",
-                "access-om3.mom6.r.1900-01-01-00000_2.nc",
-            ]
-        )
-    ]
-)
-def test_collect_restart_files(case, pointers, expected_present, expected_absent):
+def test_collect_restart_files_mom_no_split():
 
     cmeps_config(1)
 
@@ -518,52 +466,119 @@ def test_collect_restart_files(case, pointers, expected_present, expected_absent
         expt = payu.experiment.Experiment(lab, reproduce=False)
         model = expt.models[0]
 
-        # isolate each case
-        case_workdir = os.path.join(model.work_path, case)
-        if os.path.exists(case_workdir):
-            shutil.rmtree(case_workdir)
-        os.makedirs(case_workdir, exist_ok=True)
-        model.work_path = case_workdir
+        _isolate_create_workdir(model, "correct_mom_no_split")
+        pointers = {
+            "rpointer.cpl": "access-om3.cpl.r.1900-01-01-00000.nc",
+            "rpointer.ice": "access-om3.cice.r.1900-01-01-00000.nc",
+            "rpointer.ocn": (
+                "access-om3.mom6.r.1900-01-01-00000.nc\n"
+                "access-om3.mom6.r.1900-01-01-00000_1.nc\n"
+                "access-om3.mom6.r.1900-01-01-00000_2.nc\n"
+            ),
+            "rpointer.rof": "access-om3.drof.r.1900-01-01-00000.nc",
+            "rpointer.atm": "access-om3.datm.r.1900-01-01-00000.nc",
+        }
 
-    pointer_files = []
-    for pointer_name, pointer_content in pointers.items():
-        pointer_path = os.path.join(model.work_path, pointer_name)
-        if "\n" not in pointer_content:
-            pointer_content = pointer_content + "\n"
-        with open(pointer_path, "w") as f:
-            f.write(pointer_content)
-        pointer_files.append(pointer_path)
+        expected_present = [
+            "access-om3.cpl.r.1900-01-01-00000.nc",
+            "access-om3.cice.r.1900-01-01-00000.nc",
+            "access-om3.mom6.r.1900-01-01-00000.nc",
+            "access-om3.mom6.r.1900-01-01-00000_1.nc",
+            "access-om3.mom6.r.1900-01-01-00000_2.nc",
+            "access-om3.drof.r.1900-01-01-00000.nc",
+            "access-om3.datm.r.1900-01-01-00000.nc",
+        ]
 
-    if case == "correct_mom_no_split":
-        for f in expected_present:
-            open(os.path.join(model.work_path, f), "a").close()
-    elif case == "correct_mom_with_split":
-        for f in [
+        pointer_files = _write_pointer_files(model.work_path, pointers)
+
+        _create_files(model.work_path, expected_present)
+
+        res = model._collect_restart_files(pointer_files)
+        assert {os.path.basename(f) for f in res} == set(expected_present)
+
+    teardown_cmeps_config()
+
+def test_collect_restart_files_mom_split():
+
+    cmeps_config(1)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        _isolate_create_workdir(model, "correct_mom_with_split")
+        pointers = {
+            "rpointer.cpl": "access-om3.cpl.r.1900-01-01-00000.nc",
+            "rpointer.ice": "access-om3.cice.r.1900-01-01-00000.nc",
+            "rpointer.ocn": (
+                "access-om3.mom6.r.1900-01-01-00000.nc\n"
+                "access-om3.mom6.r.1900-01-01-00000_1.nc\n"
+                "access-om3.mom6.r.1900-01-01-00000_2.nc\n"
+            ),
+            "rpointer.rof": "access-om3.drof.r.1900-01-01-00000.nc",
+            "rpointer.atm": "access-om3.datm.r.1900-01-01-00000.nc",
+        }
+
+        # single file component
+        single_files = [
             "access-om3.cpl.r.1900-01-01-00000.nc",
             "access-om3.cice.r.1900-01-01-00000.nc",
             "access-om3.drof.r.1900-01-01-00000.nc",
             "access-om3.datm.r.1900-01-01-00000.nc",
-        ]:
-            open(os.path.join(model.work_path, f), "a").close()
+        ]
+        _create_files(model.work_path, single_files)
 
-        mom_targets = [
+        # MOM6 split files
+        mom_bases = [
             "access-om3.mom6.r.1900-01-01-00000.nc",
             "access-om3.mom6.r.1900-01-01-00000_1.nc",
             "access-om3.mom6.r.1900-01-01-00000_2.nc",
         ]
-        for j in mom_targets:
-            for i in (0, 1, 2):
-                open(os.path.join(model.work_path, f"{j}.{i:04d}"), "a").close()
-    elif case == "incorrect_parallel":
-        # only the coupler restart exists
-        open(os.path.join(model.work_path, "access-om3.cpl.r.1900-01-01-00000.nc"), "a").close()
+        num_splits = 3
+        _create_split_files(model.work_path, mom_bases, splits=range(num_splits))
 
-    if expected_absent:
-        with pytest.raises(FileNotFoundError) as e:
-            model._collect_restart_files(pointer_files)
-        assert "access-om3.cice.r.1900-01-01-00000.nc" in str(e.value)
-    else:
+        expected_present = single_files + [
+            f"{x}.{i:04d}" for x in mom_bases for i in range(num_splits)
+        ]
+
+        pointer_files = _write_pointer_files(model.work_path, pointers)
+
         res = model._collect_restart_files(pointer_files)
         assert {os.path.basename(f) for f in res} == set(expected_present)
+
+    teardown_cmeps_config()
+
+def test_collect_restart_files_incorrect_parallel():
+    cmeps_config(1)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        _isolate_create_workdir(model, "incorrect_parallel")
+        pointers = {
+            "rpointer.cpl": "access-om3.cpl.r.1900-01-01-00000.nc",
+            "rpointer.ice": "access-om3.cice.r.1900-01-01-00000.nc",
+            "rpointer.ocn": (
+                "access-om3.mom6.r.1900-01-01-00000.nc\n"
+                "access-om3.mom6.r.1900-01-01-00000_1.nc\n"
+                "access-om3.mom6.r.1900-01-01-00000_2.nc\n"
+            ),
+            "rpointer.rof": "access-om3.drof.r.1900-01-01-00000.nc",
+            "rpointer.atm": "access-om3.datm.r.1900-01-01-00000.nc",
+        }
+        pointer_files = _write_pointer_files(model.work_path, pointers)
+
+        # only coupler restart exists and others are missing
+        expected_present = ["access-om3.cpl.r.1900-01-01-00000.nc",]
+        _create_files(model.work_path, expected_present)
+
+        with pytest.raises(FileNotFoundError) as e:
+            model._collect_restart_files(pointer_files)
+
+        # Check a representative missing file appears in the message
+        assert "access-om3.cice.r.1900-01-01-00000.nc" in str(e.value)
 
     teardown_cmeps_config()
