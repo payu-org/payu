@@ -135,14 +135,36 @@ def setup_config(config_path):
         json.dump(config_data, f)
 
 
-def test_get_external_telemetry_config_no_file(setup_env, config_path):
+def check_invalid_get_external_config(tmp_path, expected_error):
+    telemetry_log = tmp_path / "archive" / "error_logs" / "telemetry.log"
     expected_warning = (
-        f"No config file found at {TELEMETRY_CONFIG}: {config_path}. "
-        "Skipping posting telemetry"
+        "Error sending telemetry. See error log at "
+        f"{telemetry_log} for details."
     )
     with pytest.warns(UserWarning, match=expected_warning):
-        result = get_external_telemetry_config()
+        result = get_external_telemetry_config(
+            archive_path=tmp_path / "archive",
+            job_file_path=tmp_path / "job_file.json"
+        )
         assert result is None
+
+    assert telemetry_log.exists()
+    with open(telemetry_log, 'r') as f:
+        # Read last line of the log file
+        last_line = f.readlines()[-1].strip()
+        json_log = json.loads(last_line)
+        assert json_log["error"] == expected_error
+        assert json_log["timestamp"] is not None
+        assert json_log["jobfile"] == str(tmp_path / "job_file.json")
+
+
+def test_get_external_telemetry_config_no_file(
+            tmp_path, setup_env, config_path
+        ):
+    expected_error = (
+        f"No config file found at {TELEMETRY_CONFIG}: {config_path}."
+    )
+    check_invalid_get_external_config(tmp_path, expected_error)
 
 
 @pytest.mark.parametrize("missing_field", [
@@ -152,8 +174,9 @@ def test_get_external_telemetry_config_no_file(setup_env, config_path):
     "telemetry_token",
     "telemetry_host"
 ])
-def test_get_external_telemetry_config_missing_fields(setup_env, config_path,
-                                                      missing_field):
+def test_get_external_telemetry_config_missing_fields(
+            tmp_path, setup_env, config_path, missing_field
+        ):
     config_data = {
         "telemetry_url": "some/server/url",
         "hostname": "gadi",
@@ -166,27 +189,24 @@ def test_get_external_telemetry_config_missing_fields(setup_env, config_path,
     with open(config_path, 'w') as f:
         json.dump(config_data, f)
 
-    expected_warning = (
-        rf"Required field\(s\) {set([missing_field])} not found in "
-        f"configuration file at {TELEMETRY_CONFIG}: {config_path}. "
-        "Skipping posting telemetry"
+    expected_error = (
+        f"Required field(s) {set([missing_field])} not found in "
+        f"configuration file at {TELEMETRY_CONFIG}: {config_path}."
     )
-    with pytest.warns(UserWarning, match=expected_warning):
-        result = get_external_telemetry_config()
-        assert result is None
+    check_invalid_get_external_config(tmp_path, expected_error)
 
 
-def test_get_external_telemetry_config_invalid_json(setup_env, config_path):
+def test_get_external_telemetry_config_invalid_json(
+            tmp_path, setup_env, config_path
+        ):
     with open(config_path, 'w') as f:
         f.write("{invalid_json")
 
-    expected_warning = (
+    expected_error = (
         f"Error parsing json in configuration file at "
-        f"{TELEMETRY_CONFIG}: {config_path}. Skipping posting telemetry"
+        f"{TELEMETRY_CONFIG}: {config_path}."
     )
-    with pytest.warns(UserWarning, match=expected_warning):
-        result = get_external_telemetry_config()
-        assert result is None
+    check_invalid_get_external_config(tmp_path, expected_error)
 
 
 @pytest.mark.parametrize("datetimes, transformed_datetimes", [
@@ -237,6 +257,7 @@ def test_transform_model_datetime_warning():
 
 
 def test_telemetry_not_enabled_no_environment_config(
+            tmp_path,
             mock_telemetry_get_external_config,
             mock_post_telemetry_data,
             monkeypatch
@@ -245,7 +266,9 @@ def test_telemetry_not_enabled_no_environment_config(
     if TELEMETRY_CONFIG in os.environ:
         monkeypatch.delenv(TELEMETRY_CONFIG, raising=False)
 
-    record_telemetry(run_info={}, config={})
+    record_telemetry(run_info={}, config={},
+                     archive_path=tmp_path / "archive",
+                     job_file_path=tmp_path / "job_file.json")
 
     # Check post telemetry method was not called
     mock_telemetry_get_external_config.assert_not_called()
@@ -253,6 +276,7 @@ def test_telemetry_not_enabled_no_environment_config(
 
 
 def test_telemetry_not_enabled_config(
+            tmp_path,
             mock_telemetry_get_external_config,
             mock_post_telemetry_data,
             setup_env
@@ -263,7 +287,9 @@ def test_telemetry_not_enabled_config(
         }
     }
 
-    record_telemetry(run_info={}, config={})
+    record_telemetry(run_info={}, config={},
+                     archive_path=tmp_path / "archive",
+                     job_file_path=tmp_path / "job_file.json")
 
     # Check post telemetry method was not called
     mock_telemetry_get_external_config.assert_not_called()
@@ -479,6 +505,7 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env,
                 run_status=0,
                 config={},
                 file_path=file_path,
+                archive_path=tmp_path / "archive",
             )
 
             # Get data from the mock request

@@ -166,6 +166,7 @@ def runscript():
                 run_status=run_status,
                 config=expt.config,
                 file_path=expt.job_file,
+                archive_path=expt.archive_path,
             )
 
         # Finished runs
