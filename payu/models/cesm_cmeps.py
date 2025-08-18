@@ -351,7 +351,7 @@ class CesmCmeps(Model):
                         f"payu: restart file {target_restart_path} listed in the rpointer file {pointer} does not exist!"
                         )
 
-        return list(restart_files)
+        return sorted(restart_files)
 
     def collate(self):
         
