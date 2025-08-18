@@ -111,7 +111,10 @@ def transform_model_datetimes(
     return transformed
 
 
-def get_external_telemetry_config() -> Optional[dict[str, Any]]:
+def get_external_telemetry_config(
+            archive_path: Path,
+            job_file_path: Path
+    ) -> Optional[dict[str, Any]]:
     """Loads the external telemetry configuration file.
     If a valid file does not exist, return None
     """
@@ -119,11 +122,10 @@ def get_external_telemetry_config() -> Optional[dict[str, Any]]:
     config_dir = Path(os.environ[TELEMETRY_CONFIG])
     config_path = config_dir / f"{TELEMETRY_CONFIG_VERSION}.json"
     if not (config_path.exists() and config_path.is_file()):
-        warnings.warn(
-            f"No config file found at {TELEMETRY_CONFIG}: {config_path}. "
-            "Skipping posting telemetry",
-            UserWarning
+        error_msg = (
+            f"No config file found at {TELEMETRY_CONFIG}: {config_path}."
         )
+        write_error_log(archive_path, job_file_path, error_msg)
         return None
 
     # Attempt to read config file
@@ -131,24 +133,49 @@ def get_external_telemetry_config() -> Optional[dict[str, Any]]:
         with open(config_path, 'r') as f:
             telemetry_config = json.load(f)
     except json.JSONDecodeError:
-        warnings.warn(
-            "Error parsing json in configuration file "
-            f"at {TELEMETRY_CONFIG}: {config_path}. "
-            "Skipping posting telemetry"
+        error_msg = (
+            "Error parsing json in configuration file at "
+            f"{TELEMETRY_CONFIG}: {config_path}."
         )
+        write_error_log(archive_path, job_file_path, error_msg)
         return None
 
     # Check for required fields in the telemetry configuration
     missing_fields = CONFIG_FIELDS.values() - telemetry_config.keys()
     if missing_fields:
-        warnings.warn(
+        error_msg = (
             f"Required field(s) {missing_fields} not found in configuration "
-            f"file at {TELEMETRY_CONFIG}: {config_path}. "
-            "Skipping posting telemetry"
+            f"file at {TELEMETRY_CONFIG}: {config_path}."
         )
+        write_error_log(archive_path, job_file_path, error_msg)
         return None
 
     return telemetry_config
+
+
+def write_error_log(
+            archive_path: Path,
+            job_file_path: Path,
+            error_message: str,
+        ) -> None:
+    """Add an error log to record the telemetry error
+    and the related job file path incase it is needed for further
+    processing"""
+    error_log_path = archive_path / "error_logs" / "telemetry.log"
+    error_log_path.parent.mkdir(parents=True, exist_ok=True)
+    error_log = {
+        "timestamp": datetime.datetime.now().isoformat(),
+        "error": error_message,
+        "jobfile": str(job_file_path)
+    }
+    with open(error_log_path, 'a') as error_file:
+        error_file.write(json.dumps(error_log) + '\n')
+
+    warnings.warn(
+        "Error sending telemetry. See error log at "
+        f"{error_log_path} for details.",
+        UserWarning
+    )
 
 
 def post_telemetry_data(url: str,
@@ -156,6 +183,8 @@ def post_telemetry_data(url: str,
                         data: dict[str, Any],
                         service_name: str,
                         host: str,
+                        archive_path: Path,
+                        job_file_path: Path,
                         request_timeout: int = REQUEST_TIMEOUT,
                         ) -> None:
     """Posts telemetry data
@@ -172,6 +201,12 @@ def post_telemetry_data(url: str,
         Service name for the telemetry record
     host: str
         Host for the telemetry record header
+    archive_path: Path
+        Path to the archive directory for the experiment. This is used for
+        writing error logs if the telemetry request fails
+    job_file_path: Path
+        Path to the job file for the run. This is used for writing error logs
+        if the telemetry request fails
     request_timeout: int, default REQUEST_TIMEOUT
         Timeout while waiting for request
     """
@@ -196,16 +231,20 @@ def post_telemetry_data(url: str,
             verify=False
         )
         if response.status_code >= 400:
-            warnings.warn(
-                f"Error posting telemetry: Status {response.status_code} - "
-                f"{response.json()}"
+            error_message = (
+                "Error posting telemetry request: "
+                f"Status {response.status_code} - {response.json()}"
             )
+            write_error_log(archive_path, job_file_path, error_message)
     except Exception as e:
-        warnings.warn(f"Error posting telemetry: {e}")
+        error_message = "Error posting telemetry request: " + str(e)
+        write_error_log(archive_path, job_file_path, error_message)
 
 
 def record_telemetry(run_info: dict[str, Any],
-                     config: dict[str, Any]) -> None:
+                     config: dict[str, Any],
+                     job_file_path: Path,
+                     archive_path: Path) -> None:
     """If configured, post the telemetry data for the payu run"""
     # Check for config.yaml option to disable telemetry, and if an
     # environment variable for an external telemetry config file is set,
@@ -218,7 +257,10 @@ def record_telemetry(run_info: dict[str, Any],
         return
 
     # Check for valid external telemetry configuration file
-    external_config = get_external_telemetry_config()
+    external_config = get_external_telemetry_config(
+        archive_path=archive_path,
+        job_file_path=job_file_path
+    )
     if external_config is None:
         # Skip any external telemetry
         return
@@ -235,6 +277,8 @@ def record_telemetry(run_info: dict[str, Any],
             "data": run_info,
             "service_name": external_config[CONFIG_FIELDS["SERVICE_NAME"]],
             "host": external_config[CONFIG_FIELDS["HOST"]],
+            "archive_path": archive_path,
+            "job_file_path": job_file_path,
         },
     )
     thread.start()
@@ -469,6 +513,7 @@ def record_run(
             run_status: int,
             config: dict[str, Any],
             file_path: Path,
+            archive_path: Path,
         ) -> None:
     """Record the run information for the current run and post telemetry
     if enabled
@@ -486,6 +531,8 @@ def record_run(
         Configuration (config.yaml) - used to check if telemetry is enabled
     file_path: Path
         Path to the run job file to update
+    archive_path: Path
+        Path to the archive directory for the experiment
     """
     # Additional information to the run info
     run_info = {"payu_run_status": run_status}
@@ -501,4 +548,5 @@ def record_run(
     # Update the run job file
     run_info = update_job_file(file_path=file_path, data=run_info)
 
-    record_telemetry(run_info=run_info, config=config)
+    record_telemetry(run_info=run_info, config=config,
+                     job_file_path=file_path, archive_path=archive_path)
