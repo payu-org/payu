@@ -9,6 +9,8 @@ from payu.status import (
     build_job_info
 )
 
+from payu.subcommands.status_cmd import runcmd
+from payu.git_utils import PayuGitWarning
 
 def test_find_file_match(tmp_path):
     test_file = tmp_path / "job_name.o146702704"
@@ -449,3 +451,65 @@ def test_build_job_info_latest(tmp_path, archive_jobs,
     remove_job_file_paths(latest_data)
 
     assert latest_data == expected
+
+
+def test_status_cmd_no_metadata(tmp_path):
+    """Test error raised when metadata is not setup - rather than
+    creating a new uuid"""
+    # Create a temporary lab and config
+    lab_path = tmp_path / "lab"
+    lab_path.mkdir()
+    control_path = tmp_path / "control"
+    control_path.mkdir()
+    config_path = control_path / "config.yaml"
+
+    # Create a minimal config file
+    with open(config_path, 'w') as f:
+        json.dump({'model': 'test'}, f)
+
+    with pytest.warns(PayuGitWarning):
+        with pytest.raises(RuntimeError, match="Metadata is not setup"):
+            runcmd(
+                lab_path=str(lab_path),
+                config_path=str(config_path),
+                json_output=True,
+                update_jobs=False,
+                all_runs=False,
+                run_number=None
+            )
+    assert not (control_path / "metadata.yaml").exists()
+
+
+def test_status_cmd(tmp_path, capsys):
+    """Test the status command returns empty JSON output."""
+    # Create a temporary lab and config
+    lab_path = tmp_path / "lab"
+    archive_path = lab_path / "archive" / "control-exp"
+    archive_path.mkdir(parents=True, exist_ok=True)
+    control_path = tmp_path / "control-exp"
+    control_path.mkdir()
+    config_path = control_path / "config.yaml"
+
+    # Create a minimal config file
+    with open(config_path, 'w') as f:
+        json.dump({'model': 'test'}, f)
+
+    # Create a minimal metadata file
+    metadata_path = control_path / "metadata.yaml"
+    with open(metadata_path, 'w') as f:
+        json.dump({'experiment_uuid': 'test-uuid'}, f)
+
+    # Run the command
+    with pytest.warns(PayuGitWarning):
+        runcmd(
+            lab_path=str(lab_path),
+            config_path=str(config_path),
+            json_output=True,
+            update_jobs=False,
+            all_runs=False,
+            run_number=None
+        )
+
+    # Check only json is printed
+    output = capsys.readouterr().out
+    assert output.strip() == '{}'
