@@ -342,7 +342,7 @@ class CesmCmeps(Model):
                     # In case containing split restart files, such as (*.nc.0000, *.nc.0001)
                     # This is only relevant for MOM6
                     if "mom" in target_restart_path:
-                        split_files = sorted(glob.glob(target_restart_path + ".[0-9][0-9][0-9][0-9]"))
+                        split_files = glob.glob(target_restart_path + ".[0-9][0-9][0-9][0-9]")
                         if split_files:
                             restart_files.update(split_files)
                             continue
