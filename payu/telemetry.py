@@ -60,19 +60,25 @@ def get_manifests(experiment_manifests) -> Optional[dict[str, Any]]:
     }
 
 
-def get_timings(timings: dict[str, int]) -> dict[str, int]:
-    """Returns a dictionary of the timings for the run.
-    Adds end time and total duration of the experiment run so far.
+def get_finished_timings(timings: dict[str, int]) -> dict[str, int]:
     """
-    start_time = timings["payu_start_time"]
-    finish_time = datetime.datetime.now()
-    # Convert start and end times to isoformat strings
-    timings["payu_start_time"] = start_time.isoformat()
-    timings["payu_finish_time"] = finish_time.isoformat()
-    elapsed_time = finish_time - start_time
+    Adds end time and total duration of the experiment run to the timings
+    and return a timings dictionary with ISO format strings for datetime values
+    """
+    timings["payu_finish_time"] = datetime.datetime.now()
+    elapsed_time = timings["payu_finish_time"] - timings["payu_start_time"]
     timings["payu_total_duration_seconds"] = elapsed_time.total_seconds()
+    return get_timings_isoformat(timings)
+
+
+def get_timings_isoformat(timings: dict[str, Any]) -> dict[str, Any]:
+    """
+    Returns a dictionary of the timings for the experiment run
+    with any datetime values converted to ISO format strings
+    """
     return {
-        "timings": timings
+        "timings": {k: v.isoformat() if isinstance(v, datetime.datetime) else v
+                    for k, v in timings.items()}
     }
 
 
@@ -408,6 +414,7 @@ def setup_run_job_file(
             file_path: Optional[Path],
             scheduler: Scheduler,
             metadata: Metadata,
+            timings: dict[str, Any],
             extra_info: Optional[dict[str, Any]] = None
         ) -> None:
     """
@@ -417,14 +424,12 @@ def setup_run_job_file(
     ----------
     file_path: Path
         Path to the run job file in the archive directory
-    current_run: int
-        Current run number for the queued job
-    timings: dict[str, Any]
-        Timings for the run
     scheduler: Scheduler
         Scheduler object for the run - used to get job ID
     metadata: Metadata
         Metadata object for the run - used to get experiment metadata
+    timings: dict[str, Any]
+        Timings for the payu run
     extra_info: Optional[dict[str, Any]], default None
         Any raw information to add directly to the run job file
     """
@@ -445,6 +450,9 @@ def setup_run_job_file(
     }
     # Add metadata
     data.update(get_metadata(metadata))
+
+    # Add timings
+    data.update(get_timings_isoformat(timings))
 
     # Add extra information if provided
     data.update(extra_info or {})
@@ -472,7 +480,8 @@ def update_run_job_file(
             stage: Optional[str] = None,
             extra_info: Optional[dict[str, Any]] = None,
             manifests: Optional[dict[str, Any]] = None,
-            model_restart_datetimes: Optional[dict[str, Any]] = None
+            model_restart_datetimes: Optional[dict[str, Any]] = None,
+            timings: Optional[dict[str, Any]] = None
         ) -> None:
     """Update the payu-run job file with the current stage and any extra info
     if defined
@@ -489,6 +498,8 @@ def update_run_job_file(
         Add manifests to the run job file
     model_restart_datetimes: Optional[dict[str, Any]], default None
         Model restart datetimes to add to the run job file
+    timings: Optional[dict[str, Any]], default None
+        Timings for the payu run
     """
     if file_path is None:
         # This might be payu archive being run on it's own, skip recording file
@@ -503,6 +514,8 @@ def update_run_job_file(
         run_info.update(transform_model_datetimes(model_restart_datetimes))
     if extra_info:
         run_info.update(extra_info)
+    if timings:
+        run_info.update(get_timings_isoformat(timings))
 
     update_job_file(file_path=file_path, data=run_info)
 
@@ -543,7 +556,7 @@ def record_run(
     run_info.update(get_scheduler_run_info(scheduler))
 
     # Add timings to the run info and add end time and total run duration
-    run_info.update(get_timings(timings))
+    run_info.update(get_finished_timings(timings))
 
     # Update the run job file
     run_info = update_job_file(file_path=file_path, data=run_info)
