@@ -167,7 +167,6 @@ def submit_job(script, config, vars=None):
     sched_name = config.get('scheduler', DEFAULT_SCHEDULER_CONFIG)
     sched_type = scheduler_index[sched_name]
     sched = sched_type()
-    cmd = sched.submit(script, config, vars)
-    print(cmd)
-
-    subprocess.check_call(shlex.split(cmd))
+    job = sched.submit(script, config, vars)
+    print(job.id)
+    return job

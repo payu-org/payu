@@ -33,6 +33,7 @@ dependencies = [
     "ruamel.yaml >=0.18.5",
     "packaging",
     "netCDF4",
+    "hpcpy"
 ]
 
 [project.optional-dependencies]

@@ -11,14 +11,16 @@ import sys
 import shlex
 import subprocess
 
-from payu.fsops import check_exe_path
-from payu.schedulers.scheduler import Scheduler
+from hpcpy import SlurmClient
 
+from payu.fsops import check_exe_path
+from payu.schedulers.scheduler import Scheduler, JOB_SCRIPT_TEMPLATE
 
 class Slurm(Scheduler):
     # TODO: __init__
 
-    def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
+    def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None,
+              storages=None, dry_run=False):
         """Prepare a correct PBS command string"""
 
         if python_exe is None:
@@ -38,11 +40,13 @@ class Slurm(Scheduler):
         pbs_flags.append('--qos=debug')
         pbs_flags.append('--cluster=c4')
 
-        # Construct job submission command
-        cmd = 'sbatch {flags} --wrap="{python} {script}"'.format(
-            flags=' '.join(pbs_flags),
-            python=python_exe,
-            script=pbs_script
+        client = SlurmClient()
+        job = client.submit(
+            dry_run=dry_run,
+            directives=pbs_flags,
+            job_script=JOB_SCRIPT_TEMPLATE,
+            render=True,
+            python_exe=python_exe,
+            payu_exe=pbs_script,
         )
-
-        return cmd
+        return job

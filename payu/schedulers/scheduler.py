@@ -7,9 +7,11 @@
 # TODO: This class is currently just a stub.  I would hope that it will be
 # expanded to provide greater functionality in the future.
 
-
+from pathlib import Path
 from typing import Any, Dict, Optional
 
+
+JOB_SCRIPT_TEMPLATE = Path(__file__).parent / "payu-submit.sh"
 
 class Scheduler(object):
     """Abstract scheduler class."""
