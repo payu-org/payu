@@ -252,7 +252,7 @@ called ``stop_run`` in the control directory.
 It is possible to require that a run reproduce an existing run using the 
 ``-r/--reproduce`` flag:
 
-  payu run -r
+   payu run -r
 
 When this invoked all the manifests are read in and hashes checked for consistency
 and only if all executables, inputs and restart files are unchanged will the run
@@ -273,8 +273,46 @@ If restart pruning configuration has changed, there may be warnings if
 many restarts will be pruned as a result. If this is desired, at the next 
 run use ``-F/--force-prune-restarts`` flag:
 
-  payu run --force-prune-restarts
+   payu run --force-prune-restarts
 
+
+Monitoring payu jobs
+====================
+
+To monitor the status of running and finished payu run jobs, run::
+
+   payu status
+
+By default, this displays information about the latest run number.
+This includes:
+* The scheduler job ID
+* Filepaths to the scheduler standard output and error files, if available
+* The current or last stage of the run. The stages are:
+ * ``queued`` - the job has been submitted to the scheduler
+ * ``setup`` - the job has started running, and payu is setting up for the
+ model run
+ * ``model-run`` - the model is running
+ * ``archive`` - the model has finished running, and payu is archiving the
+ run output
+* Exit status of the payu run, if available. This is set at the end of a payu
+run so may not reflect the exit status of the scheduler job - for example, if
+a subsequent payu run on the same job submission fails.
+* The exit status of the model run MPI command, if available
+* Filepath to a JSON job file, which stores additional information about the
+payu run, such as the manifests, payu configuration, scheduler information
+queried during the run, and timings of steps in the payu run.
+
+To display all runs, including failed runs, use ``--all`` flag, for example::
+
+   payu status --all
+
+To display the status of a specific run number, use the ``-n`` flag::
+
+   payu status -n 10
+
+To output JSON-formatted status information, use the ``--json`` flag::
+
+   payu status --json
 
 Cleaning up 
 ===========

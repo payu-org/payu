@@ -189,10 +189,8 @@ def update_all_job_files(
     to the scheduler in quick succession as an attack. This is also why
     this method only queries the scheduler once for all jobs
 
-    TODO: Parse the stdout files to get the exit status (though this will
-    require specific scheduler methods..)
-    TODO: Could copy the job files to the error logs so these
-    can be included in the status output
+    TODO: Parse the stdout files to get the exit status - this will
+    require specific scheduler methods.
     """
     # Get all jobs status and exit codes from the scheduler
     all_jobs = scheduler.get_all_jobs_status()
