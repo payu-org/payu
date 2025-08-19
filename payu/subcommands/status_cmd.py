@@ -15,6 +15,7 @@ from payu.status import (
     display_job_info,
     update_all_job_files
 )
+from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 
 title = 'status'
 parameters = {'description': 'Display payu run information'}
@@ -55,9 +56,12 @@ def runcmd(lab_path, config_path, json_output,
         all_runs=all_runs
     )
     if update_jobs:
+        # Get the scheduler
+        scheduler_name = config.get('scheduler', DEFAULT_SCHEDULER_CONFIG)
+        scheduler = scheduler_index[scheduler_name]()
         # Update the job files in data with the latest information
         # from the scheduler
-        update_all_job_files(data, expt.scheduler)
+        update_all_job_files(data, scheduler)
         # Rerun parsing job files to get the latest data
         data = build_job_info(
             control_path=control_path,
