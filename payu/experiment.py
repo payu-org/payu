@@ -69,7 +69,6 @@ def timeit(time_name):
 
 
 class Experiment(object):
-    @timeit("payu_init_duration_seconds")
     def __init__(self, lab, reproduce=False, force=False, metadata_off=False):
         self.init_timings()
         self.lab = lab
@@ -478,7 +477,8 @@ class Experiment(object):
             file_path=self.job_file,
             scheduler=self.scheduler,
             metadata=self.metadata,
-            extra_info=self.setup_run_info()
+            extra_info=self.setup_run_info(),
+            timings=self.timings,
         )
 
         # Confirm that no output path already exists
@@ -719,7 +719,8 @@ class Experiment(object):
             file_path=self.job_file,
             stage='model-run',
             manifests=self.manifest,
-            extra_info=self.run_info()
+            extra_info=self.run_info(),
+            timings=self.timings,
         )
         # NOTE: This may not be necessary, since env seems to be getting
         # correctly updated.  Need to look into this.
@@ -744,6 +745,7 @@ class Experiment(object):
         telemetry.update_run_job_file(
             file_path=self.job_file,
             extra_info=self.model_run_info(),
+            timings=self.timings,
         )
 
         # Remove any empty output files (e.g. logs)
@@ -878,6 +880,7 @@ class Experiment(object):
         telemetry.update_run_job_file(
             file_path=self.job_file,
             stage='archive',
+            timings=self.timings
         )
         # Check there is a work directory, otherwise bail
         if not os.path.exists(self.work_sym_path):

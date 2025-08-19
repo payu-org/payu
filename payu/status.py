@@ -196,7 +196,7 @@ def update_all_job_files(
     """
     # Get all jobs status and exit codes from the scheduler
     all_jobs = scheduler.get_all_jobs_status()
-    if not all_jobs:
+    if all_jobs is None:
         warnings.warn("Failed to get job information from the scheduler")
         return
 
@@ -220,7 +220,7 @@ def update_all_job_files(
                 # Job not found in scheduler
                 if stage == "queued":
                     remove_job_file(file_path=job_file)
-                elif run_status is not None:
+                elif run_status is None:
                     # Run status isn't set, so job must have exited earlier
                     update_job_file(
                         file_path=job_file,
@@ -229,7 +229,7 @@ def update_all_job_files(
             elif exit_status is not None:
                 if stage == "queued":
                     remove_job_file(file_path=job_file)
-                elif run_status is not None:
+                elif run_status is None:
                     update_job_file(
                         file_path=job_file,
                         data={

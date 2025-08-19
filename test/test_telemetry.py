@@ -336,7 +336,8 @@ def test_setup_run_job_file(tmp_path, mock_scheduler, mock_metadata,
     setup_run_job_file(
         file_path=job_info_filepath,
         scheduler=mock_scheduler,
-        metadata=mock_metadata
+        metadata=mock_metadata,
+        timings={'payu_start_time': datetime(2025, 1, 1)}
     )
 
     assert job_info_filepath.exists()
@@ -348,6 +349,9 @@ def test_setup_run_job_file(tmp_path, mock_scheduler, mock_metadata,
             "experiment_metadata": {
                 "experiment_uuid": "test-uuid"
             },
+            "timings": {
+                "payu_start_time": "2025-01-01T00:00:00"
+            },
         }
 
 
@@ -357,7 +361,8 @@ def test_setup_run_job_file_no_path(mock_scheduler, mock_metadata):
     setup_run_job_file(
         file_path=None,
         scheduler=mock_scheduler,
-        metadata=mock_metadata
+        metadata=mock_metadata,
+        timings={'payu_start_time': datetime(2025, 1, 1)}
     )
     assert not mock_scheduler.get_job_id.called
 
@@ -450,7 +455,8 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env,
             "payu_archive_path": "path/to/archive/dir",
             "user_id": "test_user",
             "payu_config": {"model": "TEST_MODEL"},
-        }
+        },
+        timings=timings
     )
     # Before model run
     update_run_job_file(

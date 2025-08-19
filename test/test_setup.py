@@ -377,15 +377,13 @@ def test_setup_timing():
     assert expt.timings is not None
     assert "payu_start_time" in expt.timings
     assert isinstance(expt.timings['payu_start_time'], datetime.datetime)
-    assert "payu_init_duration_seconds" in expt.timings
-    assert isinstance(expt.timings['payu_init_duration_seconds'], float)
-    assert len(expt.timings) == 2
+    assert len(expt.timings) == 1
 
     with cd(ctrldir):
         expt.setup()
 
     # Check setup method time has been recorded
-    assert len(expt.timings) == 4
+    assert len(expt.timings) == 3
     assert 'payu_setup_duration_seconds' in expt.timings
     assert isinstance(expt.timings['payu_setup_duration_seconds'], float)
     assert 'setup_userscript_duration_seconds' in expt.timings
