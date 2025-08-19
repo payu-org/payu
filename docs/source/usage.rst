@@ -285,19 +285,29 @@ To monitor the status of running and finished payu run jobs, run::
 
 By default, this displays information about the latest run number.
 This includes:
+
 * The scheduler job ID
+
 * Filepaths to the scheduler standard output and error files, if available
+
 * The current or last stage of the run. The stages are:
- * ``queued`` - the job has been submitted to the scheduler
- * ``setup`` - the job has started running, and payu is setting up for the
- model run
- * ``model-run`` - the model is running
- * ``archive`` - the model has finished running, and payu is archiving the
+
+   * ``queued`` - the job has been submitted to the scheduler
+
+   * ``setup`` - the job has started running, and payu is setting up for the
+   model run
+
+   * ``model-run`` - the model is running
+
+   * ``archive`` - the model has finished running, and payu is archiving the
  run output
+
 * Exit status of the payu run, if available. This is set at the end of a payu
 run so may not reflect the exit status of the scheduler job - for example, if
 a subsequent payu run on the same job submission fails.
+
 * The exit status of the model run MPI command, if available
+
 * Filepath to a JSON job file, which stores additional information about the
 payu run, such as the manifests, payu configuration, scheduler information
 queried during the run, and timings of steps in the payu run.
