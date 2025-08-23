@@ -61,7 +61,14 @@ class GitRepository:
         """Return the current git branch or None if repository path is
         not a git repository"""
         if self.repo:
-            return str(self.repo.active_branch)
+            if self.repo.head.is_detached:
+                raise PayuBranchError(
+                    "Repo is in a detached HEAD state"
+                )
+            else:
+                return str(self.repo.active_branch)
+        else:
+            return None
 
     def get_hash(self) -> Optional[str]:
         """Return the current git commit hash or None if repository path is
