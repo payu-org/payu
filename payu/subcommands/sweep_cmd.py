@@ -1,5 +1,7 @@
 # coding: utf-8
 
+import sys
+
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 from payu.git_utils import PayuBranchError
@@ -21,7 +23,7 @@ def runcmd(model_type, config_path, hard_sweep, lab_path, metadata_off):
         expt.sweep(hard_sweep)
     except PayuBranchError as e:
         # Check it is a detached HEAD state error before offering remedy
-        if "detached HEAD" in e:
+        if "detached HEAD" in str(e):
             sys.exit('payu: error:\n{e}.\n'
                      'Checkout a branch before running payu sweep again.')
         else:
