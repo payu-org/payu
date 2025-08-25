@@ -231,11 +231,17 @@ def test_git_checkout_missing_origin_repo():
 
 
 def test_git_get_branch_detached_head():
+    """In Issue #625 there was an unhelpful exception message
+    when payu sweep was run from a repo with a detached HEAD.
+    Now throw exception will be caught in the caller."""
+
     # Setup
     detached_repo_path = tmpdir / 'detachedRepo'
-    detached= create_new_repo(detached_repo_path)
+    create_new_repo(detached_repo_path)
 
-    assert detached.repo.get_branch_name() == "main"
+    detached = GitRepository(detached_repo_path)
+
+    assert detached.get_branch_name() == "main"
 
     # Checkout HEAD commit to make detached state
     detached.repo.git.checkout(detached.repo.commit("HEAD"))
@@ -245,4 +251,4 @@ def test_git_get_branch_detached_head():
     expected_msg = "Repo is in a detached HEAD state"
 
     with pytest.raises(PayuBranchError, match=expected_msg):
-        detached.repo.get_branch_name()
+        detached.get_branch_name()
