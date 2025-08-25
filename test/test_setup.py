@@ -9,7 +9,7 @@ import payu
 
 from .common import cd, make_random_file, get_manifests
 from .common import tmpdir, ctrldir, labdir, workdir
-from .common import payu_init, payu_setup
+from .common import payu_init, payu_setup, sweep_work
 from .common import config as config_orig
 from .common import write_config
 from .common import make_exe, make_inputs, make_expt_archive_dir
@@ -184,6 +184,18 @@ def test_setup():
     assert setup_error.type == SystemExit
 
     assert workdir.is_symlink and workdir.is_dir()
+
+
+def test_sweep():
+    """Test sweeping ephemeral work directory functions
+    correctly"""
+    run_payu_setup(create_inputs=True, create_config_files=True)
+
+    assert workdir.is_symlink and workdir.is_dir()
+
+    sweep_work()
+
+    assert not workdir.exists()
 
 
 @pytest.mark.parametrize(
