@@ -241,7 +241,7 @@ def test_git_get_branch_detached_head():
 
     detached = GitRepository(detached_repo_path)
 
-    assert detached.get_branch_name() == "master"
+    assert detached.get_branch_name() == "main"
 
     # Checkout HEAD commit to make detached state
     detached.repo.git.checkout(detached.repo.commit("HEAD"))
