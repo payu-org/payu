@@ -29,7 +29,7 @@ def setup_and_teardown():
 
 def create_new_repo(repo_path):
     """Helper function to initialise a repo and create first commit"""
-    repo = git.Repo.init(repo_path)
+    repo = git.Repo.init(repo_path, initial_branch='main')
     init_file = repo_path / "init.txt"
     add_file_and_commit(repo, init_file)
     return repo
@@ -241,14 +241,18 @@ def test_git_get_branch_detached_head():
 
     detached = GitRepository(detached_repo_path)
 
-    assert detached.get_branch_name() == "master"
+    assert detached.get_branch_name() == "main"
 
     # Checkout HEAD commit to make detached state
     detached.repo.git.checkout(detached.repo.commit("HEAD"))
 
     assert detached.repo.head.is_detached
 
-    expected_msg = "Repo is in a detached HEAD state"
+    expected_msg = ("\nRepo is in a detached HEAD state.\n"
+                    "Checkout a branch before running again.\n")
 
-    with pytest.raises(PayuBranchError, match=expected_msg):
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
         detached.get_branch_name()
+
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.args[0] == expected_msg
