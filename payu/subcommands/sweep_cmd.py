@@ -17,17 +17,16 @@ arguments = [args.model, args.config, args.hard_sweep, args.laboratory,
 def runcmd(model_type, config_path, hard_sweep, lab_path, metadata_off):
 
     lab = Laboratory(model_type, config_path, lab_path)
-    expt = Experiment(lab, metadata_off=metadata_off)
-
     try:
-        expt.sweep(hard_sweep)
+        expt = Experiment(lab, metadata_off=metadata_off)
     except PayuBranchError as e:
         # Check it is a detached HEAD state error before offering remedy
         if "detached HEAD" in str(e):
-            sys.exit('payu: error:\n{e}.\n'
-                     'Checkout a branch before running payu sweep again.')
+            sys.exit(f'\npayu: error: {e}\n\n'
+                     'Checkout a branch before running payu sweep again.\n')
         else:
             raise
 
+    expt.sweep(hard_sweep)
 
 runscript = runcmd
