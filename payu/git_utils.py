@@ -5,6 +5,7 @@ Using the GitPython library for interacting with Git
 
 import warnings
 from pathlib import Path
+import sys
 from typing import Optional, Union, List, Dict
 
 import git
@@ -62,9 +63,8 @@ class GitRepository:
         not a git repository"""
         if self.repo:
             if self.repo.head.is_detached:
-                raise PayuBranchError(
-                    "Repo is in a detached HEAD state"
-                )
+                sys.exit("\nRepo is in a detached HEAD state.\n"
+                         "Checkout a branch before running again.\n")
             else:
                 return str(self.repo.active_branch)
         else:
