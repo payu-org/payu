@@ -12,9 +12,6 @@ from pathlib import Path
 from payu.models.model import Model
 from payu.fsops import mkdir_p
 
-config_files = []
-optional_config_files = []
-
 class Roms(Model):
 
     def __init__(self, expt, name, config):
@@ -24,9 +21,9 @@ class Roms(Model):
 
         # Model-specific configuration
         self.model_type = 'roms'
-
-        self.config_files = config_files
-        self.optional_config_files = optional_config_files
+        
+        self.config_files = []
+        self.optional_config_files = []
 
     def setup(self):
         ## handle mandatory config files
