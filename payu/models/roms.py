@@ -12,7 +12,7 @@ from pathlib import Path
 from payu.models.model import Model
 from payu.fsops import mkdir_p
 
-config_files = ['varinfo_seacofs.yaml']
+config_files = []
 optional_config_files = []
 
 class Roms(Model):
@@ -29,7 +29,7 @@ class Roms(Model):
         self.optional_config_files = optional_config_files
 
     def setup(self):
-        # Add the model config file to the list of config files
+        ## handle mandatory config files
         if 'model_config' not in self.config:
             raise ValueError(
                 "'model_config' field must be specified in config.yaml for "
@@ -45,6 +45,20 @@ class Roms(Model):
             )
 
         self.config_files.append(model_config)
+
+        ## handle optional config files
+        optional_config_files = self.expt.config['optional_config_files']
+        if optional_config_files and isinstance(optional_config_files, str):
+            optional_config_files = [optional_config_files]
+
+        for optional_file in optional_config_files:
+            if not (Path(self.control_path) / optional_file).is_file():
+                raise FileNotFoundError(
+                    f"Optional configuration file '{optional_file}' not found in the "
+                    f"control directory: {self.control_path}"
+                )
+
+        self.optional_config_files.extend(optional_config_files)
 
         super(Roms, self).setup()
 
