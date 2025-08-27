@@ -87,7 +87,7 @@ jobs:
 
       - name: Run tests
         run: |
-          PYTHONPATH=. pytest --cov=payu -s test;
+          PYTHONPATH=. pytest --cov=payu test;
 
       - name: Coveralls
         uses: AndreMiras/coveralls-python-action@65c1672f0b8a201702d86c81b79187df74072505

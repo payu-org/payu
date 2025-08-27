@@ -10,7 +10,7 @@ import yaml
 # Namespace clash if import setup_cmd.runcmd as setup. For
 # consistency use payu_ prefix for all commands
 from payu.subcommands.init_cmd import runcmd as payu_init
-from payu.subcommands.setup_cmd import runcmd as payu_setup_orignal
+from payu.subcommands.setup_cmd import runcmd as payu_setup_original
 from payu.subcommands.sweep_cmd import runcmd as payu_sweep
 
 ctrldir_basename = 'ctrl'
@@ -127,7 +127,7 @@ def payu_setup(model_type=None,
                        hard_sweep=False,
                        lab_path=str(labdir),
                        metadata_off=False)
-        payu_setup_orignal(model_type,
+        payu_setup_original(model_type,
                            config_path,
                            lab_path,
                            force_archive,

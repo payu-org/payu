@@ -5,6 +5,7 @@ Using the GitPython library for interacting with Git
 
 import warnings
 from pathlib import Path
+import sys
 from typing import Optional, Union, List, Dict
 
 import git
@@ -61,7 +62,13 @@ class GitRepository:
         """Return the current git branch or None if repository path is
         not a git repository"""
         if self.repo:
-            return str(self.repo.active_branch)
+            if self.repo.head.is_detached:
+                sys.exit("\nRepo is in a detached HEAD state.\n"
+                         "Checkout a branch before running again.\n")
+            else:
+                return str(self.repo.active_branch)
+        else:
+            return None
 
     def get_hash(self) -> Optional[str]:
         """Return the current git commit hash or None if repository path is
