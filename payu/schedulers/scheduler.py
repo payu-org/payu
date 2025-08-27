@@ -45,3 +45,16 @@ class Scheduler(object):
             Job id if defined, None otherwise
         """
         pass
+
+
+    def get_all_jobs_status(self) -> Optional[Dict[str, Any]]:
+        """
+        Get dictionary with job IDs as keys and values of with
+        'job_state', and 'exit_status' for each job ID
+
+        Returns
+        ----------
+        Optional[Dict[str, Any]]
+            Dictionary of job IDs and their statuses
+        """
+        pass

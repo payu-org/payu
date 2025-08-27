@@ -16,7 +16,7 @@ from payu.schedulers.scheduler import Scheduler
 
 
 class Slurm(Scheduler):
-    # TODO: __init__
+    name = "slurm"
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
         """Prepare a correct PBS command string"""

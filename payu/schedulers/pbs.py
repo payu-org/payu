@@ -12,18 +12,20 @@ import sys
 import shlex
 import subprocess
 from typing import Any, Dict, Optional
+import warnings
+
+import json
+from tenacity import retry, stop_after_delay
 
 import payu.envmod as envmod
 from payu.fsops import check_exe_path
 from payu.manifest import Manifest
 from payu.schedulers.scheduler import Scheduler
 
-from tenacity import retry, stop_after_delay
-
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
 class PBS(Scheduler):
-    # TODO: __init__
+    name = "pbs"
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
         """Prepare a correct PBS command string"""
@@ -170,7 +172,7 @@ class PBS(Scheduler):
             # Strip off '.rman2'
             jobid = jobid.split('.')[0]
 
-        return(jobid)
+        return jobid
 
     def get_job_info(self) -> Optional[Dict[str, Any]]:
         """
@@ -185,18 +187,67 @@ class PBS(Scheduler):
 
         info = None
 
-        if not jobid == '':
-            info = get_qstat_info('-ft {0}'.format(jobid), 'Job Id:')
-
-        if info is not None:
-            # Select the dict for this job (there should only be one
-            # entry in any case)
-            info = info['Job Id: {}'.format(jobid)]
-
-            # Add the jobid to the dict and then return
-            info['Job_ID'] = jobid
+        if not jobid == '' and jobid is not None:
+            info = get_job_info_json(jobid)
 
         return info
+
+
+    def get_all_jobs_status(self) -> Optional[Dict[str, Any]]:
+        """
+        Get information about all jobs from the PBS server
+
+        Returns
+        ----------
+        Optional[Dict[str, Any]]
+            Dictionary of information extracted from qstat output
+        """
+        info = get_job_info_json()
+        if info is None:
+            return None
+        job_statuses = {}
+        jobs = info.get('Jobs', {})
+        for job_id, job_info in jobs.items():
+            job_statuses[job_id] = {
+                'job_state': job_info.get('job_state'),
+                'exit_status': job_info.get('Exit_status'),
+            }
+        return job_statuses
+
+
+@retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
+def get_job_info_json(
+            job_id: Optional[str] = None
+        ) -> Optional[Dict[str, Any]]:
+    """
+    Get full job information in JSON format from qstat. It is wrapped in retry
+    with timeout to allow for PBS server to be slow to respond.
+    If job_id is provided, get info for that job; otherwise, get info for
+    all jobs.
+    If timeout occurs or invalid json, return None
+    """
+    cmd = ["qstat", "-f", "-F", "json"]
+    if job_id:
+        cmd.append(job_id)
+
+    # Parse the JSON output
+    try:
+        qstat_output = subprocess.run(
+            cmd, capture_output=True, text=True, check=True,
+        )
+        return json.loads(qstat_output.stdout)
+    except json.JSONDecodeError as e:
+        warnings.warn(
+            f"Failed to decode JSON output from qstat command: {' '.join(cmd)}"
+            f"\n Error: {e}"
+        )
+        raise
+    except subprocess.CalledProcessError as e:
+        warnings.warn(
+            f"Failed to run qstat command: {' '.join(cmd)}"
+            f"\n Error: {e}"
+        )
+        raise
 
 
 def pbs_env_init():
@@ -219,36 +270,6 @@ def pbs_env_init():
     except IOError as ec:
         print('Unable to find PBS_CONF_FILE ... ' + pbs_conf_fpath)
         sys.exit(1)
-
-
-# Wrap this in retry from tenancity. Keep trying for 10 seconds and
-# even if still fails return None
-@retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
-def get_qstat_info(qflag, header, projects=None, users=None):
-    # qstat command seems to be accessible from the path on PBS jobs
-    cmd = f'qstat {qflag}'
-
-    cmd = shlex.split(cmd)
-    output = subprocess.check_output(cmd)
-    if sys.version_info.major >= 3:
-        output = output.decode()
-
-    entries = (e for e in output.split('{}: '.format(header)) if e)
-
-    # Immediately remove any non-project entries
-    if projects or users:
-        entries = (e for e in entries
-                   if any('project = {}'.format(p) in e for p in projects)
-                   or any('Job_Owner = {}'.format(u) in e for u in users))
-
-    attribs = ((k.split('.')[0], v.replace('\n\t', '').split('\n'))
-               for k, v in (e.split('\n', 1) for e in entries))
-
-    status = {k: dict((kk.strip(), vv.strip())
-              for kk, vv in (att.split('=', 1) for att in v if att))
-              for k, v in attribs}
-
-    return status
 
 
 def encode_mount(mount):
