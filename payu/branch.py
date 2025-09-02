@@ -442,7 +442,7 @@ def list_branches(config_path: Optional[Path] = None,
     control_path = get_control_path(config_path)
     git_repo = GitRepository(control_path)
 
-    current_branch = git_repo.repo.active_branch
+    current_branch = git_repo.get_branch()
     print(f"* Current Branch: {current_branch.name}")
     print_branch_metadata(current_branch, verbose)
 

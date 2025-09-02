@@ -58,7 +58,7 @@ class GitRepository:
             repo = get_git_repository(repo_path, catch_error=catch_error)
         self.repo = repo
 
-    def get_branch_name(self) -> Optional[str]:
+    def get_branch(self) -> Optional[str]:
         """Return the current git branch or None if repository path is
         not a git repository"""
         if self.repo:
@@ -66,7 +66,18 @@ class GitRepository:
                 sys.exit("\nRepo is in a detached HEAD state.\n"
                          "Checkout a branch before running again.\n")
             else:
-                return str(self.repo.active_branch)
+                return self.repo.active_branch
+        else:
+            return None
+
+    def get_branch_name(self) -> Optional[str]:
+        """Return the current git branch or None if repository path is
+        not a git repository"""
+
+        branch = self.get_branch()
+
+        if branch is not None:
+            return branch.name
         else:
             return None
 
@@ -74,7 +85,11 @@ class GitRepository:
         """Return the current git commit hash or None if repository path is
           not a git repository"""
         if self.repo:
-            return self.repo.active_branch.object.hexsha
+            branch = self.repo.get_branch()
+            if branch is not None:
+                return branch.object.hexsha
+            else:
+                return None
 
     def get_origin_url(self) -> Optional[str]:
         """Return url of remote origin if it exists"""

@@ -90,6 +90,14 @@ def test_get_git_user_info_config_set():
     assert value == 'TestUserName'
 
 
+def test_get_branch():
+    # Setup
+    repo_path = tmpdir / 'test_repo_get_branch'
+    new_repo = GitRepository(repo_path, repo=create_new_repo(repo_path))
+
+    assert new_repo.get_branch_name() == 'main'
+
+
 @pytest.mark.parametrize("ref", ["branch", "hash", None])
 def test_git_checkout_new_branch_from_remote_ref(ref):
     # Setup
