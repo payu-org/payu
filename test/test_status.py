@@ -138,6 +138,7 @@ def running_job(tmp_path, request):
                 "scheduler_type": "pbs",
                 "metadata": {"uuid": "test-uuid"},
                 "payu_current_run": 3,
+                "payu_run_id": "commit-hash3",
                 "stage": "model-run",
                 "timings": {
                     "payu_start_time": "2025-08-15T16:30:00"
@@ -162,6 +163,7 @@ def archive_jobs(tmp_path, request):
                         "scheduler_type": "pbs",
                         "metadata": {"uuid": "test-uuid"},
                         "payu_current_run": i,
+                        "payu_run_id": f"commit-hash{i}",
                         "stage": "archive",
                         "payu_run_status": 0,
                         "payu_model_run_status": 0,
@@ -187,6 +189,7 @@ def failed_job(tmp_path, request):
                 "scheduler_type": "pbs",
                 "metadata": {"uuid": "test-uuid"},
                 "payu_current_run": 3,
+                "payu_run_id": "commit-hash-failed",
                 "stage": "setup",
                 "payu_run_status": 1,
                 "timings": {
@@ -293,6 +296,7 @@ def expected_archive_job_info(run_number):
     return {
         'exit_status': 0,
         'job_id': f'test-job-id-{run_number}',
+        'run_id': f'commit-hash{run_number}',
         'model_exit_status': 0,
         'stage': 'archive',
         'stderr_file': None,
@@ -305,6 +309,7 @@ def expected_running_job_info():
     return {
         'exit_status': None,
         'job_id': 'test-job-id-3',
+        'run_id': 'commit-hash3',
         'model_exit_status': None,
         'stage': 'model-run',
         'stderr_file': None,
@@ -317,6 +322,7 @@ def expected_queued_job_info():
     return {
         'exit_status': None,
         'job_id': 'test-job-id-3',
+        'run_id': None,
         'model_exit_status': None,
         'stage': 'queued',
         'stderr_file': None,
@@ -329,6 +335,7 @@ def expected_failed_job_info():
     return {
         'exit_status': 1,
         'job_id': 'test-job-id-failed',
+        'run_id': 'commit-hash-failed',
         'model_exit_status': None,
         'stage': 'setup',
         'stderr_file': None,

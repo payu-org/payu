@@ -142,6 +142,7 @@ def build_job_info(
         )
         run_info = {
             "job_id": data.get("scheduler_job_id"),
+            "run_id": data.get("payu_run_id"),
             "stage": data.get("stage"),
             "exit_status": data.get("payu_run_status"),
             "model_exit_status": data.get("payu_model_run_status"),
@@ -259,6 +260,7 @@ def display_job_info(data: dict[str, Any]) -> None:
             print("=" * 40)
             print(f"Run: {run_number}")
             print_line("Job ID", "job_id", run_info)
+            print_line("Run ID", "run_id", run_info)
             print_line("Stage", "stage", run_info)
             exit_status = run_info.get("exit_status")
             if exit_status is not None:

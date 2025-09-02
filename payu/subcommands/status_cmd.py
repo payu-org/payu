@@ -64,8 +64,8 @@ def runcmd(lab_path, config_path, json_output,
         update_all_job_files(data, scheduler)
         # Rerun parsing job files to get the latest data
         data = build_job_info(
-            control_path=control_path,
             archive_path=archive_path,
+            control_path=control_path,
             run_number=run_number,
             all_runs=all_runs
         )
