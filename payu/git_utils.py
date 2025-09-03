@@ -64,9 +64,8 @@ class GitRepository:
         if self.repo:
             if self.repo.head.is_detached:
                 sys.exit("\nRepo is in a detached HEAD state.\n"
-                         "Checkout a branch using\n\n"
-                         "payu checkout <branch>\n\n"
-                         "before running again.\n")
+                         "Before running again checkout a branch using\n\n"
+                         "    payu checkout <branch>\n\n")
             else:
                 return self.repo.active_branch
         else:
