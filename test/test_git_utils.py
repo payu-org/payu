@@ -259,5 +259,9 @@ def test_git_get_branch_detached_head():
     expected_msg = ("\nRepo is in a detached HEAD state.\n"
                     "Checkout a branch before running again.\n")
 
+    expected_msg = ("\nRepo is in a detached HEAD state.\n"
+                    "Before running again checkout a branch using"
+                    "\n\n    payu checkout <branch>\n\n")
+
     with pytest.raises(SystemExit, match=expected_msg):
         detached.get_branch_name()
