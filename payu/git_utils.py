@@ -58,7 +58,7 @@ class GitRepository:
             repo = get_git_repository(repo_path, catch_error=catch_error)
         self.repo = repo
 
-    def get_branch(self) -> Optional[str]:
+    def get_branch(self) -> Optional[git.Head]:
         """Return the current git branch or None if repository path is
         not a git repository"""
         if self.repo:
