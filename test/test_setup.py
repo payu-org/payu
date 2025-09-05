@@ -1,9 +1,12 @@
 import copy
 import os
+import datetime
 from pathlib import Path
 import pytest
 import shutil
 from unittest.mock import patch
+
+import json
 
 import payu
 
@@ -354,3 +357,55 @@ def test_set_prior_restart_with_non_zero_counter_and_restart(tmp_path,
     error_msg = rf'No restart directory found at {user_restart}.*'
     with pytest.raises(ValueError, match=error_msg):
         expt = init_experiment(config)
+
+
+def test_setup_timing():
+    """Check timings are initialised and payu setup
+    time is recorded"""
+    make_exe()
+    make_inputs()
+    make_config_files()
+    config = copy.deepcopy(config_orig)
+    # Add setup userscript
+    config['userscripts'] = {
+        'setup': 'echo "Running setup userscript"'
+    }
+
+    # Initialize the experiment
+    expt = init_experiment(config)
+    # Test timings are initialized
+    assert expt.timings is not None
+    assert "payu_start_time" in expt.timings
+    assert isinstance(expt.timings['payu_start_time'], datetime.datetime)
+    assert len(expt.timings) == 1
+
+    with cd(ctrldir):
+        expt.setup()
+
+    # Check setup method time has been recorded
+    assert len(expt.timings) == 3
+    assert 'payu_setup_duration_seconds' in expt.timings
+    assert isinstance(expt.timings['payu_setup_duration_seconds'], float)
+    assert 'setup_userscript_duration_seconds' in expt.timings
+    assert isinstance(expt.timings['setup_userscript_duration_seconds'], float)
+
+
+def test_setup_telemetry_file(tmp_path):
+    """Check job file used for telemetry is created at setup"""
+    make_exe()
+    make_inputs()
+    make_config_files()
+
+    expt = init_experiment(config_orig)
+    with cd(ctrldir):
+        expt.job_file = tmp_path / 'job-id.json'
+        # Run setup
+        expt.setup()
+
+    path = tmp_path / 'job-id.json'
+    assert path.exists() and path.is_file()
+
+    with open(path, 'r') as f:
+        data = json.load(f)
+    assert data['stage'] == 'setup'
+    assert data['payu_current_run'] == 0

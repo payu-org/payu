@@ -1,0 +1,198 @@
+{
+    "$id": "https://raw.githubusercontent.com/ACCESS-NRI/schema/main/au.org.access-nri/tracking_services/payu/telemetry/1-0-0.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Telemetry data for payu runs",
+    "description": "Schema for JSON payload sent to tracking_services payu database",
+    "type": "object",
+    "properties": {
+        "service": {
+            "type": "string",
+            "description": "The name of the service in ACCESS-NRI tracking services"
+        },
+        "version": {
+            "type": "string"
+        },
+        "telemetry": {
+            "type": "object",
+            "properties": {
+                "experiment_metadata": {
+                    "type": "object",
+                    "description": "Metadata about the experiment (from the metadata.yaml file)"
+                },
+                "payu_run_id": {
+                    "type": "string",
+                    "description": "The git commit hash of the run from the payu run log"
+                },
+                "payu_current_run": {
+                    "type": "integer",
+                    "description": "Current payu run number (0 for first run, 1 for second run, etc.)"
+                },
+                "payu_n_runs": {
+                    "type": "integer",
+                    "description": "Total number of payu run cycles to run"
+                },
+                "payu_model_run_status": {
+                    "type": "integer",
+                    "description": "Return code of the model run command"
+                },
+                "payu_run_status": {
+                    "type": "integer",
+                    "description": "Status of the payu run job (0 for success, non-zero for failure)"
+                },
+                "payu_version": {
+                    "type": "string",
+                    "description": "Version of Payu software used"
+                },
+                "payu_path": {
+                    "type": "string",
+                    "description": "Path to the Payu executable used"
+                },
+                "scheduler_job_info": {
+                    "type": "object",
+                    "description": "Information queried from the scheduler about the running job"
+                },
+                "scheduler_type": {
+                    "type": "string",
+                    "description": "Type of scheduler used (e.g., slurm, pbs, etc.)"
+                },
+                "hostname": {
+                    "type": "string",
+                    "description": "Name of the HPC environment (e.g. gadi)"
+                },
+                "user_id": {
+                    "type": "string",
+                    "description": "ID of the user running the job"
+                },
+                "payu_control_path": {
+                    "type": "string",
+                    "description": "Path to the payu control directory (where the run is executed from)"
+                },
+                "payu_archive_path": {
+                    "type": "string",
+                    "description": "Path to the payu archive directory (where the outputs, restarts and logs are stored)"
+                },
+                "payu_config": {
+                    "type": "object",
+                    "description": "Payu configuration used for the model run (from the config.yaml file)"
+                },
+                "manifests": {
+                    "type": "object",
+                    "description": "Manifests of the input, restart, and executable files used in the run",
+                    "properties": {
+                        "input": {
+                            "type": "object"
+                        },
+                        "restart": {
+                            "type": "object"
+                        },
+                        "exe": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "input",
+                        "restart",
+                        "exe"
+                    ]
+                },
+                "timings": {
+                    "type": "object",
+                    "properties": {
+                        "payu_start_time": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Time when the payu run cycle was started"
+                        },
+                        "payu_finish_time": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Time when the payu run cycle was finished (e.g. post-archive)"
+                        },
+                        "payu_total_duration_seconds": {
+                            "type": "number",
+                            "description": "Total duration in seconds of the payu run cycle, e.g. init, setup, model run, archive"
+                        },
+                        "payu_init_duration_seconds": {
+                            "type": "number",
+                            "description": "Duration of the payu init method in seconds"
+                        },
+                        "payu_setup_duration_seconds": {
+                            "type": "number",
+                            "description": "Duration of the payu setup method in seconds"
+                        },
+                        "payu_run_duration_seconds": {
+                            "type": "number",
+                            "description": "Duration of the payu run method in seconds"
+                        },
+                        "payu_archive_duration_seconds": {
+                            "type": "number",
+                            "description": "Duration of the payu archive method in seconds"
+                        },
+                        "payu_model_run_duration_seconds": {
+                            "type": "number",
+                            "description": "Duration of the model run command in seconds (this is run in the payu run method)"
+                        },
+                        "init_userscript_duration_seconds": {
+                            "type": "number",
+                            "description": "Duration in seconds of the user-defined script that runs after experiment initialization"
+                        },
+                        "setup_userscript_duration_seconds": {
+                            "type": "number",
+                            "description": "Duration in seconds of the user-defined script that runs after setup"
+                        },
+                        "run_userscript_duration_seconds": {
+                            "type": "number",
+                            "description": "Duration in seconds of the user-defined script that runs after the model run"
+                        },
+                        "archive_userscript_duration_seconds": {
+                            "type": "number",
+                            "description": "Duration in seconds of the user-defined script that runs after archive"
+                        },
+                        "error_userscript_duration_seconds": {
+                            "type": "number",
+                            "description": "Duration in seconds of the user-defined script that runs after an error occurs in the model run"
+                        }
+                    },
+                    "required": [
+                        "payu_start_time",
+                        "payu_finish_time",
+                        "payu_total_duration_seconds"
+                    ]
+                },
+                "model_calendar": {
+                    "type": "string",
+                    "description": "Cftime calendar used for the model datetimes"
+                },
+                "model_start_datetime": {
+                    "type": "string",
+                    "description": "Model time at the start of the run in ISO format"
+                },
+                "model_finish_datetime": {
+                    "type": "string",
+                    "description": "Model time at the end of the run in ISO format"
+                }
+            },
+            "required": [
+                "payu_run_id",
+                "payu_current_run",
+                "payu_n_runs",
+                "payu_run_status",
+                "payu_model_run_status",
+                "payu_version",
+                "payu_path",
+                "hostname",
+                "user_id",
+                "payu_control_path",
+                "payu_archive_path",
+                "manifests",
+                "payu_config",
+                "timings"
+            ]
+        }
+    },
+    "required": [
+        "service",
+        "version",
+        "telemetry"
+    ]
+}

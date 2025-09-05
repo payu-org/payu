@@ -1,5 +1,6 @@
 import os
 import argparse
+from pathlib import Path
 
 from payu import cli
 from payu.experiment import Experiment
@@ -7,6 +8,7 @@ from payu.laboratory import Laboratory
 import payu.subcommands.args as args
 from payu import fsops
 from payu.manifest import Manifest
+from payu.telemetry import write_queued_job_file, record_run
 
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
@@ -18,7 +20,6 @@ arguments = [args.model, args.config, args.initial, args.nruns,
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
            reproduce=False, force=False, force_prune_restarts=False):
-
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
     pbs_vars = cli.set_env_vars(init_run=init_run,
@@ -107,11 +108,28 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
         pbs_config['mem'] = '{0}GB'.format(pbs_mem)
 
-    cli.submit_job('payu-run', pbs_config, pbs_vars)
+    # Run experiment initialisation to update metadata,
+    # and determine the run counter and uuid before job submission
+    lab = Laboratory(model_type, config_path, lab_path)
+    expt = Experiment(lab, reproduce=reproduce, force=force)
+
+    job_id = cli.submit_job('payu-run', pbs_config, pbs_vars)
+
+    current_run = init_run if init_run is not None else expt.counter
+
+    # This could be done as part of submit_job eventually, but for now
+    # it's only used by the run command.
+    write_queued_job_file(
+        archive_path=Path(expt.archive_path),
+        job_id=job_id,
+        type='run',
+        scheduler=expt.scheduler,
+        metadata=expt.metadata,
+        current_run=current_run,
+    )
 
 
 def runscript():
-
     parser = argparse.ArgumentParser()
     for arg in arguments:
         parser.add_argument(*arg['flags'], **arg['parameters'])
@@ -120,6 +138,7 @@ def runscript():
 
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)
+
     expt = Experiment(lab, reproduce=run_args.reproduce, force=run_args.force)
 
     n_runs_per_submit = expt.config.get('runspersub', 1)
@@ -129,17 +148,36 @@ def runscript():
 
         print('nruns: {0} nruns_per_submit: {1} subrun: {2}'
               ''.format(expt.n_runs, n_runs_per_submit, subrun))
-
-        expt.setup()
-        expt.run()
-        expt.archive(force_prune_restarts=run_args.force_prune_restarts)
+        # Set job filepath for the payu run
+        expt.set_job_file(type='run')
+        try:
+            expt.setup()
+            expt.run()
+            expt.archive(force_prune_restarts=run_args.force_prune_restarts)
+            run_status = 0
+        except:
+            run_status = 1
+            raise
+        finally:
+            # Record job information for experiment run
+            record_run(
+                timings=expt.timings,
+                scheduler=expt.scheduler,
+                run_status=run_status,
+                config=expt.config,
+                file_path=expt.job_file,
+                archive_path=Path(expt.archive_path),
+            )
 
         # Finished runs
         if expt.n_runs == 0:
             break
 
-        # Need to manually increment the run counter if still looping
+        # Check if still looping
         if n_runs_per_submit > 1 and subrun < n_runs_per_submit:
+            # Re-initialise the experiment method timings
+            expt.init_timings()
+            # Need to manually increment the run counter if still looping
             expt.counter += 1
             # Re-initialize manifest: important to clear out restart manifest
             # note no attempt to preserve reproduce flag, it makes no sense
