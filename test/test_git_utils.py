@@ -29,7 +29,7 @@ def setup_and_teardown():
 
 def create_new_repo(repo_path):
     """Helper function to initialise a repo and create first commit"""
-    repo = git.Repo.init(repo_path)
+    repo = git.Repo.init(repo_path, initial_branch='main')
     init_file = repo_path / "init.txt"
     add_file_and_commit(repo, init_file)
     return repo
@@ -88,6 +88,14 @@ def test_get_git_user_info_config_set():
     value = repo.get_user_info('name')
 
     assert value == 'TestUserName'
+
+
+def test_get_branch():
+    # Setup
+    repo_path = tmpdir / 'test_repo_get_branch'
+    new_repo = GitRepository(repo_path, repo=create_new_repo(repo_path))
+
+    assert new_repo.get_branch_name() == 'main'
 
 
 @pytest.mark.parametrize("ref", ["branch", "hash", None])
@@ -228,3 +236,32 @@ def test_git_checkout_missing_origin_repo():
 
         # No remote branches found
         assert repo.remote_branches_dict() == {}
+
+
+def test_git_get_branch_detached_head():
+    """In Issue #625 there was an unhelpful exception message
+    when payu sweep was run from a repo with a detached HEAD.
+    Now throw exception will be caught in the caller."""
+
+    # Setup
+    detached_repo_path = tmpdir / 'detachedRepo'
+    create_new_repo(detached_repo_path)
+
+    detached = GitRepository(detached_repo_path)
+
+    assert detached.get_branch_name() == "main"
+
+    # Checkout HEAD commit to make detached state
+    detached.repo.git.checkout(detached.repo.commit("HEAD"))
+
+    assert detached.repo.head.is_detached
+
+    expected_msg = ("\nRepo is in a detached HEAD state.\n"
+                    "Checkout a branch before running again.\n")
+
+    expected_msg = ("\nRepo is in a detached HEAD state.\n"
+                    "Before running again checkout a branch using"
+                    "\n\n    payu checkout <branch>\n\n")
+
+    with pytest.raises(SystemExit, match=expected_msg):
+        detached.get_branch_name()
