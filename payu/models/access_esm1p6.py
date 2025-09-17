@@ -66,6 +66,11 @@ class AccessEsm1p6(Model):
                 # We also rely on having an extra 'restart_date.nml' file
                 model.start_date_nml_name = "restart_date.nml"
 
+            if model.model_type == 'cice5':
+                # OM2 requires cice5 inputs to be copied for parallel reading.
+                # This is not required for esm1.6
+                model.copy_inputs = False
+
             if model.model_type == 'um':
                 # Additional Cable 3 namelists
 
