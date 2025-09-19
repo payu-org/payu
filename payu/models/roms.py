@@ -25,6 +25,8 @@ class Roms(Model):
         self.config_files = []
         self.optional_config_files = []
 
+        self.copy_restarts = True
+
     def setup(self):
         ## handle mandatory config files
         if 'model_config' not in self.config:
