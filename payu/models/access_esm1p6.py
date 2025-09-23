@@ -67,7 +67,7 @@ class AccessEsm1p6(Model):
                 model.start_date_nml_name = "restart_date.nml"
 
             if model.model_type == 'cice5':
-                # OM2 requires cice5 inputs to be copied for parallel reading.
+                # OM2 copies rather than symlinks cice5 inputs for parallel reading.
                 # This is not required for esm1.6
                 model.copy_inputs = False
 
