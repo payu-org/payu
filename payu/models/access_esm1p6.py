@@ -67,7 +67,8 @@ class AccessEsm1p6(Model):
                 model.start_date_nml_name = "restart_date.nml"
 
             if model.model_type == 'cice5':
-                # OM2 copies rather than symlinks cice5 inputs for parallel reading.
+                # OM2 copies rather than symlinks cice5 inputs to support parallel reading. 
+                # See https://github.com/open-mpi/ompi/issues/12141
                 # This is not required for esm1.6
                 model.copy_inputs = False
 
