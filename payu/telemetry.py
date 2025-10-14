@@ -12,6 +12,7 @@ import shutil
 import tempfile
 import threading
 from typing import Any, Optional
+import urllib3
 import warnings
 
 import cftime
@@ -36,6 +37,8 @@ REQUEST_TIMEOUT = 10
 
 TELEMETRY_VERSION = "1.0.0"
 
+# Disable warnings about unverified HTTPS requests
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def get_metadata(metadata: Metadata) -> Optional[dict[str, Any]]:
     """Returns a dictionary of the experiment metadata to record"""
