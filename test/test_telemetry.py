@@ -129,7 +129,7 @@ def setup_config(config_path):
         "hostname": "gadi",
         "telemetry_service_name": "payu",
         "telemetry_token": "some_token",
-        "telemetry_host": "some_host",
+        "telemetry_proxy_url": "some_persistent_session_url",
     }
     with open(config_path, 'w') as f:
         json.dump(config_data, f)
@@ -172,7 +172,7 @@ def test_get_external_telemetry_config_no_file(
     "hostname",
     "telemetry_service_name",
     "telemetry_token",
-    "telemetry_host"
+    "telemetry_proxy_url"
 ])
 def test_get_external_telemetry_config_missing_fields(
             tmp_path, setup_env, config_path, missing_field
@@ -182,7 +182,7 @@ def test_get_external_telemetry_config_missing_fields(
         "hostname": "gadi",
         "telemetry_service_name": "payu",
         "telemetry_token": "some_token",
-        "telemetry_host": "some_host",
+        "telemetry_proxy_url": "some_persistent_session_url",
     }
     # Remove the specified missing field
     config_data.pop(missing_field)
@@ -523,10 +523,9 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env,
     assert kwargs.get('headers') == {
         'Content-type': 'application/json',
         'Authorization': 'Token some_token',
-        'HOST': 'some_host',
     }
     assert kwargs.get('timeout') == 10
-    assert kwargs.get('verify') is False
+    assert kwargs.get('proxies') == {"https": "some_persistent_session_url", "http": "some_persistent_session_url"}
 
     assert sent_data["service"] == "payu"
     assert sent_data["version"] == "1.0.0"
