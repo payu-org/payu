@@ -26,9 +26,9 @@ TELEMETRY_CONFIG_VERSION = "1-0-0"
 # Required telemetry configuration fields
 CONFIG_FIELDS = {
     "URL": "telemetry_url",
+    "PROXY_URL": "telemetry_proxy_url",
     "TOKEN": "telemetry_token",
     "SERVICE_NAME": "telemetry_service_name",
-    "HOST": "telemetry_host",
     "HOSTNAME": "hostname",
 }
 
@@ -185,10 +185,10 @@ def write_error_log(
 
 
 def post_telemetry_data(url: str,
+                        proxy_url: str,
                         token: str,
                         data: dict[str, Any],
                         service_name: str,
-                        host: str,
                         archive_path: Path,
                         job_file_path: Path,
                         request_timeout: int = REQUEST_TIMEOUT,
@@ -199,14 +199,14 @@ def post_telemetry_data(url: str,
     ----------
     url: str
         Endpoint for the telemetry
+    proxy_url: str
+        Proxy URL for the telemetry record request
     token: str
         Header token for the telemetry request
     data: dict[str, Any]
         Data to be posted in the telemetry request
     service_name: str
         Service name for the telemetry record
-    host: str
-        Host for the telemetry record header
     archive_path: Path
         Path to the archive directory for the experiment. This is used for
         writing error logs if the telemetry request fails
@@ -219,7 +219,6 @@ def post_telemetry_data(url: str,
     headers = {
         "Content-type": "application/json",
         "Authorization": "Token " + token,
-        "HOST": host,
     }
 
     data = {
@@ -234,7 +233,7 @@ def post_telemetry_data(url: str,
             data=json.dumps(data),
             headers=headers,
             timeout=request_timeout,
-            verify=False
+            proxies={"https": proxy_url, "http": proxy_url},
         )
         if response.status_code >= 400:
             error_message = (
@@ -279,10 +278,10 @@ def record_telemetry(run_info: dict[str, Any],
         target=post_telemetry_data,
         kwargs={
             "url": external_config[CONFIG_FIELDS["URL"]],
+            "proxy_url": external_config[CONFIG_FIELDS["PROXY_URL"]],
             "token": external_config[CONFIG_FIELDS["TOKEN"]],
             "data": run_info,
             "service_name": external_config[CONFIG_FIELDS["SERVICE_NAME"]],
-            "host": external_config[CONFIG_FIELDS["HOST"]],
             "archive_path": archive_path,
             "job_file_path": job_file_path,
         },
