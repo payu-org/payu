@@ -26,10 +26,12 @@ TELEMETRY_CONFIG_VERSION = "1-0-0"
 # Required telemetry configuration fields
 CONFIG_FIELDS = {
     "URL": "telemetry_url",
-    "PROXY_URL": "telemetry_proxy_url",
     "TOKEN": "telemetry_token",
     "SERVICE_NAME": "telemetry_service_name",
     "HOSTNAME": "hostname",
+}
+OPTIONAL_CONFIG_FIELDS = {
+    "PROXY_URL": "telemetry_proxy_url",
 }
 
 REQUEST_TIMEOUT = 10
@@ -185,12 +187,12 @@ def write_error_log(
 
 
 def post_telemetry_data(url: str,
-                        proxy_url: str,
                         token: str,
                         data: dict[str, Any],
                         service_name: str,
                         archive_path: Path,
                         job_file_path: Path,
+                        proxy_url: Optional[str] = None,
                         request_timeout: int = REQUEST_TIMEOUT,
                         ) -> None:
     """Posts telemetry data
@@ -199,8 +201,6 @@ def post_telemetry_data(url: str,
     ----------
     url: str
         Endpoint for the telemetry
-    proxy_url: str
-        Proxy URL for the telemetry record request
     token: str
         Header token for the telemetry request
     data: dict[str, Any]
@@ -213,6 +213,8 @@ def post_telemetry_data(url: str,
     job_file_path: Path
         Path to the job file for the run. This is used for writing error logs
         if the telemetry request fails
+    proxy_url: Optional[str]
+        Proxy URL for the telemetry record request
     request_timeout: int, default REQUEST_TIMEOUT
         Timeout while waiting for request
     """
@@ -228,13 +230,21 @@ def post_telemetry_data(url: str,
     }
 
     try:
-        response = requests.post(
-            url,
-            data=json.dumps(data),
-            headers=headers,
-            timeout=request_timeout,
-            proxies={"https": proxy_url, "http": proxy_url},
-        )
+        if proxy_url is None:
+            response = requests.post(
+                url,
+                data=json.dumps(data),
+                headers=headers,
+                timeout=request_timeout,
+            )
+        else:
+            response = requests.post(
+                url,
+                data=json.dumps(data),
+                headers=headers,
+                timeout=request_timeout,
+                proxies={"https": proxy_url, "http": proxy_url},
+            )
         if response.status_code >= 400:
             error_message = (
                 "Error posting telemetry request: "
@@ -278,12 +288,12 @@ def record_telemetry(run_info: dict[str, Any],
         target=post_telemetry_data,
         kwargs={
             "url": external_config[CONFIG_FIELDS["URL"]],
-            "proxy_url": external_config[CONFIG_FIELDS["PROXY_URL"]],
             "token": external_config[CONFIG_FIELDS["TOKEN"]],
             "data": run_info,
             "service_name": external_config[CONFIG_FIELDS["SERVICE_NAME"]],
             "archive_path": archive_path,
             "job_file_path": job_file_path,
+            "proxy_url": external_config.get(OPTIONAL_CONFIG_FIELDS["PROXY_URL"]),
         },
     )
     thread.start()
