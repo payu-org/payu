@@ -172,7 +172,6 @@ def test_get_external_telemetry_config_no_file(
     "hostname",
     "telemetry_service_name",
     "telemetry_token",
-    "telemetry_proxy_url"
 ])
 def test_get_external_telemetry_config_missing_fields(
             tmp_path, setup_env, config_path, missing_field
@@ -194,6 +193,26 @@ def test_get_external_telemetry_config_missing_fields(
         f"configuration file at {TELEMETRY_CONFIG}: {config_path}."
     )
     check_invalid_get_external_config(tmp_path, expected_error)
+
+
+def test_get_external_telemetry_config_missing_proxy_url(
+            tmp_path, setup_env, config_path
+        ):
+    config_data = {
+        "telemetry_url": "some/server/url",
+        "hostname": "gadi",
+        "telemetry_service_name": "payu",
+        "telemetry_token": "some_token",
+    }
+    with open(config_path, 'w') as f:
+        json.dump(config_data, f)
+
+    # Assert no error is raised when proxy URL is missing
+    result = get_external_telemetry_config(
+        archive_path=tmp_path / "archive",
+        job_file_path=tmp_path / "job_file.json"
+    )
+    assert result == config_data
 
 
 def test_get_external_telemetry_config_invalid_json(
@@ -536,3 +555,46 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env,
     with open(TELEMETRY_1_0_0_SCHEMA_PATH, "r") as f:
         schema = json.load(f)
     jsonschema.validate(sent_data, schema)
+
+
+@pytest.mark.parametrize("proxy_url,expected_proxies", [
+    (None, None),
+    ("http://proxy.example.com:8080", {
+        "http": "http://proxy.example.com:8080",
+        "https": "http://proxy.example.com:8080"
+    })
+])
+def test_post_telemetry_data(tmp_path, proxy_url, expected_proxies):
+    """Test the post_telemetry_data function with and without proxy URL"""
+
+    with patch('requests.post') as mock_post:
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"status": "success"}
+        mock_post.return_value = mock_response
+
+        post_telemetry_data(
+            url="http://example.com/telemetry",
+            token="test-token",
+            data={"key": "value"},
+            service_name="test-service",
+            proxy_url=proxy_url,
+            archive_path=tmp_path / "archive",
+            job_file_path=tmp_path / "job_file.json"
+        )
+        assert mock_post.called
+        args, kwargs = mock_post.call_args
+        assert args == ("http://example.com/telemetry",)
+        assert kwargs.get('headers') == {
+            'Content-type': 'application/json',
+            'Authorization': 'Token test-token',
+        }
+        assert kwargs.get('timeout') == 10
+        assert kwargs.get('proxies') == expected_proxies
+        assert kwargs.get('data') == json.dumps(
+            {
+                "service": "test-service",
+                "version": "1.0.0",
+                "telemetry": {"key": "value"}
+            }
+        )
