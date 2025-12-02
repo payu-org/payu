@@ -6,6 +6,7 @@ import pytest
 import shutil
 import stat
 import sys
+from unittest.mock import patch
 
 # Submodules
 import payu
@@ -305,6 +306,34 @@ def test_list_archive_dirs():
     shutil.rmtree(tmp_archive_2)
 
 
+def test_env_with_python_path_is_first():
+    """Test that python directory is at the front of PATH env var"""
+    env = payu.fsops.env_with_python_path()
+    python_dir = os.path.dirname(sys.executable)
+    first_path_dir = env["PATH"].split(os.pathsep)[0]
+    assert python_dir == first_path_dir
+
+
+def test_env_with_python_path_no_duplicates(monkeypatch):
+    """Test that python directory is not duplicated in PATH env var"""
+    test_sys_executable = '/test/python/path/bin/python'
+    monkeypatch.setenv('PATH', f'/some/other/dir:/test/python/path/bin:/another/dir')
+    with patch('sys.executable', test_sys_executable):
+        env = payu.fsops.env_with_python_path()
+        path_dirs = env["PATH"].split(os.pathsep)
+        assert path_dirs == ['/test/python/path/bin', '/some/other/dir', '/another/dir']
+
+
+def test_env_with_python_path_empty_path(monkeypatch):
+    """Test that python directory is correctly set when PATH is empty"""
+    test_sys_executable = '/test/python/path/bin/python'
+    monkeypatch.setenv('PATH', '')
+    with patch('sys.executable', test_sys_executable):
+        env = payu.fsops.env_with_python_path()
+        assert env["PATH"] == '/test/python/path/bin'
+        assert os.environ.get('PATH', '') == ''
+
+
 def test_run_userscript_python_script(tmp_path):
     # Create a simple python script
     python_script = tmp_path / 'test_script.py'
@@ -328,20 +357,22 @@ def test_run_userscript_python_script_with_shebang_header(tmp_path):
     with open(python_script, 'w') as f:
         f.writelines([
             '#!/usr/bin/env python\n'
+            'import sys\n'
             f"with open('{tmp_path}/output.txt', 'w') as f:\n",
-            "   f.write('Test Python user script with python shebang header')"
+            "   f.write(f'{sys.executable}')"
         ])
 
     # Make file executable
     os.chmod(python_script, 0o775)
 
     # Test run userscript
-    payu.fsops.run_script_command('test_script_with_python_shebang.py',
-                                  tmp_path)
+    with patch.dict(os.environ, {'PATH': '/mocked/path'}):
+        payu.fsops.run_script_command('test_script_with_python_shebang.py',
+                                      tmp_path)
 
-    # Check script output
+    # Check script is run with same python executable as caller
     with open((tmp_path / 'output.txt'), 'r') as f:
-        assert f.read() == "Test Python user script with python shebang header"
+        assert sys.executable.startswith(f.read())
 
 
 def test_run_userscript_bash_script(tmp_path):
