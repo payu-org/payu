@@ -309,11 +309,12 @@ def needs_subprocess_shell(command: str) -> bool:
 
 def env_with_python_path():
     """Return a copy of current environment variables with PATH
-    modified to include the python interpreter"""
+    modified to ensure the path to the python interpreter is the
+    first entry (even if it was already in the PATH)."""
     # Get the directory of the current Python interpreter
     python_dir = os.path.dirname(sys.executable)
 
-    # Add Python interpreter to PATH
+    # Copy current environment and PATH variable
     env = os.environ.copy()
     current_path = env.get("PATH", "")
     path_dirs = current_path.split(os.pathsep) if current_path else []
