@@ -315,7 +315,14 @@ def env_with_python_path():
 
     # Add Python interpreter to PATH
     env = os.environ.copy()
-    env["PATH"] = python_dir + os.pathsep + env["PATH"]
+    current_path = env.get("PATH", "")
+    path_dirs = current_path.split(os.pathsep) if current_path else []
+
+    # Remove the python dir if it already exists in PATH
+    path_dirs = [p for p in path_dirs if p != python_dir]
+
+    # Prepend the python dir to PATH
+    env["PATH"] = os.pathsep.join([python_dir] + path_dirs)
     return env
 
 
