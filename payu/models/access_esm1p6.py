@@ -260,6 +260,7 @@ class AccessEsm1p6(Model):
                     if os.path.exists(f_src):
                         shutil.move(f_src, f_dst)
 
+            if model.model_type == 'cice':
                 # Copy "cice_in.nml" from work path to restart.
                 work_ice_nml_path = os.path.join(
                                         model.work_path,
@@ -273,7 +274,6 @@ class AccessEsm1p6(Model):
                 if os.path.exists(work_ice_nml_path):
                     shutil.copy2(work_ice_nml_path, restart_ice_nml_path)
 
-            if model.model_type == 'cice':
                 # Write the simulation end date to the restart date
                 # namelist.
 
