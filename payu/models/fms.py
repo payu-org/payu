@@ -16,6 +16,7 @@ import subprocess as sp
 import sys
 from itertools import count
 import fnmatch
+import re
 
 from payu.models.model import Model
 from payu import envmod
@@ -55,6 +56,21 @@ def get_uncollated_files(dir):
     # path information
     return [f.name for f
             in sorted(tile_fnames, key=lambda e: int(e.suffixes[-1][1:]))]
+
+
+def get_avail_collate_flags(mppnc_path):
+    """
+    Returns a set of the available mppnccombine flags parsed from the help string
+
+    Parameters
+    ----------
+    mppnc_path: The mppnccombine executable path
+    """
+    collate_help = sp.run([mppnc_path, '-h'], stdout=sp.PIPE)
+    # \-[A-Za-z0-9]+
+    # \B-[a-zA-Z0-9]\b
+    return set(re.findall(r"\B-[A-Za-z0-9]+\b", collate_help.stdout.decode('utf-8')))
+
 
 def fms_collate(model):
     """
@@ -101,7 +117,21 @@ def fms_collate(model):
         if mpi:
             collate_flags = '-r'
         else:
-            collate_flags = '-n4 -z -m -r'
+            collate_flags = '-n4 -m -r'
+
+            # Unfortunately there are two versions of mppnccombine floating
+            # around that support different flags. Here we parse the available
+            # flags from the help string to determine which version we are
+            # using and set the compression flag accordingly
+            avail_collate_flags = get_avail_collate_flags(mppnc_path)
+            
+            if "-z" in avail_collate_flags:
+                # Legacy mppnccombine uses -z to turn on compression
+                # Default deflate level is 5
+                collate_flags += " -z"
+            else:
+                # Set deflate level to 5
+                collate_flags += " -d 5"
 
     if mpi:
         # The output file is the first argument after the flags
