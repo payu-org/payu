@@ -274,7 +274,19 @@ def test_get_uncollated_restart_files():
 def test_get_avail_collate_flags(mock_run, help_text, expected_flags):
     """Test parsing mppnccombine flags from the help string"""
     help_text = help_text
-    mock_run.return_value = MagicMock(stdout=help_text.encode('utf-8'))
+    mock_run.return_value = MagicMock(stdout=help_text)
     
     result = get_avail_collate_flags("mppnccombine")
     assert sorted(result) == sorted(expected_flags)
+
+@patch("subprocess.run")
+def test_get_avail_collate_flags_runtimeerror(mock_run):
+    """Test that RuntimeError is raised when subprocess.run fails"""
+    mock_run.side_effect = OSError("Mocked OSError")
+
+    with pytest.raises(RuntimeError) as excinfo:
+        get_avail_collate_flags("mppnccombine")
+
+    assert "Failed to run" in str(excinfo.value)
+    # Ensure error chaining happened
+    assert isinstance(excinfo.value.__cause__, OSError)
