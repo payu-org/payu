@@ -463,7 +463,7 @@ User Processing
             - 'iceh.????-??-??.nc'
             - '*-IN-PROGRESS'
 
-   ``exclude_uncollated`` (*Default:* ``True`` if collation is enabled)
+   ``exclude_uncollated`` (*Default:* ``False``)
       Flag to exclude uncollated files from being synced. This is equivalent 
       to adding ``--exclude *.nc.*``.
 

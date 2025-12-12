@@ -217,31 +217,45 @@ def test_set_destination_path():
                 "sync": {
                     "exclude": ["iceh.????-??-??.nc", "*-DEPRECATED"]
                 },
-                "collate": {
-                    "enable": True
-                }
-            }, ("--exclude iceh.????-??-??.nc --exclude *-DEPRECATED"
-                " --exclude *.nc.*")
+            }, ("--exclude iceh.????-??-??.nc --exclude *-DEPRECATED")
         ),
         (
             {
                 "sync": {
                     "exclude_uncollated": False
                 },
-                "collate": {
-                    "enable": True
-                }
             }, ""
         ),
         (
             {
                 "sync": {
-                    "exclude": "*-DEPRECATED"
+                    "exclude_uncollated": True,
                 },
-                "collate": {
-                    "enable": False
-                }
-            }, "--exclude *-DEPRECATED"
+            }, "--exclude *.nc.*"
+        ),
+        (
+            {
+                "sync": {
+                    "exclude_uncollated": True,
+                    "exclude": ["iceh.????-??-??.nc"]
+                },
+            }, "--exclude iceh.????-??-??.nc --exclude *.nc.*"
+        ),
+        (
+            {
+                "sync": {
+                    "exclude_uncollated": True,
+                    "exclude": ["iceh.????-??-??.nc", "*.nc.*"]
+                },
+            }, "--exclude iceh.????-??-??.nc --exclude *.nc.*"
+        ),
+        (
+            {
+                "sync": {
+                    "rsync_flags": ["--exclude *.nc.*"],
+                    "exclude_uncollated": True,
+                },
+            }, ""
         )
     ])
 def test_set_excludes_flags(add_config, expected_excludes):
@@ -307,8 +321,8 @@ def test_sync():
     # Check nested output dirs are synced
     assert os.path.exists(os.path.join(remote_archive, nested_output_dirs))
 
-    # Check that uncollated files are not synced by default
-    assert not os.path.exists(os.path.join(remote_archive, uncollated_file))
+    # Check that uncollated files are also synced by default
+    assert os.path.exists(os.path.join(remote_archive, uncollated_file))
     assert os.path.exists(os.path.join(remote_archive, collated_file))
 
     # Check synced file still exist locally

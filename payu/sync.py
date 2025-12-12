@@ -159,20 +159,12 @@ class SyncToRemoteArchive():
 
         excludes = ' '.join(['--exclude ' + pattern for pattern in exclude])
 
-        # Default to exclude uncollated files if collation is enabled
-        # This can be over-riden using exclude_uncollated config flag
-        exclude_uncollated = self.config.get('exclude_uncollated', None)
-
-        if exclude_uncollated is None:
-            collate_config = self.expt.config.get('collate', {})
-            collating = collate_config.get('enable', True)
-            if collating:
-                exclude_uncollated = True
-
+        # Default to not exclude uncollated files
+        exclude_uncollated = self.config.get('exclude_uncollated', False)
         exclude_flag = "--exclude *.nc.*"
         if (exclude_uncollated and exclude_flag not in excludes
                 and exclude_flag not in self.config.get('rsync_flags', [])):
-            excludes += " --exclude *.nc.*"
+            excludes += f" {exclude_flag}" if excludes != "" else exclude_flag
 
         self.excludes = excludes
 
