@@ -66,7 +66,6 @@ def validate_platform_node(pbs_config):
     """
     queue = pbs_config.get("queue", "normal")
     platform = pbs_config.get("platform", {})
-    print(f"Validating platform node for queue '{queue}' with platform settings: {platform}")
 
     cpu, mem = get_queue_node_shape(queue)
 
@@ -100,7 +99,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
     if platform:
         validate_platform_node(pbs_config)
         max_cpus_per_node = platform["nodesize"]
-        max_ram_per_node  = platform["nodemem"]
+        max_ram_per_node = platform["nodemem"]
     else:
         max_cpus_per_node, max_ram_per_node = get_queue_node_shape(queue)
 
@@ -172,13 +171,6 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
             pbs_mem = n_cpus * (max_ram_per_node // max_cpus_per_node)
 
         pbs_config['mem'] = '{0}GB'.format(pbs_mem)
-
-    pbs_mem_float = float(str(pbs_mem).replace('GB', ''))
-    if pbs_mem_float % max_ram_per_node != 0:
-        raise ValueError(
-            f"Memory request {pbs_mem_float}GB is not a multiple of "
-            f"node memory {max_ram_per_node}GB for queue '{pbs_config['queue']}'"
-        )
 
     # Run experiment initialisation to update metadata,
     # and determine the run counter and uuid before job submission
