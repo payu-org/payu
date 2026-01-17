@@ -20,6 +20,7 @@ arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory, args.reproduce, args.force,
              args.force_prune_restarts]
 
+# Map payu queue names to pbsnode topology tags
 QUEUE_MAPS = {
     "normal":   "cpu-clx",
     "normalsr": "cpu-spr",
@@ -28,7 +29,6 @@ QUEUE_MAPS = {
     "express":   "cpu-clx",
     "expresssr": "cpu-spr",
     "expressbw": "cpu-bdw",
-    "expresssl": "cpu-skl",
 }
 
 
