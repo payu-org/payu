@@ -28,6 +28,7 @@ arguments = [args.model, args.config, args.initial, args.nruns,
 
 logger = logging.getLogger(__name__)
 
+# Map payu queue names to pbsnode topology tags
 QUEUE_MAPS = {
     "normal":   "cpu-clx",
     "normalsr": "cpu-spr",
@@ -36,7 +37,6 @@ QUEUE_MAPS = {
     "express":   "cpu-clx",
     "expresssr": "cpu-spr",
     "expressbw": "cpu-bdw",
-    "expresssl": "cpu-skl",
 }
 
 
