@@ -33,6 +33,10 @@ QUEUE_MAPS = {
     "normalsr": "cpu-spr",
     "normalbw": "cpu-bdw",
     "normalsl": "cpu-skl",
+    "express":   "cpu-clx",
+    "expresssr": "cpu-spr",
+    "expressbw": "cpu-bdw",
+    "expresssl": "cpu-skl",
 }
 
 
