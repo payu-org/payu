@@ -706,13 +706,16 @@ class Experiment(object):
         if self.config.get('coredump', False):
             enable_core_dump()
 
-        # Dump out environment
-        with open(self.env_fname, 'w') as file:
-            file.write(yaml.dump(dict(os.environ), default_flow_style=False))
 
         self.runlog.create_manifest()
         if self.runlog.enabled:
             self.runlog.commit()
+            # Record the run id into env.yaml as a variable
+            os.environ['PAYU_RUN_ID'] = str(self.run_id)
+
+        # Dump out environment
+        with open(self.env_fname, 'w') as file:
+            file.write(yaml.dump(dict(os.environ), default_flow_style=False))
 
         # Update run info file
         telemetry.update_run_job_file(
