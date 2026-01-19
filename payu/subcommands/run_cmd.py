@@ -1,6 +1,9 @@
 import os
 import argparse
 from pathlib import Path
+import json
+import subprocess
+from collections import Counter
 
 from payu import cli
 from payu.experiment import Experiment
@@ -17,6 +20,61 @@ arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory, args.reproduce, args.force,
              args.force_prune_restarts]
 
+# Map payu queue names to pbsnode topology tags
+QUEUE_MAPS = {
+    "normal":   "cpu-clx",
+    "normalsr": "cpu-spr",
+    "normalbw": "cpu-bdw",
+    "normalsl": "cpu-skl",
+    "express":   "cpu-clx",
+    "expresssr": "cpu-spr",
+    "expressbw": "cpu-bdw",
+}
+
+
+def get_queue_node_shape(queue):
+    """
+    Get the node shape (cpu count and memory) for a given queue.
+    """
+    tag = QUEUE_MAPS.get(queue)
+    if not tag:
+        raise ValueError(f"Unknown queue: {queue}")
+
+    # collect all node information from pbsnodes
+    data = json.loads(
+        subprocess.check_output(["pbsnodes", "-a", "-F", "json"], text=True)
+    )
+
+    ncpus, mem = [], []
+    for node in data["nodes"].values():
+        ra = node["resources_available"]
+        if tag not in ra.get("topology", ""):
+            continue
+        ncpus.append(int(ra["ncpus"]))
+        mem.append(int(ra["mem"][:-2]) // (1024*1024))  # GB
+
+    return Counter(ncpus).most_common(1)[0][0], Counter(mem).most_common(1)[0][0]
+
+
+def validate_platform_node(pbs_config):
+    """
+    Validate platform node setting against the queue node shape.
+    """
+    queue = pbs_config.get("queue", "normal")
+    platform = pbs_config.get("platform", {})
+
+    cpu, mem = get_queue_node_shape(queue)
+
+    if platform.get("nodesize") != cpu:
+        raise ValueError(
+            f"platform.nodesize must be {cpu} for queue '{queue}'"
+        )
+
+    if platform.get("nodemem") != mem:
+        raise ValueError(
+            f"platform.nodemem must be {mem}GB for queue '{queue}'"
+        )
+
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
            reproduce=False, force=False, force_prune_restarts=False):
@@ -31,13 +89,15 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
     # Set the queue
     # NOTE: Maybe force all jobs on the normal queue
-    if 'queue' not in pbs_config:
-        pbs_config['queue'] = 'normal'
+    queue = pbs_config.get("queue", "normal")
+    platform = pbs_config.get("platform", {})
 
-    # TODO: Create drivers for servers
-    platform = pbs_config.get('platform', {})
-    max_cpus_per_node = platform.get('nodesize', 48)
-    max_ram_per_node = platform.get('nodemem', 192)
+    if platform:
+        validate_platform_node(pbs_config)
+        max_cpus_per_node = platform["nodesize"]
+        max_ram_per_node = platform["nodemem"]
+    else:
+        max_cpus_per_node, max_ram_per_node = get_queue_node_shape(queue)
 
     # Adjust the CPUs for any model-specific settings
     # TODO: Incorporate this into the Model driver
