@@ -364,62 +364,6 @@ class Model(object):
         """Collate any tiled output into a single file."""
         raise NotImplementedError
 
-    def build_model(self):
-        self.setup_executable_paths()
-
-        if not self.repo_url:
-            return
-
-        # Check to see if executable already exists.
-        if self.exec_path and os.path.isfile(self.exec_path):
-            print('payu: warning: {0} will be overwritten.'
-                  ''.format(self.exec_path))
-
-        # First step is always to go to the codebase.
-        curdir = os.getcwd()
-
-        # Do the build. First check whether there is a build command in the
-        # config. If not check for the model default, otherwise just run make.
-
-        try:
-            build_path = self.config['build']['path_to_build_command']
-        except KeyError:
-            if self.build_path:
-                build_path = self.build_path
-            else:
-                build_path = './'
-
-        os.chdir(os.path.join(self.codebase_path, build_path))
-
-        try:
-            cmd = self.config['build']['command']
-        except KeyError:
-            if self.build_command:
-                cmd = self.build_command
-            else:
-                cmd = 'make'
-
-        print('Running command {0}'.format(cmd))
-        sp.check_call(shlex.split(cmd))
-
-        try:
-            build_exec_path = os.path.join(self.codebase_path,
-                                           self.config['build']['exec_path'])
-        except KeyError:
-            if self.build_exec_path:
-                build_exec_path = self.build_exec_path
-            else:
-                build_exec_path = self.codebase_path
-
-        # Copy new executable to bin dir
-        if self.exec_path:
-            # Create the bin path if it doesn't exist
-            mkdir_p(self.expt.lab.bin_path)
-
-            build_exec_path = os.path.join(build_exec_path, self.exec_name)
-            shutil.copy(build_exec_path, self.exec_path)
-
-        os.chdir(curdir)
 
     def get_codebase(self):
 
