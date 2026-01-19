@@ -45,8 +45,6 @@ def get_queue_node_shape(queue):
     Get the node shape (cpu count and memory) for a given queue.
     """
     tag = QUEUE_MAPS.get(queue)
-    if not tag:
-        raise ValueError(f"Unknown queue: {queue}")
 
     # collect all node information from pbsnodes
     data = json.loads(
