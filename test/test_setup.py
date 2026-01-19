@@ -421,3 +421,10 @@ def test_setup_telemetry_file(tmp_path):
         data = json.load(f)
     assert data['stage'] == 'setup'
     assert data['payu_current_run'] == 0
+
+def test_null_userscripts():
+    '''Test when userscripts is set to null in config.yaml'''
+    config_orig_null = copy.deepcopy(config_orig)
+    config_orig_null['userscripts'] = None
+    expt = init_experiment(config_orig_null)
+    assert expt.userscripts == {}
