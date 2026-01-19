@@ -135,7 +135,8 @@ class Experiment(object):
 
         # Miscellaneous configurations
         # TODO: Move this stuff somewhere else
-        self.userscripts = self.config.get('userscripts', {})
+        userscript_val = self.config.get('userscripts', {})
+        self.userscripts = userscript_val if isinstance(userscript_val, dict) else {}
 
         self.profilers = []
 
