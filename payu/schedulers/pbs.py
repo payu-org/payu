@@ -13,9 +13,11 @@ import shlex
 import subprocess
 from typing import Any, Dict, Optional
 import warnings
+from collections import Counter
 
 import json
 from tenacity import retry, stop_after_delay
+import subprocess
 
 import payu.envmod as envmod
 from payu.fsops import check_exe_path
@@ -26,6 +28,38 @@ from payu.schedulers.scheduler import Scheduler
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
 class PBS(Scheduler):
     name = "pbs"
+
+    # Map payu queue names to pbsnode topology tags
+    QUEUE_MAPS = {
+        "normal":   "cpu-clx",
+        "normalsr": "cpu-spr",
+        "normalbw": "cpu-bdw",
+        "normalsl": "cpu-skl",
+        "express":   "cpu-clx",
+        "expresssr": "cpu-spr",
+        "expressbw": "cpu-bdw",
+    }
+
+    @classmethod
+    def get_queue_node_shape(cls, queue: str) -> tuple[int, int]:
+        """
+        Get the node shape (cpu count and memory) for a given queue.
+        """
+        tag = cls.QUEUE_MAPS.get(queue)
+        # collect all node information from pbsnodes
+        data = json.loads(
+            subprocess.check_output(["pbsnodes", "-a", "-F", "json"], text=True)
+        )
+
+        ncpus, mem = [], []
+        for node in data["nodes"].values():
+            ra = node["resources_available"]
+            if tag not in ra.get("topology", ""):
+                continue
+            ncpus.append(int(ra["ncpus"]))
+            mem.append(int(ra["mem"][:-2]) // (1024*1024))  # GB
+
+        return Counter(ncpus).most_common(1)[0][0], Counter(mem).most_common(1)[0][0]
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
         """Prepare a correct PBS command string"""

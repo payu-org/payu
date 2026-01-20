@@ -18,6 +18,7 @@ import payu.subcommands.args as args
 from payu import fsops
 from payu.manifest import Manifest
 from payu.telemetry import write_queued_job_file, record_run
+from payu.schedulers.pbs import PBS
 
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
@@ -69,7 +70,7 @@ def validate_platform_node(pbs_config):
     queue = pbs_config.get("queue", "normal")
     platform = pbs_config.get("platform", {})
 
-    cpu, mem = get_queue_node_shape(queue)
+    cpu, mem = PBS.get_queue_node_shape(queue)
 
     if platform.get("nodesize") != cpu:
         raise ValueError(
@@ -103,7 +104,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
         max_cpus_per_node = platform["nodesize"]
         max_ram_per_node = platform["nodemem"]
     else:
-        max_cpus_per_node, max_ram_per_node = get_queue_node_shape(queue)
+        max_cpus_per_node, max_ram_per_node = PBS.get_queue_node_shape(queue)
 
     # Adjust the CPUs for any model-specific settings
     # TODO: Incorporate this into the Model driver
