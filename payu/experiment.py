@@ -427,15 +427,6 @@ class Experiment(object):
         for model in self.models:
             model.set_model_output_paths()
 
-    def build_model(self):
-
-        self.load_modules()
-
-        for model in self.models:
-            model.get_codebase()
-
-        for model in self.models:
-            model.build_model()
 
     def check_payu_version(self):
         """Check current payu version is greater than minimum required

@@ -26,10 +26,6 @@ class Mom(MomMixin, Fms):
         self.model_type = 'mom'
         self.default_exec = 'fms_MOM_SIS.x'
 
-        # Default repo and build details.
-        self.repo_url = 'git://github.com/BreakawayLabs/mom.git'
-        self.repo_tag = 'master'
-        self.build_command = './MOM_compile.csh --platform nci --type MOM_SIS'
 
         self.config_files = [
             'data_table',
@@ -51,15 +47,6 @@ class Mom(MomMixin, Fms):
                                             'MOM_SIS')
         self.build_path = os.path.join(self.codebase_path, 'exp')
 
-    def build_model(self):
-        super(Mom, self).build_model()
-
-        # Model is built, now copy over mppnccombine.
-        mppnc_exec = 'mppnccombine.nci'
-
-        mppnc_src = os.path.join(self.codebase_path, 'bin', mppnc_exec)
-        mppnc_dest = os.path.join(self.expt.lab.bin_path, 'mppnccombine')
-        shutil.copy(mppnc_src, mppnc_dest)
 
     def setup(self):
         # FMS initialisation

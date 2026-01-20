@@ -39,9 +39,6 @@ class Cice(Model):
         self.model_type = 'cice'
         self.default_exec = 'cice'
 
-        # Default repo details
-        self.repo_url = 'https://github.com/CWSL/cice4.git'
-        self.repo_tag = 'access'
 
         self.config_files = ['cice_in.nml']
         self.optional_config_files = ['input_ice.nml']
