@@ -6,6 +6,7 @@ this data to telemetry services at the end of a run, if configured.
 import datetime
 import json
 import os
+import stat
 from pathlib import Path
 import requests
 import shutil
@@ -312,6 +313,9 @@ def atomic_write_file(
         json.dump(data, temp_file, ensure_ascii=False, indent=4)
         temp_name = temp_file.name
     os.replace(temp_name, file_path)
+
+    # Ensure status file has same permissions as parent directory
+    os.chmod(file_path, stat.S_IMODE(file_path.parent.stat().st_mode))
 
 
 def get_job_file_path_with_id(
