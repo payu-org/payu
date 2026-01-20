@@ -26,10 +26,6 @@ class Mom(MomMixin, Fms):
         self.model_type = 'mom'
         self.default_exec = 'fms_MOM_SIS.x'
 
-        # Default repo and build details.
-        self.repo_url = 'git://github.com/BreakawayLabs/mom.git'
-        self.repo_tag = 'master'
-        self.build_command = './MOM_compile.csh --platform nci --type MOM_SIS'
 
         self.config_files = [
             'data_table',

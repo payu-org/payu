@@ -50,8 +50,6 @@ class Model(object):
         self.work_init_path_local = None
         self.exec_path_local = None
 
-        self.build_exec_path = None
-        self.build_path = None
 
         self.required_libs = None
 
@@ -59,10 +57,6 @@ class Model(object):
         self.copy_restarts = False
         self.copy_inputs = False
 
-        # Codebase details
-        self.repo_url = None
-        self.repo_tag = None
-        self.build_command = None
 
     def set_model_pathnames(self):
         """Define the paths associated with this model."""
@@ -364,29 +358,6 @@ class Model(object):
         """Collate any tiled output into a single file."""
         raise NotImplementedError
 
-
-    def get_codebase(self):
-
-        if not self.repo_url:
-            return
-
-        # Disable the user's .gitconfig file
-        os.environ['GIT_CONFIG_NOGLOBAL'] = 'yes'
-
-        build_config = self.config.get('build', {})
-        self.repo_url = build_config.get('repository', self.repo_url)
-        self.repo_tag = build_config.get('tag', self.repo_tag)
-
-        git_path = os.path.join(self.codebase_path, '.git')
-        if not os.path.exists(git_path):
-            cmd = 'git clone {0} {1}'.format(self.repo_url, self.codebase_path)
-            sp.check_call(shlex.split(cmd))
-
-        curdir = os.getcwd()
-        os.chdir(self.codebase_path)
-        sp.check_call(shlex.split('git checkout {0}'.format(self.repo_tag)))
-        sp.check_call(shlex.split('git pull'))
-        os.chdir(curdir)
 
     def profile(self):
         # TODO: Replace with call to "profile" drivers
