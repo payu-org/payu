@@ -61,8 +61,6 @@ class Cice(Model):
     def set_model_pathnames(self):
         super(Cice, self).set_model_pathnames()
 
-        self.build_exec_path = os.path.join(self.codebase_path,
-                                            'build_access-om_360x300_6p')
 
         ice_nml_path = os.path.join(self.control_path, self.ice_nml_fname)
         self.ice_in = f90nml.read(ice_nml_path)

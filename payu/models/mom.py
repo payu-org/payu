@@ -43,9 +43,6 @@ class Mom(MomMixin, Fms):
     def set_model_pathnames(self):
         super(Mom, self).set_model_pathnames()
 
-        self.build_exec_path = os.path.join(self.codebase_path, 'exec', 'nci',
-                                            'MOM_SIS')
-        self.build_path = os.path.join(self.codebase_path, 'exp')
 
 
     def setup(self):
