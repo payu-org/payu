@@ -63,20 +63,21 @@ def get_queue_node_shape(queue):
     return Counter(ncpus).most_common(1)[0][0], Counter(mem).most_common(1)[0][0]
 
 
-def validate_platform_node(pbs_config):
+def validate_platform_node(scheduler_config, get_queue_node_shape):
     """
-    Validate platform node setting against the queue node shape.
+    Validate platform node setting against the queue node shape for the active scheduler.
     """
-    queue = pbs_config.get("queue", "normal")
-    platform = pbs_config.get("platform", {})
+    platform = scheduler_config.get("platform")
+    if not platform:
+        return
 
-    cpu, mem = PBS.get_queue_node_shape(queue)
+    queue = scheduler_config.get("queue")
+    cpu, mem = get_queue_node_shape(queue)
 
     if platform.get("nodesize") != cpu:
         raise ValueError(
             f"platform.nodesize must be {cpu} for queue '{queue}'"
         )
-
     if platform.get("nodemem") != mem:
         raise ValueError(
             f"platform.nodemem must be {mem}GB for queue '{queue}'"
@@ -94,17 +95,35 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
                                 force=force,
                                 force_prune_restarts=force_prune_restarts)
 
+    # Initialise Experiment early so we can detect scheduler
+    # Run experiment initialisation to update metadata,
+    # and determine the run counter and uuid before job submission
+    lab = Laboratory(model_type, config_path, lab_path)
+    expt = Experiment(lab, reproduce=reproduce, force=force)
+
     # Set the queue
     # NOTE: Maybe force all jobs on the normal queue
+    # Is there a reason to force all jobs onto a specific queue?
     queue = pbs_config.get("queue", "normal")
+    if not queue:
+        raise ValueError("No queue specified in configuration!")
+
     platform = pbs_config.get("platform", {})
 
-    if platform:
-        validate_platform_node(pbs_config)
-        max_cpus_per_node = platform["nodesize"]
-        max_ram_per_node = platform["nodemem"]
-    else:
-        max_cpus_per_node, max_ram_per_node = PBS.get_queue_node_shape(queue)
+    max_cpus_per_node = platform.get("nodesize", 48)
+    max_ram_per_node = platform.get("nodemem", 192)
+
+    if expt.scheduler_name == 'pbs':
+        if platform:
+            validate_platform_node(pbs_config, PBS.get_queue_node_shape)
+            max_cpus_per_node = platform["nodesize"]
+            max_ram_per_node = platform["nodemem"]
+        else:
+            max_cpus_per_node, max_ram_per_node = PBS.get_queue_node_shape(queue)
+    elif expt.scheduler_name == 'slurm':
+        # TODO for non-PBS schedulers, such as Sotonix slurm setup on Pawsey
+        max_cpus_per_node = 64
+        max_ram_per_node = 256  # GB
 
     # Adjust the CPUs for any model-specific settings
     # TODO: Incorporate this into the Model driver
@@ -175,12 +194,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
         pbs_config['mem'] = '{0}GB'.format(pbs_mem)
 
-    # Run experiment initialisation to update metadata,
-    # and determine the run counter and uuid before job submission
-    lab = Laboratory(model_type, config_path, lab_path)
-    expt = Experiment(lab, reproduce=reproduce, force=force)
-
-    # Check if the work directory exists, then show warning to the user. 
+    # Check if the work directory exists, then show warning to the user.
     if os.path.exists(expt.work_path) and not expt.force:
         logger.error('Work path already exists. Please use `payu sweep` or use `payu run -f`.')
 
