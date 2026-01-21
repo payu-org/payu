@@ -193,15 +193,20 @@ def test_restarts_to_sync(add_config, envt_vars,
 def test_set_destination_path():
     additional_config = {
         "sync": {
-            "url": "test.domain",
-            "user": "test-usr",
-            "path": "remote/path",
+            #"url": "test.domain",
+            #"user": "test-usr",
+            "shared_path": "/g/data/tm70/",
+            # "path": "/g/data/tm70/qc4677/mom6_sync/",
         }}
     sync = setup_sync(additional_config=additional_config)
 
     # Test destination_path
     sync.set_destination_path()
-    assert sync.destination_path == "test-usr@test.domain:remote/path"
+    # assert sync.destination_path == "test-usr@test.domain:remote/path"
+    #when path is set
+    # assert sync.destination_path == "/g/data/tm70/qc4677/mom6_sync/" 
+    # when only shared_path is set
+    assert sync.destination_path == "/g/data/tm70/" + sync.expt.name + '/' 
 
     # Test value error raised when path is not set
     sync = setup_sync(additional_config={})

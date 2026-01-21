@@ -126,12 +126,24 @@ class SyncToRemoteArchive():
 
     def set_destination_path(self):
         "set or create destination path to sync archive to"
-        # Remote path to sync output to
+        dest_path_exits = True
+        # Check destination path
         dest_path = self.config.get('path', None)
-        if dest_path is None:
-            print("There's is no configured path to sync output to. "
+        # If path does not exist, use shared_path to sync
+        # Full local destination directory is <shared_path>/<expt_name>
+        if dest_path is None or dest_path == '':
+            shared_path = self.config.get('shared_path', None)
+            if shared_path is not None and shared_path != '':
+                dest_path = os.path.join(shared_path, self.expt.name+'/')
+            # When both path and shared_path are not defined
+            # flag it as false exists to raise error later
+            else:
+                dest_path_exits = False
+
+        if not dest_path_exits:
+            print("There's is no configured shared_path or path to sync output to. "
                   "In config.yaml, set:\n"
-                  "   sync:\n      path: PATH/TO/REMOTE/ARCHIVE\n"
+                  "   sync:\n      shared_path: SHARED_PATH/TO/ARCHIVE\n      path: PATH/TO/REMOTE/ARCHIVE\n"
                   "Replace PATH/TO/REMOTE/ARCHIVE with a unique absolute path "
                   "to sync outputs to. Ensure path is unique to avoid "
                   "overwriting exsiting output!")
