@@ -195,8 +195,8 @@ def test_set_destination_path():
         "sync": {
             #"url": "test.domain",
             #"user": "test-usr",
-            "shared_path": "/g/data/tm70/",
-            # "path": "/g/data/tm70/qc4677/mom6_sync/",
+            "shared_path": str(tmpdir),
+            # "path": str(tmpdir) + "/mom6_sync/",
         }}
     sync = setup_sync(additional_config=additional_config)
 
@@ -204,9 +204,9 @@ def test_set_destination_path():
     sync.set_destination_path()
     # assert sync.destination_path == "test-usr@test.domain:remote/path"
     #when path is set
-    # assert sync.destination_path == "/g/data/tm70/qc4677/mom6_sync/" 
+    # assert sync.destination_path == str(tmpdir) + "/mom6_sync/" 
     # when only shared_path is set
-    assert sync.destination_path == "/g/data/tm70/" + sync.expt.name + '/' 
+    assert sync.destination_path == str(tmpdir/sync.expt.name)+'/'
 
     # Test value error raised when path is not set
     sync = setup_sync(additional_config={})
