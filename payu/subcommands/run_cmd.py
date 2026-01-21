@@ -105,8 +105,6 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
     # NOTE: Maybe force all jobs on the normal queue
     # Is there a reason to force all jobs onto a specific queue?
     queue = pbs_config.get("queue", "normal")
-    if not queue:
-        raise ValueError("No queue specified in configuration!")
 
     platform = pbs_config.get("platform", {})
 
