@@ -4,9 +4,6 @@ import logging
 # Third Party imports
 from colorama import init, Fore, Style
 
-# Color Formatter: Initialize Colorama for cross-platform compatibility and auto-reset
-init(autoreset=True)
-
 class ColoredFormatter(logging.Formatter):
     """A custom formatter to add colors based on log level."""
     FORMAT = "[%(levelname)-s] %(message)s"
@@ -25,11 +22,16 @@ class ColoredFormatter(logging.Formatter):
         formatter = logging.Formatter(log_color + self.FORMAT + self.RESET)
         return formatter.format(record)
 
-# Configure the logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+def setup_logger():
+    """Configure the root logger"""
+    
+    # Color Formatter: Initialize Colorama for cross-platform compatibility and auto-reset
+    init(autoreset=True)
+    
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
 
-# Create a stream handler and set the custom formatter
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(ColoredFormatter())
-logger.addHandler(console_handler)
+    # Create a stream handler and set the custom formatter
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(ColoredFormatter())
+    logger.addHandler(console_handler)

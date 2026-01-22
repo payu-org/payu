@@ -3,6 +3,7 @@ import os
 import argparse
 from pathlib import Path
 import sys
+import logging
 
 # Local imports
 from payu import cli
@@ -12,7 +13,6 @@ import payu.subcommands.args as args
 from payu import fsops
 from payu.manifest import Manifest
 from payu.telemetry import write_queued_job_file, record_run
-from payu.logger import logger
 
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
@@ -21,6 +21,7 @@ arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory, args.reproduce, args.force,
              args.force_prune_restarts]
 
+logger = logging.getLogger(__name__)
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
            reproduce=False, force=False, force_prune_restarts=False):
