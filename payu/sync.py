@@ -129,21 +129,21 @@ class SyncToRemoteArchive():
         dest_path_exits = True
         # Check destination path
         dest_path = self.config.get('path', None)
-        # If path does not exist, use shared_path to sync
-        # Full local destination directory is <shared_path>/<expt_name>
+        # If path does not exist, use base_path to sync
+        # Full local destination directory is <base_path>/<expt_name>
         if dest_path is None or dest_path == '':
-            shared_path = self.config.get('shared_path', None)
-            if shared_path is not None and shared_path != '':
-                dest_path = os.path.join(shared_path, self.expt.name+'/')
-            # When both path and shared_path are not defined
+            base_path = self.config.get('base_path', None)
+            if base_path is not None and base_path != '':
+                dest_path = os.path.join(base_path, self.expt.name+'/')
+            # When both path and base_path are not defined
             # flag it as false exists to raise error later
             else:
                 dest_path_exits = False
 
         if not dest_path_exits:
-            print("There's is no configured shared_path or path to sync output to. "
+            print("There's is no configured base_path or path to sync output to. "
                   "In config.yaml, set:\n"
-                  "   sync:\n      shared_path: SHARED_PATH/TO/ARCHIVE\n      path: PATH/TO/REMOTE/ARCHIVE\n"
+                  "   sync:\n      base_path: BASE_PATH/TO/ARCHIVE\n      path: PATH/TO/REMOTE/ARCHIVE\n"
                   "Replace PATH/TO/REMOTE/ARCHIVE with a unique absolute path "
                   "to sync outputs to. Ensure path is unique to avoid "
                   "overwriting exsiting output!")
