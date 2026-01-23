@@ -58,6 +58,9 @@ class PBS(Scheduler):
             ncpus.append(int(ra["ncpus"]))
             mem.append(int(ra["mem"][:-2]) // (1024*1024))  # GB
 
+        if not ncpus or not mem:
+            raise ValueError(f"No nodes matched queue '{queue}' (tag '{tag}')")
+
         return Counter(ncpus).most_common(1)[0][0], Counter(mem).most_common(1)[0][0]
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
