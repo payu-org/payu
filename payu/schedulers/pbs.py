@@ -17,7 +17,6 @@ from collections import Counter
 
 import json
 from tenacity import retry, stop_after_delay
-import subprocess
 
 import payu.envmod as envmod
 from payu.fsops import check_exe_path
