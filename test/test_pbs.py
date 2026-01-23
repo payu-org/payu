@@ -1,5 +1,6 @@
 import argparse
 from argparse import Namespace
+import json
 import copy
 import os
 from pathlib import Path
@@ -29,6 +30,56 @@ from .common import make_payu_exe, make_all_files
 verbose = True
 
 config = copy.deepcopy(original_config)
+
+
+def _fake_pbsnodes_json(nodes):
+    """Build a pbsnodes -F json compatible payload."""
+    return json.dumps({"nodes": {name: {"resources_available": ra} for name, ra in nodes.items()}})
+
+
+def test_get_queue_node_shape_picks_node_shape(monkeypatch):
+
+    payload = _fake_pbsnodes_json({
+        # Matching topology clx
+        "node001": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+        "node002": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+        # spr
+        "node003": {"topology": "cpu-spr", "ncpus": 104, "mem": "536870912KB"},  # 512GB
+        "node004": {"topology": "cpu-spr", "ncpus": 104, "mem": "536870912KB"},  # 512GB
+
+        # Non-matching topology - should be ignored
+        "node005": {"topology": "cpu-xyz", "ncpus": 12, "mem": "12582912KB"},  # 12GB
+    })
+
+    def fake_check_output(cmd, text=True):
+        assert cmd == ['pbsnodes', '-a', '-F', 'json']
+        assert text is True
+        return payload
+
+    monkeypatch.setattr(pbs.subprocess, 'check_output', fake_check_output)
+
+    ncpus, mem = pbs.PBS.get_queue_node_shape("normal")
+
+    assert ncpus == 48
+    assert mem == 192
+
+
+def test_get_queue_node_shape_no_matching_topology(monkeypatch):
+
+    payload = _fake_pbsnodes_json({
+        # Non-matching topology - should be ignored
+        "node001": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+        "node002": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+    })
+
+    monkeypatch.setattr(
+        pbs.subprocess,
+        "check_output",
+        lambda cmd, text=True: payload,
+    )
+
+    with pytest.raises(ValueError, match=r"No nodes matched"):
+        pbs.PBS.get_queue_node_shape("normalsr")
 
 
 def setup_module(module):
