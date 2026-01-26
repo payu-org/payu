@@ -16,6 +16,17 @@ import subprocess
 from payu.fsops import mkdir_p, list_archive_dirs
 from payu.metadata import METADATA_FILENAME
 
+DEST_NOT_CONFIGURED_MSG = DEST_NOT_CONFIGURED_MSG = """
+There's is no configured `base_path` or `path` to sync output to.
+In config.yaml, set:
+    sync: 
+        base_path: BASE_PATH/TO/REMOTE/ARCHIVE
+        (name of the experiment will be automatically appended)
+        path: PATH/TO/REMOTE/ARCHIVE
+
+Replace PATH/TO/REMOTE/ARCHIVE with a unique absolute path to sync outputs to.
+Ensure path is unique to avoid overwriting existing output!
+"""
 
 class SourcePath():
     """Helper class for building rsync commands - stores attributes
@@ -130,23 +141,18 @@ class SyncToRemoteArchive():
         # Check destination path
         dest_path = self.config.get('path', None)
         # If path does not exist, use base_path to sync
-        # Full local destination directory is <base_path>/<expt_name>
-        if dest_path is None or dest_path == '':
+        # Full local destination directory is <base_path>/<expt_name>/
+        if not dest_path:
             base_path = self.config.get('base_path', None)
             if base_path is not None and base_path != '':
-                dest_path = os.path.join(base_path, self.expt.name+'/')
+                dest_path = os.path.join(base_path, self.expt.name, "")
             # When both path and base_path are not defined
             # flag it as false exists to raise error later
             else:
                 dest_path_exits = False
 
         if not dest_path_exits:
-            print("There's is no configured base_path or path to sync output to. "
-                  "In config.yaml, set:\n"
-                  "   sync:\n      base_path: BASE_PATH/TO/ARCHIVE\n      path: PATH/TO/REMOTE/ARCHIVE\n"
-                  "Replace PATH/TO/REMOTE/ARCHIVE with a unique absolute path "
-                  "to sync outputs to. Ensure path is unique to avoid "
-                  "overwriting exsiting output!")
+            print(DEST_NOT_CONFIGURED_MSG)
             raise ValueError("payu: error: Sync path is not defined.")
 
         if not self.remote_syncing:

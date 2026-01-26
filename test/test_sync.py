@@ -190,27 +190,46 @@ def test_restarts_to_sync(add_config, envt_vars,
         del os.environ[envt_var]
 
 
-def test_set_destination_path():
-    additional_config = {
-        "sync": {
-            #"url": "test.domain",
-            #"user": "test-usr",
+@pytest.mark.parametrize(
+    "config_sync_path, expected_sync_dest",
+    [
+        ({"sync" : {
+            "base_path": str(tmpdir)
+        }}, 
+        str(tmpdir)+'/'+"expt_name"+'/'),
+        ({"sync" : {
+            "path": str(tmpdir) + "/mom6_sync/"
+        }},
+        str(tmpdir) + "/mom6_sync/"),
+        ({"sync" : {
             "base_path": str(tmpdir),
-            # "path": str(tmpdir) + "/mom6_sync/",
-        }}
+            "path": str(tmpdir) + "/mom6_sync/"
+        }},
+        str(tmpdir) + "/mom6_sync/"),
+        ({"sync" : {
+            "url": "test.domain",
+            "user": "test-usr",
+            "path": str(tmpdir) + "/mom6_sync/"
+        }},
+        "test-usr@test.domain:"+str(tmpdir) + "/mom6_sync/")
+    ]
+)
+
+def test_set_destination_path(config_sync_path, expected_sync_dest):
+    """Test setting destination path with different combinations of
+    base_path, path, url and user"""
+    additional_config = config_sync_path
     sync = setup_sync(additional_config=additional_config)
+    sync.expt.name = "expt_name"
 
     # Test destination_path
     sync.set_destination_path()
-    # assert sync.destination_path == "test-usr@test.domain:remote/path"
-    #when path is set
-    # assert sync.destination_path == str(tmpdir) + "/mom6_sync/" 
-    # when only base_path is set
-    assert sync.destination_path == str(tmpdir/sync.expt.name)+'/'
+    assert sync.destination_path == expected_sync_dest
 
-    # Test value error raised when path is not set
+def test_set_destination_path_value_error():
+    """Test value error raised when path is not set"""
     sync = setup_sync(additional_config={})
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="payu: error: Sync path is not defined."):
         sync.set_destination_path()
 
 
