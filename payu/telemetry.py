@@ -18,7 +18,7 @@ import warnings
 import cftime
 
 from payu.metadata import Metadata
-from payu.schedulers import Scheduler
+from payu.schedulers.scheduler import Scheduler
 
 # Environment variable for external telemetry configuration file
 TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG"

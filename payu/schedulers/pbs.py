@@ -22,6 +22,33 @@ import payu.envmod as envmod
 from payu.fsops import check_exe_path
 from payu.manifest import Manifest
 from payu.schedulers.scheduler import Scheduler
+from payu.telemetry import REQUEST_TIMEOUT
+
+
+def _run_pbsnodes_json(timeout: int) -> Dict[str, Any]:
+    """Run pbsnodes -a -F json and return parsed Json output."""
+    cmd = ["pbsnodes", "-a", "-F", "json"]
+    try:
+        pbsnodes_output = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(
+            f"Unable to collect pbs node info: command timed out after {timeout} seconds"
+        ) from e
+
+    try:
+        return json.loads(pbsnodes_output.stdout)
+    except json.JSONDecodeError as e:
+        error_msg = (pbsnodes_output.stdout or "")
+        raise RuntimeError(
+            f"Failed to decode JSON output from pbsnodes command: {' '.join(cmd)}"
+            f"\n Output: {error_msg}"
+        ) from e
 
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
@@ -46,9 +73,7 @@ class PBS(Scheduler):
         """
         tag = cls.QUEUE_MAPS.get(queue)
         # collect all node information from pbsnodes
-        data = json.loads(
-            subprocess.check_output(["pbsnodes", "-a", "-F", "json"], text=True)
-        )
+        data = _run_pbsnodes_json(timeout=REQUEST_TIMEOUT)
 
         ncpus, mem = [], []
         for node in data["nodes"].values():
