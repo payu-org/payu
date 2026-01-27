@@ -63,15 +63,13 @@ def get_queue_node_shape(queue):
     return Counter(ncpus).most_common(1)[0][0], Counter(mem).most_common(1)[0][0]
 
 
-def validate_platform_node(scheduler_config, get_queue_node_shape):
+def validate_platform_node(platform, queue, get_queue_node_shape):
     """
     Validate platform node setting against the queue node shape for the active scheduler.
     """
-    platform = scheduler_config.get("platform")
     if not platform:
         return
 
-    queue = scheduler_config.get("queue")
     cpu, mem = get_queue_node_shape(queue)
 
     if platform.get("nodesize") != cpu:
@@ -108,12 +106,9 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
     platform = pbs_config.get("platform", {})
 
-    max_cpus_per_node = platform.get("nodesize", 48)
-    max_ram_per_node = platform.get("nodemem", 192)
-
     if expt.scheduler_name == 'pbs':
         if platform:
-            validate_platform_node(pbs_config, PBS.get_queue_node_shape)
+            validate_platform_node(platform, queue, PBS.get_queue_node_shape)
             max_cpus_per_node = platform["nodesize"]
             max_ram_per_node = platform["nodemem"]
         else:
@@ -122,6 +117,9 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
         # TODO for non-PBS schedulers, such as Sotonix slurm setup on Pawsey
         max_cpus_per_node = 64
         max_ram_per_node = 256  # GB
+    else:
+        max_cpus_per_node = platform.get("nodesize", 48)
+        max_ram_per_node = platform.get("nodemem", 192)
 
     # Adjust the CPUs for any model-specific settings
     # TODO: Incorporate this into the Model driver
