@@ -196,7 +196,7 @@ def test_restarts_to_sync(add_config, envt_vars,
         ({"sync" : {
             "base_path": str(tmpdir)
         }}, 
-        str(tmpdir)+'/'+"expt_name"+'/'),
+        str(tmpdir)+"/expt_name/"),
         ({"sync" : {
             "path": str(tmpdir) + "/mom6_sync/"
         }},

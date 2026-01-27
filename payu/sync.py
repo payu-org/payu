@@ -18,14 +18,14 @@ from payu.metadata import METADATA_FILENAME
 
 DEST_NOT_CONFIGURED_MSG = DEST_NOT_CONFIGURED_MSG = """
 There's is no configured `base_path` or `path` to sync output to.
-In config.yaml, set:
-    sync: 
+In config.yaml, set either the `base_path` or `path`:
+    sync:
+        # With `base_path`, the name of the experiment will be automatically appended
+        # Note that the experiment name will be the same as the payu archive directory
         base_path: BASE_PATH/TO/REMOTE/ARCHIVE
-        (name of the experiment will be automatically appended)
-        path: PATH/TO/REMOTE/ARCHIVE
-
-Replace PATH/TO/REMOTE/ARCHIVE with a unique absolute path to sync outputs to.
-Ensure path is unique to avoid overwriting existing output!
+        
+        # OR, set `path` to an absolute path. Ensure the path is unique to avoid overwriting existing output!
+        path: PATH/TO/REMOTE/ARCHIVE/EXPT-NAME
 """
 
 class SourcePath():
@@ -149,11 +149,8 @@ class SyncToRemoteArchive():
             # When both path and base_path are not defined
             # flag it as false exists to raise error later
             else:
-                dest_path_exits = False
-
-        if not dest_path_exits:
-            print(DEST_NOT_CONFIGURED_MSG)
-            raise ValueError("payu: error: Sync path is not defined.")
+                print(DEST_NOT_CONFIGURED_MSG)
+                raise ValueError("payu: error: Sync path is not defined.")
 
         if not self.remote_syncing:
             # Create local destination directory if it does not exist

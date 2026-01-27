@@ -443,7 +443,7 @@ User Processing
 
    ``base_path``
       Base directory to sync archive outputs to, when ``path`` is not set.
-      Full destination directory is <base_path>/<expt_name>/.
+      Full destination directory is `<base_path>/<expt_name>/`.
 
    ``path``
       Destination path to sync archive outputs to. This must be a unique 
