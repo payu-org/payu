@@ -76,10 +76,6 @@ def validate_platform_node(platform, queue, get_queue_node_shape):
         raise ValueError(
             f"platform.nodesize must be {cpu} for queue '{queue}'"
         )
-    if platform.get("nodemem") != mem:
-        raise ValueError(
-            f"platform.nodemem must be {mem}GB for queue '{queue}'"
-        )
 
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
