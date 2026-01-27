@@ -233,6 +233,27 @@ def test_set_destination_path_value_error():
         sync.set_destination_path()
 
 
+def test_check_uuid():
+    """Test check_uuid raises ValueError when UUIDs do not match"""
+    # First, set up a metadata.yaml with `different-UUID` in the destination sync path
+    sync_dir = tmpdir / "sync_dir"
+    os.makedirs(str(sync_dir))
+    exiting_metadata = {
+        "experiment_uuid": "different-UUID",
+    }   
+    write_metadata(exiting_metadata, path=sync_dir / "metadata.yaml")
+    
+    additional_config = {
+        "sync": {
+            "path": str(sync_dir),
+        }
+    }
+    sync = setup_sync(additional_config=additional_config)
+
+    # Test check_uuid raises ValueError
+    with pytest.raises(ValueError, match="payu: error: Mismatched experiment UUIDs in sync destination."):
+        sync.set_destination_path()
+
 @pytest.mark.parametrize(
     "add_config, expected_excludes",
     [

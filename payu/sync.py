@@ -10,11 +10,13 @@ import glob
 import os
 import shutil
 import subprocess
+from ruamel.yaml import YAML
+from pathlib import Path
 
 
 # Local
 from payu.fsops import mkdir_p, list_archive_dirs
-from payu.metadata import METADATA_FILENAME
+from payu.metadata import METADATA_FILENAME, UUID_FIELD
 
 DEST_NOT_CONFIGURED_MSG = DEST_NOT_CONFIGURED_MSG = """
 There's is no configured `base_path` or `path` to sync output to.
@@ -135,9 +137,23 @@ class SyncToRemoteArchive():
                 print(f"payu: error: No paths matching {path} found. "
                       "Failed to sync path to remote archive")
 
+    def check_uuid(self):
+        """Check if `metadata.yml` exists in the destination path.
+        If yes, check if UUID is the same as current experiment UUID.
+        If not the same, raise error."""
+        metadata_path = Path(self.destination_path) / METADATA_FILENAME
+        if os.path.exists(metadata_path):
+            metadata = YAML().load(metadata_path)
+            dest_uuid = metadata.get(UUID_FIELD, None)
+            if dest_uuid != self.expt.metadata.uuid:
+                print(f"payu: error: UUID of experiment metadata in sync "
+                      f"archive does not match current experiment UUID. "
+                      "Refusing to sync to avoid overwriting existing output.")
+                raise ValueError("payu: error: Mismatched experiment UUIDs in sync destination.")
+
+
     def set_destination_path(self):
-        "set or create destination path to sync archive to"
-        dest_path_exits = True
+        """set or create destination path to sync archive to"""
         # Check destination path
         dest_path = self.config.get('path', None)
         # If path does not exist, use base_path to sync
@@ -164,6 +180,7 @@ class SyncToRemoteArchive():
                 dest_path = f'{self.remote_url}:{dest_path}'
 
         self.destination_path = dest_path
+        self.check_uuid()
 
     def set_excludes_flags(self):
         """Add lists of patterns of filepaths to exclude from sync commands"""
