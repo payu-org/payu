@@ -1,7 +1,11 @@
+# Standard imports
 import os
 import argparse
 from pathlib import Path
+import sys
+import logging
 
+# Local imports
 from payu import cli
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
@@ -17,6 +21,7 @@ arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory, args.reproduce, args.force,
              args.force_prune_restarts]
 
+logger = logging.getLogger(__name__)
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
            reproduce=False, force=False, force_prune_restarts=False):
@@ -112,6 +117,13 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
     # and determine the run counter and uuid before job submission
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab, reproduce=reproduce, force=force)
+
+    # Check if the work directory exists, then show warning to the user. 
+    if os.path.exists(expt.work_path) and not expt.force:
+        logger.error('Work path already exists. Please use `payu sweep` or use `payu run -f`.')
+
+        # Return error code.
+        sys.exit(1)
 
     job_id = cli.submit_job('payu-run', pbs_config, pbs_vars)
 

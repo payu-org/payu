@@ -6,7 +6,7 @@
    :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details.
    :license: Apache License, Version 2.0, see LICENSE for details
 """
-
+# Standard imports
 import argparse
 import sysconfig
 import importlib
@@ -17,12 +17,14 @@ import subprocess
 import sys
 import warnings
 
+# Local imports
 import payu
 import payu.envmod as envmod
 from payu.fsops import is_conda
 from payu.models import index as supported_models
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 import payu.subcommands
+from payu.logger import setup_logger
 
 # Default configuration
 DEFAULT_CONFIG = 'config.yaml'
@@ -38,6 +40,7 @@ warnings.formatwarning = (
 
 def parse():
     """Parse the command line inputs and execute the subcommand."""
+    setup_logger()
     parser = generate_parser()
 
     # Display help if no arguments are provided

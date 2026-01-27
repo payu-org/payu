@@ -33,7 +33,8 @@ dependencies = [
     "ruamel.yaml >=0.18.5",
     "packaging",
     "netCDF4",
-    "jsonschema"
+    "jsonschema", 
+    "colorama"
 ]
 
 [project.optional-dependencies]
