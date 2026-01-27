@@ -66,6 +66,13 @@ class PBS(Scheduler):
         "expressbw": "cpu-bdw",
     }
 
+    @staticmethod
+    def _mem_convert_kb_to_gb(mem_kb: str) -> int:
+        s = str(mem_kb).strip().lower()
+        if not s.endswith("kb"):
+            raise ValueError(f"Memory string '{mem_kb}' is not in kb format")
+        return int(s.replace("kb", "")) // (1024 * 1024)
+
     @classmethod
     def get_queue_node_shape(cls, queue: str) -> tuple[int, int]:
         """
@@ -81,7 +88,7 @@ class PBS(Scheduler):
             if tag not in ra.get("topology", ""):
                 continue
             ncpus.append(int(ra["ncpus"]))
-            mem.append(int(ra["mem"][:-2]) // (1024*1024))  # GB
+            mem.append(cls._mem_convert_kb_to_gb(ra["mem"]))
 
         if not ncpus or not mem:
             raise ValueError(f"No nodes matched queue '{queue}' (tag '{tag}')")
