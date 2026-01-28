@@ -16,8 +16,6 @@ Payu is made available for users of NCI HPC systems in `conda` environments.
 The ACCESS-Hive `ACCESS-OM models`_ documentation contains instructions for
 using ACCESS-NRI supported conda environments.
 
-`CLEX CMS`_ also provides `conda environments`_ that support payu.
-
 Local installation
 ------------------
 
@@ -70,4 +68,3 @@ you are interested in porting payu to your machine.
 .. _`pip`: https://pip.pypa.io/en/stable/cli/pip_install
 .. _`ACCESS-OM models`: https://access-hive.org.au/models/run-a-model/run-access-om/#model-specific-prerequisites
 .. _`conda environments`: https://github.com/coecms/access-esm#quickstart-guide
-.. _`CLEX CMS`: https://github.com/coecms
