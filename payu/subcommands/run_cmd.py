@@ -147,7 +147,6 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
     # Validate walltime against queue limits
     walltime = pbs_config.get('walltime')
-    print(walltime)
     if walltime:
         requested_hours = PBS.parse_walltime(walltime)
         limit = PBS.get_queue_walltime_hours(queue, n_cpus)
