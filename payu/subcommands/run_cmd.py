@@ -6,10 +6,6 @@ from pathlib import Path
 import sys
 import logging
 
-import json
-import subprocess
-from collections import Counter
-
 # Local imports
 from payu import cli
 from payu.experiment import Experiment
