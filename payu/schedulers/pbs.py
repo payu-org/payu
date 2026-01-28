@@ -13,6 +13,7 @@ import shlex
 import subprocess
 from typing import Any, Dict, Optional
 import warnings
+from collections import Counter
 
 import json
 from tenacity import retry, stop_after_delay
@@ -21,11 +22,78 @@ import payu.envmod as envmod
 from payu.fsops import check_exe_path
 from payu.manifest import Manifest
 from payu.schedulers.scheduler import Scheduler
+from payu.telemetry import REQUEST_TIMEOUT
+
+
+def _run_pbsnodes_json(timeout: int) -> Dict[str, Any]:
+    """Run pbsnodes -a -F json and return parsed Json output."""
+    cmd = ["pbsnodes", "-a", "-F", "json"]
+    try:
+        pbsnodes_output = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(
+            f"Unable to collect pbs node info: command timed out after {timeout} seconds"
+        ) from e
+
+    try:
+        return json.loads(pbsnodes_output.stdout)
+    except json.JSONDecodeError as e:
+        error_msg = (pbsnodes_output.stdout or "")
+        raise RuntimeError(
+            f"Failed to decode JSON output from pbsnodes command: {' '.join(cmd)}"
+            f"\n Output: {error_msg}"
+        ) from e
 
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
 class PBS(Scheduler):
     name = "pbs"
+
+    # Map payu queue names to pbsnode topology tags
+    QUEUE_MAPS = {
+        "normal":   "cpu-clx",
+        "normalsr": "cpu-spr",
+        "normalbw": "cpu-bdw",
+        "normalsl": "cpu-skl",
+        "express":   "cpu-clx",
+        "expresssr": "cpu-spr",
+        "expressbw": "cpu-bdw",
+    }
+
+    @staticmethod
+    def _mem_convert_kb_to_gb(mem_kb: str) -> int:
+        s = str(mem_kb).strip().lower()
+        if not s.endswith("kb"):
+            raise ValueError(f"Memory string '{mem_kb}' is not in kb format")
+        return int(s.replace("kb", "")) // (1024 * 1024)
+
+    @classmethod
+    def get_queue_node_shape(cls, queue: str) -> tuple[int, int]:
+        """
+        Get the node shape (cpu count and memory) for a given queue.
+        """
+        tag = cls.QUEUE_MAPS.get(queue)
+        # collect all node information from pbsnodes
+        data = _run_pbsnodes_json(timeout=REQUEST_TIMEOUT)
+
+        ncpus, mem = [], []
+        for node in data["nodes"].values():
+            ra = node["resources_available"]
+            if tag not in ra.get("topology", ""):
+                continue
+            ncpus.append(int(ra["ncpus"]))
+            mem.append(cls._mem_convert_kb_to_gb(ra["mem"]))
+
+        if not ncpus or not mem:
+            raise ValueError(f"No nodes matched queue '{queue}' (tag '{tag}')")
+
+        return Counter(ncpus).most_common(1)[0][0], Counter(mem).most_common(1)[0][0]
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
         """Prepare a correct PBS command string"""

@@ -2,6 +2,7 @@
 import os
 import argparse
 from pathlib import Path
+
 import sys
 import logging
 
@@ -13,6 +14,7 @@ import payu.subcommands.args as args
 from payu import fsops
 from payu.manifest import Manifest
 from payu.telemetry import write_queued_job_file, record_run
+from payu.schedulers.pbs import PBS
 
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
@@ -22,6 +24,26 @@ arguments = [args.model, args.config, args.initial, args.nruns,
              args.force_prune_restarts]
 
 logger = logging.getLogger(__name__)
+
+
+def validate_platform_node(platform, queue, get_queue_node_shape):
+    """
+    Validate platform node setting against the queue node shape for the active scheduler.
+    """
+    if not platform:
+        return
+
+    cpu, mem = get_queue_node_shape(queue)
+
+    if platform.get("nodesize") != cpu:
+        raise ValueError(
+            f"platform.nodesize must be {cpu} for queue '{queue}' in config.yaml"
+        )
+    if "nodemem" in platform and platform.get("nodemem") > mem:
+        raise ValueError(
+            f"platform.nodemem {platform.get('nodemem')}GB exceeds queue max {mem}GB for queue '{queue}' in config.yaml"
+        )
+
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
            reproduce=False, force=False, force_prune_restarts=False):
@@ -34,15 +56,35 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
                                 force=force,
                                 force_prune_restarts=force_prune_restarts)
 
+    # Initialise Experiment early so we can detect scheduler
+    # Run experiment initialisation to update metadata,
+    # and determine the run counter and uuid before job submission
+    lab = Laboratory(model_type, config_path, lab_path)
+    expt = Experiment(lab, reproduce=reproduce, force=force)
+
     # Set the queue
     # NOTE: Maybe force all jobs on the normal queue
-    if 'queue' not in pbs_config:
-        pbs_config['queue'] = 'normal'
+    # Is there a reason to force all jobs onto a specific queue?
+    queue = pbs_config.get("queue", "normal")
 
-    # TODO: Create drivers for servers
-    platform = pbs_config.get('platform', {})
-    max_cpus_per_node = platform.get('nodesize', 48)
-    max_ram_per_node = platform.get('nodemem', 192)
+    platform = pbs_config.get("platform", {})
+
+    if expt.scheduler_name == 'pbs':
+        cpu_q, mem_q = PBS.get_queue_node_shape(queue)
+
+        if platform:
+            validate_platform_node(platform, queue, PBS.get_queue_node_shape)
+
+        max_cpus_per_node = platform.get("nodesize", cpu_q)
+        max_ram_per_node = platform.get("nodemem", mem_q)
+
+    elif expt.scheduler_name == 'slurm':
+        # TODO for non-PBS schedulers, such as Sotonix slurm setup on Pawsey
+        max_cpus_per_node = 64
+        max_ram_per_node = 256  # GB
+    else:
+        max_cpus_per_node = platform.get("nodesize", 48)
+        max_ram_per_node = platform.get("nodemem", 192)
 
     # Adjust the CPUs for any model-specific settings
     # TODO: Incorporate this into the Model driver
@@ -113,12 +155,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
         pbs_config['mem'] = '{0}GB'.format(pbs_mem)
 
-    # Run experiment initialisation to update metadata,
-    # and determine the run counter and uuid before job submission
-    lab = Laboratory(model_type, config_path, lab_path)
-    expt = Experiment(lab, reproduce=reproduce, force=force)
-
-    # Check if the work directory exists, then show warning to the user. 
+    # Check if the work directory exists, then show warning to the user.
     if os.path.exists(expt.work_path) and not expt.force:
         logger.error('Work path already exists. Please use `payu sweep` or use `payu run -f`.')
 

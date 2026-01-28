@@ -1,5 +1,6 @@
 import argparse
 from argparse import Namespace
+import json
 import copy
 import os
 from pathlib import Path
@@ -29,6 +30,62 @@ from .common import make_payu_exe, make_all_files
 verbose = True
 
 config = copy.deepcopy(original_config)
+
+
+def _fake_pbsnodes_dict(nodes):
+    """Build a pbsnodes -F json compatible payload."""
+    return {"nodes": {name: {"resources_available": ra} for name, ra in nodes.items()}}
+
+
+def test_get_queue_node_shape_picks_node_shape(monkeypatch):
+
+    payload = _fake_pbsnodes_dict({
+        # Matching topology clx
+        "node001": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+        "node002": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+        # spr
+        "node003": {"topology": "cpu-spr", "ncpus": 104, "mem": "536870912KB"},  # 512GB
+        "node004": {"topology": "cpu-spr", "ncpus": 104, "mem": "536870912KB"},  # 512GB
+
+        # Non-matching topology - should be ignored
+        "node005": {"topology": "cpu-xyz", "ncpus": 12, "mem": "12582912KB"},  # 12GB
+    })
+
+    monkeypatch.setattr(pbs, "_run_pbsnodes_json", lambda timeout: payload)
+
+    ncpus, mem = pbs.PBS.get_queue_node_shape("normal")
+
+    assert ncpus == 48
+    assert mem == 192
+
+
+def test_get_queue_node_shape_no_matching_topology(monkeypatch):
+
+    payload = _fake_pbsnodes_dict({
+        # Non-matching topology - should be ignored
+        "node001": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+        "node002": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+    })
+
+    monkeypatch.setattr(pbs, "_run_pbsnodes_json", lambda timeout: payload)
+
+    with pytest.raises(ValueError, match=r"No nodes matched"):
+        pbs.PBS.get_queue_node_shape("normalsr")
+
+
+def test_mem_convert_requires_kb_suffix():
+    with pytest.raises(ValueError, match=r"not in kb format"):
+        pbs.PBS._mem_convert_kb_to_gb("192GB")
+
+
+def test_run_pbsnodes_json_timeout(monkeypatch):
+    def fake_run(*args, **kwargs):
+        raise pbs.subprocess.TimeoutExpired(cmd=kwargs.get("args", ["pbsnodes"]), timeout=kwargs.get("timeout", 1))
+
+    monkeypatch.setattr(pbs.subprocess, "run", fake_run)
+
+    with pytest.raises(RuntimeError, match=r"timed out"):
+        pbs._run_pbsnodes_json(timeout=1)
 
 
 def setup_module(module):
