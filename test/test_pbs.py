@@ -88,6 +88,30 @@ def test_run_pbsnodes_json_timeout(monkeypatch):
         pbs._run_pbsnodes_json(timeout=1)
 
 
+def test_get_queue_walltime_hours_correct_boundaries():
+    assert pbs.PBS.get_queue_walltime_hours("normal", 1) == 48
+    assert pbs.PBS.get_queue_walltime_hours("normal", 672) == 48
+
+    assert pbs.PBS.get_queue_walltime_hours("normal", 673) == 24
+    assert pbs.PBS.get_queue_walltime_hours("normal", 1440) == 24
+
+    assert pbs.PBS.get_queue_walltime_hours("normal", 1441) == 10
+    assert pbs.PBS.get_queue_walltime_hours("normal", 2976) == 10
+
+    assert pbs.PBS.get_queue_walltime_hours("normal", 2977) == 5
+    assert pbs.PBS.get_queue_walltime_hours("normal", 20736) == 5
+
+
+def test_get_queue_walltime_hours_unknown_queue():
+    with pytest.raises(ValueError, match=r"Unknown queue"):
+        pbs.PBS.get_queue_walltime_hours("nonexistent_queue", 1)
+
+
+def test_get_queue_walltime_hours_exceeds_max_cpus():
+    with pytest.raises(ValueError, match=r"exceed maximum.*normalsr.*10400"):
+        pbs.PBS.get_queue_walltime_hours("normalsr", 10504)
+
+
 def setup_module(module):
     """
     Put any test-wide setup code in here, e.g. creating test files
