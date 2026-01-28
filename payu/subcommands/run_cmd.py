@@ -29,39 +29,6 @@ arguments = [args.model, args.config, args.initial, args.nruns,
 
 logger = logging.getLogger(__name__)
 
-# Map payu queue names to pbsnode topology tags
-QUEUE_MAPS = {
-    "normal":   "cpu-clx",
-    "normalsr": "cpu-spr",
-    "normalbw": "cpu-bdw",
-    "normalsl": "cpu-skl",
-    "express":   "cpu-clx",
-    "expresssr": "cpu-spr",
-    "expressbw": "cpu-bdw",
-}
-
-
-def get_queue_node_shape(queue):
-    """
-    Get the node shape (cpu count and memory) for a given queue.
-    """
-    tag = QUEUE_MAPS.get(queue)
-
-    # collect all node information from pbsnodes
-    data = json.loads(
-        subprocess.check_output(["pbsnodes", "-a", "-F", "json"], text=True)
-    )
-
-    ncpus, mem = [], []
-    for node in data["nodes"].values():
-        ra = node["resources_available"]
-        if tag not in ra.get("topology", ""):
-            continue
-        ncpus.append(int(ra["ncpus"]))
-        mem.append(int(ra["mem"][:-2]) // (1024*1024))  # GB
-
-    return Counter(ncpus).most_common(1)[0][0], Counter(mem).most_common(1)[0][0]
-
 
 def validate_platform_node(platform, queue, get_queue_node_shape):
     """
