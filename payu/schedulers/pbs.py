@@ -55,6 +55,45 @@ def _run_pbsnodes_json(timeout: int) -> Dict[str, Any]:
 class PBS(Scheduler):
     name = "pbs"
 
+    # Define walltime maps in (cpus, hours) for different queues
+    WALLTIME_MAPS = {
+        "normal": [
+            (672, 48),
+            (1440, 24),
+            (2976, 10),
+            (20736, 5),
+        ],
+        "express": [
+            (480, 24),
+            (3168, 5),
+        ],
+        "normalsr": [
+            (1040, 48),
+            (2080, 24),
+            (10400, 5),
+        ],
+        "expresssr": [
+            (1040, 24),
+            (2080, 5),
+        ],
+        "normalbw": [
+            (336, 48),
+            (840, 24),
+            (1736, 10),
+            (10080, 5),
+        ],
+        "expressbw": [
+            (280, 24),
+            (1848, 5),
+        ],
+        "normalsl": [
+            (288, 48),
+            (608, 24),
+            (1984, 10),
+            (3200, 5),
+        ],
+    }
+
     # Map payu queue names to pbsnode topology tags
     QUEUE_MAPS = {
         "normal":   "cpu-clx",
@@ -65,6 +104,31 @@ class PBS(Scheduler):
         "expresssr": "cpu-spr",
         "expressbw": "cpu-bdw",
     }
+
+    @classmethod
+    def get_queue_walltime_hours(cls, queue: str, ncpus) -> int:
+        """
+        Get the queue walltime (in hours) for a given queue.
+        """
+        limits = cls.WALLTIME_MAPS.get(queue)
+        if not limits:
+            raise ValueError(f"Unknown queue: {queue}")
+
+        # Check maximum cpu limit
+        max_cpus = limits[-1][0]
+        if ncpus > max_cpus:
+            raise ValueError(
+                f"Requested CPUs ({ncpus}) exceed maximum "
+                f"for queue '{queue}' ({max_cpus})"
+            )
+
+        for cpu_limit, hours in limits:
+            if ncpus <= cpu_limit:
+                return hours
+
+    @staticmethod
+    def parse_walltime(walltime: int | float) -> float:
+        return walltime / 3600
 
     @staticmethod
     def _mem_convert_kb_to_gb(mem_kb: str) -> int:

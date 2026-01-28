@@ -145,6 +145,19 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
     # Update the (possibly unchanged) value of ncpus
     pbs_config['ncpus'] = n_cpus
 
+    # Validate walltime against queue limits
+    walltime = pbs_config.get('walltime')
+    print(walltime)
+    if walltime:
+        requested_hours = PBS.parse_walltime(walltime)
+        limit = PBS.get_queue_walltime_hours(queue, n_cpus)
+        if limit is not None and requested_hours > limit:
+            raise ValueError(
+                f"Requested walltime of {requested_hours} hours exceeds "
+                f"the limit of {limit} hours for queue '{queue}' with "
+                f"{n_cpus} CPUs."
+            )
+
     # Set memory to use the complete node if unspecified
     pbs_mem = pbs_config.get('mem')
     if not pbs_mem:
