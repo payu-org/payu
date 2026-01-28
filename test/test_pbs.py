@@ -32,14 +32,14 @@ verbose = True
 config = copy.deepcopy(original_config)
 
 
-def _fake_pbsnodes_json(nodes):
+def _fake_pbsnodes_dict(nodes):
     """Build a pbsnodes -F json compatible payload."""
-    return json.dumps({"nodes": {name: {"resources_available": ra} for name, ra in nodes.items()}})
+    return {"nodes": {name: {"resources_available": ra} for name, ra in nodes.items()}}
 
 
 def test_get_queue_node_shape_picks_node_shape(monkeypatch):
 
-    payload = _fake_pbsnodes_json({
+    payload = _fake_pbsnodes_dict({
         # Matching topology clx
         "node001": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
         "node002": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
@@ -51,12 +51,7 @@ def test_get_queue_node_shape_picks_node_shape(monkeypatch):
         "node005": {"topology": "cpu-xyz", "ncpus": 12, "mem": "12582912KB"},  # 12GB
     })
 
-    def fake_check_output(cmd, text=True):
-        assert cmd == ['pbsnodes', '-a', '-F', 'json']
-        assert text is True
-        return payload
-
-    monkeypatch.setattr(pbs.subprocess, 'check_output', fake_check_output)
+    monkeypatch.setattr(pbs, "_run_pbsnodes_json", lambda timeout: payload)
 
     ncpus, mem = pbs.PBS.get_queue_node_shape("normal")
 
@@ -66,20 +61,31 @@ def test_get_queue_node_shape_picks_node_shape(monkeypatch):
 
 def test_get_queue_node_shape_no_matching_topology(monkeypatch):
 
-    payload = _fake_pbsnodes_json({
+    payload = _fake_pbsnodes_dict({
         # Non-matching topology - should be ignored
         "node001": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
         "node002": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
     })
 
-    monkeypatch.setattr(
-        pbs.subprocess,
-        "check_output",
-        lambda cmd, text=True: payload,
-    )
+    monkeypatch.setattr(pbs, "_run_pbsnodes_json", lambda timeout: payload)
 
     with pytest.raises(ValueError, match=r"No nodes matched"):
         pbs.PBS.get_queue_node_shape("normalsr")
+
+
+def test_mem_convert_requires_kb_suffix():
+    with pytest.raises(ValueError, match=r"not in kb format"):
+        pbs.PBS._mem_convert_kb_to_gb("192GB")
+
+
+def test_run_pbsnodes_json_timeout(monkeypatch):
+    def fake_run(*args, **kwargs):
+        raise pbs.subprocess.TimeoutExpired(cmd=kwargs.get("args", ["pbsnodes"]), timeout=kwargs.get("timeout", 1))
+
+    monkeypatch.setattr(pbs.subprocess, "run", fake_run)
+
+    with pytest.raises(RuntimeError, match=r"timed out"):
+        pbs._run_pbsnodes_json(timeout=1)
 
 
 def setup_module(module):
