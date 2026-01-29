@@ -35,8 +35,7 @@ warnings.formatwarning = (
     lambda message, category, filename, lineno, line=None: (
         formatwarning_orig(message, category, filename, lineno, line='')
     )
-)
-
+)    
 
 def parse():
     """Parse the command line inputs and execute the subcommand."""
@@ -51,6 +50,43 @@ def parse():
     args = vars(parser.parse_args())
     run_cmd = args.pop('run_cmd')
     run_cmd(**args)
+
+
+# Add wrappers for runscript commands
+def parse_run():
+    _parse_runscript("run")
+
+
+def parse_collate():
+    _parse_runscript("collate")
+
+
+def parse_sync():
+    _parse_runscript("sync")
+
+
+def parse_profile():
+    _parse_runscript("profile")
+
+
+def _parse_runscript(cmd_name):
+
+    # Attempt to import the requested runscript command module
+    try:
+        cmd = importlib.import_module(f'payu.subcommands.{cmd_name}_cmd')
+    except ImportError:
+        print(f'payu: error: Unknown runscript command payu-{cmd_name}')
+        sys.exit(1)
+
+    # Construct the subcommand parser
+    parser = argparse.ArgumentParser(**cmd.parameters)
+
+    for arg in cmd.arguments:
+        parser.add_argument(*arg['flags'], **arg['parameters'])
+
+    args = parser.parse_args()
+
+    cmd.runscript(args)
 
 
 def generate_parser(is_interactive=False):
