@@ -148,8 +148,9 @@ class SyncToRemoteArchive():
             # Check if sync archive UUID {dest_uuid} matches 
             # the local payu archive UUID {self.expt.metadata.uuid}
             if dest_uuid != None and dest_uuid != self.expt.metadata.uuid:
-                print(f"payu: error: UUID of experiment metadata in sync "
-                      f"archive does not match current experiment UUID. "
+                print(f"payu: error: UUID of experiment metadata in sync archive"
+                      f"({self.destination_path})"
+                      f"does not match current experiment UUID. "
                       "Refusing to sync to avoid overwriting existing output.")
                 raise ValueError("payu: error: Mismatched experiment UUIDs in sync destination.")
 
@@ -182,6 +183,7 @@ class SyncToRemoteArchive():
                 dest_path = f'{self.remote_url}:{dest_path}'
 
         self.destination_path = dest_path
+        print(f"Syncing archive to: {self.destination_path}")
         self.check_uuid()
 
     def set_excludes_flags(self):
