@@ -112,6 +112,14 @@ def test_get_queue_walltime_hours_exceeds_max_cpus():
         pbs.PBS.get_queue_walltime_hours("normalsr", 10504)
 
 
+def test_parse_walltime_int_seconds():
+    assert pbs.PBS.parse_walltime(3600) == 1.0
+
+
+def test_parse_walltime_str_hms():
+    assert pbs.PBS.parse_walltime("01:00:00") == 1.0
+
+
 def setup_module(module):
     """
     Put any test-wide setup code in here, e.g. creating test files
