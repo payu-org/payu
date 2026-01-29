@@ -10,12 +10,25 @@ import glob
 import os
 import shutil
 import subprocess
+from ruamel.yaml import YAML
+from pathlib import Path
 
 
 # Local
 from payu.fsops import mkdir_p, list_archive_dirs
-from payu.metadata import METADATA_FILENAME
+from payu.metadata import METADATA_FILENAME, UUID_FIELD
 
+DEST_NOT_CONFIGURED_MSG = DEST_NOT_CONFIGURED_MSG = """
+There's is no configured `base_path` or `path` to sync output to.
+In config.yaml, set either the `base_path` or `path`:
+    sync:
+        # With `base_path`, the name of the experiment will be automatically appended
+        # Note that the experiment name will be the same as the payu archive directory
+        base_path: BASE_PATH/TO/REMOTE/ARCHIVE
+        
+        # OR, set `path` to an absolute path. Ensure the path is unique to avoid overwriting existing output!
+        path: PATH/TO/REMOTE/ARCHIVE/EXPT-NAME
+"""
 
 class SourcePath():
     """Helper class for building rsync commands - stores attributes
@@ -124,18 +137,39 @@ class SyncToRemoteArchive():
                 print(f"payu: error: No paths matching {path} found. "
                       "Failed to sync path to remote archive")
 
+    def check_uuid(self):
+        """Check if `metadata.yml` exists in the destination path.
+        If yes, check if UUID is the same as current experiment UUID.
+        If not the same, raise error."""
+        metadata_path = Path(self.destination_path) / METADATA_FILENAME
+        if metadata_path.exists():
+            metadata = YAML().load(metadata_path)
+            dest_uuid = metadata.get(UUID_FIELD, None)
+            # Check if sync archive UUID {dest_uuid} matches 
+            # the local payu archive UUID {self.expt.metadata.uuid}
+            if dest_uuid != None and dest_uuid != self.expt.metadata.uuid:
+                print(f"payu: error: UUID of experiment metadata in sync archive "
+                      f"({self.destination_path}) "
+                      f"does not match current experiment UUID. "
+                      "Refusing to sync to avoid overwriting existing output.")
+                raise ValueError("payu: error: Mismatched experiment UUIDs in sync destination.")
+
+
     def set_destination_path(self):
-        "set or create destination path to sync archive to"
-        # Remote path to sync output to
+        """set or create destination path to sync archive to"""
+        # Check destination path
         dest_path = self.config.get('path', None)
-        if dest_path is None:
-            print("There's is no configured path to sync output to. "
-                  "In config.yaml, set:\n"
-                  "   sync:\n      path: PATH/TO/REMOTE/ARCHIVE\n"
-                  "Replace PATH/TO/REMOTE/ARCHIVE with a unique absolute path "
-                  "to sync outputs to. Ensure path is unique to avoid "
-                  "overwriting exsiting output!")
-            raise ValueError("payu: error: Sync path is not defined.")
+        # If path does not exist, use base_path to sync
+        # Full local destination directory is <base_path>/<expt_name>/
+        if not dest_path:
+            base_path = self.config.get('base_path', None)
+            if base_path is not None and base_path != '':
+                dest_path = os.path.join(base_path, self.expt.name, "")
+            # When both path and base_path are not defined
+            # flag it as false exists to raise error later
+            else:
+                print(DEST_NOT_CONFIGURED_MSG)
+                raise ValueError("payu: error: Sync path is not defined.")
 
         if not self.remote_syncing:
             # Create local destination directory if it does not exist
@@ -149,6 +183,8 @@ class SyncToRemoteArchive():
                 dest_path = f'{self.remote_url}:{dest_path}'
 
         self.destination_path = dest_path
+        print(f"Syncing archive to: {self.destination_path}")
+        self.check_uuid()
 
     def set_excludes_flags(self):
         """Add lists of patterns of filepaths to exclude from sync commands"""
@@ -240,8 +276,8 @@ class SyncToRemoteArchive():
         self.add_outputs_to_sync()
         self.add_restarts_to_sync()
 
-        # Add pbs and error logs to paths
-        for log_type in ['error_logs', 'pbs_logs']:
+        # Add pbs, error, and payu job logs to paths
+        for log_type in ['error_logs', 'pbs_logs', 'payu_jobs']:
             log_path = os.path.join(self.expt.archive_path, log_type)
             if os.path.isdir(log_path):
                 self.source_paths.append(SourcePath(path=log_path,

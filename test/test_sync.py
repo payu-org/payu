@@ -9,6 +9,7 @@ import payu
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, expt_archive_dir
 from test.common import config as config_orig
+from test.common import metadata as metadata_orig
 from test.common import write_config
 from test.common import make_all_files, make_random_file, write_metadata
 from test.common import make_expt_archive_dir
@@ -190,24 +191,109 @@ def test_restarts_to_sync(add_config, envt_vars,
         del os.environ[envt_var]
 
 
-def test_set_destination_path():
-    additional_config = {
-        "sync": {
+@pytest.mark.parametrize(
+    "config_sync_path, expected_sync_dest",
+    [
+        ({"sync" : {
+            "base_path": str(tmpdir)
+        }}, 
+        str(tmpdir)+"/expt_name/"),
+        ({"sync" : {
+            "path": str(tmpdir) + "/mom6_sync/"
+        }},
+        str(tmpdir) + "/mom6_sync/"),
+        ({"sync" : {
+            "base_path": str(tmpdir),
+            "path": str(tmpdir) + "/mom6_sync/"
+        }},
+        str(tmpdir) + "/mom6_sync/"),
+        ({"sync" : {
             "url": "test.domain",
             "user": "test-usr",
-            "path": "remote/path",
-        }}
+            "path": str(tmpdir) + "/mom6_sync/"
+        }},
+        "test-usr@test.domain:"+str(tmpdir) + "/mom6_sync/")
+    ]
+)
+
+def test_set_destination_path(config_sync_path, expected_sync_dest):
+    """Test setting destination path with different combinations of
+    base_path, path, url and user"""
+    additional_config = config_sync_path
+    sync = setup_sync(additional_config=additional_config)
+    sync.expt.name = "expt_name"
+
+    # Test destination_path
+    sync.set_destination_path()
+    assert sync.destination_path == expected_sync_dest
+
+def test_set_destination_path_value_error():
+    """Test value error raised when path is not set"""
+    sync = setup_sync(additional_config={})
+    with pytest.raises(ValueError, match="payu: error: Sync path is not defined."):
+        sync.set_destination_path()
+
+
+@pytest.mark.parametrize(
+    "existing_metadata, path_for_sync, path_for_metadata",
+    [
+        (   # Matching UUIDs
+            metadata_orig,
+            tmpdir / "sync_dir", 
+            tmpdir / "sync_dir" / "metadata.yaml"
+        ),
+        (   # No UUID in metadata.yaml in sync dir
+            {},
+            tmpdir / "sync_dir", 
+            tmpdir / "sync_dir" / "metadata.yaml"
+        ),
+        (   # No metadata.yaml in desinated sync dir
+            {},
+            tmpdir / "sync_dir",
+            tmpdir / "diff_sync_dir" / "metadata.yaml")
+    ]
+)
+
+def test_check_uuid(existing_metadata, path_for_sync, path_for_metadata):
+    """Test check_uuid pass when UUIDs match, no UUID and no metadata.yaml"""
+    # First, make sure the sync dir and metadata.yaml path exist
+    path_for_sync.mkdir(parents=True, exist_ok=True)
+    path_for_metadata.parent.mkdir(parents=True, exist_ok=True)
+
+    # Write metadata.yaml
+    write_metadata(metadata = existing_metadata, path=path_for_metadata)
+    
+    additional_config = {
+        "sync": {
+            "path": str(path_for_sync),
+        }
+    }
     sync = setup_sync(additional_config=additional_config)
 
     # Test destination_path
     sync.set_destination_path()
-    assert sync.destination_path == "test-usr@test.domain:remote/path"
+    assert sync.destination_path == str(path_for_sync)
 
-    # Test value error raised when path is not set
-    sync = setup_sync(additional_config={})
-    with pytest.raises(ValueError):
+def test_check_uuid_value_error():
+    """Test check_uuid raises ValueError when UUIDs do not match"""
+    # First, set up a metadata.yaml with `different-UUID` in the destination sync path
+    sync_dir = tmpdir / "sync_dir"
+    sync_dir.mkdir(parents=True, exist_ok=True)
+    existing_metadata = {
+        "experiment_uuid": "different-UUID",
+    }   
+    write_metadata(existing_metadata, path=sync_dir / "metadata.yaml")
+    
+    additional_config = {
+        "sync": {
+            "path": str(sync_dir),
+        }
+    }
+    sync = setup_sync(additional_config=additional_config)
+
+    # Test check_uuid raises ValueError
+    with pytest.raises(ValueError, match="payu: error: Mismatched experiment UUIDs in sync destination."):
         sync.set_destination_path()
-
 
 @pytest.mark.parametrize(
     "add_config, expected_excludes",
