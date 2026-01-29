@@ -441,6 +441,12 @@ User Processing
    ``ncpus`` (*Default:* ``1``)
       Number of ncpus required for the job.
 
+   ``base_path``
+      Base directory to sync archive outputs to, when ``path`` is not set.
+      Payu will add the experiment name to the path, 
+      where experiment name is the name used for the experiment work and archive directories. 
+      Full destination directory is `<base_path>/<expt_name>/`.
+
    ``path``
       Destination path to sync archive outputs to. This must be a unique 
       absolute path for your experiment, otherwise, outputs will be 
