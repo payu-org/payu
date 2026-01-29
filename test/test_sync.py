@@ -9,6 +9,7 @@ import payu
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, expt_archive_dir
 from test.common import config as config_orig
+from test.common import metadata as metadata_orig
 from test.common import write_config
 from test.common import make_all_files, make_random_file, write_metadata
 from test.common import make_expt_archive_dir
@@ -233,15 +234,55 @@ def test_set_destination_path_value_error():
         sync.set_destination_path()
 
 
-def test_check_uuid():
+@pytest.mark.parametrize(
+    "existing_metadata, path_for_sync, path_for_metadata",
+    [
+        (   # Matching UUIDs
+            metadata_orig,
+            tmpdir / "sync_dir", 
+            tmpdir / "sync_dir" / "metadata.yaml"
+        ),
+        (   # No UUID in metadata.yaml in sync dir
+            {},
+            tmpdir / "sync_dir", 
+            tmpdir / "sync_dir" / "metadata.yaml"
+        ),
+        (   # No metadata.yaml in desinated sync dir
+            {},
+            tmpdir / "sync_dir",
+            tmpdir / "diff_sync_dir" / "metadata.yaml")
+    ]
+)
+
+def test_check_uuid(existing_metadata, path_for_sync, path_for_metadata):
+    """Test check_uuid pass when UUIDs match, no UUID and no metadata.yaml"""
+    # First, make sure the sync dir and metadata.yaml path exist
+    path_for_sync.mkdir(parents=True, exist_ok=True)
+    path_for_metadata.parent.mkdir(parents=True, exist_ok=True)
+
+    # Write metadata.yaml
+    write_metadata(metadata = existing_metadata, path=path_for_metadata)
+    
+    additional_config = {
+        "sync": {
+            "path": str(path_for_sync),
+        }
+    }
+    sync = setup_sync(additional_config=additional_config)
+
+    # Test destination_path
+    sync.set_destination_path()
+    assert sync.destination_path == str(path_for_sync)
+
+def test_check_uuid_value_error():
     """Test check_uuid raises ValueError when UUIDs do not match"""
     # First, set up a metadata.yaml with `different-UUID` in the destination sync path
     sync_dir = tmpdir / "sync_dir"
-    os.makedirs(str(sync_dir))
-    exiting_metadata = {
+    sync_dir.mkdir()
+    existing_metadata = {
         "experiment_uuid": "different-UUID",
     }   
-    write_metadata(exiting_metadata, path=sync_dir / "metadata.yaml")
+    write_metadata(existing_metadata, path=sync_dir / "metadata.yaml")
     
     additional_config = {
         "sync": {

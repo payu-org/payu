@@ -142,10 +142,12 @@ class SyncToRemoteArchive():
         If yes, check if UUID is the same as current experiment UUID.
         If not the same, raise error."""
         metadata_path = Path(self.destination_path) / METADATA_FILENAME
-        if os.path.exists(metadata_path):
+        if metadata_path.exists():
             metadata = YAML().load(metadata_path)
             dest_uuid = metadata.get(UUID_FIELD, None)
-            if dest_uuid != self.expt.metadata.uuid:
+            # Check if sync archive UUID {dest_uuid} matches 
+            # the local payu archive UUID {self.expt.metadata.uuid}
+            if dest_uuid != None and dest_uuid != self.expt.metadata.uuid:
                 print(f"payu: error: UUID of experiment metadata in sync "
                       f"archive does not match current experiment UUID. "
                       "Refusing to sync to avoid overwriting existing output.")
@@ -272,8 +274,8 @@ class SyncToRemoteArchive():
         self.add_outputs_to_sync()
         self.add_restarts_to_sync()
 
-        # Add pbs and error logs to paths
-        for log_type in ['error_logs', 'pbs_logs']:
+        # Add pbs, error, and payu job logs to paths
+        for log_type in ['error_logs', 'pbs_logs', 'payu_jobs']:
             log_path = os.path.join(self.expt.archive_path, log_type)
             if os.path.isdir(log_path):
                 self.source_paths.append(SourcePath(path=log_path,

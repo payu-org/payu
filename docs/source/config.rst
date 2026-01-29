@@ -443,6 +443,8 @@ User Processing
 
    ``base_path``
       Base directory to sync archive outputs to, when ``path`` is not set.
+      Payu will add the experiment name to the path, 
+      where experiment name is the name used for the experiment work and archive directories. 
       Full destination directory is `<base_path>/<expt_name>/`.
 
    ``path``
