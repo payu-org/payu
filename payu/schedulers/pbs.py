@@ -127,7 +127,11 @@ class PBS(Scheduler):
                 return hours
 
     @staticmethod
-    def parse_walltime(walltime: int | float) -> float:
+    def parse_walltime(walltime: int | str) -> float:
+        if isinstance(walltime, str):
+            h, m, s = map(int, walltime.split(':'))
+            return (h * 3600 + m * 60 + s) / 3600
+
         return walltime / 3600
 
     @staticmethod
