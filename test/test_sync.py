@@ -278,7 +278,7 @@ def test_check_uuid_value_error():
     """Test check_uuid raises ValueError when UUIDs do not match"""
     # First, set up a metadata.yaml with `different-UUID` in the destination sync path
     sync_dir = tmpdir / "sync_dir"
-    sync_dir.mkdir()
+    sync_dir.mkdir(parents=True, exist_ok=True)
     existing_metadata = {
         "experiment_uuid": "different-UUID",
     }   
