@@ -533,3 +533,135 @@ def test_hard_sweep():
     # Check all the correct directories have been removed
     assert(not (labdir / 'archive' / 'ctrl').is_dir())
     assert(not (labdir / 'work' / 'ctrl').is_dir())
+
+@pytest.mark.parametrize("config_ignore, config_ignore_path", [
+    (
+        # User did not have ignore section in config.yml
+        # Using default ignore patterns, i.e. hidden files and directories
+        {},{}
+    ),
+    (   
+        # Custom ignore patterns
+        {'ignore': ['random_*']}, 
+        {'ignore_path': ['*/random_*']}
+    ),
+])
+
+def test_ignore_files(config_ignore, config_ignore_path):
+    make_all_files()
+    make_config_files()
+    inputdir = labdir / 'input' / config['input']
+
+    # Set ignore patterns in config
+    config['manifest'].update(config_ignore)
+    config['manifest'].update(config_ignore_path)
+    write_config(config)
+
+    # Get ignore patterns from config
+    pattern = config['manifest'].get('ignore', ['.*'])[0]
+    pattern_path = config['manifest'].get('ignore_path', ['*/.*'])[0]
+
+    # Create a file with ignore pattern in the input directory
+    ignore_file0 = inputdir / (pattern + '_test_ignore0')
+    ignore_file0.touch()
+    # Create a file without ignore pattern in the input directory
+    visible_file0 = inputdir / 'test_visible0'
+    visible_file0.touch()
+
+    # Create a hidden directory
+    hidden_dir = inputdir / (pattern_path + '_ignore_dir')
+    hidden_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create files in hidden directory, with and without ignore pattern
+    # Both files should be ignored as in hidden directory
+    ignore_file1 = hidden_dir / (pattern + '_test_ignore1')
+    ignore_file1.touch()
+    ignore_file2 = hidden_dir / 'test_ignore2'
+    ignore_file2.touch()
+
+    # Run setup, if work directory exists sweep it first
+    if workdir.is_dir():
+        sweep_work()
+    payu_setup(lab_path=str(labdir))
+
+    # Read in manifests
+    allfiles = []
+    manifests = get_manifests(ctrldir/'manifests')
+    for f in manifests['input.yaml']:
+        allfiles.append(manifests['input.yaml'][f]['fullpath'])
+
+    # Check if ignored files are included in manifest
+    assert(str(ignore_file0) not in allfiles)
+    assert(str(ignore_file1) not in allfiles)
+    assert(str(ignore_file2) not in allfiles)
+
+    # Check if visible file is included in manifest
+    assert(str(visible_file0) in allfiles)
+
+
+@pytest.mark.parametrize("config_ignore, config_ignore_path, file0_in_manifest,"
+                    "file1_in_manifest, file2_in_manifest, file3_in_manifest", [
+    (
+        # Both ignore and ignore_path set to None
+        {"ignore": None}, {"ignore_path": None}, True, True, True, True
+    ),
+    (   
+        # ignore set to None, ignore_path set to default
+        {"ignore": None}, {}, True, True, False, False
+    ),
+    (   
+        # ignore set to default, ignore_path set to None
+        {}, {"ignore_path": None}, False, True, False, True
+    )
+])
+
+def test_ignore_None_files(config_ignore, config_ignore_path, file0_in_manifest,
+                    file1_in_manifest, file2_in_manifest, file3_in_manifest):
+    make_all_files()
+    make_config_files()
+    inputdir = labdir / 'input' / config['input']
+
+    # Delete existing ignore patterns in config, if any
+    try:
+        del(config['manifest']['ignore'])
+        del(config['manifest']['ignore_path'])
+    except KeyError:
+        pass
+    # Set ignore patterns in config
+    config['manifest'].update(config_ignore)
+    config['manifest'].update(config_ignore_path)
+    write_config(config)
+
+    # Create a hidden file in the input directory
+    hidden_file0 = inputdir / '.test_000'
+    hidden_file0.touch()
+    # Create a visible file in the input directory
+    visible_file1 = inputdir / 'test_001'
+    visible_file1.touch()
+
+    # Create a hidden directory
+    hidden_dir = inputdir / '.hidden_dir'
+    hidden_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create files in hidden directory
+    hidden_file2 = hidden_dir / '.test_002'
+    hidden_file2.touch()
+    hidden_file3 = hidden_dir / 'test_003'
+    hidden_file3.touch()
+
+    # Run setup, if work directory exists sweep it first
+    if workdir.is_dir():
+        sweep_work()
+    payu_setup(lab_path=str(labdir))
+
+    # Read in manifests
+    allfiles = []
+    manifests = get_manifests(ctrldir/'manifests')
+    for f in manifests['input.yaml']:
+        allfiles.append(manifests['input.yaml'][f]['fullpath'])
+
+    # All files should be included in manifest
+    assert( (str(hidden_file0) in allfiles) == file0_in_manifest)
+    assert((str(visible_file1) in allfiles) == file1_in_manifest)
+    assert((str(hidden_file2) in allfiles) == file2_in_manifest)
+    assert((str(hidden_file3) in allfiles) == file3_in_manifest)
