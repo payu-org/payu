@@ -18,7 +18,7 @@ from pathlib import Path
 from payu.fsops import mkdir_p, list_archive_dirs
 from payu.metadata import METADATA_FILENAME, UUID_FIELD
 
-DEST_NOT_CONFIGURED_MSG = DEST_NOT_CONFIGURED_MSG = """
+DEST_NOT_CONFIGURED_MSG ="""
 There's is no configured `base_path` or `path` to sync output to.
 In config.yaml, set either the `base_path` or `path`:
     sync:
