@@ -129,13 +129,18 @@ class PBS(Scheduler):
     @staticmethod
     def parse_walltime(walltime: int | str) -> float:
         # For time like inputs, yaml has auto-parsed correct time format (non-zero-padded formats) to int values
-        # such as 1:30:00, 1:00, instead of 01:30:00 or 01:00
-        # it also works when the walltime is given as integer seconds with or without zero-padding, 5 or 05 both work.
+        # such as 1:30:00, 1:00, rather than 01:30:00 or 01:00
+        # yaml also parse unquoted numeric values such as 05 as int(5)
         if isinstance(walltime, int):
             return walltime / 3600
 
         # for zero-padded formats
         s = walltime.strip()
+
+        # covers numeric string like "05"
+        if s.isdigit():
+            return int(s) / 3600
+
         parts = s.split(":")
 
         if len(parts) == 2:
