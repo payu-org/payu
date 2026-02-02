@@ -68,6 +68,15 @@ error
 archive
    If the model run is succesful, payu archives the results from the work directory to the output directories.
 
+Post-processing PBS Jobs
+======================
+collate
+   When enabled, payu joins a number of smaller files which contain different
+   parts of the model grid together into target output files.
+
+sync
+   When enabled, payu syncs the archive directory with a specificed remote directory.
+   Payu sync job is submitted after the collate job is completed successfully, if collate is enabled.
 
 Style Guide
 ===========
