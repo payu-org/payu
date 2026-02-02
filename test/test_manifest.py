@@ -540,6 +540,11 @@ def test_hard_sweep():
         # Using default ignore patterns, i.e. hidden files and directories
         {},{}
     ),
+    (
+        # User has NULL ignore patterns in config.yml
+        # Should use default ignore patterns, i.e. hidden files and directories
+        {'ignore': None}, {'ignore_path': None}
+    ),
     (   
         # Custom ignore patterns
         {'ignore': ['random_*']}, 
@@ -557,9 +562,12 @@ def test_ignore_files(config_ignore, config_ignore_path):
     config['manifest'].update(config_ignore_path)
     write_config(config)
 
-    # Get ignore patterns from config
-    pattern = config['manifest'].get('ignore', ['.*'])[0]
-    pattern_path = config['manifest'].get('ignore_path', ['*/.*'])[0]
+    # Get ignore patterns directly from config
+    pattern_list = config['manifest'].get('ignore', ['.*'])
+    pattern_path_list = config['manifest'].get('ignore_path', ['*/.*'])
+    # If None, set to default patterns
+    pattern = pattern_list[0] if pattern_list is not None else '.*'
+    pattern_path = pattern_path_list[0] if pattern_path_list is not None else '*/.*'
 
     # Create a file with ignore pattern in the input directory
     ignore_file0 = inputdir / (pattern + '_test_ignore0')
@@ -602,20 +610,20 @@ def test_ignore_files(config_ignore, config_ignore_path):
 @pytest.mark.parametrize("config_ignore, config_ignore_path, file0_in_manifest,"
                     "file1_in_manifest, file2_in_manifest, file3_in_manifest", [
     (
-        # Both ignore and ignore_path set to None
-        {"ignore": None}, {"ignore_path": None}, True, True, True, True
+        # Both ignore and ignore_path set to []
+        {"ignore": []}, {"ignore_path": []}, True, True, True, True
     ),
     (   
-        # ignore set to None, ignore_path set to default
-        {"ignore": None}, {}, True, True, False, False
+        # ignore set to [], ignore_path set to default
+        {"ignore": []}, {}, True, True, False, False
     ),
     (   
-        # ignore set to default, ignore_path set to None
-        {}, {"ignore_path": None}, False, True, False, True
+        # ignore set to default, ignore_path set to []
+        {}, {"ignore_path": []}, False, True, False, True
     )
 ])
 
-def test_ignore_None_files(config_ignore, config_ignore_path, file0_in_manifest,
+def test_ignore_Empty_list(config_ignore, config_ignore_path, file0_in_manifest,
                     file1_in_manifest, file2_in_manifest, file3_in_manifest):
     make_all_files()
     make_config_files()
@@ -660,7 +668,7 @@ def test_ignore_None_files(config_ignore, config_ignore_path, file0_in_manifest,
     for f in manifests['input.yaml']:
         allfiles.append(manifests['input.yaml'][f]['fullpath'])
 
-    # All files should be included in manifest
+    # Assert files are in manifest as expected
     assert( (str(hidden_file0) in allfiles) == file0_in_manifest)
     assert((str(visible_file1) in allfiles) == file1_in_manifest)
     assert((str(hidden_file2) in allfiles) == file2_in_manifest)

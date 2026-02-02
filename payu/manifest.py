@@ -135,15 +135,15 @@ class PayuManifest(YaManifest):
         if os.path.isdir(fullpath):
             return False
 
-        # If ignore config is not set to None, apply ignore patterns
-        if self.ignore is not None:
+        # If ignore config is not set to [], apply ignore patterns
+        if len(self.ignore) > 0:
             # Ignore anything matching the ignore patterns
             for pattern in self.ignore:
                 if fnmatch.fnmatch(os.path.basename(fullpath), pattern):
                     return False
         
-        # If ignore_path config is not set to None, apply ignore_path patterns
-        if self.ignore_path is not None:
+        # If ignore_path config is not set to [], apply ignore_path patterns
+        if len(self.ignore_path) > 0:
             for pattern in self.ignore_path:
                 if fnmatch.fnmatch(os.path.dirname(fullpath), pattern):
                     return False
@@ -260,17 +260,24 @@ class Manifest(object):
         if isinstance(self.ignore_path, str):
             self.ignore_path = [self.ignore_path]
 
-        # warn if ignore patterns are set to None
+        # Warn if ignore patterns are set to None
+        # And set to default patterns
         if self.ignore is None:
-            print("Warning: Manifest `ignore` pattern is left empty. \n"
-                  "All files (including hidden files) will be included!!!\n"
-                  "If you intended to ignore hidden files (default), \n"
-                  "please delete the `ignore` config entry.")
+            self.ignore = ['.*']
+            print("Warning: Manifest `ignore` pattern is set to NULL. \n"
+                  "Using default ignore pattern to ignore hidden files.\n")
         if self.ignore_path is None:
-            print("Warning: Manifest `ignore_path` pattern is left empty. \n"
-                  "All directories (including hidden directories) will be included!!!\n"
-                  "If you intended to ignore hidden directories (default), \n"
-                  "please delete the `ignore_path` config entry.")
+            self.ignore_path = ['*/.*']
+            print("Warning: Manifest `ignore_path` pattern is set to NULL. \n"
+                  "Using default ignore_path pattern to ignore hidden directories.\n")
+        
+        # Warn if ignore patterns are empty lists
+        if len(self.ignore) == 0:
+            print("Warning: Manifest `ignore` pattern is set to an empty list. \n"
+                  "All files (including hidden files) will be included!!!\n")
+        if len(self.ignore_path) == 0:
+            print("Warning: Manifest `ignore_path` pattern is set to an empty list. \n"
+                  "All directories (including hidden directories) will be included!!!\n")
 
         # Initialise manifests and reproduce flags
         self.manifests = {}
