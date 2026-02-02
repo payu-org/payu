@@ -112,12 +112,28 @@ def test_get_queue_walltime_hours_exceeds_max_cpus():
         pbs.PBS.get_queue_walltime_hours("normalsr", 10504)
 
 
-def test_parse_walltime_int_seconds():
-    assert pbs.PBS.parse_walltime(3600) == 1.0
+@pytest.mark.parametrize(
+    "walltime, expected_hours",
+    [
+        (3600, 1.0),
+        (600, 1/6),
 
+        # SS string format only
+        ("05", 5/3600),
 
-def test_parse_walltime_str_hms():
-    assert pbs.PBS.parse_walltime("01:00:00") == 1.0
+        # MM:SS
+        ("10:00", 10/60),
+        ("01:00", 1/60),
+
+        # H:M:S
+        ("1:0:0", 1.0),
+        ("01:0:0", 1.0),
+        ("1:30:00", 1.5),
+        ("01:30:00", 1.5),
+    ],
+)
+def test_parse_walltime_valid_inputs(walltime, expected_hours):
+    assert pbs.PBS.parse_walltime(walltime) == pytest.approx(expected_hours)
 
 
 def setup_module(module):
