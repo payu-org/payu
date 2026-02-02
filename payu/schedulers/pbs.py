@@ -128,11 +128,37 @@ class PBS(Scheduler):
 
     @staticmethod
     def parse_walltime(walltime: int | str) -> float:
-        if isinstance(walltime, str):
-            h, m, s = map(int, walltime.split(':'))
-            return (h * 3600 + m * 60 + s) / 3600
+        # For time like inputs, yaml has auto-parsed correct time format (non-zero-padded formats) to int values
+        # such as 1:30:00, 1:00, instead of 01:30:00 or 01:00
+        # it also works when the walltime is given as integer seconds with or without zero-padding, 5 or 05 both work.
+        if isinstance(walltime, int):
+            return walltime / 3600
 
-        return walltime / 3600
+        # for zero-padded formats
+        s = walltime.strip()
+        parts = s.split(":")
+
+        if len(parts) == 2:
+            # covers 01:00 format
+            m, s = map(int, parts)
+            h = 0
+        elif len(parts) == 3:
+            # covers 01:30:00 format
+            h, m, s = map(int, parts)
+        else:
+            raise ValueError(f"Invalid walltime format: {walltime!r}")
+        return (h*3600 + m*60 + s) / 3600
+
+    @classmethod
+    def validate_walltime_with_queue_limits(cls, walltime: int | str, queue: str, ncpus: int):
+        requested_hours = cls.parse_walltime(walltime)
+        limit = cls.get_queue_walltime_hours(queue, ncpus)
+        if limit is not None and requested_hours > limit:
+            raise ValueError(
+                f"Requested walltime of {requested_hours} hours exceeds "
+                f"the limit of {limit} hours for queue '{queue}' with "
+                f"{ncpus} CPUs."
+            )
 
     @staticmethod
     def _mem_convert_kb_to_gb(mem_kb: str) -> int:

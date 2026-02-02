@@ -148,14 +148,13 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
     # Validate walltime against queue limits
     walltime = pbs_config.get('walltime')
     if walltime:
-        requested_hours = PBS.parse_walltime(walltime)
-        limit = PBS.get_queue_walltime_hours(queue, n_cpus)
-        if limit is not None and requested_hours > limit:
-            raise ValueError(
-                f"Requested walltime of {requested_hours} hours exceeds "
-                f"the limit of {limit} hours for queue '{queue}' with "
-                f"{n_cpus} CPUs."
-            )
+        if expt.scheduler_name == "pbs":
+            PBS.validate_walltime_with_queue_limits(walltime, queue, n_cpus)
+        if expt.scheduler_name == "slurm":
+            # TODO for non-PBS schedulers, such as Sotonix slurm setup on Pawsey
+            pass
+    else:
+        raise ValueError("Walltime must be specified in the configuration for scheduler jobs.")
 
     # Set memory to use the complete node if unspecified
     pbs_mem = pbs_config.get('mem')
