@@ -18,6 +18,7 @@ from payu.fsops import read_config
 from payu.laboratory import Laboratory
 from payu.schedulers import pbs
 from payu.schedulers import index as scheduler_index
+from payu.schedulers.pbs import PBS
 
 from .common import cd, make_random_file, get_manifests
 from .common import tmpdir, ctrldir, labdir, workdir, payudir
@@ -86,6 +87,86 @@ def test_run_pbsnodes_json_timeout(monkeypatch):
 
     with pytest.raises(RuntimeError, match=r"timed out"):
         pbs._run_pbsnodes_json(timeout=1)
+
+
+def test_get_queue_walltime_hours_correct_boundaries():
+    assert pbs.PBS.get_queue_walltime_hours("normal", 1) == 48
+    assert pbs.PBS.get_queue_walltime_hours("normal", 672) == 48
+
+    assert pbs.PBS.get_queue_walltime_hours("normal", 673) == 24
+    assert pbs.PBS.get_queue_walltime_hours("normal", 1440) == 24
+
+    assert pbs.PBS.get_queue_walltime_hours("normal", 1441) == 10
+    assert pbs.PBS.get_queue_walltime_hours("normal", 2976) == 10
+
+    assert pbs.PBS.get_queue_walltime_hours("normal", 2977) == 5
+    assert pbs.PBS.get_queue_walltime_hours("normal", 20736) == 5
+
+
+def test_get_queue_walltime_hours_unknown_queue():
+    with pytest.raises(ValueError, match=r"Unknown queue"):
+        pbs.PBS.get_queue_walltime_hours("nonexistent_queue", 1)
+
+
+def test_get_queue_walltime_hours_exceeds_max_cpus():
+    with pytest.raises(ValueError, match=r"exceed maximum.*normalsr.*10400"):
+        pbs.PBS.get_queue_walltime_hours("normalsr", 10504)
+
+
+@pytest.mark.parametrize(
+    "walltime, expected_hours",
+    [
+        (3600, 1.0),
+        (600, 1/6),
+
+        # SS string format only
+        ("05", 5/3600),
+
+        # MM:SS
+        ("10:00", 10/60),
+        ("01:00", 1/60),
+
+        # H:M:S
+        ("1:0:0", 1.0),
+        ("01:0:0", 1.0),
+        ("1:30:00", 1.5),
+        ("01:30:00", 1.5),
+    ],
+)
+def test_parse_walltime_valid_inputs(walltime, expected_hours):
+    assert pbs.PBS.parse_walltime(walltime) == pytest.approx(expected_hours)
+
+
+@pytest.mark.parametrize(
+    "walltime, limit, raise_error",
+    [
+        # valid
+        ("1:00:00", 2, False),
+        ("01:00:00", 1, False),
+        ("01:30:00", 1, True),
+        (3600, 2, False),
+        ("10:00", 0.2, False),
+        ("05", 0.01, False),
+    ],
+)
+def test_validate_walltime_with_queue_limits(monkeypatch, walltime, limit, raise_error):
+    # Patch get_queue_walltime_hours to avoid dependency on queue config
+    def dummy_get_queue_walltime_hours(cls, queue, ncpus):
+        return limit
+
+    monkeypatch.setattr(pbs.PBS, "get_queue_walltime_hours",
+                        classmethod(dummy_get_queue_walltime_hours)
+                        )
+
+    # two dummy variables
+    queue = "normalsr"
+    ncpus = 120
+
+    if raise_error:
+        with pytest.raises(ValueError):
+            pbs.PBS.validate_walltime_with_queue_limits(walltime, queue, ncpus)
+    else:
+        pbs.PBS.validate_walltime_with_queue_limits(walltime, queue, ncpus)
 
 
 def setup_module(module):

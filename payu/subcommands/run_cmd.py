@@ -145,6 +145,17 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
     # Update the (possibly unchanged) value of ncpus
     pbs_config['ncpus'] = n_cpus
 
+    # Validate walltime against queue limits
+    walltime = pbs_config.get('walltime')
+    if walltime:
+        if expt.scheduler_name == "pbs":
+            PBS.validate_walltime_with_queue_limits(walltime, queue, n_cpus)
+        if expt.scheduler_name == "slurm":
+            # TODO for non-PBS schedulers, such as Sotonix slurm setup on Pawsey
+            pass
+    else:
+        raise ValueError("Walltime must be specified in the configuration for scheduler jobs.")
+
     # Set memory to use the complete node if unspecified
     pbs_mem = pbs_config.get('mem')
     if not pbs_mem:
