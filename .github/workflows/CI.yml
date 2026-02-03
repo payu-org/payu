@@ -96,12 +96,3 @@ jobs:
 
       - name: Make docs
         run: cd docs && make html
-
-  # coveralls_finish:
-  #   name: Coveralls Finished
-  #   needs: tests
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: AndreMiras/coveralls-python-action@65c1672f0b8a201702d86c81b79187df74072505
-  #     with:
-  #       parallel-finished: true
