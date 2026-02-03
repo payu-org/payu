@@ -85,8 +85,9 @@ postscript
 sync
    When enabled, payu syncs the archive directory with a specificed remote directory.
    Payu sync job is submitted after the collate job is completed successfully, if collate is enabled.
-   Currently, payu sync does not sync the latest output if postscript is configured, 
-   because postscript and sync jobs are submitted at the same time.
+   Currently, ``postscript`` and ``sync`` jobs are submitted at the same time.
+   As a result, ``payu sync`` does not wait for the postscript job to complete, 
+   and does not sync the most recent ``output`` directory (see :ref:`Postprocessing` and :ref:`User_processing`).
 
 Style Guide
 ===========

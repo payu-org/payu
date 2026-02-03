@@ -369,6 +369,8 @@ FMS based model only options:
    is then ``ncpus / nthreads``
 
 
+.. _User_processing:
+
 User Processing
 --------------
 
