@@ -70,7 +70,8 @@ include = ["payu*"]
 namespaces = false
 
 [tool.pytest.ini_options]
-addopts = "--cov=payu --cov-report=xml"
+addopts = "--cov=payu"
+testpaths = ["test/"]
 
 [tool.versioneer]
 VCS = "git"
@@ -83,5 +84,4 @@ parentdir_prefix = "payu-"
 [tool.coverage.run]
 omit = [
     "payu/_version.py",
-    "*/tests/*",
 ]
