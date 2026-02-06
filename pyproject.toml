@@ -40,6 +40,7 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "pytest",
+    "pytest-cov",
     "pylint",
     "Sphinx",
     "pytest-cov",
@@ -68,6 +69,10 @@ requires = [
 include = ["payu*"]
 namespaces = false
 
+[tool.pytest.ini_options]
+addopts = "--cov=payu"
+testpaths = ["test/"]
+
 [tool.versioneer]
 VCS = "git"
 style = "pep440"
@@ -75,3 +80,8 @@ versionfile_source = "payu/_version.py"
 versionfile_build = "payu/_version.py"
 tag_prefix = ""
 parentdir_prefix = "payu-"
+
+[tool.coverage.run]
+omit = [
+    "payu/_version.py",
+]
