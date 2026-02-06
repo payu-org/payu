@@ -534,97 +534,33 @@ def test_hard_sweep():
     assert(not (labdir / 'archive' / 'ctrl').is_dir())
     assert(not (labdir / 'work' / 'ctrl').is_dir())
 
-@pytest.mark.parametrize("config_ignore, config_ignore_path", [
+@pytest.mark.parametrize("config_ignore, expected_status", [
+    # expected_status show if the file is considered as input, including status of:
+    # (1) hidden file in hidden dir, (2) hidden file in visible dir,
+    # (3) visible filein visible dir, (4) visible file in hidden dir,
+    # (5) custom_pattern file in visible dir, (6) visible file in custom_pattern dir
     (
-        # User did not have ignore section in config.yml
-        # Using default ignore patterns, i.e. hidden files and directories
-        {},{}
-    ),
-    (
-        # User has NULL ignore patterns in config.yml
-        # Should use default ignore patterns, i.e. hidden files and directories
-        {'ignore': None}, {'ignore_path': None}
+        # Ignore pattern is set to empty list, should include all files
+        {"ignore": []}, (True, True, True, True, True, True)
     ),
     (   
-        # Custom ignore patterns
-        {'ignore': ['random_*']}, 
-        {'ignore_path': ['*/random_*']}
+        # Ignore pattern is not set in config
+        # Using default ignore pattern, should ignore hidden files and hidden directories
+        {}, (False, False, True, False, True, True)
     ),
-])
-
-def test_ignore_files(config_ignore, config_ignore_path):
-    make_all_files()
-    make_config_files()
-    inputdir = labdir / 'input' / config['input']
-
-    # Set ignore patterns in config
-    config['manifest'].update(config_ignore)
-    config['manifest'].update(config_ignore_path)
-    write_config(config)
-
-    # Get ignore patterns directly from config
-    pattern_list = config['manifest'].get('ignore', ['.*'])
-    pattern_path_list = config['manifest'].get('ignore_path', ['*/.*'])
-    # If None, set to default patterns
-    pattern = pattern_list[0] if pattern_list is not None else '.*'
-    pattern_path = pattern_path_list[0] if pattern_path_list is not None else '*/.*'
-
-    # Create a file with ignore pattern in the input directory
-    ignore_file0 = inputdir / (pattern + '_test_ignore0')
-    ignore_file0.touch()
-    # Create a file without ignore pattern in the input directory
-    visible_file0 = inputdir / 'test_visible0'
-    visible_file0.touch()
-
-    # Create a hidden directory
-    hidden_dir = inputdir / (pattern_path + '_ignore_dir')
-    hidden_dir.mkdir(parents=True, exist_ok=True)
-
-    # Create files in hidden directory, with and without ignore pattern
-    # Both files should be ignored as in hidden directory
-    ignore_file1 = hidden_dir / (pattern + '_test_ignore1')
-    ignore_file1.touch()
-    ignore_file2 = hidden_dir / 'test_ignore2'
-    ignore_file2.touch()
-
-    # Run setup, if work directory exists sweep it first
-    if workdir.is_dir():
-        sweep_work()
-    payu_setup(lab_path=str(labdir))
-
-    # Read in manifests
-    allfiles = []
-    manifests = get_manifests(ctrldir/'manifests')
-    for f in manifests['input.yaml']:
-        allfiles.append(manifests['input.yaml'][f]['fullpath'])
-
-    # Check if ignored files are included in manifest
-    assert(str(ignore_file0) not in allfiles)
-    assert(str(ignore_file1) not in allfiles)
-    assert(str(ignore_file2) not in allfiles)
-
-    # Check if visible file is included in manifest
-    assert(str(visible_file0) in allfiles)
-
-
-@pytest.mark.parametrize("config_ignore, config_ignore_path, file0_in_manifest,"
-                    "file1_in_manifest, file2_in_manifest, file3_in_manifest", [
+    (   
+        # Ignore pattern is set to None
+        # Using default ignore pattern, should ignore hidden files and hidden directories
+        {"ignore": None}, (False, False, True, False, True, True)
+    ),
     (
-        # Both ignore and ignore_path set to []
-        {"ignore": []}, {"ignore_path": []}, True, True, True, True
-    ),
-    (   
-        # ignore set to [], ignore_path set to default
-        {"ignore": []}, {}, True, True, False, False
-    ),
-    (   
-        # ignore set to default, ignore_path set to []
-        {}, {"ignore_path": []}, False, True, False, True
+        # Custom ignore pattern
+        # Should ignore files with pattern and directories with pattern
+        {"ignore": ['pattern_*']}, (True, True, True, True, False, False)
     )
 ])
 
-def test_ignore_Empty_list(config_ignore, config_ignore_path, file0_in_manifest,
-                    file1_in_manifest, file2_in_manifest, file3_in_manifest):
+def test_ignore_pattern(config_ignore, expected_status):
     make_all_files()
     make_config_files()
     inputdir = labdir / 'input' / config['input']
@@ -632,31 +568,26 @@ def test_ignore_Empty_list(config_ignore, config_ignore_path, file0_in_manifest,
     # Delete existing ignore patterns in config, if any
     try:
         del(config['manifest']['ignore'])
-        del(config['manifest']['ignore_path'])
     except KeyError:
         pass
+
     # Set ignore patterns in config
     config['manifest'].update(config_ignore)
-    config['manifest'].update(config_ignore_path)
     write_config(config)
 
-    # Create a hidden file in the input directory
-    hidden_file0 = inputdir / '.test_000'
-    hidden_file0.touch()
-    # Create a visible file in the input directory
-    visible_file1 = inputdir / 'test_001'
-    visible_file1.touch()
+    # Create a hidden directory and pattern_* directory
+    hiddendir = inputdir / '.hidden_dir'
+    hiddendir.mkdir(parents=True, exist_ok=True)
+    patterndir = inputdir / 'pattern_dir'
+    patterndir.mkdir(parents=True, exist_ok=True)
 
-    # Create a hidden directory
-    hidden_dir = inputdir / '.hidden_dir'
-    hidden_dir.mkdir(parents=True, exist_ok=True)
-
-    # Create files in hidden directory
-    hidden_file2 = hidden_dir / '.test_002'
-    hidden_file2.touch()
-    hidden_file3 = hidden_dir / 'test_003'
-    hidden_file3.touch()
-
+    # create needed files for test cases
+    file_list = [hiddendir / '.test_000', inputdir / '.test_001', 
+                inputdir / 'test_002', hiddendir / 'test_003',
+                inputdir / 'pattern_test_004', patterndir / 'test_005']
+    for f in file_list:
+        f.touch()
+    
     # Run setup, if work directory exists sweep it first
     if workdir.is_dir():
         sweep_work()
@@ -669,7 +600,5 @@ def test_ignore_Empty_list(config_ignore, config_ignore_path, file0_in_manifest,
         allfiles.append(manifests['input.yaml'][f]['fullpath'])
 
     # Assert files are in manifest as expected
-    assert( (str(hidden_file0) in allfiles) == file0_in_manifest)
-    assert((str(visible_file1) in allfiles) == file1_in_manifest)
-    assert((str(hidden_file2) in allfiles) == file2_in_manifest)
-    assert((str(hidden_file3) in allfiles) == file3_in_manifest)
+    for f, expected in zip(file_list, expected_status):
+        assert((str(f) in allfiles) == expected)

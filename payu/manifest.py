@@ -15,6 +15,7 @@ import os
 import sys
 import shutil
 import stat
+from pathlib import Path
 
 from yamanifest.manifest import Manifest as YaManifest
 
@@ -34,7 +35,6 @@ class PayuManifest(YaManifest):
     """
     def __init__(self, path,
                  ignore=None,
-                 ignore_path=None,
                  fast_hashes=fast_hashes,
                  full_hashes=full_hashes,
                  **kwargs):
@@ -46,7 +46,6 @@ class PayuManifest(YaManifest):
         self.full_hashes = full_hashes
 
         self.ignore = ignore
-        self.ignore_path = ignore_path
 
     def calculate_fast(self, previous_manifest):
         """
@@ -122,6 +121,16 @@ class PayuManifest(YaManifest):
 
             sys.exit(1)
 
+    def path_full_match(self, fullpath, ignore_patterns):
+        """
+        Recursively check if ignore patterns match filepath. If any pattern matches, return True.
+        """
+        for pattern in ignore_patterns:
+            # Check each part of the filepath against the pattern
+            for p in Path(fullpath).parts:  
+                if Path(p).match(pattern):
+                    return True
+        return False
 
     def add_filepath(self, filepath, fullpath, hashes, copy=False):
         """
@@ -135,18 +144,9 @@ class PayuManifest(YaManifest):
         if os.path.isdir(fullpath):
             return False
 
-        # If ignore config is not set to [], apply ignore patterns
-        if len(self.ignore) > 0:
-            # Ignore anything matching the ignore patterns
-            for pattern in self.ignore:
-                if fnmatch.fnmatch(os.path.basename(fullpath), pattern):
-                    return False
-        
-        # If ignore_path config is not set to [], apply ignore_path patterns
-        if len(self.ignore_path) > 0:
-            for pattern in self.ignore_path:
-                if fnmatch.fnmatch(os.path.dirname(fullpath), pattern):
-                    return False
+        # Recursively check if ignore patterns match any part in fullpath
+        if self.path_full_match(fullpath, self.ignore):
+            return False
 
         if filepath not in self.data:
             self.data[filepath] = {}
@@ -254,11 +254,8 @@ class Manifest(object):
             self.full_hashes = [self.full_hashes, ]
 
         self.ignore = self.manifest_config.get('ignore', ['.*'])
-        self.ignore_path = self.manifest_config.get('ignore_path', ['*/.*'])
         if isinstance(self.ignore, str):
             self.ignore = [self.ignore]
-        if isinstance(self.ignore_path, str):
-            self.ignore_path = [self.ignore_path]
 
         # Warn if ignore patterns are set to None
         # And set to default patterns
@@ -266,18 +263,11 @@ class Manifest(object):
             self.ignore = ['.*']
             print("Warning: Manifest `ignore` pattern is set to NULL. \n"
                   "Using default ignore pattern to ignore hidden files.\n")
-        if self.ignore_path is None:
-            self.ignore_path = ['*/.*']
-            print("Warning: Manifest `ignore_path` pattern is set to NULL. \n"
-                  "Using default ignore_path pattern to ignore hidden directories.\n")
         
         # Warn if ignore patterns are empty lists
         if len(self.ignore) == 0:
             print("Warning: Manifest `ignore` pattern is set to an empty list. \n"
                   "All files (including hidden files) will be included!!!\n")
-        if len(self.ignore_path) == 0:
-            print("Warning: Manifest `ignore_path` pattern is set to an empty list. \n"
-                  "All directories (including hidden directories) will be included!!!\n")
 
         # Initialise manifests and reproduce flags
         self.manifests = {}
@@ -296,7 +286,6 @@ class Manifest(object):
         self.manifests[mf] = PayuManifest(
             os.path.join('manifests', '{}.yaml'.format(mf)),
             ignore=self.ignore,
-            ignore_path=self.ignore_path,
             fast_hashes=self.fast_hashes,
             full_hashes=self.full_hashes
         )
@@ -305,7 +294,6 @@ class Manifest(object):
         self.previous_manifests[mf] = PayuManifest(
             os.path.join('manifests', '{}.yaml'.format(mf)),
             ignore=self.ignore,
-            ignore_path=self.ignore_path,
             fast_hashes=self.fast_hashes,
             full_hashes=self.full_hashes
         )
