@@ -276,18 +276,11 @@ section for details.
             Enforce restart file reproducibility.
 
 ``ignore`` (*Default: [.\*]*):
-      List of ``glob`` patterns which match files to ignore when scanning input
-      directories. This is an array, so multiple patterns can be specified on
-      multiple lines. 
-      The default is .** which ignores all hidden files on a POSIX filesystem. 
-      To include hidden files, set this option to an empty list ``[]``.
-``ignore_path`` (*Default: [*/.\*]*):
-      List of ``glob`` patterns which match directories to ignore when
-      scanning input. This is an array, so multiple patterns can be
-      specified on multiple lines. 
-      The default is ***/.** which ignores all hidden directories on a POSIX filesystem. 
-      To include hidden directories, set this option to an empty list ``[]``.
-
+      List of ``glob`` patterns which match files to ignore when scanning input directories.
+      A file will be ignored if any part of its full path matches one of the patterns.
+      This is an array, so multiple patterns can be specified on multiple lines. 
+      The default is .** which ignores all hidden files and directories on a POSIX filesystem. 
+      To include hidden files and directories, set this option to an empty list ``[]``.
 
 Archiving
 ---------
