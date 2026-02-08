@@ -27,6 +27,16 @@ fast_hashes = ['binhash']
 full_hashes = ['md5']
 all_hashes = fast_hashes + full_hashes
 
+def path_full_match(fullpath, ignore_patterns):
+    """
+    Iteratively check if ignore patterns match filepath. If any pattern matches, return True.
+    """
+    for pattern in ignore_patterns:
+        # Check each part of the filepath against the pattern
+        for p in Path(fullpath).parts:  
+            if Path(p).match(pattern):
+                return True
+    return False
 
 class PayuManifest(YaManifest):
     """
@@ -121,16 +131,6 @@ class PayuManifest(YaManifest):
 
             sys.exit(1)
 
-    def path_full_match(self, fullpath, ignore_patterns):
-        """
-        Recursively check if ignore patterns match filepath. If any pattern matches, return True.
-        """
-        for pattern in ignore_patterns:
-            # Check each part of the filepath against the pattern
-            for p in Path(fullpath).parts:  
-                if Path(p).match(pattern):
-                    return True
-        return False
 
     def add_filepath(self, filepath, fullpath, hashes, copy=False):
         """
@@ -144,8 +144,8 @@ class PayuManifest(YaManifest):
         if os.path.isdir(fullpath):
             return False
 
-        # Recursively check if ignore patterns match any part in fullpath
-        if self.path_full_match(fullpath, self.ignore):
+        # Iteratively check if ignore patterns match any part in fullpath
+        if path_full_match(fullpath, self.ignore):
             return False
 
         if filepath not in self.data:

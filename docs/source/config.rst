@@ -275,7 +275,7 @@ section for details.
       ``restart`` (*Default: global reproduce flag*)
             Enforce restart file reproducibility.
 
-``ignore`` (*Default: [.\*]*):
+``ignore`` (*Default:* ``[.*]``):
       List of ``glob`` patterns which match files to ignore when scanning input directories.
       A file will be ignored if any part of its full path matches one of the patterns.
       This is an array, so multiple patterns can be specified on multiple lines. 

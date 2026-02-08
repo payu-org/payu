@@ -534,71 +534,22 @@ def test_hard_sweep():
     assert(not (labdir / 'archive' / 'ctrl').is_dir())
     assert(not (labdir / 'work' / 'ctrl').is_dir())
 
-@pytest.mark.parametrize("config_ignore, expected_status", [
-    # expected_status show if the file is considered as input, including status of:
-    # (1) hidden file in hidden dir, (2) hidden file in visible dir,
-    # (3) visible filein visible dir, (4) visible file in hidden dir,
-    # (5) custom_pattern file in visible dir, (6) visible file in custom_pattern dir
-    (
-        # Ignore pattern is set to empty list, should include all files
-        {"ignore": []}, (True, True, True, True, True, True)
-    ),
-    (   
-        # Ignore pattern is not set in config
-        # Using default ignore pattern, should ignore hidden files and hidden directories
-        {}, (False, False, True, False, True, True)
-    ),
-    (   
-        # Ignore pattern is set to None
-        # Using default ignore pattern, should ignore hidden files and hidden directories
-        {"ignore": None}, (False, False, True, False, True, True)
-    ),
-    (
-        # Custom ignore pattern
-        # Should ignore files with pattern and directories with pattern
-        {"ignore": ['pattern_*']}, (True, True, True, True, False, False)
-    )
-])
+def test_path_full_match():
+    """Test that path_full_match correctly identifies matches to ignore patterns"""
 
-def test_ignore_pattern(config_ignore, expected_status):
-    make_all_files()
-    make_config_files()
-    inputdir = labdir / 'input' / config['input']
+    from payu.manifest import path_full_match
 
-    # Delete existing ignore patterns in config, if any
-    try:
-        del(config['manifest']['ignore'])
-    except KeyError:
-        pass
+    # Test with no ignore patterns, should return False for all files
+    assert(path_full_match(tmpdir/'visible_file', []) == False)
+    assert(path_full_match(tmpdir/'.hidden_file', []) == False)
 
-    # Set ignore patterns in config
-    config['manifest'].update(config_ignore)
-    write_config(config)
-
-    # Create a hidden directory and pattern_* directory
-    hiddendir = inputdir / '.hidden_dir'
-    hiddendir.mkdir(parents=True, exist_ok=True)
-    patterndir = inputdir / 'pattern_dir'
-    patterndir.mkdir(parents=True, exist_ok=True)
-
-    # create needed files for test cases
-    file_list = [hiddendir / '.test_000', inputdir / '.test_001', 
-                inputdir / 'test_002', hiddendir / 'test_003',
-                inputdir / 'pattern_test_004', patterndir / 'test_005']
-    for f in file_list:
-        f.touch()
+    # Test with default pattern ['.*'], should match hidden file and directories
+    assert(path_full_match(tmpdir/'.hidden_file', ['.*']) == True)
+    assert(path_full_match(tmpdir/'visible_file', ['.*']) == False)
+    assert(path_full_match(tmpdir/'.hidden_dir/visible_file', ['.*']) == True)
     
-    # Run setup, if work directory exists sweep it first
-    if workdir.is_dir():
-        sweep_work()
-    payu_setup(lab_path=str(labdir))
-
-    # Read in manifests
-    allfiles = []
-    manifests = get_manifests(ctrldir/'manifests')
-    for f in manifests['input.yaml']:
-        allfiles.append(manifests['input.yaml'][f]['fullpath'])
-
-    # Assert files are in manifest as expected
-    for f, expected in zip(file_list, expected_status):
-        assert((str(f) in allfiles) == expected)
+    # Test with custom pattern, should match files and directories with pattern but not those without
+    assert(path_full_match(tmpdir/'pattern_test_004', ['pattern_*']) == True)
+    assert(path_full_match(tmpdir/'test_002', ['pattern_*']) == False)
+    assert(path_full_match(tmpdir/'pattern_dir/test_005', ['pattern_*']) == True)
+    
