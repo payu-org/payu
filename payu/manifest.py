@@ -15,6 +15,7 @@ import os
 import sys
 import shutil
 import stat
+from pathlib import Path
 
 from yamanifest.manifest import Manifest as YaManifest
 
@@ -26,6 +27,16 @@ fast_hashes = ['binhash']
 full_hashes = ['md5']
 all_hashes = fast_hashes + full_hashes
 
+def path_full_match(fullpath, ignore_patterns):
+    """
+    Iteratively check if ignore patterns match filepath. If any pattern matches, return True.
+    """
+    for pattern in ignore_patterns:
+        # Check each part of the filepath against the pattern
+        for p in Path(fullpath).parts:  
+            if Path(p).match(pattern):
+                return True
+    return False
 
 class PayuManifest(YaManifest):
     """
@@ -44,8 +55,7 @@ class PayuManifest(YaManifest):
         self.fast_hashes = fast_hashes
         self.full_hashes = full_hashes
 
-        if ignore is not None:
-            self.ignore = ignore
+        self.ignore = ignore
 
     def calculate_fast(self, previous_manifest):
         """
@@ -134,10 +144,9 @@ class PayuManifest(YaManifest):
         if os.path.isdir(fullpath):
             return False
 
-        # Ignore anything matching the ignore patterns
-        for pattern in self.ignore:
-            if fnmatch.fnmatch(os.path.basename(fullpath), pattern):
-                return False
+        # Iteratively check if ignore patterns match any part in fullpath
+        if path_full_match(fullpath, self.ignore):
+            return False
 
         if filepath not in self.data:
             self.data[filepath] = {}
@@ -247,6 +256,18 @@ class Manifest(object):
         self.ignore = self.manifest_config.get('ignore', ['.*'])
         if isinstance(self.ignore, str):
             self.ignore = [self.ignore]
+
+        # Warn if ignore patterns are set to None
+        # And set to default patterns
+        if self.ignore is None:
+            self.ignore = ['.*']
+            print("Warning: Manifest `ignore` pattern is set to NULL. \n"
+                  "Using default ignore pattern to ignore hidden files.\n")
+        
+        # Warn if ignore patterns are empty lists
+        if len(self.ignore) == 0:
+            print("Warning: Manifest `ignore` pattern is set to an empty list. \n"
+                  "All files (including hidden files) will be included!!!\n")
 
         # Initialise manifests and reproduce flags
         self.manifests = {}

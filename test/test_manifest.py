@@ -533,3 +533,31 @@ def test_hard_sweep():
     # Check all the correct directories have been removed
     assert(not (labdir / 'archive' / 'ctrl').is_dir())
     assert(not (labdir / 'work' / 'ctrl').is_dir())
+
+def test_path_full_match():
+    """Test that path_full_match correctly identifies matches to ignore patterns"""
+
+    from payu.manifest import path_full_match
+
+    # Test with no ignore patterns, should return False for all files
+    assert(path_full_match(tmpdir/'visible_file', []) == False)
+    assert(path_full_match(tmpdir/'.hidden_file', []) == False)
+
+    # Test with default pattern ['.*'], should match hidden file and directories
+    assert(path_full_match(tmpdir/'.hidden_file', ['.*']) == True)
+    assert(path_full_match(tmpdir/'visible_file', ['.*']) == False)
+    assert(path_full_match(tmpdir/'.hidden_dir/visible_file', ['.*']) == True)
+    assert(path_full_match(tmpdir/'test.nc', ['.*']) == False)
+    
+    # Test with custom pattern, should match files and directories with pattern but not those without
+    assert(path_full_match(tmpdir/'pattern_test_004', ['pattern_*']) == True)
+    assert(path_full_match(tmpdir/'test_002', ['pattern_*']) == False)
+    assert(path_full_match(tmpdir/'pattern_dir/test_005', ['pattern_*']) == True)
+    
+    #Test with multiple patterns
+    assert(path_full_match(tmpdir/'pattern_test_004', ['pattern_*', '.*']) == True)
+    assert(path_full_match(tmpdir/'pattern_dir/test_005', ['pattern_*', '.*']) == True)
+    assert(path_full_match(tmpdir/'.hidden_file', ['pattern_*', '.*']) == True)
+    assert(path_full_match(tmpdir/'visible_file', ['pattern_*', '.*']) == False)
+    assert(path_full_match(tmpdir/'pattern_dir/.hidden_file', ['pattern_*', '.*']) == True)
+    
