@@ -416,8 +416,10 @@ User Processing
 ``postscript``
    This is an older, less user-friendly, method to submit a script after ``payu`` 
    has completed all steps that might alter the output directory. e.g. collation.
-   Unlike the ``userscripts``, it does not support user commands. These scripts 
-   are always re-submitted via ``qsub``.
+   Unlike the ``userscripts``, it does not support user commands. 
+   These scripts are always re-submitted via ``qsub``. 
+   Payu sets the job name to ``payu_postscript`` using the ``-N`` option in the command line, 
+   which overrides any job name specified in the PBS script.
 
 ``sync`` 
    Sync archive to a remote directory using rsync. Make sure that the 
