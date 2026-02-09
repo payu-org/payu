@@ -70,6 +70,7 @@ class PBS(Scheduler):
         "normalsr": [
             (1040, 48),
             (2080, 24),
+            (4160, 10),
             (10400, 5),
         ],
         "expresssr": [
