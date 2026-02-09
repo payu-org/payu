@@ -980,7 +980,8 @@ class Experiment(object):
             envmod.setup()
             envmod.module('load', 'pbs')
 
-            cmd = 'qsub {script}'.format(script=self.postscript)
+            # Name of this PBS job is set to "payu_postscript"
+            cmd = 'qsub -N payu_postscript {script}'.format(script=self.postscript)
 
             if needs_subprocess_shell(cmd):
                 sp.check_call(cmd, shell=True)
@@ -1063,6 +1064,9 @@ class Experiment(object):
         log_filenames = [short_job_name + '.o', short_job_name + '.e']
         for postfix in ['_c.o', '_c.e', '_p.o', '_p.e', '_s.o', '_s.e']:
             log_filenames.append(short_job_name[:13] + postfix)
+            
+        if self.postscript:
+            log_filenames.extend(['payu_postscript.o', 'payu_postscript.e'])
 
         logs = [
             f for f in os.listdir(os.curdir) if os.path.isfile(f) and (
