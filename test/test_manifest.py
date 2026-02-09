@@ -547,9 +547,17 @@ def test_path_full_match():
     assert(path_full_match(tmpdir/'.hidden_file', ['.*']) == True)
     assert(path_full_match(tmpdir/'visible_file', ['.*']) == False)
     assert(path_full_match(tmpdir/'.hidden_dir/visible_file', ['.*']) == True)
+    assert(path_full_match(tmpdir/'test.nc', ['.*']) == False)
     
     # Test with custom pattern, should match files and directories with pattern but not those without
     assert(path_full_match(tmpdir/'pattern_test_004', ['pattern_*']) == True)
     assert(path_full_match(tmpdir/'test_002', ['pattern_*']) == False)
     assert(path_full_match(tmpdir/'pattern_dir/test_005', ['pattern_*']) == True)
+    
+    #Test with multiple patterns
+    assert(path_full_match(tmpdir/'pattern_test_004', ['pattern_*', '.*']) == True)
+    assert(path_full_match(tmpdir/'pattern_dir/test_005', ['pattern_*', '.*']) == True)
+    assert(path_full_match(tmpdir/'.hidden_file', ['pattern_*', '.*']) == True)
+    assert(path_full_match(tmpdir/'visible_file', ['pattern_*', '.*']) == False)
+    assert(path_full_match(tmpdir/'pattern_dir/.hidden_file', ['pattern_*', '.*']) == True)
     
