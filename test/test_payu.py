@@ -12,7 +12,7 @@ from unittest.mock import patch
 import payu
 import payu.fsops
 import payu.laboratory
-import payu.envmodo
+import payu.envmod
 
 # comment to trigger tests
 
