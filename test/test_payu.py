@@ -12,7 +12,9 @@ from unittest.mock import patch
 import payu
 import payu.fsops
 import payu.laboratory
-import payu.envmod
+import payu.envmodo
+
+# comment to trigger tests
 
 from .common import testdir, tmpdir, ctrldir, labdir, workdir, cd
 from .common import make_exe, make_inputs, make_restarts, make_all_files
