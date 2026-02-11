@@ -46,6 +46,7 @@ test = [
     "Sphinx",
     "pytest-cov",
     "mnctools",
+    "freezegun"
 ]
 mitgcm = ["mnctools>=0.2"]
 
