@@ -7,6 +7,7 @@ scheduler stdout/stderr logs, and querying the scheduler
 from pathlib import Path
 from typing import Any, Optional
 import warnings
+from datetime import datetime
 
 from payu.schedulers import Scheduler
 from payu.telemetry import (
@@ -104,6 +105,28 @@ def get_job_file_list(
     latest_run = max(run_dirs, key=lambda d: int(d.name))
     return list(latest_run.glob("run/*.json"))
 
+def display_wait_time(qtime, stime, label=None) -> Optional[str]:
+    """Calculate the difference between the submit queue time and the start time/current time (if job is in queue)"""
+    if qtime is None or stime is None:
+        return None
+    
+    if isinstance(stime, datetime):
+        start_time = stime
+    else:
+        start_time = datetime.strptime(stime, "%a %b %d %H:%M:%S %Y")
+
+    submit_time = datetime.strptime(qtime, "%a %b %d %H:%M:%S %Y")
+    wait_time = (start_time - submit_time).total_seconds()
+
+    # Convert the queue time to a human-readable format
+    wait_hr = int(wait_time // 3600)
+    wait_min = int((wait_time % 3600) // 60)
+    wait_sec = int(wait_time % 60)
+    wait_time_str = f"{wait_hr}h {wait_min}m {wait_sec}s"
+    
+    if wait_time_str is not None:
+        print(f"  {f'{label}:':<{18}} {wait_time_str}")
+    return wait_time_str
 
 def build_job_info(
             archive_path: Path,
@@ -140,10 +163,27 @@ def build_job_info(
             archive_path=archive_path,
             type=data.get("scheduler_type")
         )
+
+        job_id = data.get("scheduler_job_id")
+        if data.get("scheduler_job_info"):
+            qtime = (data.get("scheduler_job_info", {})
+                    .get("Jobs", {})
+                    .get(job_id, {})
+                    .get("qtime")) 
+            stime = (data.get("scheduler_job_info", {})                
+                    .get("Jobs", {})
+                    .get(job_id, {})                
+                    .get("stime"))
+        else:
+            qtime = data.get("qtime")
+            stime = data.get("stime")
+
         run_info = {
-            "job_id": data.get("scheduler_job_id"),
+            "job_id": job_id,
             "run_id": data.get("payu_run_id"),
             "stage": data.get("stage"),
+            "qtime": qtime,
+            "stime": stime,
             "exit_status": data.get("payu_run_status"),
             "model_exit_status": data.get("payu_model_run_status"),
             "stdout_file": str(stdout) if stdout else None,
@@ -210,10 +250,20 @@ def update_all_job_files(
             stage = data["stage"]
             job_file = Path(data["job_file"])
             run_status = data.get("exit_status")
+            qtime = data.get("qtime")
+            stime = data.get("stime")
 
             # Get job status from the scheduler data
             job_status = all_jobs.get(job_id)
             exit_status = job_status.get("exit_status") if job_status else None
+            
+            update_job_file(
+                file_path=job_file,
+                data={
+                    "qtime": job_status.get("qtime") if job_status else qtime,
+                    "stime": job_status.get("stime") if job_status else stime,
+                }
+            )
 
             if not job_status:
                 # Job not found in scheduler
@@ -262,6 +312,10 @@ def display_job_info(data: dict[str, Any]) -> None:
             print_line("Job ID", "job_id", run_info)
             print_line("Run ID", "run_id", run_info)
             print_line("Stage", "stage", run_info)
+            if run_info.get("stage") == "queued":
+                display_wait_time(run_info.get("qtime"), datetime.now(), label="Queue time")
+            elif run_info.get("stage") in ["model-run", "archive", "complete"]:
+                display_wait_time(run_info.get("qtime"), run_info.get("stime"), label="Total queue time")
             exit_status = run_info.get("exit_status")
             if exit_status is not None:
                 status_str = "Success" if exit_status == 0 else "Failed"

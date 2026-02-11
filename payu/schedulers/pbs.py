@@ -379,6 +379,8 @@ class PBS(Scheduler):
             job_statuses[job_id] = {
                 'job_state': job_info.get('job_state'),
                 'exit_status': job_info.get('Exit_status'),
+                'qtime': job_info.get('qtime'),
+                'stime': job_info.get('stime'),
             }
         return job_statuses
 
