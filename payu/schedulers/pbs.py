@@ -22,7 +22,8 @@ import payu.envmod as envmod
 from payu.fsops import check_exe_path
 from payu.manifest import Manifest
 from payu.schedulers.scheduler import Scheduler
-from payu.telemetry import REQUEST_TIMEOUT
+
+PBSNODE_TIMEOUT = 60
 
 
 def _run_pbsnodes_json(timeout: int) -> Dict[str, Any]:
@@ -180,7 +181,7 @@ class PBS(Scheduler):
         """
         tag = cls.QUEUE_MAPS.get(queue)
         # collect all node information from pbsnodes
-        data = _run_pbsnodes_json(timeout=REQUEST_TIMEOUT)
+        data = _run_pbsnodes_json(timeout=PBSNODE_TIMEOUT)
 
         ncpus, mem = [], []
         for node in data["nodes"].values():
