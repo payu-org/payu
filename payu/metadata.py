@@ -364,15 +364,34 @@ def get_schema_from_github():
 def add_template_metadata_values(metadata: CommentedMap) -> None:
     """Add in templates for un-set metadata values"""
     schema = get_schema_from_github()
+    comment_line = []
+    anchor_key = None
 
     for key, value in schema.get('properties', {}).items():
         if key not in metadata:
             # Add field with commented description of value
             description = value.get('description', None)
             if description is not None:
-                metadata[key] = None
-                metadata.yaml_add_eol_comment(description, key)
+                if key == "schema_version":
+                    # Set the schema to 1-0-3
+                    metadata[key] = "1-0-3"
+                    anchor_key = key
+                    anchor_description = description
+                elif key == "description" or key == "long_description":
+                    # Add placeholder description for description field
+                    metadata[key] = "REPLACE_ME"
+                    metadata.yaml_add_eol_comment(description, key)
+                    anchor_key = key
+                    anchor_description = description
+                else:
+                    comment_line.append(f"# {key}: {description}")
 
+    # Add any remaining keys and descriptions as comments at the end of the file,
+    # anchored to the last key                
+    if not anchor_key:
+        anchor_key = next(reversed(metadata), None)
+
+    metadata.yaml_add_eol_comment(anchor_description + "\n" + "\n".join(comment_line), anchor_key)
 
 def generate_uuid() -> str:
     """Generate a new uuid"""
