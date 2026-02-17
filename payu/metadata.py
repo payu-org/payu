@@ -366,6 +366,7 @@ def add_template_metadata_values(metadata: CommentedMap) -> None:
     schema = get_schema_from_github()
     comment_line = []
     anchor_key = None
+    anchor_description = ""
 
     for key, value in schema.get('properties', {}).items():
         if key not in metadata:
