@@ -26,14 +26,14 @@ arguments = [args.model, args.config, args.initial, args.nruns,
 logger = logging.getLogger(__name__)
 
 
-def validate_platform_node(platform, queue, get_queue_node_shape):
+def validate_platform_node(platform, queue, get_queue_node_shape, archive_path):
     """
     Validate platform node setting against the queue node shape for the active scheduler.
     """
     if not platform:
         return
 
-    cpu, mem = get_queue_node_shape(queue)
+    cpu, mem = get_queue_node_shape(queue, archive_path)
 
     if platform.get("nodesize") != cpu:
         raise ValueError(
@@ -70,10 +70,10 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
     platform = pbs_config.get("platform", {})
 
     if expt.scheduler_name == 'pbs':
-        cpu_q, mem_q = PBS.get_queue_node_shape(queue)
+        cpu_q, mem_q = PBS.get_queue_node_shape(queue, expt.archive_path)
 
         if platform:
-            validate_platform_node(platform, queue, PBS.get_queue_node_shape)
+            validate_platform_node(platform, queue, PBS.get_queue_node_shape, expt.archive_path)
 
         max_cpus_per_node = platform.get("nodesize", cpu_q)
         max_ram_per_node = platform.get("nodemem", mem_q)

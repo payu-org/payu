@@ -17,6 +17,7 @@ from collections import Counter
 
 import json
 from tenacity import retry, stop_after_delay
+import time
 
 import payu.envmod as envmod
 from payu.fsops import check_exe_path
@@ -25,6 +26,44 @@ from payu.schedulers.scheduler import Scheduler
 
 PBSNODE_TIMEOUT = 60
 
+def check_pbsnode_file(pbsnodes_json_path):
+    """ Check if pbsnodes.json file is recent (< 7 days) and rerun pbsnodes if not. """
+    expire_day = 7
+    is_recent = False
+    
+    # Check if pbsnodes.json exists
+    if pbsnodes_json_path.exists():
+        try:
+            # Check if the file is recent (modified within the last 7 days)
+            with pbsnodes_json_path.open() as f:
+                pbsnodes_json = json.load(f)
+            timestamp = pbsnodes_json.get("timestamp", 0)
+
+            if timestamp > time.time() - expire_day*24*60*60:           
+                is_recent = True
+
+        except json.JSONDecodeError:
+            is_recent = False
+
+    # If the file is not recent, rerun pbsnodes and update the file
+    if not is_recent:
+        new_pbsnodes_json = _run_pbsnodes_json(timeout=PBSNODE_TIMEOUT)
+        new_pbsnodes_json["timestamp"] = time.time()
+        with pbsnodes_json_path.open("w") as f:
+            json.dump(new_pbsnodes_json, f, indent=2)
+
+def read_pbsnode_file(archive_path) -> Dict[str, Any]:
+    """ Read pbsnodes.json file and return the parsed JSON data. """ 
+    pbsnodes_json_path = Path(archive_path) / "payu_jobs" / "pbsnodes.json"
+    check_pbsnode_file(pbsnodes_json_path)
+    try:
+        with pbsnodes_json_path.open() as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"Failed to decode JSON from {pbsnodes_json_path} after timestamp checking."
+        ) from e
+        
 
 def _run_pbsnodes_json(timeout: int) -> Dict[str, Any]:
     """Run pbsnodes -a -F json and return parsed Json output."""
@@ -175,13 +214,13 @@ class PBS(Scheduler):
         return int(s.replace("kb", "")) // (1024 * 1024)
 
     @classmethod
-    def get_queue_node_shape(cls, queue: str) -> tuple[int, int]:
+    def get_queue_node_shape(cls, queue: str, archive_path: str) -> tuple[int, int]:
         """
         Get the node shape (cpu count and memory) for a given queue.
         """
         tag = cls.QUEUE_MAPS.get(queue)
         # collect all node information from pbsnodes
-        data = _run_pbsnodes_json(timeout=PBSNODE_TIMEOUT)
+        data = read_pbsnode_file(archive_path)
 
         ncpus, mem = [], []
         for node in data["nodes"].values():

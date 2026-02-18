@@ -21,7 +21,7 @@ from payu.schedulers import index as scheduler_index
 from payu.schedulers.pbs import PBS
 
 from .common import cd, make_random_file, get_manifests
-from .common import tmpdir, ctrldir, labdir, workdir, payudir
+from .common import tmpdir, ctrldir, labdir, workdir, payudir, archive_dir
 from .common import sweep_work, payu_init, payu_setup
 from .common import config as original_config
 from .common import write_config
@@ -51,10 +51,10 @@ def test_get_queue_node_shape_picks_node_shape(monkeypatch):
         # Non-matching topology - should be ignored
         "node005": {"topology": "cpu-xyz", "ncpus": 12, "mem": "12582912KB"},  # 12GB
     })
+    
+    monkeypatch.setattr(pbs, "read_pbsnode_file", lambda timeout: payload)
 
-    monkeypatch.setattr(pbs, "_run_pbsnodes_json", lambda timeout: payload)
-
-    ncpus, mem = pbs.PBS.get_queue_node_shape("normal")
+    ncpus, mem = pbs.PBS.get_queue_node_shape("normal", str(archive_dir))
 
     assert ncpus == 48
     assert mem == 192
@@ -68,10 +68,52 @@ def test_get_queue_node_shape_no_matching_topology(monkeypatch):
         "node002": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
     })
 
-    monkeypatch.setattr(pbs, "_run_pbsnodes_json", lambda timeout: payload)
+    monkeypatch.setattr(pbs, "read_pbsnode_file", lambda timeout: payload)
 
     with pytest.raises(ValueError, match=r"No nodes matched"):
-        pbs.PBS.get_queue_node_shape("normalsr")
+        pbs.PBS.get_queue_node_shape("normalsr", str(archive_dir))
+
+@pytest.mark.parametrize("file_exist, timestamp, expected_rerun",
+    [
+        (True, 0, 1),  # No timestamp
+        (True, 100, 1),  # Old timestamp
+        (True, 9999999999, 0),  # Recent timestamp
+        (False, 0, 1),  # File doesn't exist
+    ]
+)
+def test_read_pbsnode_file_different_age(monkeypatch, file_exist, timestamp, expected_rerun):
+    """ Test if read_pbsnodes_file will rerun given different aged `pbsnodes.json`. """
+    payload = _fake_pbsnodes_dict({
+        # Non-matching topology - should be ignored
+        "node001": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+        "node002": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+    })
+
+    # Create a fake pbsnodes.json file
+    payu_job_path = archive_dir / "payu_jobs"
+    payu_job_path.mkdir(parents=True, exist_ok=True)
+    pbsnodes_json_path = payu_job_path / "pbsnodes.json"
+    if file_exist:
+        data = {
+            "timestamp": timestamp,
+            "nodes": payload["nodes"]
+        }
+        with open(pbsnodes_json_path, "w") as f:
+            json.dump(data, f)
+    else:
+        pbsnodes_json_path.unlink(missing_ok=True)
+
+    # Set up a run counter
+    run_counter = 0
+    def fake_run(*args, **kwargs):
+        nonlocal run_counter
+        run_counter += 1
+        return payload
+
+    monkeypatch.setattr(pbs, "_run_pbsnodes_json", fake_run)
+    pbs.PBS.get_queue_node_shape("normal", str(archive_dir))
+
+    assert run_counter == expected_rerun
 
 
 def test_mem_convert_requires_kb_suffix():
