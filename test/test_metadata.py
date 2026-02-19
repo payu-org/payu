@@ -8,7 +8,7 @@ from unittest.mock import patch, Mock
 from ruamel.yaml import YAML
 import jsonschema
 
-from payu.metadata import Metadata, MetadataWarning
+from payu.metadata import Metadata, MetadataWarning, SCHEMA_VERSION, placeholder_text
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -477,13 +477,13 @@ def test_update_file_with_template_metadata_values(mock_repo):
             metadata.update_file(set_template_values=True)
 
     # Expect commented template values for non-null fields
-    expected_metadata = """experiment_uuid: cb793e91-6168-4ed2-a70c-f6f9ccf1659
+    expected_metadata = f"""experiment_uuid: cb793e91-6168-4ed2-a70c-f6f9ccf1659
 created: '2000-01-01'
 name: ctrldir-branch-cb793e91
 model: TEST-MODEL
-schema_version: 1-0-3
-description: REPLACE_ME  # Short description of the experiment (string, < 150 char)
-long_description: REPLACE_ME # Long description of the experiment (string)
+schema_version: {SCHEMA_VERSION}
+description: {placeholder_text}  # Short description of the experiment (string, < 150 char)
+long_description: {placeholder_text} # Long description of the experiment (string)
 # realm: The realm(s) included in the experiment (string)
 """
     assert (ctrldir / 'metadata.yaml').read_text() == expected_metadata

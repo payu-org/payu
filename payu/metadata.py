@@ -36,7 +36,9 @@ MODEL_FIELD = "model"
 METADATA_FILENAME = "metadata.yaml"
 
 # Metadata Schema
-SCHEMA_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema/80a3ce720af14b2b5e718630e1b52e7b3d22ea95/au.org.access-nri/model/output/experiment-metadata/1-0-3.json"
+SCHEMA_VERSION = "1-0-3"
+SCHEMA_URL = f"https://raw.githubusercontent.com/ACCESS-NRI/schema/cff183437134592723b09af6620e5cb190abeb22/au.org.access-nri/model/output/experiment-metadata/{SCHEMA_VERSION}.json"
+placeholder_text = "__REPLACE_ME__"
 
 class MetadataWarning(Warning):
     pass
@@ -375,12 +377,12 @@ def add_template_metadata_values(metadata: CommentedMap) -> None:
             if description is not None:
                 if key == "schema_version":
                     # Set the schema to 1-0-3
-                    metadata[key] = "1-0-3"
+                    metadata[key] = SCHEMA_VERSION
                     anchor_key = key
                     anchor_description = description
                 elif key == "description" or key == "long_description":
                     # Add placeholder description for description field
-                    metadata[key] = "REPLACE_ME"
+                    metadata[key] = placeholder_text
                     metadata.yaml_add_eol_comment(description, key)
                     anchor_key = key
                     anchor_description = description
