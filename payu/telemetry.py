@@ -14,6 +14,7 @@ import tempfile
 import threading
 from typing import Any, Optional
 import warnings
+from filelock import FileLock, Timeout
 
 import cftime
 
@@ -37,6 +38,8 @@ OPTIONAL_CONFIG_FIELDS = {
 }
 
 REQUEST_TIMEOUT = 10
+LOCK_TIMEOUT = 5
+LOCK_LIFETIME = 8
 
 TELEMETRY_VERSION = "1.0.0"
 
@@ -465,9 +468,17 @@ def update_job_file(
     Update the job file with the provided data
     and return the updated data
     """
-    run_info = read_job_file(file_path)
-    run_info.update(data)
-    atomic_write_file(file_path=file_path, data=run_info)
+    lock = FileLock(str(file_path) + ".lock", lifetime=LOCK_LIFETIME, timeout=LOCK_TIMEOUT)
+    try:
+        with lock:
+            run_info = read_job_file(file_path)
+            run_info.update(data)
+            atomic_write_file(file_path=file_path, data=run_info)
+    except Timeout:
+        run_info = read_job_file(file_path)
+        print(
+            f"File at {file_path} is locked after waiting for {LOCK_TIMEOUT} seconds. "
+            "Returning existing job info without update.")
     return run_info
 
 

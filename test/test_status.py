@@ -300,8 +300,6 @@ def expected_archive_job_info(run_number):
         'run_id': f'commit-hash{run_number}',
         'model_exit_status': 0,
         'stage': 'archive',
-        'qtime': None,
-        'stime': None,
         'stderr_file': None,
         'stdout_file': None,
         'start_time': f'2025-08-1{run_number}T12:00:00'
@@ -315,8 +313,6 @@ def expected_running_job_info():
         'run_id': 'commit-hash3',
         'model_exit_status': None,
         'stage': 'model-run',
-        'qtime': None,
-        'stime': None,
         'stderr_file': None,
         'stdout_file': None,
         'start_time': '2025-08-15T16:30:00'
@@ -330,8 +326,6 @@ def expected_queued_job_info():
         'run_id': None,
         'model_exit_status': None,
         'stage': 'queued',
-        'qtime': None,
-        'stime': None,
         'stderr_file': None,
         'stdout_file': None,
         'start_time': None
@@ -345,8 +339,6 @@ def expected_failed_job_info():
         'run_id': 'commit-hash-failed',
         'model_exit_status': None,
         'stage': 'setup',
-        'qtime': None,
-        'stime': None,
         'stderr_file': None,
         'stdout_file': None,
         'start_time': '2025-08-13T12:00:00'
@@ -560,7 +552,6 @@ def test_status_cmd(tmp_path, capsys):
 )
 def test_status_queue_time(tmp_path, capsys, job_stage, qtime, stime, time_label, time_message):
     """Test that queue time is calculated and displayed for a queued job."""
-    print(qtime)
     # Create a temporary lab and config
     lab_path = tmp_path / "lab"
     archive_path = lab_path / "archive" / "control-exp"
@@ -585,11 +576,14 @@ def test_status_queue_time(tmp_path, capsys, job_stage, qtime, stime, time_label
     job_data = {
         "scheduler_job_id": "test-job-id-3",
         "scheduler_type": "pbs",
-        "metadata": {"uuid": "test-uuid"},
+        "experiment_metadata": {"experiment_uuid": "test-uuid"},
         "payu_current_run": 3,
         "stage": job_stage,
-        "qtime": qtime,
-        "stime": stime
+        "scheduler_job_info":{
+            "Job_Name": "double_gyre",
+            "qtime": qtime,
+            "stime": stime
+        }
     }
     with open(job_file, 'w') as f:
         json.dump(job_data, f)

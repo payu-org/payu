@@ -424,7 +424,7 @@ class PBS(Scheduler):
         return info
 
 
-    def get_all_jobs_status(self) -> Optional[Dict[str, Any]]:
+    def get_all_job_info(self) -> Optional[Dict[str, Any]]:
         """
         Get information about all jobs from the PBS server
 
@@ -436,16 +436,11 @@ class PBS(Scheduler):
         info = get_job_info_json()
         if info is None:
             return None
-        job_statuses = {}
+        all_job_info = {}
         jobs = info.get('Jobs', {})
         for job_id, job_info in jobs.items():
-            job_statuses[job_id] = {
-                'job_state': job_info.get('job_state'),
-                'exit_status': job_info.get('Exit_status'),
-                'qtime': job_info.get('qtime'),
-                'stime': job_info.get('stime'),
-            }
-        return job_statuses
+            all_job_info[job_id] = job_info
+        return all_job_info
 
 
 @retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
