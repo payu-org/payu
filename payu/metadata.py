@@ -36,7 +36,10 @@ MODEL_FIELD = "model"
 METADATA_FILENAME = "metadata.yaml"
 
 # Metadata Schema
-SCHEMA_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema/80a3ce720af14b2b5e718630e1b52e7b3d22ea95/au.org.access-nri/model/output/experiment-metadata/1-0-3.json"
+SCHEMA_VERSION = "1-0-3"
+SCHEMA_COMMIT_HASH = "cff183437134592723b09af6620e5cb190abeb22" 
+SCHEMA_URL = f"https://raw.githubusercontent.com/ACCESS-NRI/schema/{SCHEMA_COMMIT_HASH}/au.org.access-nri/model/output/experiment-metadata/{SCHEMA_VERSION}.json"
+placeholder_text = "__REPLACE_ME__"
 
 class MetadataWarning(Warning):
     pass
@@ -364,15 +367,35 @@ def get_schema_from_github():
 def add_template_metadata_values(metadata: CommentedMap) -> None:
     """Add in templates for un-set metadata values"""
     schema = get_schema_from_github()
+    comment_line = []
+    anchor_key = None
+    anchor_description = ""
 
     for key, value in schema.get('properties', {}).items():
         if key not in metadata:
             # Add field with commented description of value
             description = value.get('description', None)
             if description is not None:
-                metadata[key] = None
-                metadata.yaml_add_eol_comment(description, key)
+                if key == "schema_version":
+                    # Set the schema to 1-0-3
+                    metadata[key] = SCHEMA_VERSION
+                    anchor_key = key
+                    anchor_description = description
+                elif key == "description" or key == "long_description":
+                    # Add placeholder description for description field
+                    metadata[key] = placeholder_text
+                    metadata.yaml_add_eol_comment(description, key)
+                    anchor_key = key
+                    anchor_description = description
+                else:
+                    comment_line.append(f"# {key}: {description}")
 
+    # Add any remaining keys and descriptions as comments at the end of the file,
+    # anchored to the last key                
+    if not anchor_key:
+        anchor_key = next(reversed(metadata), None)
+
+    metadata.yaml_add_eol_comment(anchor_description + "\n" + "\n".join(comment_line), anchor_key)
 
 def generate_uuid() -> str:
     """Generate a new uuid"""
