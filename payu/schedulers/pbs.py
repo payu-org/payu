@@ -26,6 +26,21 @@ from payu.schedulers.scheduler import Scheduler
 
 PBSNODE_TIMEOUT = 60
 
+def get_pbsnodes_cache_path() -> Path:
+    """Get the path of pbsnodes.json cache file, 
+    If not set, then use default cache path."""
+
+    env_path = os.environ.get("PAYU_PBSNODES_CACHE")
+    if env_path:
+        return Path(env_path)
+    else:
+        xdg_cache = os.environ.get('XDG_CACHE_HOME')
+        if xdg_cache:
+            return Path(xdg_cache) / "pbs" / "pbsnodes.json"
+        else:
+            home_dir = os.environ.get("HOME")
+            return Path(home_dir) / ".cache" / "pbs" / "pbsnodes.json"
+
 def check_pbsnode_file(pbsnodes_json_path):
     """ Check if pbsnodes.json file is recent (< 7 days) and rerun pbsnodes if not. """
     expire_day = 7
@@ -48,13 +63,17 @@ def check_pbsnode_file(pbsnodes_json_path):
     # If the file is not recent, rerun pbsnodes and update the file
     if not is_recent:
         new_pbsnodes_json = _run_pbsnodes_json(timeout=PBSNODE_TIMEOUT)
-        new_pbsnodes_json["timestamp"] = time.time()
-        with pbsnodes_json_path.open("w") as f:
-            json.dump(new_pbsnodes_json, f, indent=2)
+        try:
+            with pbsnodes_json_path.open("w") as f:
+                json.dump(new_pbsnodes_json, f, indent=2)
+        except IOError as e:
+            raise RuntimeError(f"Failed to write pbsnodes JSON to {pbsnodes_json_path}") from e
 
-def read_pbsnode_file(archive_path) -> Dict[str, Any]:
+def read_pbsnode_file() -> Dict[str, Any]:
     """ Read pbsnodes.json file and return the parsed JSON data. """ 
-    pbsnodes_json_path = Path(archive_path) / "payu_jobs" / "pbsnodes.json"
+    pbsnodes_json_path = get_pbsnodes_cache_path()
+    pbsnodes_json_path.parent.mkdir(parents=True, exist_ok=True)
+
     check_pbsnode_file(pbsnodes_json_path)
     try:
         with pbsnodes_json_path.open() as f:
@@ -214,13 +233,13 @@ class PBS(Scheduler):
         return int(s.replace("kb", "")) // (1024 * 1024)
 
     @classmethod
-    def get_queue_node_shape(cls, queue: str, archive_path: str) -> tuple[int, int]:
+    def get_queue_node_shape(cls, queue: str) -> tuple[int, int]:
         """
         Get the node shape (cpu count and memory) for a given queue.
         """
         tag = cls.QUEUE_MAPS.get(queue)
         # collect all node information from pbsnodes
-        data = read_pbsnode_file(archive_path)
+        data = read_pbsnode_file()
 
         ncpus, mem = [], []
         for node in data["nodes"].values():

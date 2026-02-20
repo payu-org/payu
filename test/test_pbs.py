@@ -52,9 +52,9 @@ def test_get_queue_node_shape_picks_node_shape(monkeypatch):
         "node005": {"topology": "cpu-xyz", "ncpus": 12, "mem": "12582912KB"},  # 12GB
     })
     
-    monkeypatch.setattr(pbs, "read_pbsnode_file", lambda timeout: payload)
+    monkeypatch.setattr(pbs, "read_pbsnode_file", lambda: payload)
 
-    ncpus, mem = pbs.PBS.get_queue_node_shape("normal", str(archive_dir))
+    ncpus, mem = pbs.PBS.get_queue_node_shape("normal")
 
     assert ncpus == 48
     assert mem == 192
@@ -68,10 +68,10 @@ def test_get_queue_node_shape_no_matching_topology(monkeypatch):
         "node002": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
     })
 
-    monkeypatch.setattr(pbs, "read_pbsnode_file", lambda timeout: payload)
+    monkeypatch.setattr(pbs, "read_pbsnode_file", lambda: payload)
 
     with pytest.raises(ValueError, match=r"No nodes matched"):
-        pbs.PBS.get_queue_node_shape("normalsr", str(archive_dir))
+        pbs.PBS.get_queue_node_shape("normalsr")
 
 @pytest.mark.parametrize("file_exist, timestamp, expected_rerun",
     [
@@ -90,9 +90,9 @@ def test_read_pbsnode_file_different_age(monkeypatch, file_exist, timestamp, exp
     })
 
     # Create a fake pbsnodes.json file
-    payu_job_path = archive_dir / "payu_jobs"
-    payu_job_path.mkdir(parents=True, exist_ok=True)
-    pbsnodes_json_path = payu_job_path / "pbsnodes.json"
+    pbsnodes_json_path = archive_dir / "pbs" / "pbsnodes.json"
+    pbsnodes_json_path.parent.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv('PAYU_PBSNODES_CACHE', str(pbsnodes_json_path))
     if file_exist:
         data = {
             "timestamp": timestamp,
@@ -111,9 +111,52 @@ def test_read_pbsnode_file_different_age(monkeypatch, file_exist, timestamp, exp
         return payload
 
     monkeypatch.setattr(pbs, "_run_pbsnodes_json", fake_run)
-    pbs.PBS.get_queue_node_shape("normal", str(archive_dir))
+    pbs.PBS.get_queue_node_shape("normal")
 
     assert run_counter == expected_rerun
+
+@pytest.mark.parametrize("pbsnode_cache, xdg_cache, home_dir, expected_path", 
+    [
+        # Test with only PAYU_PBSNODES_CACHE set
+        (str(tmpdir / "pbs_cache" / "pbsnodes.json"), 
+        None, 
+        None, 
+        tmpdir / "pbs_cache" / "pbsnodes.json"),
+
+        # Test with only XDG_CACHE_HOME set
+        (None, 
+        str(tmpdir / "xdg_cache"), 
+        None, 
+        tmpdir / "xdg_cache" / "pbs" / "pbsnodes.json"),
+
+        # Test with PAYU_PBSNODES_CACHE and XDG_CACHE_HOME set
+        (str(tmpdir / "pbs_cache" / "pbsnodes.json"), 
+        str(tmpdir / "xdg_cache"), 
+        None, 
+        tmpdir / "pbs_cache" / "pbsnodes.json"),
+
+        # Test with neither set (should default to $HOME/.cache directory)
+        (None, 
+        None, 
+        str(tmpdir), 
+        tmpdir / ".cache" / "pbs" / "pbsnodes.json"),
+    ]
+)
+def test_get_pbsnodes_cache_path(monkeypatch, pbsnode_cache, xdg_cache, home_dir, expected_path):
+    """ Test if get_pbsnodes_cache_path returns the correct pbsnodes.json path """
+    if pbsnode_cache:
+        monkeypatch.setenv('PAYU_PBSNODES_CACHE', pbsnode_cache)
+    else:
+        monkeypatch.delenv('PAYU_PBSNODES_CACHE', raising=False)
+    if xdg_cache:
+        monkeypatch.setenv('XDG_CACHE_HOME', xdg_cache)
+    else:
+        monkeypatch.delenv('XDG_CACHE_HOME', raising=False)
+
+    monkeypatch.setenv('HOME', home_dir)
+    path = pbs.get_pbsnodes_cache_path()
+    assert path == expected_path
+
 
 
 def test_mem_convert_requires_kb_suffix():
