@@ -17,14 +17,17 @@ from collections import Counter
 
 import json
 from tenacity import retry, stop_after_delay
-import time
+from datetime import datetime, timedelta
+from filelock import SoftFileLock, Timeout
 
 import payu.envmod as envmod
-from payu.fsops import check_exe_path
+from payu.fsops import check_exe_path, atomic_write_file
 from payu.manifest import Manifest
 from payu.schedulers.scheduler import Scheduler
 
 PBSNODE_TIMEOUT = 60
+LOCK_TIMEOUT = 5
+LOCK_LIFETIME = 8
 
 def get_pbsnodes_cache_path() -> Path:
     """Get the path of pbsnodes.json cache file, 
@@ -34,17 +37,13 @@ def get_pbsnodes_cache_path() -> Path:
     if env_path:
         return Path(env_path)
     else:
-        xdg_cache = os.environ.get('XDG_CACHE_HOME')
-        if xdg_cache:
-            return Path(xdg_cache) / "pbs" / "pbsnodes.json"
-        else:
-            home_dir = os.environ.get("HOME")
-            return Path(home_dir) / ".cache" / "pbs" / "pbsnodes.json"
+        cache_dir = os.environ.get('XDG_CACHE_HOME', Path.home() / ".cache")
+        return Path(cache_dir) / "pbs" / "pbsnodes.json"
 
 def check_pbsnode_file(pbsnodes_json_path):
     """ Check if pbsnodes.json file is recent (< 7 days) and rerun pbsnodes if not. """
     expire_day = 7
-    is_recent = False
+    refresh_cache_file = True
     
     # Check if pbsnodes.json exists
     if pbsnodes_json_path.exists():
@@ -52,28 +51,33 @@ def check_pbsnode_file(pbsnodes_json_path):
             # Check if the file is recent (modified within the last 7 days)
             with pbsnodes_json_path.open() as f:
                 pbsnodes_json = json.load(f)
-            timestamp = pbsnodes_json.get("timestamp", 0)
+            timestamp = datetime.fromtimestamp(pbsnodes_json.get("timestamp", 0))
 
-            if timestamp > time.time() - expire_day*24*60*60:           
-                is_recent = True
+            if (datetime.now() - timestamp) < timedelta(days=expire_day):
+                refresh_cache_file = False
 
         except json.JSONDecodeError:
-            is_recent = False
+            # Cache file is invalid, pass as it will be refreshed below
+            pass
 
-    # If the file is not recent, rerun pbsnodes and update the file
-    if not is_recent:
+    # If the cached file is not recent or doesn't exist, rerun pbsnodes and cache the result
+    if refresh_cache_file:   
         new_pbsnodes_json = _run_pbsnodes_json(timeout=PBSNODE_TIMEOUT)
+
+        pbsnodes_json_path.parent.mkdir(parents=True, exist_ok=True)
+        lock = SoftFileLock(str(pbsnodes_json_path) + ".lock", lifetime=LOCK_LIFETIME, timeout=LOCK_TIMEOUT)
         try:
-            with pbsnodes_json_path.open("w") as f:
-                json.dump(new_pbsnodes_json, f, indent=2)
-        except IOError as e:
-            raise RuntimeError(f"Failed to write pbsnodes JSON to {pbsnodes_json_path}") from e
+            with lock:
+                atomic_write_file(pbsnodes_json_path, new_pbsnodes_json)
+        except Timeout:
+            warnings.warn(f"Could not acquire lock to write pbsnodes cache file {pbsnodes_json_path}.\n"
+             f"Cache into {pbsnodes_json_path}.tmp instead.")
+            atomic_write_file(pbsnodes_json_path.with_suffix(".tmp"), new_pbsnodes_json)
+        
 
 def read_pbsnode_file() -> Dict[str, Any]:
     """ Read pbsnodes.json file and return the parsed JSON data. """ 
     pbsnodes_json_path = get_pbsnodes_cache_path()
-    pbsnodes_json_path.parent.mkdir(parents=True, exist_ok=True)
-
     check_pbsnode_file(pbsnodes_json_path)
     try:
         with pbsnodes_json_path.open() as f:
