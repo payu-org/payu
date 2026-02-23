@@ -34,7 +34,8 @@ dependencies = [
     "packaging",
     "netCDF4",
     "jsonschema", 
-    "colorama"
+    "colorama",
+    "filelock"
 ]
 
 [project.optional-dependencies]
