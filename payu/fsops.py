@@ -16,7 +16,10 @@ import shutil
 import sys
 import shlex
 import subprocess
-from typing import Union, List
+from typing import Union, List, Any
+import tempfile
+import json
+import stat
 import warnings
 
 # Extensions
@@ -262,6 +265,24 @@ def list_archive_dirs(archive_path: Union[Path, str],
 
     dirs.sort(key=lambda d: int(d.lstrip(dir_type)))
     return dirs
+
+
+def atomic_write_file(
+            file_path: Path,
+            data: dict[str, Any],
+        ) -> None:
+    """Write the job information to a temporary file and
+    replace the existing if it exists so the update is atomic"""
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode='w', dir=file_path.parent, delete=False
+    ) as temp_file:
+        json.dump(data, temp_file, ensure_ascii=False, indent=4)
+        temp_name = temp_file.name
+    os.replace(temp_name, file_path)
+
+    # Ensure status file has same permissions as parent directory
+    os.chmod(file_path, stat.S_IMODE(file_path.parent.stat().st_mode))
 
 
 def run_script_command(script_cmd: str, control_path: Path) -> None:

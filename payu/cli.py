@@ -111,6 +111,12 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
 
     if 'PYTHONPATH' in os.environ:
         payu_env_vars['PYTHONPATH'] = os.environ['PYTHONPATH']
+    
+    # Pass through the PBS nodes cache path if it exists
+    if 'PAYU_PBSNODES_CACHE' in os.environ:
+        payu_env_vars['PAYU_PBSNODES_CACHE'] = os.environ['PAYU_PBSNODES_CACHE']
+    elif 'XDG_CACHE_HOME' in os.environ:
+        payu_env_vars['XDG_CACHE_HOME'] = os.environ["XDG_CACHE_HOME"]
 
     # Set (or import) the path to the PAYU scripts (PAYU_PATH)
     # NOTE: We may be able to use sys.path[0] here.
