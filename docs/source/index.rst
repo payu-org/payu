@@ -10,10 +10,21 @@ supercomputing environments.
 Payu was designed to allow users to start running climate models immediately,
 without having to re-learn the nuances of countless runscripts across countless
 models. Running a model like the MOM ocean model should only require a few
-commands::
+commands. 
+First, create a new experiment directory::
 
    mkdir new_expt; cd new_expt
-   payu init -m mom
+
+Next, :ref:`Create-experiment` or clone an existing released configuration and customise it as needed.
+For example, cloning 1 degree ACCESS-OM2 RYF model::
+
+   payu clone -b control -B release-1deg_jra55_ryf https://github.com/ACCESS-NRI/access-om2-configs 1deg_jra55_ryf-training
+   cd 1deg_jra55_ryf-training
+
+For a test run, you can modify the `restart_period` in `accessom2.nml` file into a short time, 
+such as 1 month. 
+To run the model, simply execute::
+
    payu run
 
 Currently, payu is very highly customised for users of NCI computing
