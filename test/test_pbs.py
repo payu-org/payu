@@ -14,7 +14,7 @@ import yaml
 
 import payu
 
-from payu.fsops import read_config
+from payu.fsops import read_config, atomic_write_file
 from payu.laboratory import Laboratory
 from payu.schedulers import pbs
 from payu.schedulers import index as scheduler_index
@@ -36,6 +36,22 @@ config = copy.deepcopy(original_config)
 def _fake_pbsnodes_dict(nodes):
     """Build a pbsnodes -F json compatible payload."""
     return {"nodes": {name: {"resources_available": ra} for name, ra in nodes.items()}}
+
+def test_atomic_write_file():
+    """Test that atomic_write_file write expected content into designated file
+    and delete the temp file."""
+    write_dir = tmpdir / "atomic_write_dir"
+    test_file = write_dir / "test.txt"
+    content = {"key1": "value1", "key2": 123}
+    atomic_write_file(test_file, content)
+
+    # assert correct content
+    assert json.loads(test_file.read_text()) == content
+
+    # assert no other files exist in this directory (e.g. temp files)
+    files_in_dir = list(write_dir.iterdir())
+    assert len(files_in_dir) == 1
+    assert files_in_dir[0] == test_file
 
 
 def test_get_queue_node_shape_picks_node_shape(monkeypatch):
