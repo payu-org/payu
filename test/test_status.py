@@ -531,7 +531,7 @@ def test_status_cmd(tmp_path, capsys):
             "queued",
             "Tue Feb 10 15:00:00 2026",
             None,
-            "Queue time:",
+            "Current queue time:",
             "0h 5m ",
         ),
 
@@ -580,9 +580,13 @@ def test_status_queue_time(tmp_path, capsys, job_stage, qtime, stime, time_label
         "payu_current_run": 3,
         "stage": job_stage,
         "scheduler_job_info":{
-            "Job_Name": "double_gyre",
-            "qtime": qtime,
-            "stime": stime
+           "Jobs": {
+                "test-job-id-3":{
+                    "Job_Name": "double_gyre",
+                    "qtime": qtime,
+                    "stime": stime
+                }
+            }
         }
     }
     with open(job_file, 'w') as f:

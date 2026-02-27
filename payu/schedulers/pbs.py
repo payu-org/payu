@@ -436,11 +436,12 @@ class PBS(Scheduler):
         info = get_job_info_json()
         if info is None:
             return None
-        all_job_info = {}
-        jobs = info.get('Jobs', {})
-        for job_id, job_info in jobs.items():
-            all_job_info[job_id] = job_info
-        return all_job_info
+        metadata = {k: v for k, v in info.items() if k != "Jobs"}  
+        result = { 
+            job_id: {**metadata, "Jobs": {job_id: job_info}}  
+            for job_id, job_info in info.get("Jobs", {}).items()
+        }  
+        return result
 
 
 @retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)

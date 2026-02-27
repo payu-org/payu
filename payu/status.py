@@ -105,15 +105,16 @@ def get_job_file_list(
     latest_run = max(run_dirs, key=lambda d: int(d.name))
     return list(latest_run.glob("run/*.json"))
 
-def display_wait_time(qtime, stime, label=None) -> Optional[str]:
+def display_wait_time(qtime, stime) -> Optional[str]:
     """Calculate the difference between the submit queue time and the start time/current time (if job is in queue)"""
-    if qtime is None or stime is None:
+    if qtime is None and stime is None:
         return None
-    
-    if isinstance(stime, datetime):
-        start_time = stime
+    elif stime is None:
+        start_time = datetime.now()
+        label = "Current queue time"
     else:
         start_time = datetime.strptime(stime, "%a %b %d %H:%M:%S %Y")
+        label = "Total queue time"
 
     submit_time = datetime.strptime(qtime, "%a %b %d %H:%M:%S %Y")
     wait_time = (start_time - submit_time).total_seconds()
@@ -163,10 +164,8 @@ def build_job_info(
             type=data.get("scheduler_type")
         )
 
-        job_id = data.get("scheduler_job_id")
-
         run_info = {
-            "job_id": job_id,
+            "job_id": data.get("scheduler_job_id"),
             "run_id": data.get("payu_run_id"),
             "stage": data.get("stage"),
             "exit_status": data.get("payu_run_status"),
@@ -238,9 +237,12 @@ def update_all_job_files(
 
             # Get job info from the scheduler data
             job_info = all_jobs.get(job_id)
-            exit_status = job_info.get("Exit_status") if job_info else None
+            exit_status = job_info.get("Jobs", {}).get(job_id, {}).get("Exit_status") if job_info else None
             
-            if job_info:
+            if job_info and exit_status and stage == "queued":
+                # Job has exited, but is still marked as queued in the job file
+                remove_job_file(file_path=job_file)
+            elif job_info:
                 # Job is found in the scheduler, update the job file with the latest info
                 update_job_file(
                     file_path=job_file,
@@ -249,16 +251,14 @@ def update_all_job_files(
                     }
                 )
 
-                if exit_status is not None:
-                    if stage == "queued":
-                        remove_job_file(file_path=job_file)
-                    elif run_status is None:
-                        update_job_file(
-                            file_path=job_file,
-                            data={
-                                "payu_run_status": exit_status
-                            }
-                        )
+                if exit_status is not None and run_status is None:
+                    # Update the job file with the exit status if it has exited
+                    update_job_file(
+                        file_path=job_file,
+                        data={
+                            "payu_run_status": exit_status
+                        }
+                    )
             else:
                 # Job not found in scheduler
                 if stage == "queued":
@@ -302,18 +302,11 @@ def display_job_info(data: dict[str, Any]) -> None:
             job_file = run_info.get("job_file")
             job_id = run_info.get("job_id")
             all_job_info = read_job_file(Path(job_file)).get("scheduler_job_info", {})
-            if "qtime" in all_job_info:
-                run_info["qtime"] = all_job_info.get("qtime", None)
-                run_info["stime"] = all_job_info.get("stime", None)
-            else:
-                job_info = all_job_info.get("Jobs", {}).get(job_id, {})
-                run_info["qtime"] = job_info.get("qtime", None)
-                run_info["stime"] = job_info.get("stime", None)
-            
-            if run_info.get("stage") == "queued":
-                display_wait_time(run_info.get("qtime"), datetime.now(), label="Queue time")
-            elif run_info.get("stage") in ["setup", "model-run", "archive"]:
-                display_wait_time(run_info.get("qtime"), run_info.get("stime"), label="Total queue time")
+            job_info = all_job_info.get("Jobs", {}).get(job_id, {})
+            run_info["qtime"] = job_info.get("qtime", None)
+            run_info["stime"] = job_info.get("stime", None)
+
+            display_wait_time(run_info.get("qtime"), run_info.get("stime"))
             exit_status = run_info.get("exit_status")
             if exit_status is not None:
                 status_str = "Success" if exit_status == 0 else "Failed"

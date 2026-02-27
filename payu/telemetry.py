@@ -390,7 +390,7 @@ def write_queued_job_file(
         "payu_current_run": current_run,
     }
     data.update(get_metadata(metadata))
-    atomic_write_file(file_path=job_file_path, data=data)
+    update_job_file(file_path=job_file_path, data=data)
 
 
 def remove_job_file(file_path: Path) -> None:
@@ -457,7 +457,7 @@ def setup_run_job_file(
     data.update(extra_info or {})
 
     # Write the file
-    atomic_write_file(file_path=file_path, data=data)
+    update_job_file(file_path=file_path, data=data)
 
 
 def update_job_file(
