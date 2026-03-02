@@ -37,7 +37,6 @@ def _fake_pbsnodes_dict(nodes):
     """Build a pbsnodes -F json compatible payload."""
     return {"nodes": {name: {"resources_available": ra} for name, ra in nodes.items()}}
 
-
 def test_get_queue_node_shape_picks_node_shape(monkeypatch):
 
     payload = _fake_pbsnodes_dict({

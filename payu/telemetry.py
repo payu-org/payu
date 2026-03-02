@@ -19,6 +19,7 @@ import cftime
 
 from payu.metadata import Metadata
 from payu.schedulers.scheduler import Scheduler
+from payu.fsops import atomic_write_file
 
 # Environment variable for external telemetry configuration file
 TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG"
@@ -298,24 +299,6 @@ def record_telemetry(run_info: dict[str, Any],
         },
     )
     thread.start()
-
-
-def atomic_write_file(
-            file_path: Path,
-            data: dict[str, Any],
-        ) -> None:
-    """Write the job information to a temporary file and
-    replace the existing if it exists so the update is atomic"""
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        mode='w', dir=file_path.parent, delete=False
-    ) as temp_file:
-        json.dump(data, temp_file, ensure_ascii=False, indent=4)
-        temp_name = temp_file.name
-    os.replace(temp_name, file_path)
-
-    # Ensure status file has same permissions as parent directory
-    os.chmod(file_path, stat.S_IMODE(file_path.parent.stat().st_mode))
 
 
 def get_job_file_path_with_id(
