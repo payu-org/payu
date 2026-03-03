@@ -15,6 +15,7 @@ import threading
 from typing import Any, Optional
 import warnings
 from filelock import FileLock, Timeout
+import warnings
 
 import cftime
 
@@ -476,9 +477,15 @@ def update_job_file(
             atomic_write_file(file_path=file_path, data=run_info)
     except Timeout:
         run_info = read_job_file(file_path)
-        print(
+        run_info.update(data)
+        # write the updated info to a temporary file
+        ts = datetime.datetime.now().strftime("%H-%M-%S")
+        tmp_file = file_path.with_suffix(f".{ts}.tmp")
+        atomic_write_file(file_path=tmp_file, data=run_info)
+
+        warnings.warn(
             f"File at {file_path} is locked after waiting for {LOCK_TIMEOUT} seconds. "
-            "Returning existing job info without update.")
+            f"Writing updated info to temporary file {tmp_file}.")
     return run_info
 
 

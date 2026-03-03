@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 from unittest.mock import patch, Mock
+from freezegun import freeze_time
 
 import cftime
 import jsonschema
@@ -18,7 +19,9 @@ from payu.telemetry import (
     get_job_file_path,
     write_queued_job_file,
     setup_run_job_file,
-    update_run_job_file
+    update_run_job_file,
+    update_job_file,
+    Timeout
 )
 from payu.fsops import movetree
 
@@ -438,6 +441,38 @@ def test_update_run_job_file(tmp_path, mock_manifests):
     assert run_info['manifests']['restart'] == {}
     assert run_info['model_end_time'] == "2025-01-01T00:00:00"
     assert run_info['model_calendar'] == "julian"
+
+
+@freeze_time("2026-03-04 09:01:02")
+def test_update_job_file_timeout(tmp_path):
+    """Test when job file is locked, the updated info is written to a temporary file 
+    and a warning is raised"""
+    file_path = tmp_path / "job_info.json"
+    old_data = {"job_id": "1234", "stage": "queued"}
+    with open(file_path, 'w') as f:
+        json.dump(old_data, f)
+
+    # Mock the file lock to always raise a Timeout
+    with patch('payu.telemetry.FileLock') as MockLock:
+        mock_lock_instance = MockLock.return_value
+        mock_lock_instance.__enter__.side_effect = Timeout("Lock timed out")
+
+        # Call the function to update the job file
+        new_data = {"job_id": "1234", "stage": "model-run"}
+        expected_warning = ("is locked after waiting")
+        with pytest.warns(UserWarning, match=expected_warning):
+            result = update_job_file(
+                file_path = file_path,
+                data = new_data
+            )
+        
+    # Check that the original file is unchanged
+    with open(file_path, 'r') as f:
+        assert json.load(f) == old_data
+    # Check that a temporary file with the updated data is created
+    temp_file = file_path.with_suffix('.09-01-02.tmp')
+    with open(temp_file, 'r') as f:
+        assert json.load(f) == new_data
 
 
 def test_telemetry_payu_run(tmp_path, config_path, setup_env,
