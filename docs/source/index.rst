@@ -16,13 +16,14 @@ First, create a new experiment directory::
    mkdir new_expt; cd new_expt
 
 Next, :ref:`Create-experiment` or clone an existing released configuration and customise it as needed.
-For example, cloning 1 degree ACCESS-OM2 RYF model::
+For example, to clone MOM5 test configuration::
 
-   payu clone -b control -B release-1deg_jra55_ryf https://github.com/ACCESS-NRI/access-om2-configs 1deg_jra55_ryf-training
-   cd 1deg_jra55_ryf-training
+   payu clone -b control -B master https://github.com/payu-org/bowl1.git bowl1
+   cd bowl1
 
-For a test run, you can modify the `restart_period` in `accessom2.nml` file into a short time, 
-such as 1 month. 
+Then generate the executable file by following the 
+`README instructions <https://github.com/payu-org/bowl1/blob/7ffc85c31b1353884d01a5a9d453321a6603cd49/README.md>`_.
+
 To run the model, simply execute::
 
    payu run
