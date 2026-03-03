@@ -244,21 +244,19 @@ def update_all_job_files(
                 remove_job_file(file_path=job_file)
             elif job_info:
                 # Job is found in the scheduler, update the job file with the latest info
-                update_job_file(
-                    file_path=job_file,
-                    data={
+                update_data={
                         "scheduler_job_info": job_info
                     }
-                )
 
                 if exit_status is not None and run_status is None:
                     # Update the job file with the exit status if it has exited
-                    update_job_file(
-                        file_path=job_file,
-                        data={
-                            "payu_run_status": exit_status
-                        }
-                    )
+                    update_data["payu_run_status"] = exit_status
+
+                update_job_file(
+                    file_path=job_file,
+                    data=update_data
+                )
+                
             else:
                 # Job not found in scheduler
                 if stage == "queued":
