@@ -504,3 +504,46 @@ def test_tenacity():
 
     # This should fail and do nothing
     pbs.get_job_info_json()
+
+def test_get_all_job_info(monkeypatch):
+    """Test that get_all_job_info correctly parses the results."""
+    fake_qstat = {
+        "timestamp": "2026-03-03T10:00:00",
+        "server": "pbs-server-01",
+        "Jobs": {
+            "12345": {
+                "Job_Name": "test_job_1",
+                "job_state": "Q",
+            },
+            "67890": {
+                "Job_Name": "test_job_2",
+                "job_state": "R",
+            },
+        },
+    }
+    expected = {
+        "12345": {
+            "timestamp": "2026-03-03T10:00:00",
+            "server": "pbs-server-01",
+            "Jobs": {
+                "12345": {
+                    "Job_Name": "test_job_1",
+                    "job_state": "Q",
+                }
+            },
+        },
+        "67890": {
+            "timestamp": "2026-03-03T10:00:00",
+            "server": "pbs-server-01",
+            "Jobs": {
+                "67890": {
+                    "Job_Name": "test_job_2",
+                    "job_state": "R",
+                }
+            },
+        },
+    }
+
+    monkeypatch.setattr(pbs, "get_job_info_json", lambda: fake_qstat)
+    result = PBS().get_all_job_info()
+    assert result == expected
