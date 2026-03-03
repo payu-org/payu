@@ -17,7 +17,7 @@ import shutil
 import cftime
 from warnings import warn
 
-from payu.fsops import mkdir_p, make_symlink
+from payu.fsops import make_symlink
 from payu.models.model import Model
 from payu.models.fms import fms_collate
 from payu.models.mom6 import mom6_add_parameter_files, mom6_save_docs_files
@@ -170,8 +170,8 @@ class CesmCmeps(Model):
         # run checks on nuopc.runfig
         self._setup_checks()
        
-        mkdir_p(os.path.join(self.work_path, 'log'))
-        mkdir_p(os.path.join(self.work_path, 'timing'))
+        os.makedirs(os.path.join(self.work_path, 'log'), exist_ok=True)
+        os.makedirs(os.path.join(self.work_path, 'timing'), exist_ok=True)
 
         self.runconfig.write(os.path.join(self.work_path, NUOPC_CONFIG))
 
@@ -280,7 +280,7 @@ class CesmCmeps(Model):
 
         super().archive()
 
-        mkdir_p(self.restart_path)
+        os.makedirs(self.restart_path, exist_ok=True)
 
         # WW3 doesn't generate a rpointer file. Write one so that all components can be generally
         # handled in the same way.

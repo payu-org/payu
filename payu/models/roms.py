@@ -10,7 +10,6 @@ import subprocess
 from pathlib import Path
 
 from payu.models.model import Model
-from payu.fsops import mkdir_p
 
 class Roms(Model):
 
@@ -74,7 +73,7 @@ class Roms(Model):
                 os.remove(f_path)
 
         # Archive the restart files
-        mkdir_p(self.restart_path)
+        os.makedirs(self.restart_path, exist_ok=True)
         restart_files = [frst for frst in os.listdir(self.work_path) if 'rst' in frst]
         for frst in restart_files:
             f_src = os.path.join(self.work_path, frst)

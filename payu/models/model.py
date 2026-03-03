@@ -11,7 +11,7 @@ import sys
 import subprocess as sp
 
 from payu import envmod
-from payu.fsops import mkdir_p, required_libs
+from payu.fsops import required_libs
 
 
 class Model(object):
@@ -246,10 +246,10 @@ class Model(object):
 
         print("Setting up {model}".format(model=self.name))
         # Create experiment directory structure
-        mkdir_p(self.work_init_path)
-        mkdir_p(self.work_input_path)
-        mkdir_p(self.work_restart_path)
-        mkdir_p(self.work_output_path)
+        os.makedirs(self.work_init_path, exist_ok=True)
+        os.makedirs(self.work_input_path, exist_ok=True)
+        os.makedirs(self.work_restart_path, exist_ok=True)
+        os.makedirs(self.work_output_path, exist_ok=True)
 
         # Copy configuration files from control path
         self.setup_configuration_files()

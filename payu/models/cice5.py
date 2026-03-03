@@ -13,7 +13,6 @@ from __future__ import print_function
 import os
 
 from payu.models.cice import Cice
-from payu.fsops import mkdir_p
 import payu.calendar as cal
 from netCDF4 import Dataset
 import cftime
@@ -71,7 +70,7 @@ class Cice5(Cice):
         super(Cice5, self).setup()
 
         # Make log dir
-        mkdir_p(os.path.join(self.work_path, 'log'))
+        os.makedirs(os.path.join(self.work_path, 'log'), exist_ok=True)
 
     def get_prior_restart_files(self):
         """

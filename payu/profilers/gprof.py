@@ -2,7 +2,6 @@ import os
 import shutil
 
 from payu.profilers.profiler import Profiler
-from payu.fsops import mkdir_p
 
 
 class Gprof(Profiler):
@@ -13,7 +12,7 @@ class Gprof(Profiler):
 
     def postprocess(self):
         gmon_dir = os.path.join(self.expt.work_path, 'gmon')
-        mkdir_p(gmon_dir)
+        os.makedirs(gmon_dir, exist_ok=True)
 
         gmon_fnames = [f for f in os.listdir(self.expt.work_path)
                        if f.startswith('gmon.out')]

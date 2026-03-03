@@ -8,7 +8,7 @@ from __future__ import print_function
 import os
 import pwd
 
-from payu.fsops import mkdir_p, read_config
+from payu.fsops import read_config
 
 LAB_INITIALIZE_ERROR = """
 The configured laboratory directory may not have write access. Edit/remove one
@@ -96,10 +96,10 @@ class Laboratory(object):
     def initialize(self):
         """Create the laboratory directories."""
         try:
-            mkdir_p(self.archive_path)
-            mkdir_p(self.bin_path)
-            mkdir_p(self.codebase_path)
-            mkdir_p(self.input_basepath)
+            os.makedirs(self.archive_path, exist_ok=True)
+            os.makedirs(self.bin_path, exist_ok=True)
+            os.makedirs(self.codebase_path, exist_ok=True)
+            os.makedirs(self.input_basepath, exist_ok=True)
         except PermissionError as e:
             print(LAB_INITIALIZE_ERROR)
             raise PermissionError(

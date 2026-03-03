@@ -20,7 +20,6 @@ import f90nml
 import yaml
 
 # Local
-from payu.fsops import mkdir_p
 from payu.models.model import Model
 
 
@@ -251,7 +250,7 @@ class Mitgcm(Model):
                 sh.move(f_path, self.work_path)
             os.rmdir(path)
 
-        mkdir_p(self.restart_path)
+        os.makedirs(self.restart_path, exist_ok=True)
 
         # Move pickups but don't include intermediate pickupts ('ckpt's)
         restart_files = [f for f in os.listdir(self.work_path)

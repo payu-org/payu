@@ -19,7 +19,7 @@ from pathlib import Path
 
 from yamanifest.manifest import Manifest as YaManifest
 
-from payu.fsops import make_symlink, mkdir_p
+from payu.fsops import make_symlink
 
 
 # fast_hashes = ['nchash','binhash']
@@ -279,7 +279,7 @@ class Manifest(object):
             self.reproduce[mf] = reproduce_config.get(mf, reproduce)
 
         # Make sure the manifests directory exists
-        mkdir_p(os.path.dirname(self.manifests['exe'].path))
+        os.makedirs(os.path.dirname(self.manifests['exe'].path), exist_ok=True)
 
     def init_mf(self, mf):
         # Initialise a sub-manifest object
@@ -353,7 +353,7 @@ class Manifest(object):
 
     def copy_manifests(self, path):
 
-        mkdir_p(path)
+        os.makedirs(path, exist_ok=True)
         try:
             for mf in self.manifests:
                 self.manifests[mf].copy(path)

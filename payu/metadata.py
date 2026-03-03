@@ -9,6 +9,7 @@ metadata
 
 import requests
 import shutil
+import os
 import uuid
 import warnings
 from datetime import datetime
@@ -18,7 +19,7 @@ from typing import Optional, Union
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
-from payu.fsops import read_config, mkdir_p
+from payu.fsops import read_config
 from payu.git_utils import GitRepository
 
 # A truncated uuid is used for branch-uuid aware experiment names
@@ -347,7 +348,7 @@ class Metadata:
 
     def copy_to_archive(self) -> None:
         """Copy metadata file to archive"""
-        mkdir_p(self.archive_path)
+        os.makedirs(self.archive_path, exist_ok=True)
         shutil.copy(self.filepath, self.archive_path / METADATA_FILENAME)
         # Note: The existence of an archive is used for determining
         # experiment names and whether to generate a new UUID

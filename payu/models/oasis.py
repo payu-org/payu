@@ -16,7 +16,7 @@ import shutil
 import f90nml
 
 # Local
-from payu.fsops import mkdir_p, make_symlink
+from payu.fsops import make_symlink
 from payu.models.model import Model
 from payu.namcouple import Namcouple
 
@@ -52,7 +52,7 @@ class Oasis(Model):
             if not hasattr(model, 'work_path'):
                 continue
 
-            mkdir_p(model.work_path)
+            os.makedirs(model.work_path, exist_ok=True)
             for f_name in (self.config_files + input_files):
                 f_path = os.path.join(self.work_path, f_name)
                 f_sympath = os.path.join(model.work_path, f_name)
@@ -104,7 +104,7 @@ class Oasis(Model):
         # TODO: Determine the exchange files
         restart_files = ['a2i.nc', 'i2a.nc', 'i2o.nc', 'o2i.nc']
 
-        mkdir_p(self.restart_path)
+        os.makedirs(self.restart_path, exist_ok=True)
         for f in restart_files:
             f_src = os.path.join(self.work_path, f)
             f_dst = os.path.join(self.restart_path, f)

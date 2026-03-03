@@ -84,25 +84,6 @@ def savetree(path):
     return(result)
 
 
-# fsops tests
-def test_mkdir_p():
-    tmp_dir = os.path.join(os.getcwd(), 'tmp_dir')
-    payu.fsops.mkdir_p(tmp_dir)
-
-    # Re-create existing directory
-    payu.fsops.mkdir_p(tmp_dir)
-
-    # Raise a non-EEXIST error (e.g. EACCES)
-    tmp_tmp_dir = os.path.join(tmp_dir, 'more_tmp')
-    os.chmod(tmp_dir, stat.S_IRUSR)
-    with pytest.raises(OSError):
-        payu.fsops.mkdir_p(tmp_tmp_dir)
-
-    # Cleanup
-    os.chmod(tmp_dir, stat.S_IWUSR)
-    os.rmdir(tmp_dir)
-
-
 def test_movetree():
 
     make_all_files()
