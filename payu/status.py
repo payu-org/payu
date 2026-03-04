@@ -301,10 +301,8 @@ def display_job_info(data: dict[str, Any]) -> None:
             job_id = run_info.get("job_id")
             all_job_info = read_job_file(Path(job_file)).get("scheduler_job_info", {})
             job_info = all_job_info.get("Jobs", {}).get(job_id, {})
-            run_info["qtime"] = job_info.get("qtime", None)
-            run_info["stime"] = job_info.get("stime", None)
+            display_wait_time(job_info.get("qtime", None), job_info.get("stime", None))
 
-            display_wait_time(run_info.get("qtime"), run_info.get("stime"))
             exit_status = run_info.get("exit_status")
             if exit_status is not None:
                 status_str = "Success" if exit_status == 0 else "Failed"
