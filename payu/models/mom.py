@@ -12,7 +12,7 @@ import f90nml
 
 from payu.models.fms import Fms
 from payu.models.mom_mixin import MomMixin
-from payu.fsops import mkdir_p, make_symlink
+from payu.fsops import make_symlink
 
 
 class Mom(MomMixin, Fms):
@@ -51,7 +51,7 @@ class Mom(MomMixin, Fms):
 
         if not self.top_level_model:
             # Make log dir
-            mkdir_p(os.path.join(self.work_path, 'log'))
+            os.makedirs(os.path.join(self.work_path, 'log'), exist_ok=True)
 
         input_nml_path = os.path.join(self.work_path, 'input.nml')
         input_nml = f90nml.read(input_nml_path)

@@ -37,16 +37,6 @@ EXTENSION_TO_INTERPRETER = {'.py': sys.executable,
                             '.csh': '/bin/tcsh'}
 
 
-def mkdir_p(path):
-    """Create a new directory; ignore if it already exists."""
-
-    try:
-        os.makedirs(path)
-    except EnvironmentError as exc:
-        if exc.errno != errno.EEXIST:
-            raise
-
-
 def movetree(src, dst, symlinks=False):
     """
     Code based on shutil copytree, but non-recursive

@@ -14,7 +14,6 @@ import shutil
 
 # Local
 from payu.models.model import Model
-from payu.fsops import mkdir_p
 
 
 class Yatm(Model):
@@ -29,7 +28,7 @@ class Yatm(Model):
         super(Yatm, self).setup()
 
         # Make log dir
-        mkdir_p(os.path.join(self.work_path, 'log'))
+        os.makedirs(os.path.join(self.work_path, 'log'), exist_ok=True)
 
     def set_model_pathnames(self):
         super(Yatm, self).set_model_pathnames()

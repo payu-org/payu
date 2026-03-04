@@ -10,7 +10,6 @@
 import os
 import shutil
 
-from payu.fsops import mkdir_p
 from payu.models.model import Model
 
 
@@ -37,7 +36,7 @@ class Nemo(Model):
 
         # Archive the restart files
         print("restart path", self.restart_path)
-        mkdir_p(self.restart_path)
+        os.makedirs(self.restart_path, exist_ok=True)
 
         restart_files = [f for f in os.listdir(self.work_path)
                          if f.endswith('.dimg')]

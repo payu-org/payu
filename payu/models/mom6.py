@@ -18,7 +18,6 @@ from warnings import warn
 from glob import glob
 
 # Local
-from payu.fsops import mkdir_p
 from payu.models.fms import Fms
 from payu.models.mom_mixin import MomMixin
 from payu.git_utils import GitRepository
@@ -50,7 +49,7 @@ def mom6_add_parameter_files(model):
 def mom6_save_docs_files(model):
     """Add docs files created as MOM output back to the control directory"""
     docs_folder = os.path.join(model.control_path, 'docs')
-    mkdir_p(docs_folder)
+    os.makedirs(docs_folder, exist_ok=True)
 
     # copy everything that matches MOM_parameter_doc.* to the control dir
     for pattern in MOM6_DOCS:

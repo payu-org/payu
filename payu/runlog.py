@@ -19,7 +19,6 @@ import requests
 
 # Local
 from payu.fsops import DEFAULT_CONFIG_FNAME
-from payu.fsops import mkdir_p
 
 
 # Compatibility
@@ -251,7 +250,7 @@ class Runlog(object):
         default_ssh_key = 'id_rsa_payu_' + expt_name
         ssh_key = self.config.get('sshid', default_ssh_key)
         ssh_dir = os.path.join(os.path.expanduser('~'), '.ssh', 'payu')
-        mkdir_p(ssh_dir)
+        os.makedirs(ssh_dir, exist_ok=True)
 
         ssh_keypath = os.path.join(ssh_dir, ssh_key)
         if not os.path.isfile(ssh_keypath):

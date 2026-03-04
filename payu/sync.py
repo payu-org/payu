@@ -15,7 +15,7 @@ from pathlib import Path
 
 
 # Local
-from payu.fsops import mkdir_p, list_archive_dirs
+from payu.fsops import list_archive_dirs
 from payu.metadata import METADATA_FILENAME, UUID_FIELD
 
 DEST_NOT_CONFIGURED_MSG ="""
@@ -173,7 +173,7 @@ class SyncToRemoteArchive():
 
         if not self.remote_syncing:
             # Create local destination directory if it does not exist
-            mkdir_p(dest_path)
+            os.makedirs(dest_path, exist_ok=True)
         else:
             # Syncing to remote machine
             remote_user = self.config.get('user', None)

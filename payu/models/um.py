@@ -21,7 +21,7 @@ import f90nml
 import yaml
 
 # Local
-from payu.fsops import mkdir_p, make_symlink
+from payu.fsops import make_symlink
 from payu.models.model import Model
 import payu.calendar as cal
 
@@ -66,7 +66,7 @@ class UnifiedModel(Model):
             for f_path in files[1:]:
                 os.remove(f_path)
 
-        mkdir_p(self.restart_path)
+        os.makedirs(self.restart_path, exist_ok=True)
 
         # Need to figure out the end date of the model.
         nml_path = os.path.join(self.work_path, 'namelists')

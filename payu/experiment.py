@@ -31,7 +31,7 @@ from packaging import version
 
 # Local
 from payu import envmod
-from payu.fsops import mkdir_p, make_symlink, read_config, movetree
+from payu.fsops import make_symlink, read_config, movetree
 from payu.fsops import list_archive_dirs
 from payu.fsops import run_script_command
 from payu.fsops import needs_subprocess_shell
@@ -489,10 +489,10 @@ class Experiment(object):
                          '             payu sweep and then payu run'
                          .format(path=self.work_path))
 
-        mkdir_p(self.work_path)
+        os.makedirs(self.work_path, exist_ok=True)
 
         if force_archive:
-            mkdir_p(self.archive_path)
+            os.makedirs(self.archive_path, exist_ok=True)
             make_symlink(self.archive_path, self.archive_sym_path)
 
         # Archive the payu config
@@ -759,7 +759,7 @@ class Experiment(object):
         if rc != 0:
             # Backup logs for failed runs
             error_log_dir = os.path.join(self.archive_path, 'error_logs')
-            mkdir_p(error_log_dir)
+            os.makedirs(error_log_dir, exist_ok=True)
 
             # NOTE: This is only implemented for PBS scheduler
             job_id = self.scheduler.get_job_id(short=False)
@@ -881,14 +881,14 @@ class Experiment(object):
         if not os.path.exists(self.work_sym_path):
             sys.exit('payu: error: No work directory to archive.')
 
-        mkdir_p(self.archive_path)
+        os.makedirs(self.archive_path, exist_ok=True)
         make_symlink(self.archive_path, self.archive_sym_path)
 
         # Remove work symlink
         if os.path.islink(self.work_sym_path):
             os.remove(self.work_sym_path)
 
-        mkdir_p(self.restart_path)
+        os.makedirs(self.restart_path, exist_ok=True)
 
         for model in self.models:
             model.archive()
@@ -1083,7 +1083,7 @@ class Experiment(object):
             print('payu: Moving pbs_logs to {0}'.format(pbs_log_path))
             shutil.move(legacy_pbs_log_path, pbs_log_path)
         else:
-            mkdir_p(pbs_log_path)
+            os.makedirs(pbs_log_path, exist_ok=True)
 
         for f in logs:
             print('Moving log {0}'.format(f))

@@ -18,7 +18,6 @@ import yaml
 
 # Local
 from payu.models.model import Model
-from payu.fsops import mkdir_p
 
 
 def deep_update(d_1, d_2):
@@ -135,7 +134,7 @@ class StagedCable(Model):
         self._apply_stage_namelists(stage_name)
 
         # Make the logging directory
-        mkdir_p(os.path.join(self.work_path, "logs"))
+        os.makedirs(os.path.join(self.work_path, "logs"), exist_ok=True)
 
         # Get the additional restarts from older restart dirs
         self._get_further_restarts()
