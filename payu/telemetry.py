@@ -14,6 +14,8 @@ import tempfile
 import threading
 from typing import Any, Optional
 import warnings
+from filelock import FileLock, Timeout
+import warnings
 
 import cftime
 
@@ -37,6 +39,8 @@ OPTIONAL_CONFIG_FIELDS = {
 }
 
 REQUEST_TIMEOUT = 10
+LOCK_TIMEOUT = 10
+LOCK_LIFETIME = 20
 
 TELEMETRY_VERSION = "1.0.0"
 
@@ -387,7 +391,7 @@ def write_queued_job_file(
         "payu_current_run": current_run,
     }
     data.update(get_metadata(metadata))
-    atomic_write_file(file_path=job_file_path, data=data)
+    update_job_file(file_path=job_file_path, data=data)
 
 
 def remove_job_file(file_path: Path) -> None:
@@ -454,7 +458,7 @@ def setup_run_job_file(
     data.update(extra_info or {})
 
     # Write the file
-    atomic_write_file(file_path=file_path, data=data)
+    update_job_file(file_path=file_path, data=data)
 
 
 def update_job_file(
@@ -465,9 +469,23 @@ def update_job_file(
     Update the job file with the provided data
     and return the updated data
     """
-    run_info = read_job_file(file_path)
-    run_info.update(data)
-    atomic_write_file(file_path=file_path, data=run_info)
+    lock = FileLock(str(file_path) + ".lock", lifetime=LOCK_LIFETIME, timeout=LOCK_TIMEOUT)
+    try:
+        with lock:
+            run_info = read_job_file(file_path)
+            run_info.update(data)
+            atomic_write_file(file_path=file_path, data=run_info)
+    except Timeout:
+        run_info = read_job_file(file_path)
+        run_info.update(data)
+        # write the updated info to a temporary file
+        ts = datetime.datetime.now().strftime("%H-%M-%S")
+        tmp_file = file_path.with_suffix(f".{ts}.tmp")
+        atomic_write_file(file_path=tmp_file, data=run_info)
+
+        warnings.warn(
+            f"File at {file_path} is locked after waiting for {LOCK_TIMEOUT} seconds. "
+            f"Writing updated info to temporary file {tmp_file}.")
     return run_info
 
 

@@ -1,5 +1,6 @@
 import json
 import pytest
+from freezegun import freeze_time
 
 from payu.status import (
     find_file_match,
@@ -520,3 +521,89 @@ def test_status_cmd(tmp_path, capsys):
     # Check only json is printed
     output = capsys.readouterr().out
     assert output.strip() == '{}'
+
+@freeze_time("2026-02-10 15:05:00")
+@pytest.mark.parametrize(
+    "job_stage, qtime, stime, time_label, time_message",
+    [   
+        # Test queueing job with qtime 5 minutes ago
+        (
+            "queued",
+            "Tue Feb 10 15:00:00 2026",
+            None,
+            "Current queue time:",
+            "0h 5m ",
+        ),
+
+        # Test running job with total qtime 5 minutes
+        ("model-run", 
+        "Tue Feb 10 15:00:00 2026", 
+        "Tue Feb 10 15:05:00 2026", 
+        "Total queue time:", 
+        "0h 5m 0s"),
+
+        # Test archived job with total qtime 30 minutes
+        ("archive", 
+        "Tue Feb 10 15:00:00 2026", 
+        "Tue Feb 10 15:30:00 2026", 
+        "Total queue time:", 
+        "0h 30m 0s"),
+    ]
+)
+def test_status_queue_time(tmp_path, capsys, job_stage, qtime, stime, time_label, time_message):
+    """Test that queue time is calculated and displayed for a queued job."""
+    # Create a temporary lab and config
+    lab_path = tmp_path / "lab"
+    archive_path = lab_path / "archive" / "control-exp"
+    archive_path.mkdir(parents=True, exist_ok=True)
+    control_path = tmp_path / "control-exp"
+    control_path.mkdir()
+    config_path = control_path / "config.yaml"
+
+    # Create a minimal config file
+    with open(config_path, 'w') as f:
+        json.dump({'model': 'test'}, f)
+
+    # Create a minimal metadata file
+    metadata_path = control_path / "metadata.yaml"
+    with open(metadata_path, 'w') as f:
+        json.dump({'experiment_uuid': 'test-uuid'}, f)
+
+    # Create a queued job file
+    job_file = archive_path / "payu_jobs" / "3" / "run" / "test-job-id-3.json"
+    job_file.parent.mkdir(parents=True, exist_ok=True)
+
+    job_data = {
+        "scheduler_job_id": "test-job-id-3",
+        "scheduler_type": "pbs",
+        "experiment_metadata": {"experiment_uuid": "test-uuid"},
+        "payu_current_run": 3,
+        "stage": job_stage,
+        "scheduler_job_info":{
+           "Jobs": {
+                "test-job-id-3":{
+                    "Job_Name": "double_gyre",
+                    "qtime": qtime,
+                    "stime": stime
+                }
+            }
+        }
+    }
+    with open(job_file, 'w') as f:
+        json.dump(job_data, f)
+
+    # Run the command
+    with pytest.warns(PayuGitWarning):
+        runcmd(
+            lab_path=str(lab_path),
+            config_path=str(config_path),
+            json_output=False,
+            update_jobs=False,
+            all_runs=False,
+            run_number=None
+        )
+
+    # Check the output contains the expected queue time
+    output = capsys.readouterr().out
+    assert time_label in output
+    assert time_message in output
