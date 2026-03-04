@@ -22,7 +22,7 @@ For example, to clone MOM5 test configuration::
    cd bowl1
 
 Then generate the executable file by following the 
-`README instructions <https://github.com/payu-org/bowl1/blob/7ffc85c31b1353884d01a5a9d453321a6603cd49/README.md>`_.
+`README instructions <https://github.com/payu-org/bowl1/blob/master/README.md>`_.
 
 To run the model, simply execute::
 
