@@ -10,10 +10,22 @@ supercomputing environments.
 Payu was designed to allow users to start running climate models immediately,
 without having to re-learn the nuances of countless runscripts across countless
 models. Running a model like the MOM ocean model should only require a few
-commands::
+commands. 
+First, create a new experiment directory::
 
    mkdir new_expt; cd new_expt
-   payu init -m mom
+
+Next, :ref:`Create-experiment` or clone an existing released configuration and customise it as needed.
+For example, to clone MOM5 test configuration::
+
+   payu clone -b control -B master https://github.com/payu-org/bowl1.git bowl1
+   cd bowl1
+
+Then generate the executable file by following the 
+`README instructions <https://github.com/payu-org/bowl1/blob/master/README.md>`_.
+
+To run the model, simply execute::
+
    payu run
 
 Currently, payu is very highly customised for users of NCI computing
