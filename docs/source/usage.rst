@@ -139,6 +139,7 @@ As an alternative to creating and checking out branches with ``payu clone``,
 ``payu checkout`` can be used instead (see :ref:`usage-metadata`). 
 
 
+.. _Create-experiment:
 Create experiment
 -----------------
 
