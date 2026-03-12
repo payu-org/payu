@@ -16,6 +16,8 @@ import glob
 import shutil
 import cftime
 from warnings import warn
+import logging
+logger = logging.getLogger(__name__)
 
 from payu.fsops import make_symlink
 from payu.models.model import Model
@@ -432,26 +434,20 @@ class AccessOm3(CesmCmeps):
             )
         
     def get_cur_expt_time(self):
-        """Get the current experiment time from file work/log/med.log."""
-        try:
-            log_path = os.path.join(self.expt.work_path, 'log', 'med.log')
+        """Get the current experiment time from file work/log/med.log.
+        ---
+        output:
+            cftime.datetime or None if it cannot be determined.
+        """
+        log_path = os.path.join(self.expt.work_path, 'log', 'med.log')
             
-            # Read out the latest `cur_exp-datetime` from the log file
-            if os.path.exists(log_path):
-                with open(log_path, 'r') as f:
-                    for line in reversed(f.readlines()):
-                        if line.startswith(" memory_write: model date"):
-                            cur_expt_time = line.split()[4]
-                            return cur_expt_time
-            
-            warn(f"Log file {log_path} does not exist or does not contain current model time.")
-            return None
-
-        except KeyError as e:
-            warn('Error getting current experiment time: {}'.format(e))
-            return None
-     
-
+        with open(log_path, 'r') as f:
+            for line in reversed(f.readlines()):
+                if line.startswith(" memory_write: model date"):
+                    time_str = line.split()[4]
+                    return cftime.datetime.strptime(time_str, '%Y-%m-%dT%H:%M:%S')
+        
+        return None
 
 class Runconfig:
     """ Simple class for parsing and editing nuopc.runconfig """

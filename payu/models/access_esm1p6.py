@@ -15,7 +15,6 @@ import os
 import re
 import shutil
 import sys
-import warnings
 
 # Extensions
 import f90nml
@@ -320,6 +319,11 @@ class AccessEsm1p6(Model):
         return self.get_restart_datetime_using_submodel(restart_path,
                                                         model_types)
 
+    def get_cur_expt_time(self):
+        """ Use UM submodel to get the current experiment time."""
+        model_types = ['um']
+        return self.get_cur_expt_time_using_submodel(model_types)
+
     def set_model_pathnames(self):
         pass
 
@@ -335,69 +339,6 @@ class AccessEsm1p6(Model):
     def collate(self):
         pass
 
-    def read_start_date(self, nl_path):
-        """Read the start date from the namelist file"""
-        try:
-            namelist = f90nml.read(nl_path)
-            model_basis_time = namelist.get('nlstcall', {}).get('model_basis_time', None)
-            if model_basis_time is None:
-                warnings.warn(f"model_basis_time not found in {nl_path}")
-                return None
-            return datetime(*model_basis_time)
-        except Exception as e:
-            warnings.warn(f"Could not read file {nl_path}: {e}")
-            return None
-
-    def convert_timestep(self, log_path):
-        """ Convert the timestep to experiment runtime 
-        based on the information in log file"""
-        timestep = None
-        step_per_period = 0
-        secs_per_period = 0
-
-        with open(log_path, 'r') as f:
-            for line in f:
-                try:
-                    if 'STEPS_PER_PERIODim' in line:
-                        step_per_period = int(line.split('=')[-1].strip())
-                    if 'SECS_PER_PERIODim' in line:
-                        secs_per_period = int(line.split('=')[-1].strip())
-                        print(f"Found secs_per_period: {secs_per_period}")
-                    if 'Atm_Step: Timestep' in line:
-                        timestep = int(line.split()[-1])
-                except ValueError:
-                    continue
-
-        if timestep is not None and secs_per_period > 0 and step_per_period > 0:
-            secs_per_step = secs_per_period / step_per_period 
-            runtime_sec = timestep * secs_per_step
-            return runtime_sec
-        
-        warnings.warn(
-                f"""Could not find all required entries in file {log_path}
-                to calculate run time"""
-            )
-        return None
-
-
-    def get_cur_expt_time(self):
-        """Get the current experiment time from file"""
-        nl_path = os.path.join(self.expt.work_path, 'atmosphere', 'namelists')
-        log_path = os.path.join(self.expt.work_path, 'atmosphere', 'atm.fort6.pe0')
-
-        if not os.path.exists(nl_path) or not os.path.exists(log_path):
-            warnings.warn(f"Could not find required files: {nl_path} or {log_path}")
-            return None
-        
-        start_date = self.read_start_date(nl_path)
-        runtime_sec = self.convert_timestep(log_path)
-        if start_date is None or runtime_sec is None:
-            return None
-            
-        # Both ESM1.6 and datetime package use Gregorian calendar, 
-        # so we can use datetime here for date calculations.
-        cur_expt_time = start_date + timedelta(seconds=runtime_sec)
-        return cur_expt_time.isoformat()
         
         
         

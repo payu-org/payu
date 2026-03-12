@@ -2,6 +2,8 @@ import copy
 import datetime
 import os
 import shutil
+import logging
+logger = logging.getLogger(__name__)
 
 import pytest
 import cftime
@@ -462,15 +464,17 @@ def test_access_get_um_restart_datetime(um_only_config, remove_restart_dirs):
     parsed_run_dt = expt.model.get_restart_datetime(restart_path)
     assert parsed_run_dt == date
 
-def test_get_cur_expt_time_not_implemented_warning(um_only_config):
+def test_get_cur_expt_time_not_implemented_print(um_only_config, caplog):
     """
-    Check that a warning is raised when trying to get the current experiment time
+    Check that a debug message is logged when trying to get the current experiment time
     for the access model, as this functionality is not yet implemented.
     """
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, reproduce=False)
-
-    with pytest.warns(UserWarning, match="Getting current experiment time is not yet implemented."):
-        cur_expt_time = expt.get_model_cur_expt_time()
-        assert cur_expt_time is None
+    
+    caplog.set_level(logging.DEBUG)
+    cur_expt_time = expt.get_model_cur_expt_time()
+    assert cur_expt_time is None
+    assert "Current experiment time not implemented for this model." in caplog.records[0].message
+    

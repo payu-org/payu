@@ -5,6 +5,8 @@ from pathlib import Path
 import warnings
 
 import json
+import logging
+logger = logging.getLogger(__name__)
 
 from payu.fsops import read_config
 from payu.metadata import MetadataWarning, Metadata
@@ -37,7 +39,6 @@ def runcmd(lab_path, config_path, json_output,
         try:
             expt = Experiment(lab, config_path=config_path)
             expt.init_models()
-            cur_expt_time = expt.get_model_cur_expt_time()
         except MetadataWarning as e:
             raise RuntimeError(
                 "Metadata is not setup - can't determine archive path"
@@ -69,8 +70,16 @@ def runcmd(lab_path, config_path, json_output,
         )
 
     if json_output:
+        try:
+            cur_expt_time = expt.get_model_cur_expt_time()
+            if cur_expt_time is not None:
+                data["Current Experiment Time"] = cur_expt_time.isoformat()
+        except (FileNotFoundError, IndexError, OSError, json.JSONDecodeError) as e:
+            logger.debug(f"Cannot parse current experiment time: {e}")
+        except Exception as e:
+            logger.warning(f"Unexpected error while parsing current experiment time: {e}")
         print(json.dumps(data, indent=4))
     else:
-        display_job_info(data, cur_expt_time=cur_expt_time)
+        display_job_info(data, expt=expt)
 
 runscript = runcmd

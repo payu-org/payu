@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 import f90nml
+import logging
 
 import payu
 
@@ -319,94 +320,26 @@ def test_get_cur_expt_time():
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, reproduce=False)
 
-    # Write a restart date into input.nml
-    input_path = os.path.join(expt.work_path, 'input.nml')
-    nml = f90nml.Namelist()
-    nml['ocean_solo_nml'] = {'date_init': [1900, 1, 31, 0, 0, 0]}
-    f90nml.write(nml, input_path, force=True)
-
-    # Write a timestep into ocean.stats
-    stats_path = os.path.join(expt.work_path, 'ocean.stats')
-    with open(stats_path, 'w') as f:
-        f.write("360,      50.000,\n") # timestep, time in days
-
-    cur_expt_time = expt.get_model_cur_expt_time()
-    assert cur_expt_time == "1900-03-22T00:00:00"
+    # Write a calendar and current model time into ocean_solo.res
+    ocean_solo_path = os.path.join(expt.work_path, 'INPUT', 'ocean_solo.res')
+    os.makedirs(os.path.dirname(ocean_solo_path), exist_ok=True)
+    with open(ocean_solo_path, 'w') as f:
+        f.write("2\n")  # Use Julian calendar
+        f.write("1     1     1     0     0     0        Model start time:\n")  # Initial experiment time
+        f.write("1     3    12     0     0     0        Current model time:\n")  # Current model time
     
-@pytest.mark.parametrize("missing_file",[
-    (
-        ['input.nml']
-    ),
-    (
-        ['ocean.stats']
-    ),
-    (
-        ['input.nml', 'ocean.stats']
-    )
-])
-def test_get_cur_expt_time_missing_files(missing_file):
+    cur_expt_time = expt.get_model_cur_expt_time()
+    assert cur_expt_time.isoformat() == "0001-03-12T00:00:00"
+    
+
+def test_get_cur_expt_time_missing_files():
     """ Test that get_model_cur_expt_time() correctly handles missing files."""
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, reproduce=False)
 
-    # Write a restart date into input.nml
-    input_path = os.path.join(expt.work_path, 'input.nml')
-    nml = f90nml.Namelist()
-    nml['ocean_solo_nml'] = {'date_init': [1900, 1, 31, 0, 0, 0]}
-    f90nml.write(nml, input_path, force=True)
-
-    # Write a timestep into ocean.stats
-    stats_path = os.path.join(expt.work_path, 'ocean.stats')
-    with open(stats_path, 'w') as f:
-        f.write("360,      50.000,\n") # timestep, time in days
-
-    for file in missing_file:
-        os.remove(os.path.join(expt.work_path, file)) 
-
-    with pytest.warns(UserWarning, match=f"Could not find required files: {input_path} or {stats_path}"):
+    ocean_solo_path = os.path.join(expt.work_path, 'INPUT', 'ocean_solo.res')
+    if os.path.exists(ocean_solo_path):
+        os.remove(ocean_solo_path)
+    with pytest.raises(FileNotFoundError):
         cur_expt_time = expt.get_model_cur_expt_time()
-
-    assert cur_expt_time is None
-
-def test_read_start_date():
-    """ Test that read_start_date() correctly handle errors."""
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-
-    # Write a restart date into input.nml
-    input_path = os.path.join(expt.work_path, 'input.nml')
-    nml = f90nml.Namelist()
-    nml['top_key'] = {'key': 'value'}
-    f90nml.write(nml, input_path, force=True)
-
-    # Write a timestep into ocean.stats
-    stats_path = os.path.join(expt.work_path, 'ocean.stats')
-    with open(stats_path, 'w') as f:
-        f.write("360,      50.000,\n")
-
-    with pytest.warns(UserWarning, match=f"date_init not found in {input_path}"):
-        cur_expt_time = expt.get_model_cur_expt_time()
-    assert cur_expt_time is None
-
-def test_read_timestep():
-    """ Test that read_timestep() correctly handle errors."""
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-
-    # Write a restart date into input.nml
-    input_path = os.path.join(expt.work_path, 'input.nml')
-    nml = f90nml.Namelist()
-    nml['ocean_solo_nml'] = {'date_init': [1900, 1, 31, 0, 0, 0]}
-    f90nml.write(nml, input_path, force=True)
-
-    # Write a timestep into ocean.stats
-    stats_path = os.path.join(expt.work_path, 'ocean.stats')
-    with open(stats_path, 'w') as f:
-        f.write("invalid timestep\n")
-
-    with pytest.warns(UserWarning, match=f"Could not read timestep from {stats_path}.*"):
-        cur_expt_time = expt.get_model_cur_expt_time()
-    assert cur_expt_time is None

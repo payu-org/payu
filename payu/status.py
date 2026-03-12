@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Any, Optional
 import warnings
 from datetime import datetime
+import json
+import logging
+logger = logging.getLogger(__name__)
 
 from payu.schedulers import Scheduler
 from payu.telemetry import (
@@ -279,7 +282,7 @@ def print_line(label: str, key: Any, data: dict[str, Any]) -> None:
         print(f"  {f'{label}:':<{label_width}} {value}")
 
 
-def display_job_info(data: dict[str, Any], cur_expt_time) -> None:
+def display_job_info(data: dict[str, Any], expt) -> None:
     """
     Display the job information in a human-readable way
     """
@@ -303,8 +306,17 @@ def display_job_info(data: dict[str, Any], cur_expt_time) -> None:
             job_info = all_job_info.get("scheduler_job_info", {}).get("Jobs", {}).get(job_id, {})
             display_wait_time(job_info.get("qtime", None), job_info.get("stime", None))
 
-            if run_info.get("stage") == "model-run" and cur_expt_time is not None:
-                print(f"  {'Current Expt Time:':<18} {cur_expt_time}")
+            if run_info.get("stage") == "model-run":
+                cur_expt_time = None
+                try:
+                    cur_expt_time = expt.get_model_cur_expt_time()
+                except (FileNotFoundError, IndexError, OSError, json.JSONDecodeError, UnboundLocalError) as e:
+                    logger.debug(f"Cannot parse current experiment time: {e}")
+                except Exception as e:
+                    logger.warning(f"Unexpected error getting current experiment time: {e}")
+
+                if cur_expt_time is not None:
+                    print(f"  {'Current Expt Time:':<18} {cur_expt_time.isoformat()}")
             if run_info.get("stage") == "archive":
                 model_finish_time = all_job_info.get("model_finish_time", None)
                 print(f"  {'Model Finish Time:':<18} {model_finish_time}")

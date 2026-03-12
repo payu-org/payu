@@ -1,6 +1,7 @@
 import json
 import pytest
 from freezegun import freeze_time
+import cftime
 
 from payu.status import (
     find_file_match,
@@ -610,7 +611,7 @@ def test_status_queue_time(tmp_path, capsys, job_stage, qtime, stime, time_label
     assert time_message in output
 
 @pytest.mark.parametrize("cur_expt_time", [
-    ("2026-03-11T14:30:00"), 
+    (cftime.datetime(2026, 2, 10, 15, 0, 0)),
     (None)
 ])
 def test_status_cur_expt_time(tmp_path, monkeypatch, capsys, cur_expt_time):
@@ -667,7 +668,7 @@ def test_status_cur_expt_time(tmp_path, monkeypatch, capsys, cur_expt_time):
     output = capsys.readouterr().out
     if cur_expt_time:
         assert "Current Expt Time:" in output
-        assert cur_expt_time in output
+        assert cur_expt_time.isoformat() in output
     else:
         assert "Current Expt Time:" not in output
 

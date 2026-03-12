@@ -2,6 +2,7 @@ import copy
 import os
 import shutil
 import pytest
+import logging
 
 import payu
 import cftime
@@ -36,8 +37,8 @@ def setup_module(module):
         print(e)
 
 
-def cmeps_config(ncpu):
-    # Create a config.yaml and nuopc.runconfig file
+def setup_config(ncpu):
+    # Create a config.yaml
 
     config = copy.deepcopy(config_orig)
     config['model'] = MODEL
@@ -45,16 +46,13 @@ def cmeps_config(ncpu):
 
     write_config(config)
 
-    with open(os.path.join(ctrldir, 'nuopc.runconfig'), "w") as f:
-        f.close()
-
-def teardown_cmeps_config():
+def teardown_config():
     # Teardown
     os.remove(config_path)
 
 def test_get_cur_expt_time(tmp_path):
     """ Test if get_cur_expt_time correctly parses the model date from the log file. """
-    cmeps_config(1)
+    setup_config(1)
 
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
@@ -68,13 +66,13 @@ def test_get_cur_expt_time(tmp_path):
 
         cur_expt_time = model.get_cur_expt_time()
 
-        assert cur_expt_time == "1900-01-31T00:00:00"
+        assert cur_expt_time.isoformat() == "1900-01-31T00:00:00"
 
-    teardown_cmeps_config()
+    teardown_config()
 
 def test_get_cur_expt_time_no_log(tmp_path):
     """ Test if get_cur_expt_time returns None if log file is missing. """
-    cmeps_config(1)
+    setup_config(1)
 
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
@@ -85,18 +83,14 @@ def test_get_cur_expt_time_no_log(tmp_path):
         if os.path.exists(log_path):
             os.remove(log_path)
 
-        with pytest.warns(
-            UserWarning, 
-            match=rf"Log file {log_path} does not exist or does not contain current model time."
-        ):
+        with pytest.raises(FileNotFoundError):
             cur_expt_time = model.get_cur_expt_time()
-        assert cur_expt_time is None
 
-    teardown_cmeps_config()
+    teardown_config()
 
-def test_get_cur_expt_time_no_date(tmp_path):
+def test_get_cur_expt_time_no_date(tmp_path, caplog):
     """ Test if get_cur_expt_time returns None if log file does not contain model date. """
-    cmeps_config(1)
+    setup_config(1)
 
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
@@ -108,11 +102,9 @@ def test_get_cur_expt_time_no_date(tmp_path):
         with open(log_path, "w") as f:
             f.write("This log file does not contain the model date.\n")
 
-        with pytest.warns(
-            UserWarning, 
-            match=rf"Log file {log_path} does not exist or does not contain current model time."
-        ):
+        with caplog.at_level('DEBUG'):
             cur_expt_time = model.get_cur_expt_time()
         assert cur_expt_time is None
+        assert f"cur_exp-datetime not found in {log_path}" in caplog.text
 
-    teardown_cmeps_config()
+    teardown_config()

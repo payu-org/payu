@@ -9,6 +9,8 @@ import shutil
 import shlex
 import sys
 import subprocess as sp
+import logging
+logger = logging.getLogger(__name__)
 
 from payu import envmod
 from payu.fsops import required_libs
@@ -453,7 +455,7 @@ class Model(object):
     def get_cur_expt_time(self):
         """For model not implemented experiment time calculate/read-out,
         leaves a warning and returns None."""
-        print("Getting current experiment time is not yet implemented.")
+        logger.debug("Current experiment time not implemented for this model.")
         return None
 
     def get_cur_expt_time_using_submodel(self, model_types):
@@ -471,9 +473,7 @@ class Model(object):
         """
         for model_type in model_types:
             for model in self.expt.models:
-                if model.model_type == model_type and hasattr(model, 'get_cur_expt_time'):
+                if model.model_type == model_type:
                     cur_expt_time = model.get_cur_expt_time()
                     if cur_expt_time is not None:
                         return cur_expt_time
-
-        return None

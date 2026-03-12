@@ -628,7 +628,7 @@ def test_get_cur_expt_time(tmp_path):
 
         cur_expt_time = model.get_cur_expt_time()
 
-        assert cur_expt_time == "1900-01-02T00:00:00"
+        assert cur_expt_time.isoformat() == "1900-01-02T00:00:00"
 
     teardown_cmeps_config()
 
@@ -646,12 +646,8 @@ def test_get_cur_expt_time_no_log(tmp_path):
         if os.path.exists(log_path):
             os.remove(log_path)
 
-        with pytest.warns(
-            UserWarning, 
-            match=rf"Log file {log_path} does not exist or does not contain current model time."
-        ):
+        with pytest.raises(FileNotFoundError):
             cur_expt_time = model.get_cur_expt_time()
-        assert cur_expt_time is None
 
     teardown_cmeps_config()
 
@@ -669,11 +665,7 @@ def test_get_cur_expt_time_no_date(tmp_path):
         with open(log_path, "w") as f:
             f.write("This log file does not contain the model date.\n")
 
-        with pytest.warns(
-            UserWarning, 
-            match=rf"Log file {log_path} does not exist or does not contain current model time."
-        ):
-            cur_expt_time = model.get_cur_expt_time()
+        cur_expt_time = model.get_cur_expt_time()
         assert cur_expt_time is None
 
     teardown_cmeps_config()

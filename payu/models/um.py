@@ -15,6 +15,9 @@ import glob
 import os
 import shutil
 import string
+import cftime
+import logging
+logger = logging.getLogger(__name__)
 
 # Extensions
 import f90nml
@@ -252,6 +255,45 @@ class UnifiedModel(Model):
         # Date-based restart pruning requires cftime.datetime object and
         # Payu UM always uses proleptic Gregorian calendar
         return cal.date_to_cftime(restart_date, UM_CFTIME_CALENDAR)
+
+    def convert_timestep(self, log_path):
+        """ Convert the timestep to experiment runtime 
+        based on the information in log file"""
+        timestep = None
+        step_per_period = 0
+        secs_per_period = 0
+
+        with open(log_path, 'r') as f:
+            for line in f:
+                if 'STEPS_PER_PERIODim' in line:
+                    step_per_period = int(line.split('=')[-1].strip())
+                if 'SECS_PER_PERIODim' in line:
+                    secs_per_period = int(line.split('=')[-1].strip())
+                if 'Atm_Step: Timestep' in line:
+                    timestep = int(line.split()[-1])
+
+        if timestep is not None and secs_per_period > 0 and step_per_period > 0:
+            secs_per_step = secs_per_period / step_per_period 
+            runtime_sec = timestep * secs_per_step
+            return runtime_sec
+        
+        logger.debug(
+            f"Could not find all required entries in file {log_path}"
+            f" to calculate run time"
+        )
+        return None
+
+    def get_cur_expt_time(self):
+        """Get the current experiment time from file"""
+        log_path = os.path.join(self.expt.work_path, 'atmosphere', 'atm.fort6.pe0')
+        
+        start_date = self.get_restart_datetime(self.expt.work_path + '/atmosphere')
+        runtime_sec = self.convert_timestep(log_path)
+        if start_date is None or runtime_sec is None:
+            return None
+            
+        cur_expt_time = start_date + datetime.timedelta(seconds=runtime_sec)
+        return cur_expt_time
 
 
 def date_to_um_dump_date(date):
