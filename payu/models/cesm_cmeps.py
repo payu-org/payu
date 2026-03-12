@@ -430,6 +430,27 @@ class AccessOm3(CesmCmeps):
                 "Access-OM3 comprises a data runoff model, but the runoff model in nuopc.runconfig is set "
                 f"to {self.components['rof']}."
             )
+        
+    def get_cur_expt_time(self):
+        """Get the current experiment time from file work/log/med.log."""
+        try:
+            log_path = os.path.join(self.expt.work_path, 'log', 'med.log')
+            
+            # Read out the latest `cur_exp-datetime` from the log file
+            if os.path.exists(log_path):
+                with open(log_path, 'r') as f:
+                    for line in reversed(f.readlines()):
+                        if line.startswith(" memory_write: model date"):
+                            cur_expt_time = line.split()[4]
+                            return cur_expt_time
+            
+            warn(f"Log file {log_path} does not exist or does not contain current model time.")
+            return None
+
+        except KeyError as e:
+            warn('Error getting current experiment time: {}'.format(e))
+            return None
+     
 
 
 class Runconfig:

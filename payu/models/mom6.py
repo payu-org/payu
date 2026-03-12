@@ -10,6 +10,7 @@
 
 # Standard library
 import os
+from datetime import datetime, timedelta
 
 # Extensions
 import f90nml
@@ -130,3 +131,44 @@ class Mom6(MomMixin, Fms):
         mom6_save_docs_files(self)
 
         super().archive()
+
+    def read_start_date(self, input_path):
+        """Read the start date from input.nml."""
+        try:
+            input_nml = f90nml.read(input_path)
+            start_date = input_nml.get('ocean_solo_nml', {}).get('date_init', None)
+            if start_date is None:
+                warn(f"date_init not found in {input_path}")
+                return None
+            return datetime(*start_date)
+        except Exception as e:
+            warn(f"Could not read file {input_path}: {e}")
+            return None
+
+    def read_timestep(self, stats_path):
+        """ Read the current timestep from ocean.stats."""
+        try:
+            with open(stats_path, 'r') as f:
+                for line in reversed(f.readlines()):
+                    timestep = float(line.split(',')[1])
+                    return timestep
+        except Exception as e:
+            warn(f"Could not read timestep from {stats_path}: {e}")
+            return None
+
+    def get_cur_expt_time(self):
+        """Get the current experiment time from log file."""
+        input_path = os.path.join(self.expt.work_path, 'input.nml')
+        stats_path = os.path.join(self.expt.work_path, 'ocean.stats')
+        if not os.path.exists(input_path) or not os.path.exists(stats_path):
+            warn(f"Could not find required files: {input_path} or {stats_path}")
+            return None
+
+        start_date = self.read_start_date(input_path)
+        timestep = self.read_timestep(stats_path)
+
+        if start_date is None or timestep is None:
+            return None
+
+        cur_expt_time = start_date + timedelta(days=timestep)
+        return cur_expt_time.isoformat()

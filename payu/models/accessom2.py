@@ -12,6 +12,8 @@ from __future__ import print_function
 
 import os
 import shutil
+import json
+import warnings
 
 from payu.models.model import Model
 
@@ -94,3 +96,25 @@ class AccessOm2(Model):
 
         return self.get_restart_datetime_using_submodel(restart_path,
                                                         model_types)
+
+    def get_cur_expt_time(self):
+        """Get the current experiment time from file work/atmosphere/log/matmxx.pe00000.log."""
+        try:
+            log_path = os.path.join(self.expt.work_path, 'atmosphere', 'log', 
+                                    'matmxx.pe00000.log')
+            
+            # Read out the latest `cur_exp-datetime` from the log file
+            if os.path.exists(log_path):
+                with open(log_path, 'r') as f:
+                    for line in reversed(f.readlines()):
+                        if 'cur_exp-datetime' in line:
+                            cur_expt_time = json.loads(line)['cur_exp-datetime']
+                            return cur_expt_time
+                    
+            warnings.warn(f"Log file {log_path} does not exist or does not contain current model time.")
+            return None
+
+        except KeyError as e:
+            warnings.warn('Error getting current experiment time: {}'.format(e))
+            return None
+

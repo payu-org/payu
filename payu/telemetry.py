@@ -495,7 +495,8 @@ def update_run_job_file(
             extra_info: Optional[dict[str, Any]] = None,
             manifests: Optional[dict[str, Any]] = None,
             model_restart_datetimes: Optional[dict[str, Any]] = None,
-            timings: Optional[dict[str, Any]] = None
+            timings: Optional[dict[str, Any]] = None,
+            cur_expt_time: Optional[str] = None
         ) -> None:
     """Update the payu-run job file with the current stage and any extra info
     if defined
@@ -530,6 +531,8 @@ def update_run_job_file(
         run_info.update(extra_info)
     if timings:
         run_info.update(get_timings_isoformat(timings))
+    if cur_expt_time:
+        run_info.update({"cur_expt_time": cur_expt_time})
 
     update_job_file(file_path=file_path, data=run_info)
 

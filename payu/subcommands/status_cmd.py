@@ -9,6 +9,7 @@ import json
 from payu.fsops import read_config
 from payu.metadata import MetadataWarning, Metadata
 from payu.laboratory import Laboratory
+from payu.experiment import Experiment
 import payu.subcommands.args as args
 from payu.status import (
     build_job_info,
@@ -31,21 +32,19 @@ def runcmd(lab_path, config_path, json_output,
     # Suppress output to os.devnull
     with redirect_stdout(open(os.devnull, 'w')):
         # Determine archive path
-        lab = Laboratory(lab_path)
+        lab = Laboratory(config_path=config_path, lab_path=lab_path)
         warnings.filterwarnings("error", category=MetadataWarning)
         try:
-            metadata = Metadata(Path(lab.archive_path),
-                                config_path=config_path)
-            metadata.setup()
+            expt = Experiment(lab, config_path=config_path)
+            expt.init_models()
+            cur_expt_time = expt.get_model_cur_expt_time()
         except MetadataWarning as e:
             raise RuntimeError(
                 "Metadata is not setup - can't determine archive path"
             )
-        archive_path = Path(lab.archive_path) / metadata.experiment_name
 
-        # Determine control path
-        config = read_config(config_path)
-        control_path = Path(config['control_path'])
+        archive_path = Path(expt.archive_path)
+        control_path = Path(expt.control_path)
 
     run_number = int(run_number) if run_number is not None else None
 
@@ -57,8 +56,7 @@ def runcmd(lab_path, config_path, json_output,
     )
     if update_jobs:
         # Get the scheduler
-        scheduler_name = config.get('scheduler', DEFAULT_SCHEDULER_CONFIG)
-        scheduler = scheduler_index[scheduler_name]()
+        scheduler = expt.scheduler
         # Update the job files in data with the latest information
         # from the scheduler
         update_all_job_files(data, scheduler)
@@ -73,6 +71,6 @@ def runcmd(lab_path, config_path, json_output,
     if json_output:
         print(json.dumps(data, indent=4))
     else:
-        display_job_info(data)
+        display_job_info(data, cur_expt_time=cur_expt_time)
 
 runscript = runcmd

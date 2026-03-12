@@ -279,7 +279,7 @@ def print_line(label: str, key: Any, data: dict[str, Any]) -> None:
         print(f"  {f'{label}:':<{label_width}} {value}")
 
 
-def display_job_info(data: dict[str, Any]) -> None:
+def display_job_info(data: dict[str, Any], cur_expt_time) -> None:
     """
     Display the job information in a human-readable way
     """
@@ -299,10 +299,15 @@ def display_job_info(data: dict[str, Any]) -> None:
             #read out qtime and stime from the job file
             job_file = run_info.get("job_file")
             job_id = run_info.get("job_id")
-            all_job_info = read_job_file(Path(job_file)).get("scheduler_job_info", {})
-            job_info = all_job_info.get("Jobs", {}).get(job_id, {})
+            all_job_info = read_job_file(Path(job_file))
+            job_info = all_job_info.get("scheduler_job_info", {}).get("Jobs", {}).get(job_id, {})
             display_wait_time(job_info.get("qtime", None), job_info.get("stime", None))
 
+            if run_info.get("stage") == "model-run" and cur_expt_time is not None:
+                print(f"  {'Current Expt Time:':<18} {cur_expt_time}")
+            if run_info.get("stage") == "archive":
+                model_finish_time = all_job_info.get("model_finish_time", None)
+                print(f"  {'Model Finish Time:':<18} {model_finish_time}")
             exit_status = run_info.get("exit_status")
             if exit_status is not None:
                 status_str = "Success" if exit_status == 0 else "Failed"

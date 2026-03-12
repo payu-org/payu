@@ -449,3 +449,31 @@ class Model(object):
             f'{self.model_type} date-based restart pruning requires one of '
             'these sub-models to determine restart dates.'
         )
+
+    def get_cur_expt_time(self):
+        """For model not implemented experiment time calculate/read-out,
+        leaves a warning and returns None."""
+        print("Getting current experiment time is not yet implemented.")
+        return None
+
+    def get_cur_expt_time_using_submodel(self, model_types):
+        """
+        Use a specified submodel's get_cur_expt_time method
+
+        Parameters
+        ----------
+        model_types: List of submodels in order of priority. Use first
+        submodel in model_types that is present in the experiment.
+
+        Returns:
+        --------
+        Current experiment time in string (e.g., 1900-01-01T01:00:00)
+        """
+        for model_type in model_types:
+            for model in self.expt.models:
+                if model.model_type == model_type and hasattr(model, 'get_cur_expt_time'):
+                    cur_expt_time = model.get_cur_expt_time()
+                    if cur_expt_time is not None:
+                        return cur_expt_time
+
+        return None

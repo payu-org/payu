@@ -1,10 +1,12 @@
 import copy
 import os
 import shutil
+import f90nml
 
 import pytest
 
 import payu
+from payu.models.access_esm1p6 import AccessEsm1p6
 
 from test.common import cd, expt_workdir
 from test.common import tmpdir, ctrldir, labdir, workdir, archive_dir
@@ -150,3 +152,103 @@ def test_esm1p6_patch_optional_config_files(um_only_ctrl_dir,
         set(esm1p6_um_model.optional_config_files) ==
         set(um_standalone_model.optional_config_files).union(expected_files)
     )
+
+
+def test_get_cur_expt_time(um_only_ctrl_dir, esm1p6_um_only_config):
+    """
+    Test that the access-esm1.6 driver correctly parses the model_basis_time.
+    """
+    # Initialise ESM1.6
+    with cd(ctrldir):
+        esm1p6_lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        esm1p6_expt = payu.experiment.Experiment(esm1p6_lab, reproduce=False)
+
+    # write the namelist with a known model_basis_time (start date)
+    nl_path = os.path.join(esm1p6_expt.work_path, 'atmosphere', 'namelists')
+    os.makedirs(os.path.dirname(nl_path), exist_ok=True)
+    model_basis_time = [1900, 1, 31, 0, 0, 0]
+    nml = f90nml.Namelist()
+    nml['nlstcall'] = {'model_basis_time': model_basis_time}
+    f90nml.write(nml, nl_path, force=True)
+
+    #write log file with a known timestep and default step length (30 min)
+    log_path = os.path.join(esm1p6_expt.work_path, 'atmosphere', 'atm.fort6.pe0')
+    with open(log_path, 'w') as f:
+        f.write(f"U_MODEL: STEPS_PER_PERIODim=                    48\n")
+        f.write(f"U_MODEL: SECS_PER_PERIODim=                 86400\n")
+        f.write(f"Atm_Step: Timestep                      10\n")
+
+    cur_expt_time = esm1p6_expt.get_model_cur_expt_time()
+    assert cur_expt_time == "1900-01-31T05:00:00"
+
+
+@pytest.mark.parametrize("missing_file", [
+    (
+        ['namelists']
+    ),
+    (
+        ['atm.fort6.pe0']
+    ),
+    (
+        ['namelists', 'atm.fort6.pe0']
+    )
+])
+def test_get_cur_expt_time_missing_files(um_only_ctrl_dir, esm1p6_um_only_config, missing_file):
+    """
+    Test that the access-esm1.6 driver correctly handles missing files.
+    """
+    # Initialise ESM1.6
+    with cd(ctrldir):
+        esm1p6_lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        esm1p6_expt = payu.experiment.Experiment(esm1p6_lab, reproduce=False)
+
+    nl_path = os.path.join(esm1p6_expt.work_path, 'atmosphere', 'namelists')
+    log_path = os.path.join(esm1p6_expt.work_path, 'atmosphere', 'atm.fort6.pe0')
+    os.makedirs(os.path.dirname(nl_path), exist_ok=True)
+    open(nl_path, 'a').close()
+    open(log_path, 'a').close()
+
+    if 'namelists' in missing_file:
+        os.remove(nl_path)
+    if 'atm.fort6.pe0' in missing_file:
+        os.remove(log_path)
+
+    with pytest.warns(UserWarning, match=f"Could not find required files: {nl_path} or {log_path}"):
+        cur_expt_time = esm1p6_expt.get_model_cur_expt_time()
+        assert cur_expt_time is None
+
+def test_read_start_date(um_only_ctrl_dir, esm1p6_um_only_config):
+    # Initialise ESM1.6
+    with cd(ctrldir):
+        esm1p6_lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        esm1p6_expt = payu.experiment.Experiment(esm1p6_lab, reproduce=False)
+
+    model = AccessEsm1p6(expt=esm1p6_expt, name="test_esm1p6", config={})
+    nl_path = os.path.join(esm1p6_expt.work_path, 'atmosphere', 'namelists')
+    os.makedirs(os.path.dirname(nl_path), exist_ok=True)
+    nml = f90nml.Namelist()
+    nml['top_key'] = {'key': 'value'}
+    f90nml.write(nml, nl_path, force=True)
+    with pytest.warns(UserWarning, match=f"model_basis_time not found in {nl_path}"):
+        model.read_start_date(nl_path)
+
+def test_convert_timestep(um_only_ctrl_dir, esm1p6_um_only_config):
+    """ Test with an invalid log file"""
+    # Initialise ESM1.6
+    with cd(ctrldir):
+        esm1p6_lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        esm1p6_expt = payu.experiment.Experiment(esm1p6_lab, reproduce=False)
+    
+    model = AccessEsm1p6(expt=esm1p6_expt, name="test_esm1p6", config={})
+    log_path = os.path.join(esm1p6_expt.work_path, 'atmosphere', 'atm.fort6.pe0')
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
+    # write invalid content into log file
+    with open(log_path, 'w') as f:
+        f.write(f"U_MODEL: STEPS_PER_PERIODim=                    48\n")
+        f.write(f"U_MODEL: SECS_PER_PERIODim=                 86400\n")
+        f.write(f"There is no Atm_Step: Timestep\n")
+
+    with pytest.warns(UserWarning, match=f"""Could not find all required entries in file {log_path}
+                to calculate run time"""):
+        model.convert_timestep(log_path)

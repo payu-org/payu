@@ -611,3 +611,69 @@ def test_collect_restart_files_nonexist_rpointer():
         assert "Restart pointer file not found at the end of payu run" in str(e.value)
 
     teardown_cmeps_config()
+
+def test_get_cur_expt_time(tmp_path):
+    """ Test if get_cur_expt_time correctly parses the model date from the log file. """
+    cmeps_config(1)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        log_path = os.path.join(model.work_path, "log", "med.log")
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        with open(log_path, "w") as f:
+            f.write(" memory_write: model date = 1900-01-02T00:00:00 \n")
+
+        cur_expt_time = model.get_cur_expt_time()
+
+        assert cur_expt_time == "1900-01-02T00:00:00"
+
+    teardown_cmeps_config()
+
+
+def test_get_cur_expt_time_no_log(tmp_path):
+    """ Test if get_cur_expt_time returns None if log file is missing. """
+    cmeps_config(1)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        log_path = os.path.join(model.work_path, "log", "med.log")
+        if os.path.exists(log_path):
+            os.remove(log_path)
+
+        with pytest.warns(
+            UserWarning, 
+            match=rf"Log file {log_path} does not exist or does not contain current model time."
+        ):
+            cur_expt_time = model.get_cur_expt_time()
+        assert cur_expt_time is None
+
+    teardown_cmeps_config()
+
+def test_get_cur_expt_time_no_date(tmp_path):
+    """ Test if get_cur_expt_time returns None if log file does not contain model date. """
+    cmeps_config(1)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        log_path = os.path.join(model.work_path, "log", "med.log")
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        with open(log_path, "w") as f:
+            f.write("This log file does not contain the model date.\n")
+
+        with pytest.warns(
+            UserWarning, 
+            match=rf"Log file {log_path} does not exist or does not contain current model time."
+        ):
+            cur_expt_time = model.get_cur_expt_time()
+        assert cur_expt_time is None
+
+    teardown_cmeps_config()
