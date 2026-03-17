@@ -154,9 +154,11 @@ sync_ignore_last = {
 repository = {
     'flags': [],
     'parameters': {
+        'nargs': '?',
         'dest': 'repository',
         'help': 'The repository to clone from. This can be either a local \
-                 path or git url'
+                 path or git url',
+        'default': None
     }
 }
 
@@ -164,8 +166,10 @@ repository = {
 local_directory = {
     'flags': [],
     'parameters': {
+        'nargs': '?',
         'dest': 'local_directory',
-        'help': 'The directory to clone into'
+        'help': 'The directory to clone into',
+        'default': None
     }
 }
 
@@ -199,6 +203,17 @@ clone_start_point = {
         'dest': 'start_point',
         'default':  None,
         'help': 'New branch will start from this commit or tag'
+    }
+}
+
+# Clone interactive prompt for beginners
+prompt_user = {
+    'flags': ('--interactive', '-I'),
+    'parameters': {
+        'action':   'store_true',
+        'default':  False,
+        'dest': 'prompt_user',
+        'help': 'Enable an interactive wizard to guide you through clone configuration.'
     }
 }
 

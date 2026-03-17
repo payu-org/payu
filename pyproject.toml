@@ -35,7 +35,8 @@ dependencies = [
     "netCDF4",
     "jsonschema", 
     "colorama",
-    "filelock"
+    "filelock",
+    "questionary",
 ]
 
 [project.optional-dependencies]
