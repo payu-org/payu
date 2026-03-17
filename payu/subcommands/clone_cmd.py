@@ -15,6 +15,12 @@ import sys
 from payu.branch import clone
 import payu.subcommands.args as args
 
+accessible_style = questionary.Style([
+    ('question', 'bold'),               
+    ('answer', 'fg:#ff9800 bold'),
+    ('selected', 'fg:#ff9800'),
+])
+
 def qprint(message):
     """Helper function to print messages in a consistent style."""
     questionary.print(message, style="bold italic fg:yellow")
@@ -23,7 +29,7 @@ def print_error_missing_args():
     """Print an error message when required arguments are missing."""
     print("Error: Repository URL and local directory must be provided for cloning.")
     print("If you want to provide arguments interactively, please run")
-    print("    `payu clone -I [<repo>] [<local_directory>] [-B <branch_name>] [-s <commit_or_tag>]`")
+    print("    `payu clone -I [<repo>] [<local_directory>]`")
     print("or simply run")
     print("    `payu clone`")
 
@@ -145,7 +151,6 @@ def prompts_for_clone(repository, local_directory, branch, start_point):
         new_branch_name = ask_for_new_branch_name()
         if confirm_restart_path():
             restart_path = ask_for_restart_path()
-            print_restart_number_message()
         else:
             restart_path = None
     else:
@@ -235,7 +240,7 @@ def ask_for_repo_url():
     """Ask the user for the repository URL they want to clone."""
     return safe_ask(questionary.text(
         "Please enter the URL of the repository, or the local path of a configuration you want to clone:",
-        instruction="(e.g., https://github.com/ACCESS-NRI/access-om2-configs, or /path/to/local/experiment)",
+        instruction="(e.g., https://github.com/payu-org/bowl1.git, or /path/to/local/experiment)",
         validate=lambda text: True if text else "Repository URL cannot be empty."
     ))
 
@@ -255,7 +260,8 @@ def ask_for_branch_name(branches):
         "Please enter the name of the branch you want to clone (to browse all branches, type 'list-all'):",
         choices=all_choices,
         validate=lambda text: True if text in all_choices
-                                else "Branch name is not valid."
+                                else "Branch name is not valid.",
+        style=accessible_style
     ))
 
 def ask_for_tag_or_commit(all_tags):
@@ -263,8 +269,9 @@ def ask_for_tag_or_commit(all_tags):
     return safe_ask(questionary.autocomplete(
         "Please enter the name of the tag or the commit hash you want to clone from:",
         choices=all_tags,
-        validate=lambda text: True if text else "Tag or commit cannot be empty."
-        ))
+        validate=lambda text: True if text else "Tag or commit cannot be empty.",
+        style=accessible_style
+    ))
 
 def validate_local_directory(path_str):
     """Validate the local directory path provided by the user."""
