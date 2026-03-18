@@ -11,6 +11,11 @@ import questionary
 import subprocess
 import os
 import sys
+try:
+    from prompt_toolkit.completion import PathCompleter
+    has_completer = True
+except ImportError:
+    has_completer = False
 
 from payu.branch import clone
 import payu.subcommands.args as args
@@ -29,12 +34,14 @@ def print_error_missing_args():
     """Print an error message when required arguments are missing."""
     print("Error: Repository URL and local directory must be provided for cloning.")
     print("If you want to provide arguments interactively, please run")
-    print("    `payu clone -I [<repo>] [<local_directory>]`")
+    print("    `payu clone <repo> <local_directory> -I`")
+    print("or")
+    print("    `payu clone <repo> -I`")
     print("or simply run")
     print("    `payu clone`")
 
 def print_restart_number_message():
-    qprint(
+    print(
            f"To continue the sequence from your restart files, please run \n    `payu run -i <N>`\nfor your first run after cloning, where <N> is the new index."
     )
 
@@ -75,6 +82,8 @@ def runcmd(model_type, config_path, lab_path, keep_uuid,
            parent_experiment, start_point, prompt_user):
     """Execute the command."""
     if prompt_user or (repository is None and local_directory is None):
+        qprint("Welcome to the Payu Clone Wizard!")
+        qprint("Press 'Ctrl+C' at any time to exit.")
         user_params = prompts_for_clone(repository, local_directory, branch, start_point)
         repository = user_params.get('repository')
         local_directory = user_params.get('local_directory')
@@ -119,12 +128,7 @@ def prompts_for_clone(repository, local_directory, branch, start_point):
         branch_or_tag = select_branch_or_tag()
         if branch_or_tag == "An existing branch":
             branches = fetch_branches(repository)
-            while True:
-                branch = ask_for_branch_name(branches)
-                if branch == "list-all":
-                    list_all_branches(repository, branches)
-                else:
-                    break
+            branch = ask_for_branch_name(branches)
         else:
             qprint("You chose to clone from a tag or commit.")
             qprint("Payu will create a new experiment UUID and new branch for this clone.")
@@ -202,32 +206,6 @@ def fetch_tags(url):
         print(f"Error fetching tags: {e}")
         sys.exit(1)
 
-def list_all_branches(url, branches):
-    """Fetch and display all branches from the remote repository in a separate vim window."""
-    # create a temporary file to store the branches
-    tf = tempfile.NamedTemporaryFile(suffix="_branches.txt", mode='w', delete=False)
-    temp_path = tf.name
-    try:
-        with tf:
-            tf.write("-"*50 + "\n")
-            tf.write(" # Close this window (:q) to return to the clone process\n")
-            tf.write("-"*50 + "\n")
-            tf.write(f"Branches available in the repository {url}:\n")
-            for branch in branches:
-                tf.write(f"  - {branch}\n")
-
-        # open the temporary file in vim
-        subprocess.run(["vim", temp_path])
-
-    except Exception as e:
-        print(f"Error displaying branches in vim: {e}")
-        sys.exit(1)
-
-    finally:
-        # remove the temporary file after viewing
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-
 def safe_ask(question_obj):
     """ A helper function to safely ask a question and handle KeyboardInterrupt. """
     answer = question_obj.ask()
@@ -255,11 +233,10 @@ def select_branch_or_tag():
 
 def ask_for_branch_name(branches):
     """Ask the user for the name of the branch they want to clone."""
-    all_choices = ["list-all"] + branches
     return safe_ask(questionary.autocomplete(
-        "Please enter the name of the branch you want to clone (to browse all branches, type 'list-all'):",
-        choices=all_choices,
-        validate=lambda text: True if text in all_choices
+        "Please enter the name of the branch you want to clone ('Tab' to browse all branches):",
+        choices=branches,
+        validate=lambda text: True if text in branches
                                 else "Branch name is not valid.",
         style=accessible_style
     ))
@@ -267,7 +244,7 @@ def ask_for_branch_name(branches):
 def ask_for_tag_or_commit(all_tags):
     """Ask the user for the name of the tag or commit hash they want to clone."""
     return safe_ask(questionary.autocomplete(
-        "Please enter the name of the tag or the commit hash you want to clone from:",
+        "Please enter the name of the tag or the commit hash you want to clone from ('Tab' to browse all tags):",
         choices=all_tags,
         validate=lambda text: True if text else "Tag or commit cannot be empty.",
         style=accessible_style
@@ -311,7 +288,7 @@ def confirm_restart_path():
         ))
 
 def validate_restart_path(path_str):
-    """Validate the restart path provided by the user."""
+    """Validate the restart path exists and is not empty."""
     if not path_str:
         return "Restart path cannot be empty."
     
@@ -323,8 +300,10 @@ def validate_restart_path(path_str):
 
 def ask_for_restart_path():
     """Ask the user for the path to the restart directory they want to use."""
-    # Check if it is exist and not empty
+    path_completer = PathCompleter(only_directories=True, expanduser=True) if has_completer else None
+    instruction = " ('Tab' to browse, '/' to enter folder):" if has_completer else ":"
     return safe_ask(questionary.text(
-                "Please enter the restart path you want to use:",
-                validate=validate_restart_path
+                "Please enter the restart path you want to use" + instruction,
+                validate=validate_restart_path,
+                completer=path_completer
             ))
