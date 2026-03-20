@@ -17,12 +17,13 @@ import shutil
 import cftime
 from warnings import warn
 import logging
-logger = logging.getLogger(__name__)
 
 from payu.fsops import make_symlink
 from payu.models.model import Model
 from payu.models.fms import fms_collate
 from payu.models.mom6 import mom6_add_parameter_files, mom6_save_docs_files
+
+logger = logging.getLogger(__name__)
 
 NUOPC_CONFIG = "nuopc.runconfig"
 NUOPC_RUNSEQ = "nuopc.runseq"

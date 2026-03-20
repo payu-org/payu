@@ -10,7 +10,6 @@ import warnings
 from datetime import datetime
 import json
 import logging
-logger = logging.getLogger(__name__)
 
 from payu.schedulers import Scheduler
 from payu.telemetry import (
@@ -19,6 +18,7 @@ from payu.telemetry import (
     remove_job_file
 )
 
+logger = logging.getLogger(__name__)
 
 def find_file_match(pattern: str, path: Path) -> Optional[Path]:
     """Find a file matching the pattern in the given path"""
@@ -135,7 +135,8 @@ def build_job_info(
             archive_path: Path,
             control_path: Path,
             run_number: Optional[int] = None,
-            all_runs: Optional[bool] = False
+            all_runs: Optional[bool] = False,
+            expt=None
         ) -> Optional[dict[str, Any]]:
     """
     Generate a dictionary of jobs information (exit status, stage),
@@ -179,6 +180,10 @@ def build_job_info(
             "start_time": data.get("timings", {}).get("payu_start_time"),
         }
 
+        if data.get("stage") == "archive":
+            # For archive stage, add the model finish time if available
+            run_info["model_finish_time"] = data.get("model_finish_time", None)
+
         run_num = data["payu_current_run"]
         runs.setdefault(run_num, {"run": []})["run"].append(run_info)
 
@@ -199,6 +204,16 @@ def build_job_info(
         # Use latest run job
         for run_num, run_jobs in status_data["runs"].items():
             run_jobs["run"] = [run_jobs["run"][-1]]
+
+    if run_info.get("stage") == "model-run" and expt is not None:
+        try:
+            cur_expt_time = expt.get_model_cur_expt_time()
+            if cur_expt_time is not None:
+                run_info["cur_expt_time"] = cur_expt_time.isoformat()
+        except (FileNotFoundError, IndexError, OSError, json.JSONDecodeError, ValueError, NotImplementedError) as e:
+            logger.debug(f"Cannot parse current experiment time: {e}")
+        except Exception as e:
+            logger.warning(f"Unexpected error while parsing current experiment time: {e}")
 
     return status_data
 
@@ -282,7 +297,7 @@ def print_line(label: str, key: Any, data: dict[str, Any]) -> None:
         print(f"  {f'{label}:':<{label_width}} {value}")
 
 
-def display_job_info(data: dict[str, Any], expt) -> None:
+def display_job_info(data: dict[str, Any]) -> None:
     """
     Display the job information in a human-readable way
     """
@@ -307,16 +322,7 @@ def display_job_info(data: dict[str, Any], expt) -> None:
             display_wait_time(job_info.get("qtime", None), job_info.get("stime", None))
 
             if run_info.get("stage") == "model-run":
-                cur_expt_time = None
-                try:
-                    cur_expt_time = expt.get_model_cur_expt_time()
-                except (FileNotFoundError, IndexError, OSError, json.JSONDecodeError, UnboundLocalError) as e:
-                    logger.debug(f"Cannot parse current experiment time: {e}")
-                except Exception as e:
-                    logger.warning(f"Unexpected error getting current experiment time: {e}")
-
-                if cur_expt_time is not None:
-                    print(f"  {'Current Expt Time:':<18} {cur_expt_time.isoformat()}")
+                print_line("Current Expt Time", "cur_expt_time", run_info)
             if run_info.get("stage") == "archive":
                 model_finish_time = all_job_info.get("model_finish_time", None)
                 print(f"  {'Model Finish Time:':<18} {model_finish_time}")

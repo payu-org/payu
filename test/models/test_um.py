@@ -6,8 +6,6 @@ import pytest
 import datetime
 import cftime
 import yaml
-import f90nml
-import logging
 
 import payu
 
@@ -133,7 +131,7 @@ def test_um_get_restart_datetime(date):
     parsed_run_dt = expt.model.get_restart_datetime(restart_path)
     assert parsed_run_dt == date
 
-def test_convert_timestep(caplog):
+def test_convert_timestep():
     """ Test with an invalid log file"""
     # Initialise ESM1.6
     with cd(ctrldir):
@@ -149,6 +147,5 @@ def test_convert_timestep(caplog):
         f.write(f"U_MODEL: SECS_PER_PERIODim=                 86400\n")
         f.write(f"There is no Timestep\n")
 
-    with caplog.at_level(logging.DEBUG):
+    with pytest.raises(ValueError, match=f"Could not find all required entries in file {log_path}"):
         expt.model.convert_timestep(log_path)
-        assert f"Could not find all required entries in file {log_path}" in caplog.text

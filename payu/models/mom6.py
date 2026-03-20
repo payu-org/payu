@@ -12,8 +12,7 @@
 import os
 from datetime import datetime, timedelta
 import cftime
-import logging
-logger = logging.getLogger(__name__)
+from collections import deque
 
 # Extensions
 import f90nml
@@ -27,13 +26,6 @@ from payu.models.mom_mixin import MomMixin
 from payu.git_utils import GitRepository
 
 MOM6_DOCS = ["MOM_parameter_doc.*","available_diags.*"]
-
-cftime_calendars = {
-            1: "360_day",
-            2: "julian",
-            3: "proleptic_gregorian",
-            4: "noleap"
-        }
 
 def mom6_add_parameter_files(model):
     """Add parameter files defined in input.nml to model configuration files.
@@ -142,6 +134,21 @@ class Mom6(MomMixin, Fms):
 
         super().archive()
 
+    def read_start_date(self, input_path, calendar):
+        """Read the start date from input.nml."""
+        input_nml = f90nml.read(input_path)
+        start_date_list = input_nml.get('ocean_solo_nml', {}).get('date_init', None)
+        if start_date_list is None:
+            raise ValueError(f"Key 'date_init' not found in {input_path}")
+        return cftime.datetime(*start_date_list, calendar=calendar)
+
+    def read_timestep(self, stats_path):
+        """ Read the current timestep from ocean.stats."""
+        with open(stats_path, 'r') as f:
+            line = deque(f, maxlen=1)[0]
+            timestep = float(line.split(',')[1])
+            return timestep
+
     def get_cur_expt_time(self):
         """Get the current experiment time from log file.
         --- 
@@ -149,10 +156,16 @@ class Mom6(MomMixin, Fms):
             cftime.datetime or None if it cannot be determined.
         """
         ocean_solo_path = os.path.join(self.expt.work_path, 'INPUT', 'ocean_solo.res')
-        with open(ocean_solo_path, 'r') as ocean_solo:
-            lines = ocean_solo.readlines()
-            calendar_int = int(lines[0].split()[0])
-            time_values = [int(x) for x in lines[2].split()[0:6]]
+        calendar = self.get_calendar(ocean_solo_path)
 
-        cur_expt_time = cftime.datetime(*time_values, calendar = cftime_calendars[calendar_int])
+        input_path = os.path.join(self.expt.work_path, 'input.nml')
+        start_date = self.read_start_date(input_path, calendar)
+
+        stats_path = os.path.join(self.expt.work_path, 'ocean.stats')
+        timestep = self.read_timestep(stats_path)
+
+        if start_date is None or timestep is None:
+            return None
+
+        cur_expt_time = start_date + timedelta(days=timestep)
         return cur_expt_time

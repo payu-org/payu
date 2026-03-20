@@ -2,15 +2,12 @@ import copy
 import os
 import shutil
 import pytest
-import logging
 
 import payu
-import cftime
 
 from test.common import cd, tmpdir, ctrldir, labdir, workdir, write_config, config_path
 from test.common import config as config_orig
 from test.common import make_inputs, make_exe
-from test.common import list_expt_archive_dirs, make_expt_archive_dir, remove_expt_archive_dirs
 
 MODEL = 'access-om2'
 
@@ -50,7 +47,7 @@ def teardown_config():
     # Teardown
     os.remove(config_path)
 
-def test_get_cur_expt_time(tmp_path):
+def test_get_cur_expt_time():
     """ Test if get_cur_expt_time correctly parses the model date from the log file. """
     setup_config(1)
 
@@ -69,8 +66,9 @@ def test_get_cur_expt_time(tmp_path):
         assert cur_expt_time.isoformat() == "1900-01-31T00:00:00"
 
     teardown_config()
+    os.remove(log_path)
 
-def test_get_cur_expt_time_no_log(tmp_path):
+def test_get_cur_expt_time_no_log():
     """ Test if get_cur_expt_time returns None if log file is missing. """
     setup_config(1)
 
@@ -80,16 +78,15 @@ def test_get_cur_expt_time_no_log(tmp_path):
         model = expt.models[0]
 
         log_path = os.path.join(model.work_path, "atmosphere", "log", "matmxx.pe00000.log")
-        if os.path.exists(log_path):
-            os.remove(log_path)
-
+        
+        assert not os.path.exists(log_path)
         with pytest.raises(FileNotFoundError):
             cur_expt_time = model.get_cur_expt_time()
 
     teardown_config()
 
-def test_get_cur_expt_time_no_date(tmp_path, caplog):
-    """ Test if get_cur_expt_time returns None if log file does not contain model date. """
+def test_get_cur_expt_time_no_date():
+    """ Test if get_cur_expt_time raise an error if log file does not contain model date. """
     setup_config(1)
 
     with cd(ctrldir):
@@ -102,9 +99,9 @@ def test_get_cur_expt_time_no_date(tmp_path, caplog):
         with open(log_path, "w") as f:
             f.write("This log file does not contain the model date.\n")
 
-        with caplog.at_level('DEBUG'):
+        with pytest.raises(ValueError, match=f"Key 'cur_exp-datetime' not found in {log_path}"):
             cur_expt_time = model.get_cur_expt_time()
-        assert cur_expt_time is None
-        assert f"cur_exp-datetime not found in {log_path}" in caplog.text
+            assert cur_expt_time is None
 
     teardown_config()
+    os.remove(log_path)

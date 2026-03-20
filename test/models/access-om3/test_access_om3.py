@@ -612,7 +612,7 @@ def test_collect_restart_files_nonexist_rpointer():
 
     teardown_cmeps_config()
 
-def test_get_cur_expt_time(tmp_path):
+def test_get_cur_expt_time():
     """ Test if get_cur_expt_time correctly parses the model date from the log file. """
     cmeps_config(1)
 
@@ -631,10 +631,11 @@ def test_get_cur_expt_time(tmp_path):
         assert cur_expt_time.isoformat() == "1900-01-02T00:00:00"
 
     teardown_cmeps_config()
+    os.remove(log_path)
 
 
-def test_get_cur_expt_time_no_log(tmp_path):
-    """ Test if get_cur_expt_time returns None if log file is missing. """
+def test_get_cur_expt_time_no_log():
+    """ Test if get_cur_expt_time raise an error if log file is missing. """
     cmeps_config(1)
 
     with cd(ctrldir):
@@ -643,15 +644,14 @@ def test_get_cur_expt_time_no_log(tmp_path):
         model = expt.models[0]
 
         log_path = os.path.join(model.work_path, "log", "med.log")
-        if os.path.exists(log_path):
-            os.remove(log_path)
 
+        assert not os.path.exists(log_path)
         with pytest.raises(FileNotFoundError):
             cur_expt_time = model.get_cur_expt_time()
 
     teardown_cmeps_config()
 
-def test_get_cur_expt_time_no_date(tmp_path):
+def test_get_cur_expt_time_no_date():
     """ Test if get_cur_expt_time returns None if log file does not contain model date. """
     cmeps_config(1)
 
@@ -669,3 +669,4 @@ def test_get_cur_expt_time_no_date(tmp_path):
         assert cur_expt_time is None
 
     teardown_cmeps_config()
+    os.remove(log_path)

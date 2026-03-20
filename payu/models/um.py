@@ -15,9 +15,6 @@ import glob
 import os
 import shutil
 import string
-import cftime
-import logging
-logger = logging.getLogger(__name__)
 
 # Extensions
 import f90nml
@@ -277,21 +274,20 @@ class UnifiedModel(Model):
             runtime_sec = timestep * secs_per_step
             return runtime_sec
         
-        logger.debug(
+        raise ValueError(
             f"Could not find all required entries in file {log_path}"
             f" to calculate run time"
         )
-        return None
 
     def get_cur_expt_time(self):
         """Get the current experiment time from file"""
         log_path = os.path.join(self.expt.work_path, 'atmosphere', 'atm.fort6.pe0')
         
-        start_date = self.get_restart_datetime(self.expt.work_path + '/atmosphere')
+        start_date_dir = os.path.join(self.expt.work_path, 'atmosphere')
+        start_date = self.get_restart_datetime(start_date_dir)
         runtime_sec = self.convert_timestep(log_path)
         if start_date is None or runtime_sec is None:
-            return None
-            
+            raise ValueError("Could not determine current experiment time.")
         cur_expt_time = start_date + datetime.timedelta(seconds=runtime_sec)
         return cur_expt_time
 

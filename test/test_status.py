@@ -304,7 +304,8 @@ def expected_archive_job_info(run_number):
         'stage': 'archive',
         'stderr_file': None,
         'stdout_file': None,
-        'start_time': f'2025-08-1{run_number}T12:00:00'
+        'start_time': f'2025-08-1{run_number}T12:00:00',
+        'model_finish_time': None
     }
 
 
@@ -664,7 +665,7 @@ def test_status_cur_expt_time(tmp_path, monkeypatch, capsys, cur_expt_time):
             run_number=None
         )
 
-    # Check the output contains the expected queue time
+    # Check the output contains the expected cur_expt_time
     output = capsys.readouterr().out
     if cur_expt_time:
         assert "Current Expt Time:" in output

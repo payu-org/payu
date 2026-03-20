@@ -338,8 +338,3 @@ class AccessEsm1p6(Model):
 
     def collate(self):
         pass
-
-        
-        
-        
-

@@ -3,10 +3,7 @@ from contextlib import redirect_stdout
 import os
 from pathlib import Path
 import warnings
-
 import json
-import logging
-logger = logging.getLogger(__name__)
 
 from payu.fsops import read_config
 from payu.metadata import MetadataWarning, Metadata
@@ -38,7 +35,6 @@ def runcmd(lab_path, config_path, json_output,
         warnings.filterwarnings("error", category=MetadataWarning)
         try:
             expt = Experiment(lab, config_path=config_path)
-            expt.init_models()
         except MetadataWarning as e:
             raise RuntimeError(
                 "Metadata is not setup - can't determine archive path"
@@ -53,7 +49,8 @@ def runcmd(lab_path, config_path, json_output,
         control_path=control_path,
         archive_path=archive_path,
         run_number=run_number,
-        all_runs=all_runs
+        all_runs=all_runs,
+        expt=expt
     )
     if update_jobs:
         # Get the scheduler
@@ -66,20 +63,13 @@ def runcmd(lab_path, config_path, json_output,
             archive_path=archive_path,
             control_path=control_path,
             run_number=run_number,
-            all_runs=all_runs
+            all_runs=all_runs,
+            expt=expt
         )
 
     if json_output:
-        try:
-            cur_expt_time = expt.get_model_cur_expt_time()
-            if cur_expt_time is not None:
-                data["Current Experiment Time"] = cur_expt_time.isoformat()
-        except (FileNotFoundError, IndexError, OSError, json.JSONDecodeError) as e:
-            logger.debug(f"Cannot parse current experiment time: {e}")
-        except Exception as e:
-            logger.warning(f"Unexpected error while parsing current experiment time: {e}")
         print(json.dumps(data, indent=4))
     else:
-        display_job_info(data, expt=expt)
+        display_job_info(data)
 
 runscript = runcmd

@@ -2,8 +2,6 @@ import copy
 import datetime
 import os
 import shutil
-import logging
-logger = logging.getLogger(__name__)
 
 import pytest
 import cftime
@@ -24,9 +22,7 @@ from test.models.test_um import make_atmosphere_restart_dir
 from test.models.test_mom_mixin import make_ocean_restart_dir
 from payu.calendar import GREGORIAN, NOLEAP
 
-
 verbose = True
-
 
 INPUT_ICE_FNAME = "input_ice.nml"
 RESTART_DATE_FNAME = "restart_date.nml"
@@ -464,7 +460,7 @@ def test_access_get_um_restart_datetime(um_only_config, remove_restart_dirs):
     parsed_run_dt = expt.model.get_restart_datetime(restart_path)
     assert parsed_run_dt == date
 
-def test_get_cur_expt_time_not_implemented_print(um_only_config, caplog):
+def test_get_cur_expt_time(um_only_config):
     """
     Check that a debug message is logged when trying to get the current experiment time
     for the access model, as this functionality is not yet implemented.
@@ -473,8 +469,54 @@ def test_get_cur_expt_time_not_implemented_print(um_only_config, caplog):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, reproduce=False)
     
-    caplog.set_level(logging.DEBUG)
+    # write the um.res.yaml with a known restart date
+    restart_calendar_path = os.path.join(expt.work_path, 'atmosphere', 'um.res.yaml')
+    os.makedirs(os.path.dirname(restart_calendar_path), exist_ok=True)
+    with open(restart_calendar_path, 'w') as f:
+        f.write("end_date: 1900-01-31 00:00:00\n")
+
+    #write log file with a known timestep and default step length (30 min)
+    log_path = os.path.join(expt.work_path, 'atmosphere', 'atm.fort6.pe0')
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    with open(log_path, 'w') as f:
+        f.write(f"U_MODEL: STEPS_PER_PERIODim=                    48\n")
+        f.write(f"U_MODEL: SECS_PER_PERIODim=                 86400\n")
+        f.write(f"Atm_Step: Timestep                      10\n")
+
     cur_expt_time = expt.get_model_cur_expt_time()
-    assert cur_expt_time is None
-    assert "Current experiment time not implemented for this model." in caplog.records[0].message
-    
+    assert cur_expt_time.isoformat() == "1900-01-31T05:00:00"
+
+@pytest.mark.parametrize("missing_file", [
+    (
+        ['um.res.yaml']
+    ),
+    (
+        ['atm.fort6.pe0']
+    ),
+    (
+        ['um.res.yaml', 'atm.fort6.pe0']
+    )
+])
+def test_get_cur_expt_time_missing_files(um_only_config, missing_file):
+    """
+    Check that a debug message is logged when trying to get the current experiment time
+    for the access model, as this functionality is not yet implemented.
+    """
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+
+    restart_calendar_path = os.path.join(expt.work_path, 'atmosphere', 'um.res.yaml')
+    log_path = os.path.join(expt.work_path, 'atmosphere', 'atm.fort6.pe0')
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    with open(restart_calendar_path, 'w') as f:
+        f.write("end_date: 1901-03-01 00:00:00\n")
+    open(log_path, 'a').close()
+
+    if 'um.res.yaml' in missing_file:
+        os.remove(restart_calendar_path)
+    if 'atm.fort6.pe0' in missing_file:
+        os.remove(log_path)
+
+    with pytest.raises(FileNotFoundError):
+        cur_expt_time = expt.get_model_cur_expt_time()

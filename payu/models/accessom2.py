@@ -16,10 +16,10 @@ import json
 import warnings
 import cftime
 import logging
-logger = logging.getLogger(__name__)
 
 from payu.models.model import Model
 
+logger = logging.getLogger(__name__)
 
 class AccessOm2(Model):
 
@@ -117,6 +117,5 @@ class AccessOm2(Model):
                     if time_str is not None:
                         return cftime.datetime.strptime(time_str, '%Y-%m-%dT%H:%M:%S')
 
-        logger.debug(f"cur_exp-datetime not found in {log_path}")
-        return None
+        raise ValueError(f"Key 'cur_exp-datetime' not found in {log_path}")
 
