@@ -303,15 +303,14 @@ def ask_for_new_branch_name():
     """Ask the user for the name of the new branch they want to create."""
     return safe_ask(questionary.text(
             "What would you like to name your new branch",
-            instruction="(Note: this won't be pushed to the remote automatically)",
+            instruction="(Note: this won't be shared to the online repository automatically)",
             validate=lambda text: True if text else "Branch name cannot be empty."
         ))
 
 def confirm_restart_path():
     """Ask the user if they want to specify a restart path to start from."""
     is_restart = safe_ask(questionary.select(
-        "Do you want to specify a custom restart path?",
-        instruction="(If no, the default restart/initial conditions will be used.)",
+        "Do you want to specify a custom restart path? (If no, the default restart/initial conditions will be used.)",
         choices=["Yes", "No"]
         ))
     if is_restart == "Yes":
