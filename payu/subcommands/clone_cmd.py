@@ -6,10 +6,8 @@
 
 from argparse import RawDescriptionHelpFormatter
 from pathlib import Path
-import tempfile
 import questionary
 import subprocess
-import os
 import sys
 try:
     from prompt_toolkit.completion import PathCompleter
@@ -28,7 +26,7 @@ accessible_style = questionary.Style([
 
 def qprint(message):
     """Helper function to print messages in a consistent style."""
-    questionary.print(message, style="bold italic fg:yellow")
+    questionary.print(message, style="fg:yellow")
 
 def print_error_missing_args():
     """Print an error message when required arguments are missing."""
@@ -119,26 +117,33 @@ runscript = runcmd
 
 def prompts_for_clone(repository, local_directory, branch, start_point):
     """Prompt the user for input to guide the cloning process."""
+    cli_command = "payu clone"
     # Source selection
     if repository is None:
         repository = ask_for_repo_url()
     else:
         qprint(f"Cloning from repository: {repository}")
+
     if branch is None and start_point is None:
         branch_or_tag = select_branch_or_tag()
         if branch_or_tag == "An existing branch":
             branches = fetch_branches(repository)
             branch = ask_for_branch_name(branches)
+            cli_command += f" -B {branch}"
+
         else:
             qprint("You chose to clone from a tag or commit.")
             qprint("Payu will create a new experiment UUID and new branch for this clone.")
             all_tags = fetch_tags(repository)
             start_point = ask_for_tag_or_commit(all_tags)
+            cli_command += f" -s {start_point}"
 
     elif branch is not None:
         qprint(f"Cloning from branch: {branch}")
+        cli_command += f" -B {branch}"
     elif start_point is not None:
         qprint(f"Cloning from tag/commit: {start_point}")
+        cli_command += f" -s {start_point}"
 
     # Local directory and experiment setup
     if local_directory is None:
@@ -153,8 +158,10 @@ def prompts_for_clone(repository, local_directory, branch, start_point):
     # New branch name and restart path (if applicable)
     if is_new_expt:
         new_branch_name = ask_for_new_branch_name()
+        cli_command += f" -b {new_branch_name}"
         if confirm_restart_path():
             restart_path = ask_for_restart_path()
+            cli_command += f" -r {restart_path}"
         else:
             restart_path = None
     else:
@@ -163,7 +170,13 @@ def prompts_for_clone(repository, local_directory, branch, start_point):
         )
         restart_path = ask_for_restart_path()
         print_restart_number_message()
+        cli_command += " --keep-uuid"
+        cli_command += f" -r {restart_path}"
 
+    cli_command += f" {repository}"
+    cli_command += f" {local_directory}"
+    qprint("Running command:")
+    qprint('`' + cli_command + '`')
     return {
         'repository': repository,
         'branch': branch,
@@ -243,12 +256,19 @@ def ask_for_branch_name(branches):
 
 def ask_for_tag_or_commit(all_tags):
     """Ask the user for the name of the tag or commit hash they want to clone."""
-    return safe_ask(questionary.autocomplete(
-        "Please enter the name of the tag or the commit hash you want to clone from ('Tab' to browse all tags):",
-        choices=all_tags,
-        validate=lambda text: True if text else "Tag or commit cannot be empty.",
-        style=accessible_style
-    ))
+    if all_tags:
+        return safe_ask(questionary.autocomplete(
+            "Please enter the name of the tag or the commit hash you want to clone from ('Tab' to browse all tags):",
+            choices=all_tags,
+            validate=lambda text: True if text else "Tag or commit cannot be empty.",
+            style=accessible_style
+        ))
+    else:
+        return safe_ask(questionary.text(
+            "Please enter the name of the tag or the commit hash you want to clone from:",
+            validate=lambda text: True if text else "Tag or commit cannot be empty.",
+            style=accessible_style
+        ))
 
 def validate_local_directory(path_str):
     """Validate the local directory path provided by the user."""
@@ -270,22 +290,34 @@ def ask_for_local_directory():
 
 def confirm_new_experiment():
     """Ask the user if this is a new experiment"""
-    return safe_ask(questionary.confirm(
-        "Is this a new experiment? (If yes, payu will create a new branch.)"
+    is_new_expt = safe_ask(questionary.select(
+        "Is this a new experiment? (If yes, payu will create a new branch.)",
+        choices=["Yes", "No"]
     ))
+    if is_new_expt == "Yes":
+        return True
+    else:
+        return False
 
 def ask_for_new_branch_name():
     """Ask the user for the name of the new branch they want to create."""
     return safe_ask(questionary.text(
-            "Please enter the name of the new branch you want to create:",
+            "What would you like to name your new branch",
+            instruction="(Note: this won't be pushed to the remote automatically)",
             validate=lambda text: True if text else "Branch name cannot be empty."
         ))
 
 def confirm_restart_path():
     """Ask the user if they want to specify a restart path to start from."""
-    return safe_ask(questionary.confirm(
-            "Are you starting from an existing restart path?"
+    is_restart = safe_ask(questionary.select(
+        "Do you want to specify a custom restart path?",
+        instruction="(If no, the default restart/initial conditions will be used.)",
+        choices=["Yes", "No"]
         ))
+    if is_restart == "Yes":
+        return True
+    else:
+        return False
 
 def validate_restart_path(path_str):
     """Validate the restart path exists and is not empty."""
