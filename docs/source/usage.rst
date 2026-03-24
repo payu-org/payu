@@ -138,6 +138,27 @@ run::
 As an alternative to creating and checking out branches with ``payu clone``, 
 ``payu checkout`` can be used instead (see :ref:`usage-metadata`). 
 
+Payu clone interactive mode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+An interactive mode is available to guide you through the cloning process. 
+To start this, run with ``-I`` (or ``--interactive``) flag::
+
+      payu clone -I
+
+You can pre-specify the repository and local directory name in launching interactive mode to pre-fill those inputs::
+
+      payu clone -I <repository_url>
+
+or provide both:
+
+      payu clone -I <repository_url> <local_dir>
+
+The workflow of the interactive mode is as follows:
+
+.. image:: ../images/payu_clone_interactive_flowchart.svg
+   :align: center
+   :alt: Flowchart of the payu clone interactive workflow
+   :width: 600px
 
 .. _Create-experiment:
 Create experiment
