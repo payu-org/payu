@@ -149,7 +149,7 @@ You can pre-specify the repository and local directory name in launching interac
 
       payu clone -I <repository_url>
 
-or provide both:
+or provide both::
 
       payu clone -I <repository_url> <local_dir>
 
@@ -158,7 +158,7 @@ The workflow of the interactive mode is as follows:
 .. image:: ../images/payu_clone_interactive_flowchart.svg
    :align: center
    :alt: Flowchart of the payu clone interactive workflow
-   :width: 600px
+   :width: 300px
 
 .. _Create-experiment:
 Create experiment
