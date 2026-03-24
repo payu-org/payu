@@ -41,7 +41,10 @@ warnings.formatwarning = (
 def parse():
     """Parse the command line inputs and execute the subcommand."""
     setup_logger()
-    parser = generate_parser()
+    if '-I' in sys.argv or '--interactive' in sys.argv:
+        parser = generate_parser(is_interactive=True)
+    else:
+        parser = generate_parser(is_interactive=False)
 
     # Display help if no arguments are provided
     if len(sys.argv) == 1:
@@ -52,7 +55,7 @@ def parse():
         run_cmd(**args)
 
 
-def generate_parser():
+def generate_parser(is_interactive=False):
     """Parse the command line inputs generate and return parser."""
 
     # Build the list of subcommand modules
@@ -77,6 +80,11 @@ def generate_parser():
         for arg in cmd.arguments:
             cmd_parser.add_argument(*arg['flags'], **arg['parameters'])
 
+        # If in interactive mode, make all required arguments no longer required
+        if is_interactive:
+            for action in cmd_parser._actions:
+                if action.required:
+                    action.required = False
     return parser
 
 

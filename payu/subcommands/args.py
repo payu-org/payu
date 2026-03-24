@@ -154,7 +154,6 @@ sync_ignore_last = {
 repository = {
     'flags': [],
     'parameters': {
-        'nargs': '?',
         'dest': 'repository',
         'help': 'The repository to clone from. This can be either a local \
                  path or git url',
@@ -166,7 +165,6 @@ repository = {
 local_directory = {
     'flags': [],
     'parameters': {
-        'nargs': '?',
         'dest': 'local_directory',
         'help': 'The directory to clone into',
         'default': None

@@ -24,19 +24,11 @@ accessible_style = questionary.Style([
     ('selected', 'fg:#ff9800'),
 ])
 
+example_url_msg = "(e.g., https://github.com/payu-org/bowl1.git, or /path/to/local/experiment"
+
 def qprint(message):
     """Helper function to print messages in a consistent style."""
     questionary.print(message, style="fg:yellow")
-
-def print_error_missing_args():
-    """Print an error message when required arguments are missing."""
-    print("Error: Repository URL and local directory must be provided for cloning.")
-    print("If you want to provide arguments interactively, please run")
-    print("    `payu clone <repo> <local_directory> -I`")
-    print("or")
-    print("    `payu clone <repo> -I`")
-    print("or simply run")
-    print("    `payu clone`")
 
 def print_restart_number_message():
     print(
@@ -79,10 +71,10 @@ def runcmd(model_type, config_path, lab_path, keep_uuid,
            branch, repository, local_directory, new_branch_name, restart_path,
            parent_experiment, start_point, prompt_user):
     """Execute the command."""
-    if prompt_user or (repository is None and local_directory is None):
+    if prompt_user:
         qprint("Welcome to the Payu Clone Wizard!")
         qprint("Press 'Ctrl+C' at any time to exit.")
-        user_params = prompts_for_clone(repository, local_directory, branch, start_point)
+        user_params = prompts_for_clone(repository, local_directory)
         repository = user_params.get('repository')
         local_directory = user_params.get('local_directory')
         branch = user_params.get('branch')
@@ -90,10 +82,6 @@ def runcmd(model_type, config_path, lab_path, keep_uuid,
         keep_uuid = user_params.get('keep_uuid')
         new_branch_name = user_params.get('new_branch_name')
         restart_path = user_params.get('restart_path')
-
-    if repository is None or local_directory is None:
-        print_error_missing_args()
-        sys.exit(1)
 
     config_path = transform_strings_to_path(config_path)
     restart_path = transform_strings_to_path(restart_path)
@@ -115,7 +103,7 @@ def runcmd(model_type, config_path, lab_path, keep_uuid,
 
 runscript = runcmd
 
-def prompts_for_clone(repository, local_directory, branch, start_point):
+def prompts_for_clone(repository, local_directory):
     """Prompt the user for input to guide the cloning process."""
     cli_command = "payu clone"
     # Source selection
@@ -124,25 +112,19 @@ def prompts_for_clone(repository, local_directory, branch, start_point):
     else:
         qprint(f"Cloning from repository: {repository}")
 
-    if branch is None and start_point is None:
-        branch_or_tag = select_branch_or_tag()
-        if branch_or_tag == "An existing branch":
-            branches = fetch_branches(repository)
-            branch = ask_for_branch_name(branches)
-            cli_command += f" -B {branch}"
-
-        else:
-            qprint("You chose to clone from a tag or commit.")
-            qprint("Payu will create a new experiment UUID and new branch for this clone.")
-            all_tags = fetch_tags(repository)
-            start_point = ask_for_tag_or_commit(all_tags)
-            cli_command += f" -s {start_point}"
-
-    elif branch is not None:
-        qprint(f"Cloning from branch: {branch}")
+    branch_or_tag = select_branch_or_tag()
+    if branch_or_tag == "An existing branch":
+        branches = fetch_branches(repository)
+        branch = ask_for_branch_name(branches)
+        start_point = None
         cli_command += f" -B {branch}"
-    elif start_point is not None:
-        qprint(f"Cloning from tag/commit: {start_point}")
+
+    else:
+        qprint("You chose to clone from a tag or commit.")
+        qprint("Payu will create a new experiment UUID and new branch for this clone.")
+        all_tags = fetch_tags(repository)
+        start_point = ask_for_tag_or_commit(all_tags)
+        branch = None
         cli_command += f" -s {start_point}"
 
     # Local directory and experiment setup
@@ -223,16 +205,17 @@ def safe_ask(question_obj):
     """ A helper function to safely ask a question and handle KeyboardInterrupt. """
     answer = question_obj.ask()
     if answer is None:
-        print("Clone process cancelled by user. Exiting.")
         sys.exit(0)
     return answer
 
 def ask_for_repo_url():
     """Ask the user for the repository URL they want to clone."""
+    path_completer = PathCompleter(only_directories=True, expanduser=True) if has_completer else None
     return safe_ask(questionary.text(
         "Please enter the URL of the repository, or the local path of a configuration you want to clone:",
-        instruction="(e.g., https://github.com/payu-org/bowl1.git, or /path/to/local/experiment)",
-        validate=lambda text: True if text else "Repository URL cannot be empty."
+        instruction=example_url_msg+"; 'Tab' to browse, '/' to enter folder)" if has_completer else ")",
+        validate=lambda text: True if text else "Repository URL/directory cannot be empty.",
+        completer=path_completer
     ))
 
 def select_branch_or_tag():
