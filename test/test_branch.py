@@ -837,7 +837,7 @@ def test_prompts_for_clone_from_branch_not_new_experiment(monkeypatch):
     monkeypatch.setattr(clone_cmd, "confirm_new_experiment", lambda: False)
     monkeypatch.setattr(clone_cmd, "ask_for_restart_path", lambda: tmpdir / "restart_path")
     
-    result = clone_cmd.prompts_for_clone(None, None, None, None)
+    result = clone_cmd.prompts_for_clone(None, None)
     assert result['repository'] == "https://test_repo.git"
     assert result['branch'] == "master"
     assert result['local_directory'] == "new_expt_local_dir"
@@ -860,7 +860,7 @@ def test_prompts_for_clone_from_branch_new_experiment(monkeypatch):
     monkeypatch.setattr(clone_cmd, "ask_for_new_branch_name", lambda: "new_branch")
     monkeypatch.setattr(clone_cmd, "confirm_restart_path", lambda: False)
 
-    result = clone_cmd.prompts_for_clone(None, None, None, None)
+    result = clone_cmd.prompts_for_clone(None, None)
     assert result['repository'] == "https://test_repo.git"
     assert result['branch'] == "master"
     assert result['local_directory'] == "new_expt_local_dir"
@@ -883,7 +883,7 @@ def test_prompts_for_clone_from_tag_with_restart(monkeypatch):
     monkeypatch.setattr(clone_cmd, "confirm_restart_path", lambda: True)
     monkeypatch.setattr(clone_cmd, "ask_for_restart_path", lambda: tmpdir / "restart_path")
 
-    result = clone_cmd.prompts_for_clone(None, None, None, None)
+    result = clone_cmd.prompts_for_clone(None, None)
     assert result['repository'] == "https://test_repo.git"
     assert result['branch'] == None
     assert result['start_point'] == "v1.0"
