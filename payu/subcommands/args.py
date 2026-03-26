@@ -204,17 +204,6 @@ clone_start_point = {
     }
 }
 
-# Clone interactive prompt for beginners
-prompt_user = {
-    'flags': ('--interactive', '-I'),
-    'parameters': {
-        'action':   'store_true',
-        'default':  False,
-        'dest': 'prompt_user',
-        'help': 'Enable an interactive wizard to guide you through clone configuration.'
-    }
-}
-
 # Clone create branch
 new_branch_name = {
     'flags': ('--new-branch', '-b'),

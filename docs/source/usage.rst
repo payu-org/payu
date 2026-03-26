@@ -141,24 +141,43 @@ As an alternative to creating and checking out branches with ``payu clone``,
 Payu clone interactive mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 An interactive mode is available to guide you through the cloning process. 
-To start this, run with ``-I`` (or ``--interactive``) flag::
+To start this, simply run::
 
-      payu clone -I
+      payu clone
 
-You can pre-specify the repository and local directory name in launching interactive mode to pre-fill those inputs::
-
-      payu clone -I <repository_url>
-
-or provide both::
-
-      payu clone -I <repository_url> <local_dir>
-
+Interactive mode will prompt for all required inputs. 
 The workflow of the interactive mode is as follows:
 
-.. image:: ../images/payu_clone_interactive_flowchart.svg
-   :align: center
-   :alt: Flowchart of the payu clone interactive workflow
-   :width: 300px
+.. mermaid::
+   
+   flowchart TB
+      Start("payu clone") L_Start_URL_0@--> URL["Enter the URL of the targeted repository"]
+      URL L_URL_Choice_0@--> Choice{"Clone from a branch,<br>a tag, or a commit?"}
+      Choice -- branch --> Branch["Enter branch name"]
+      Choice -- tag or commit --> Tag["Enter tag or commit"]
+      Branch L_Branch_LocalDir_0@-- branch name --> LocalDir["Name your local experiment directory"]
+      Tag -- tag name or commit --> LocalDir
+      LocalDir L_LocalDir_NameNewBranch_0@--> NameNewBranch["Name your new branch"] & NewExpt{"Is this a new expt?"}
+      NewExpt -- No --> KeepBranch["Keep same branch, keep uuid"]
+      KeepBranch L_KeepBranch_RestartPath_0@--> RestartPath["Ask for restart path"]
+      NameNewBranch --> RestartCheck{"Do you want to <br>specify a restart path?"}
+      RestartCheck L_RestartCheck_RestartPath_0@-- Yes --> RestartPath
+      RestartCheck L_RestartCheck_Run_0@-- No --> Run["Run clone"]
+      RestartPath --> Run
+      NewExpt -- Yes --> NameNewBranch
+
+      style Start fill:#BBDEFB
+      linkStyle 5 stroke:#ff0000,stroke-width:2px,fill:none
+      linkStyle 6 stroke:#ff0000,stroke-width:2px,fill:none
+
+      L_Start_URL_0@{ curve: linear } 
+      L_URL_Choice_0@{ curve: linear } 
+      L_Branch_LocalDir_0@{ curve: linear } 
+      L_LocalDir_NameNewBranch_0@{ curve: linear } 
+      L_LocalDir_NewExpt_0@{ curve: linear } 
+      L_KeepBranch_RestartPath_0@{ curve: linear } 
+      L_RestartCheck_RestartPath_0@{ curve: linear } 
+      L_RestartCheck_Run_0@{ curve: linear }
 
 .. _Create-experiment:
 Create experiment

@@ -808,19 +808,22 @@ Remote Branch: {main_branch_name}
 
 def test_fetch_branches(monkeypatch):
     """ Test if fetch_branches correctly fetches branches from remote repository"""
-    mock_stdout = "abc012de	refs/heads/master\n"
+    mock_stdout = """abcdef	refs/heads/master
+ghijk	refs/heads/branch1
+"""
     mock_run = MagicMock(return_value=MagicMock(stdout=mock_stdout))
     monkeypatch.setattr("subprocess.run", mock_run)
     branches = clone_cmd.fetch_branches("https://test_repo.git")
-    assert branches == ["master"]
+    assert branches == ["master", "branch1"]
 
 def test_fetch_tags(monkeypatch):
     """ Test if fetch_tags correctly fetches tags from remote repository"""
-    mock_stdout = "abc012de	refs/tags/v1.0\n"
+    mock_stdout = """abcdef	refs/tags/v1.0
+ghijk	refs/tags/v2.0"""
     mock_run = MagicMock(return_value=MagicMock(stdout=mock_stdout))
     monkeypatch.setattr("subprocess.run", mock_run)
     tags = clone_cmd.fetch_tags("https://test_repo.git")
-    assert tags == ["v1.0"]
+    assert tags == ["v1.0", "v2.0"]
 
 
 def test_prompts_for_clone_from_branch_not_new_experiment(monkeypatch):

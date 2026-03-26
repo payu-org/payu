@@ -59,9 +59,7 @@ arguments = [args.model, args.config, args.laboratory,
              args.keep_uuid, args.clone_branch,
              args.repository, args.local_directory,
              args.new_branch_name, args.restart_path,
-             args.parent_experiment, args.clone_start_point,
-             args.prompt_user]
-
+             args.parent_experiment, args.clone_start_point]
 
 def transform_strings_to_path(path_str=None):
     return Path(path_str) if path_str is not None else None
@@ -69,9 +67,9 @@ def transform_strings_to_path(path_str=None):
 
 def runcmd(model_type, config_path, lab_path, keep_uuid,
            branch, repository, local_directory, new_branch_name, restart_path,
-           parent_experiment, start_point, prompt_user):
+           parent_experiment, start_point):
     """Execute the command."""
-    if prompt_user:
+    if repository is None and local_directory is None:
         qprint("Welcome to the Payu Clone Wizard!")
         qprint("Press 'Ctrl+C' at any time to exit.")
         user_params = prompts_for_clone(repository, local_directory)

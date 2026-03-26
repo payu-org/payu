@@ -41,18 +41,16 @@ warnings.formatwarning = (
 def parse():
     """Parse the command line inputs and execute the subcommand."""
     setup_logger()
-    if '-I' in sys.argv or '--interactive' in sys.argv:
-        parser = generate_parser(is_interactive=True)
-    else:
-        parser = generate_parser(is_interactive=False)
-
+    parser = generate_parser(is_interactive = True)
     # Display help if no arguments are provided
     if len(sys.argv) == 1:
         parser.print_help()
-    else:
-        args = vars(parser.parse_args())
-        run_cmd = args.pop('run_cmd')
-        run_cmd(**args)
+        return
+    if len(sys.argv) > 2:
+        parser = generate_parser()
+    args = vars(parser.parse_args())
+    run_cmd = args.pop('run_cmd')
+    run_cmd(**args)
 
 
 def generate_parser(is_interactive=False):
