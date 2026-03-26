@@ -30,4 +30,4 @@ python:
   install:
     - method: pip
       path: . # Installs payu
-    - requirements: docs/requirements.txt
+#    - requirements: docs/requirements.txt

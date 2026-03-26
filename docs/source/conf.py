@@ -5,30 +5,12 @@ import payu
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.ifconfig',
               'sphinx.ext.viewcode',
-              'sphinx.ext.autosectionlabel',
-              'sphinxcontrib.mermaid',]
+              'sphinx.ext.autosectionlabel']
 autosectionlabel_maxdepth = 2
 templates_path = ['_templates']
 source_suffix = '.rst'
 #source_encoding = 'utf-8-sig'
 master_doc = 'index'
-
-# Marmaid configuration
-mermaid_version = "11.12.0"
-mermaid_init_js = """
-    mermaid.initialize({
-        startOnLoad: true,
-        theme: 'forest',
-        flowchart: {
-            curve: 'linear'
-        }
-    });
-"""
-mermaid_params = [
-    '--theme', 'forest',
-    '--backgroundColor', 'transparent',
-]
-
 
 # General information about the project.
 project = payu.__name__
