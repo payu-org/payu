@@ -156,7 +156,8 @@ repository = {
     'parameters': {
         'dest': 'repository',
         'help': 'The repository to clone from. This can be either a local \
-                 path or git url'
+                 path or git url',
+        'default': None
     }
 }
 
@@ -165,7 +166,8 @@ local_directory = {
     'flags': [],
     'parameters': {
         'dest': 'local_directory',
-        'help': 'The directory to clone into'
+        'help': 'The directory to clone into',
+        'default': None
     }
 }
 

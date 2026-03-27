@@ -138,6 +138,20 @@ run::
 As an alternative to creating and checking out branches with ``payu clone``, 
 ``payu checkout`` can be used instead (see :ref:`usage-metadata`). 
 
+Payu clone interactive mode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+An interactive mode is available to guide you through the cloning process. 
+To start this, simply run::
+
+      payu clone
+
+Interactive mode will prompt for all required inputs. 
+The workflow of the interactive mode is as follows:
+
+.. image:: ../diagrams/payu_clone_flowchart.svg
+   :align: center
+   :alt: Flowchart of the payu clone interactive workflow
+   :width: 300px
 
 .. _Create-experiment:
 Create experiment
