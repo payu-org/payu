@@ -9,11 +9,7 @@ from pathlib import Path
 import questionary
 import subprocess
 import sys
-try:
-    from prompt_toolkit.completion import PathCompleter
-    has_completer = True
-except ImportError:
-    has_completer = False
+from prompt_toolkit.completion import PathCompleter
 
 from payu.branch import clone
 import payu.subcommands.args as args
@@ -205,10 +201,10 @@ def safe_ask(question_obj):
 
 def ask_for_repo_url():
     """Ask the user for the repository URL they want to clone."""
-    path_completer = PathCompleter(only_directories=True, expanduser=True) if has_completer else None
+    path_completer = PathCompleter(only_directories=True, expanduser=True)
     return safe_ask(questionary.text(
         "Please enter the URL of the repository, or the local path of a configuration you want to clone:",
-        instruction=example_url_msg+"; 'Tab' to browse, '/' to enter folder)" if has_completer else ")",
+        instruction=example_url_msg+"; 'Tab' to browse, '/' to enter folder)",
         validate=lambda text: True if text else "Repository URL/directory cannot be empty.",
         completer=path_completer
     ))
@@ -309,8 +305,8 @@ def validate_restart_path(path_str):
 
 def ask_for_restart_path():
     """Ask the user for the path to the restart directory they want to use."""
-    path_completer = PathCompleter(only_directories=True, expanduser=True) if has_completer else None
-    instruction = " ('Tab' to browse, '/' to enter folder):" if has_completer else ":"
+    path_completer = PathCompleter(only_directories=True, expanduser=True)
+    instruction = " ('Tab' to browse, '/' to enter folder):"
     return safe_ask(questionary.text(
                 "Please enter the restart path you want to use" + instruction,
                 validate=validate_restart_path,
