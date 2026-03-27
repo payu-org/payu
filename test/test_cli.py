@@ -1,5 +1,6 @@
 import pytest
 import shlex
+import sys
 
 import payu
 import payu.cli
@@ -13,45 +14,41 @@ from .common import make_exe, make_inputs, make_restarts, make_all_files
 
 verbose = True
 
-parser = None
+def test_parse_no_args(monkeypatch, capsys):
+    monkeypatch.setattr(sys, "argv", ["payu"])
 
+    payu.cli.parse()
+    assert "usage: payu [-h] [--version]" in capsys.readouterr().out
 
-def test_generate_parser():
+@pytest.fixture
+def parser():
+    return payu.cli.generate_parser()
 
-    global parser
+def parse_args(parser, cmd):
+    arguments = shlex.split(cmd.format(cmd=cmd))
+    args = vars(parser.parse_args(arguments[1:]))
+    run_cmd = args.pop("run_cmd")
+    return run_cmd, args
 
-    parser = payu.cli.generate_parser()
-
-
-def test_parse():
+def test_parse(parser):
 
     arguments = shlex.split("payu -h")
 
     with pytest.raises(SystemExit) as parse_error:
-        parser.parse_args(arguments[1:])
+        parse_args(parser, "payu -h")
 
 
-def test_parse_list():
+def test_parse_list(parser):
 
-    arguments = shlex.split("payu list")
-
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    run_cmd, args = parse_args(parser, 'payu list')
 
     assert run_cmd.__module__ == 'payu.subcommands.list_cmd'
     assert len(args) == 0
 
 
-def test_parse_setup():
-
+def test_parse_setup(parser):
     cmd = 'setup'
-
-    arguments = shlex.split('payu {cmd}'.format(cmd=cmd))
-
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    run_cmd, args = parse_args(parser, f'payu {cmd}')
 
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
@@ -66,18 +63,18 @@ def test_parse_setup():
     assert len(args) == 0
 
     # Test long options
-    arguments = shlex.split('payu {cmd} '
-                            '--model mom '
-                            '--config path/to/config.yaml '
-                            '--laboratory path/to/lab '
-                            '--archive '
-                            '--force '
-                            '--reproduce '
-                            '--metadata-off'.format(cmd=cmd))
+    long_cmd = (
+                    f"payu {cmd} "
+                    "--model mom "
+                    "--config path/to/config.yaml "
+                    "--laboratory path/to/lab "
+                    "--archive "
+                    "--force "
+                    "--reproduce "
+                    "--metadata-off"
+                )
 
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    run_cmd, args = parse_args(parser, long_cmd)
 
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
@@ -92,18 +89,16 @@ def test_parse_setup():
     assert len(args) == 0
 
     # Test short options
-    arguments = shlex.split('payu {cmd} '
-                            '-m mom '
-                            '-c path/to/config.yaml '
-                            '-l path/to/lab '
-                            '-f '
-                            '-r '
-                            '-M'.format(cmd=cmd))
+    short_cmd = (
+                    f"payu {cmd} "
+                    "-m mom "
+                    "-c path/to/config.yaml "
+                    "-l path/to/lab "
+                    "-f "
+                    "-r "
+                    "-M")
 
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
-
+    run_cmd, args = parse_args(parser, short_cmd)
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
     assert args.pop('model_type') == 'mom'
@@ -117,15 +112,11 @@ def test_parse_setup():
     assert len(args) == 0
 
 
-def test_parse_run():
+def test_parse_run(parser):
 
     cmd = 'run'
 
-    arguments = shlex.split('payu {cmd}'.format(cmd=cmd))
-
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    run_cmd, args = parse_args(parser, f'payu {cmd}')
 
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
@@ -141,19 +132,18 @@ def test_parse_run():
     assert len(args) == 0
 
     # Test long options
-    arguments = shlex.split('payu {cmd} '
-                            '--model mom '
-                            '--config path/to/config.yaml '
-                            '--laboratory path/to/lab '
-                            '--force '
-                            '--initial 99 '
-                            '--nruns 999 '
-                            '--reproduce '
-                            '--force-prune-restarts'.format(cmd=cmd))
+    long_cmd = (
+            f"payu {cmd} "
+            "--model mom "
+            "--config path/to/config.yaml "
+            "--laboratory path/to/lab "
+            "--force "
+            "--initial 99 "
+            "--nruns 999 "
+            "--reproduce "
+            "--force-prune-restarts")
 
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    run_cmd, args = parse_args(parser, long_cmd)
 
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
@@ -169,19 +159,18 @@ def test_parse_run():
     assert len(args) == 0
 
     # Test short options
-    arguments = shlex.split('payu {cmd} '
-                            '-m mom '
-                            '-c path/to/config.yaml '
-                            '-l path/to/lab '
-                            '-f '
-                            '-i 99 '
-                            '-n 999 '
-                            '-r '
-                            '-F'.format(cmd=cmd))
-
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    short_cmd = (
+                f"payu {cmd} "
+                "-m mom "
+                "-c path/to/config.yaml "
+                "-l path/to/lab "
+                "-f "
+                "-i 99 "
+                "-n 999 "
+                "-r "
+                "-F"
+            )
+    run_cmd, args = parse_args(parser, short_cmd)
 
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
@@ -197,15 +186,10 @@ def test_parse_run():
     assert len(args) == 0
 
 
-def test_parse_sweep():
+def test_parse_sweep(parser):
 
     cmd = 'sweep'
-
-    arguments = shlex.split('payu {cmd}'.format(cmd=cmd))
-
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    run_cmd, args = parse_args(parser, f'payu {cmd}')
 
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
@@ -218,16 +202,16 @@ def test_parse_sweep():
     assert len(args) == 0
 
     # Test long options
-    arguments = shlex.split('payu {cmd} '
-                            '--model mom '
-                            '--config path/to/config.yaml '
-                            '--laboratory path/to/lab '
-                            '--hard '
-                            '--metadata-off'.format(cmd=cmd))
+    long_cmd = (
+        f"payu {cmd} "
+        "--model mom "
+        "--config path/to/config.yaml "
+        "--laboratory path/to/lab "
+        "--hard "
+        "--metadata-off"
+    )
 
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    run_cmd, args = parse_args(parser, long_cmd)
 
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
@@ -240,15 +224,14 @@ def test_parse_sweep():
     assert len(args) == 0
 
     # Test short options
-    arguments = shlex.split('payu {cmd} '
-                            '-m mom '
-                            '-c path/to/config.yaml '
-                            '-l path/to/lab '
-                            '-M'.format(cmd=cmd))
-
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    short_cmd = (
+        f"payu {cmd} "
+        "-m mom "
+        "-c path/to/config.yaml "
+        "-l path/to/lab "
+        "-M"
+    )
+    run_cmd, args = parse_args(parser, short_cmd)
 
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
@@ -261,15 +244,11 @@ def test_parse_sweep():
     assert len(args) == 0
 
 
-def test_parse_collate():
+def test_parse_collate(parser):
 
     cmd = 'collate'
 
-    arguments = shlex.split('payu {cmd}'.format(cmd=cmd))
-
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    run_cmd, args = parse_args(parser, f'payu {cmd}')
 
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
@@ -282,16 +261,16 @@ def test_parse_collate():
     assert len(args) == 0
 
     # Test long options
-    arguments = shlex.split('payu {cmd} '
-                            '--model mom '
-                            '--config path/to/config.yaml '
-                            '--laboratory path/to/lab '
-                            '--initial 99 '
-                            '--directory path/to/files '.format(cmd=cmd))
+    long_cmd = (
+        f"payu {cmd} "
+        "--model mom "
+        "--config path/to/config.yaml "
+        "--laboratory path/to/lab "
+        "--initial 99 "
+        "--directory path/to/files "
+    )
 
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    run_cmd, args = parse_args(parser, long_cmd)
 
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
@@ -304,16 +283,15 @@ def test_parse_collate():
     assert len(args) == 0
 
     # Test short options
-    arguments = shlex.split('payu {cmd} '
-                            '-m mom '
-                            '-c path/to/config.yaml '
-                            '-l path/to/lab '
-                            '-i 99 '
-                            '-d path/to/files '.format(cmd=cmd))
-
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    short_cmd = (
+        f"payu {cmd} "
+        "-m mom "
+        "-c path/to/config.yaml "
+        "-l path/to/lab "
+        "-i 99 "
+        "-d path/to/files "
+    )
+    run_cmd, args = parse_args(parser, short_cmd)
 
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
@@ -326,15 +304,11 @@ def test_parse_collate():
     assert len(args) == 0
 
 
-def test_parse_init():
+def test_parse_init(parser):
 
     cmd = 'init'
 
-    arguments = shlex.split('payu {cmd}'.format(cmd=cmd))
-
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    run_cmd, args = parse_args(parser, f'payu {cmd}')
 
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
@@ -345,14 +319,13 @@ def test_parse_init():
     assert len(args) == 0
 
     # Test long options
-    arguments = shlex.split('payu {cmd} '
-                            '--model mom '
-                            '--config path/to/config.yaml '
-                            '--laboratory path/to/lab '.format(cmd=cmd))
-
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    long_cmd = (
+        f"payu {cmd} "
+        "--model mom "
+        "--config path/to/config.yaml "
+        "--laboratory path/to/lab "
+    )
+    run_cmd, args = parse_args(parser, long_cmd)
 
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
@@ -363,14 +336,13 @@ def test_parse_init():
     assert len(args) == 0
 
     # Test short options
-    arguments = shlex.split('payu {cmd} '
-                            '-m mom '
-                            '-c path/to/config.yaml '
-                            '-l path/to/lab '.format(cmd=cmd))
-
-    args = vars(parser.parse_args(arguments[1:]))
-
-    run_cmd = args.pop('run_cmd')
+    short_cmd = (
+        f"payu {cmd} "
+        "-m mom "
+        "-c path/to/config.yaml "
+        "-l path/to/lab "
+    )
+    run_cmd, args = parse_args(parser, short_cmd)
 
     assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
 
@@ -379,3 +351,17 @@ def test_parse_init():
     assert args.pop('lab_path') == 'path/to/lab'
 
     assert len(args) == 0
+
+def test_parse_clone(parser):
+    cmd = 'clone'
+    short_cmd = (
+        f"payu {cmd} "
+        "test_repo "
+        "local_dir "
+    )
+    run_cmd, args = parse_args(parser, short_cmd)
+
+    assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
+
+    assert args.pop('repository') == 'test_repo'
+    assert args.pop('local_directory') == 'local_dir'

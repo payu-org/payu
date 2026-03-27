@@ -105,10 +105,7 @@ def prompts_for_clone(repository, local_directory):
     """Prompt the user for input to guide the cloning process."""
     cli_command = "payu clone"
     # Source selection
-    if repository is None:
-        repository = ask_for_repo_url()
-    else:
-        qprint(f"Cloning from repository: {repository}")
+    repository = ask_for_repo_url()
 
     branch_or_tag = select_branch_or_tag()
     if branch_or_tag == "An existing branch":
@@ -126,10 +123,7 @@ def prompts_for_clone(repository, local_directory):
         cli_command += f" -s {start_point}"
 
     # Local directory and experiment setup
-    if local_directory is None:
-        local_directory = ask_for_local_directory()
-    else:
-        qprint(f"Cloning into local directory: {local_directory}")
+    local_directory = ask_for_local_directory()
     if branch is not None:
         is_new_expt = confirm_new_experiment()
     else:
@@ -201,10 +195,13 @@ def fetch_tags(url):
 
 def safe_ask(question_obj):
     """ A helper function to safely ask a question and handle KeyboardInterrupt. """
-    answer = question_obj.ask()
-    if answer is None:
+    try:
+        answer = question_obj.ask()
+        if answer is None:
+            sys.exit(0)
+        return answer
+    except KeyboardInterrupt:
         sys.exit(0)
-    return answer
 
 def ask_for_repo_url():
     """Ask the user for the repository URL they want to clone."""
@@ -258,7 +255,7 @@ def validate_local_directory(path_str):
 
     dir_path = transform_strings_to_path(path_str)
     if dir_path.exists() and any(dir_path.iterdir()):
-        return (f"The directory '{dir_path}' already exists and is not empty.\nPlease choose a different directory.")
+        return (f"The directory already exists and is not empty.\nPlease choose a different directory.")
     return True
 
 def ask_for_local_directory():
