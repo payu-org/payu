@@ -322,14 +322,6 @@ class Manifest(object):
                 except Exception as e:
                     print(f'Error loading {mf} manifest: {e}')
 
-            # Check manifests are populated when reproduce is configured
-            if len(self.previous_manifests[mf]) == 0 and self.reproduce[mf]:
-                sys.stderr.write(
-                    f'{mf.capitalize()} manifest must exist and be populated '
-                    'if reproduce is configured to True\n'
-                )
-                sys.exit(1)
-
     def setup(self):
         # Load all available manifests
         self.load_manifests()
@@ -341,6 +333,12 @@ class Manifest(object):
             self.manifests[mf].calculate_fast(self.previous_manifests[mf])
 
             if self.reproduce[mf]:
+                # When manifest is initially empty, check if it stays empty
+                if len(self.previous_manifests[mf]) == 0 and len(self.manifests[mf]) > 0:
+                    sys.stderr.write(
+                        f'Run cannot reproduce: {mf.capitalize()} manifest was empty but now has entries\n'
+                    )
+                    sys.exit(1)
                 # Compare manifest with previous manifest
                 self.manifests[mf].check_reproduce(self.previous_manifests[mf])
 
