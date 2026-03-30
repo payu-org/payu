@@ -301,11 +301,11 @@ def expected_archive_job_info(run_number):
         'job_id': f'test-job-id-{run_number}',
         'run_id': f'commit-hash{run_number}',
         'model_exit_status': 0,
+        'model_finish_time': None,
         'stage': 'archive',
         'stderr_file': None,
         'stdout_file': None,
-        'start_time': f'2025-08-1{run_number}T12:00:00',
-        'model_finish_time': None
+        'start_time': f'2025-08-1{run_number}T12:00:00'
     }
 
 
@@ -315,6 +315,7 @@ def expected_running_job_info():
         'job_id': 'test-job-id-3',
         'run_id': 'commit-hash3',
         'model_exit_status': None,
+        'model_finish_time': None,
         'stage': 'model-run',
         'stderr_file': None,
         'stdout_file': None,
@@ -328,6 +329,7 @@ def expected_queued_job_info():
         'job_id': 'test-job-id-3',
         'run_id': None,
         'model_exit_status': None,
+        'model_finish_time': None,
         'stage': 'queued',
         'stderr_file': None,
         'stdout_file': None,
@@ -341,6 +343,7 @@ def expected_failed_job_info():
         'job_id': 'test-job-id-failed',
         'run_id': 'commit-hash-failed',
         'model_exit_status': None,
+        'model_finish_time': None,
         'stage': 'setup',
         'stderr_file': None,
         'stdout_file': None,

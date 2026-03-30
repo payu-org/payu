@@ -164,8 +164,5 @@ class Mom6(MomMixin, Fms):
         stats_path = os.path.join(self.expt.work_path, 'ocean.stats')
         timestep = self.read_timestep(stats_path)
 
-        if start_date is None or timestep is None:
-            return None
-
         cur_expt_time = start_date + timedelta(days=timestep)
         return cur_expt_time

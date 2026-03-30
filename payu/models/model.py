@@ -451,9 +451,8 @@ class Model(object):
 
     def get_cur_expt_time(self):
         """For model not implemented experiment time calculate/read-out,
-        leaves a warning and returns None."""
-        print("Current experiment time not implemented for this model.")
-        return None
+        raise error."""
+        raise NotImplementedError("Current experiment time not implemented for this model.")
 
     def get_cur_expt_time_using_submodel(self, model_types):
         """
@@ -474,3 +473,9 @@ class Model(object):
                     cur_expt_time = model.get_cur_expt_time()
                     if cur_expt_time is not None:
                         return cur_expt_time
+        
+        raise NotImplementedError(
+            f'Cannot find any of the specified sub-models: '
+            f'{", ".join(model_types)}. '
+            'to determine current experiment time.'
+        )

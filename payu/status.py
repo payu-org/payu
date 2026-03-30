@@ -174,15 +174,12 @@ def build_job_info(
             "stage": data.get("stage"),
             "exit_status": data.get("payu_run_status"),
             "model_exit_status": data.get("payu_model_run_status"),
+            "model_finish_time": data.get("model_finish_time", None),
             "stdout_file": str(stdout) if stdout else None,
             "stderr_file": str(stderr) if stderr else None,
             "job_file": str(job_file),
             "start_time": data.get("timings", {}).get("payu_start_time"),
         }
-
-        if data.get("stage") == "archive":
-            # For archive stage, add the model finish time if available
-            run_info["model_finish_time"] = data.get("model_finish_time", None)
 
         run_num = data["payu_current_run"]
         runs.setdefault(run_num, {"run": []})["run"].append(run_info)
@@ -205,7 +202,7 @@ def build_job_info(
         for run_num, run_jobs in status_data["runs"].items():
             run_jobs["run"] = [run_jobs["run"][-1]]
 
-    if run_info.get("stage") == "model-run" and expt is not None:
+    if run_info.get("stage") == "model-run":
         try:
             cur_expt_time = expt.get_model_cur_expt_time()
             if cur_expt_time is not None:
@@ -321,11 +318,8 @@ def display_job_info(data: dict[str, Any]) -> None:
             job_info = all_job_info.get("scheduler_job_info", {}).get("Jobs", {}).get(job_id, {})
             display_wait_time(job_info.get("qtime", None), job_info.get("stime", None))
 
-            if run_info.get("stage") == "model-run":
-                print_line("Current Expt Time", "cur_expt_time", run_info)
-            if run_info.get("stage") == "archive":
-                model_finish_time = all_job_info.get("model_finish_time", None)
-                print(f"  {'Model Finish Time:':<18} {model_finish_time}")
+            print_line("Current Expt Time", "cur_expt_time", run_info)
+            print_line("Model Finish Time:", "model_finish_time", run_info)
             exit_status = run_info.get("exit_status")
             if exit_status is not None:
                 status_str = "Success" if exit_status == 0 else "Failed"

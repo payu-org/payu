@@ -13,13 +13,9 @@ from __future__ import print_function
 import os
 import shutil
 import json
-import warnings
 import cftime
-import logging
 
 from payu.models.model import Model
-
-logger = logging.getLogger(__name__)
 
 class AccessOm2(Model):
 
@@ -104,7 +100,9 @@ class AccessOm2(Model):
         """Get the current experiment time from file work/atmosphere/log/matmxx.pe00000.log.
         ---
         output:
-            cftime.datetime or None if it cannot be determined.
+            cftime.datetime
+        raises:
+            ValueError if the key 'cur_exp-datetime' is not found in the log file
         """
         log_path = os.path.join(self.expt.work_path, 'atmosphere', 'log', 
                                     'matmxx.pe00000.log')

@@ -448,7 +448,7 @@ class AccessOm3(CesmCmeps):
                     time_str = line.split()[4]
                     return cftime.datetime.strptime(time_str, '%Y-%m-%dT%H:%M:%S')
         
-        return None
+        raise ValueError(f"Key string 'memory_write: model date' not found in {log_path}, cannot determine current experiment time")
 
 class Runconfig:
     """ Simple class for parsing and editing nuopc.runconfig """

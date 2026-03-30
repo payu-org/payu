@@ -652,7 +652,7 @@ def test_get_cur_expt_time_no_log():
     teardown_cmeps_config()
 
 def test_get_cur_expt_time_no_date():
-    """ Test if get_cur_expt_time returns None if log file does not contain model date. """
+    """ Test if get_cur_expt_time raise error if log file does not contain model date. """
     cmeps_config(1)
 
     with cd(ctrldir):
@@ -665,8 +665,8 @@ def test_get_cur_expt_time_no_date():
         with open(log_path, "w") as f:
             f.write("This log file does not contain the model date.\n")
 
-        cur_expt_time = model.get_cur_expt_time()
-        assert cur_expt_time is None
+        with pytest.raises(ValueError, match="Key string 'memory_write: model date' not found in"):
+            cur_expt_time = model.get_cur_expt_time()
 
     teardown_cmeps_config()
     os.remove(log_path)
