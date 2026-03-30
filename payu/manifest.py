@@ -333,12 +333,6 @@ class Manifest(object):
             self.manifests[mf].calculate_fast(self.previous_manifests[mf])
 
             if self.reproduce[mf]:
-                # When manifest is initially empty, check if it stays empty
-                if len(self.previous_manifests[mf]) == 0 and len(self.manifests[mf]) > 0:
-                    sys.stderr.write(
-                        f'Run cannot reproduce: {mf.capitalize()} manifest was empty but now has entries\n'
-                    )
-                    sys.exit(1)
                 # Compare manifest with previous manifest
                 self.manifests[mf].check_reproduce(self.previous_manifests[mf])
 
