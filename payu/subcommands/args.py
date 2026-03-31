@@ -343,3 +343,23 @@ run_number = {
         'help': 'Display information about a specific run number'
     }
 }
+
+stacktrace = {
+    'flags': ('--stacktrace',),
+    'parameters': {
+        'action': 'store_true',
+        'default': False,
+        'dest': 'stacktrace',
+        'help': 'Show full stack traces on errors and warnings'
+    }
+}
+
+log_level = {
+    'flags': ('--log-level',),
+    'parameters': {
+        'dest': 'log_level',
+        'choices': ['DEBUG', 'INFO', 'WARNING', 'ERROR'],
+        'default': None,
+        'help': 'Set logging verbosity level'
+    }
+}

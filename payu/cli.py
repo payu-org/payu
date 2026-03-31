@@ -25,6 +25,7 @@ from payu.fsops import is_conda
 from payu.models import index as supported_models
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 import payu.subcommands
+import payu.subcommands.args as arg_templates
 from payu.logger import setup_logger
 
 logger = logging.getLogger(__name__)
@@ -33,20 +34,21 @@ logger = logging.getLogger(__name__)
 DEFAULT_CONFIG = 'config.yaml'
 
 
-def _run_command(func, *args, **kwargs):
+def _run_command(func, *args, stacktrace=False, log_level=None, **kwargs):
     """Execute a payu command with error handling and logging.
 
     Sets up logging, captures warnings through the logging system,
     and catches exceptions to provide clean error messages.
     """
-    setup_logger()
+    setup_logger(log_level=log_level or logging.INFO)
     # Capture warnings through the logging system
     logging.captureWarnings(True)
 
-    # Only display the warning message
-    warnings.formatwarning = (
-        lambda message, category, filename, lineno, line=None: str(message)
-    )
+    if not stacktrace:
+        # Only display the warning message
+        warnings.formatwarning = (
+            lambda message, category, filename, lineno, line=None: str(message)
+        )
 
     try:
         func(*args, **kwargs)
@@ -55,7 +57,10 @@ def _run_command(func, *args, **kwargs):
         # and replace with exceptions! 
         raise
     except Exception as exc:
-        logger.error(str(exc))
+        if stacktrace:
+            logger.exception(str(exc), exc_info=True)
+        else:
+            logger.error(str(exc))
         sys.exit(1)
 
 
@@ -70,7 +75,9 @@ def parse():
         parser = generate_parser()
     args = vars(parser.parse_args())
     run_cmd = args.pop('run_cmd')
-    _run_command(run_cmd, **args)
+    stacktrace = args.pop('stacktrace')
+    log_level = args.pop('log_level')
+    _run_command(run_cmd, stacktrace=stacktrace, log_level=log_level, **args)
 
 
 # Add wrappers for runscript commands
@@ -102,12 +109,21 @@ def _parse_runscript(cmd_name):
     # Construct the subcommand parser
     parser = argparse.ArgumentParser(**cmd.parameters)
 
+    # Add global flags to each command
+    for arg in [arg_templates.stacktrace, arg_templates.log_level]:
+        parser.add_argument(*arg['flags'], **arg['parameters'])
+
     for arg in cmd.arguments:
         parser.add_argument(*arg['flags'], **arg['parameters'])
 
     args = parser.parse_args()
+    stacktrace = args.stacktrace
+    log_level = args.log_level
+    # Remove them so they don't get passed to runscript
+    delattr(args, 'stacktrace')
+    delattr(args, 'log_level')
 
-    _run_command(cmd.runscript, args)
+    _run_command(cmd.runscript, args, stacktrace=stacktrace, log_level=log_level)
 
 
 def generate_parser(is_interactive=False):
@@ -131,6 +147,10 @@ def generate_parser(is_interactive=False):
     for cmd in subcmds:
         cmd_parser = subparsers.add_parser(cmd.title, **cmd.parameters)
         cmd_parser.set_defaults(run_cmd=cmd.runcmd)
+
+        # Add global flags to each subcommand
+        for arg in [arg_templates.stacktrace, arg_templates.log_level]:
+            cmd_parser.add_argument(*arg['flags'], **arg['parameters'])
 
         for arg in cmd.arguments:
             cmd_parser.add_argument(*arg['flags'], **arg['parameters'])
