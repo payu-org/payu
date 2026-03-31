@@ -5,6 +5,7 @@ import pytest
 
 import payu
 import cftime
+from payu.models.cesm_cmeps import restart_error_msg
 
 from test.common import cd, tmpdir, ctrldir, labdir, workdir, write_config, config_path
 from test.common import config as config_orig
@@ -580,5 +581,33 @@ def test_collect_restart_files_incorrect_parallel():
 
         # Check a representative missing file appears in the message
         assert "access-om3.cice.r.1900-01-01-00000.nc" in str(e.value)
+        assert "rpointer.ice not found." in str(e.value)
+        assert restart_error_msg in str(e.value)
+
+    teardown_cmeps_config()
+    os.remove(os.path.join(model.work_path, expected_present[0]))
+
+def test_collect_restart_files_nonexist_rpointer():
+    """ Test if error is raised when rpointer file does not exist. """
+    cmeps_config(1)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        pointer_files = [
+            os.path.join(model.work_path, "test_rpointer.cpl"),
+            os.path.join(model.work_path, "test_rpointer.ice"),
+        ]
+        for file in pointer_files:
+            assert not os.path.exists(file)
+
+        with pytest.raises(FileNotFoundError) as e:
+            model._collect_restart_files(pointer_files)
+
+        # Check a representative missing file appears in the message
+        assert restart_error_msg in str(e.value)
+        assert "Restart pointer file not found at the end of payu run" in str(e.value)
 
     teardown_cmeps_config()
