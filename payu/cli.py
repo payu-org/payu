@@ -32,14 +32,6 @@ logger = logging.getLogger(__name__)
 # Default configuration
 DEFAULT_CONFIG = 'config.yaml'
 
-# Force warnings.warn() to omit the source code line in the message
-formatwarning_orig = warnings.formatwarning
-warnings.formatwarning = (
-    lambda message, category, filename, lineno, line=None: (
-        formatwarning_orig(message, category, filename, lineno, line='')
-    )
-)    
-
 
 def _run_command(func, *args, **kwargs):
     """Execute a payu command with error handling and logging.
@@ -50,6 +42,11 @@ def _run_command(func, *args, **kwargs):
     setup_logger()
     # Capture warnings through the logging system
     logging.captureWarnings(True)
+
+    # Only display the warning message
+    warnings.formatwarning = (
+        lambda message, category, filename, lineno, line=None: str(message)
+    )
 
     try:
         func(*args, **kwargs)
