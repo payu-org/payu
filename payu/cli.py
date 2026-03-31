@@ -10,6 +10,7 @@
 import argparse
 import sysconfig
 import importlib
+import logging
 import os
 import pkgutil
 import shlex
@@ -26,6 +27,8 @@ from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 import payu.subcommands
 from payu.logger import setup_logger
 
+logger = logging.getLogger(__name__)
+
 # Default configuration
 DEFAULT_CONFIG = 'config.yaml'
 
@@ -37,9 +40,30 @@ warnings.formatwarning = (
     )
 )    
 
+
+def _run_command(func, *args, **kwargs):
+    """Execute a payu command with error handling and logging.
+
+    Sets up logging, captures warnings through the logging system,
+    and catches exceptions to provide clean error messages.
+    """
+    setup_logger()
+    # Capture warnings through the logging system
+    logging.captureWarnings(True)
+
+    try:
+        func(*args, **kwargs)
+    except SystemExit:
+        # TODO: We want to remove any sys.exit(1) calls in the code
+        # and replace with exceptions! 
+        raise
+    except Exception as exc:
+        logger.error(str(exc))
+        sys.exit(1)
+
+
 def parse():
     """Parse the command line inputs and execute the subcommand."""
-    setup_logger()
     parser = generate_parser(is_interactive = True)
     # Display help if no arguments are provided
     if len(sys.argv) == 1:
@@ -49,7 +73,7 @@ def parse():
         parser = generate_parser()
     args = vars(parser.parse_args())
     run_cmd = args.pop('run_cmd')
-    run_cmd(**args)
+    _run_command(run_cmd, **args)
 
 
 # Add wrappers for runscript commands
@@ -86,7 +110,7 @@ def _parse_runscript(cmd_name):
 
     args = parser.parse_args()
 
-    cmd.runscript(args)
+    _run_command(cmd.runscript, args)
 
 
 def generate_parser(is_interactive=False):
