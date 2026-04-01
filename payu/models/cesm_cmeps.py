@@ -16,14 +16,11 @@ import glob
 import shutil
 import cftime
 from warnings import warn
-import logging
 
 from payu.fsops import make_symlink
 from payu.models.model import Model
 from payu.models.fms import fms_collate
 from payu.models.mom6 import mom6_add_parameter_files, mom6_save_docs_files
-
-logger = logging.getLogger(__name__)
 
 NUOPC_CONFIG = "nuopc.runconfig"
 NUOPC_RUNSEQ = "nuopc.runseq"
@@ -438,7 +435,9 @@ class AccessOm3(CesmCmeps):
         """Get the current experiment time from file work/log/med.log.
         ---
         output:
-            cftime.datetime or None if it cannot be determined.
+            cftime.datetime
+        raises:
+            ValueError if the key string 'memory_write: model date' is not found in the log file
         """
         log_path = os.path.join(self.expt.work_path, 'log', 'med.log')
             

@@ -153,7 +153,7 @@ class Mom6(MomMixin, Fms):
         """Get the current experiment time from log file.
         --- 
         output:
-            cftime.datetime or None if it cannot be determined.
+            cftime.datetime
         """
         ocean_solo_path = os.path.join(self.expt.work_path, 'INPUT', 'ocean_solo.res')
         calendar = self.get_calendar(ocean_solo_path)

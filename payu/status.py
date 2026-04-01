@@ -114,10 +114,10 @@ def display_wait_time(qtime, stime) -> Optional[str]:
         return None
     elif stime is None:
         start_time = datetime.now()
-        label = "Current queue time"
+        label = "Current Queue Time"
     else:
         start_time = datetime.strptime(stime, "%a %b %d %H:%M:%S %Y")
-        label = "Total queue time"
+        label = "Total Queue Time"
 
     submit_time = datetime.strptime(qtime, "%a %b %d %H:%M:%S %Y")
     wait_time = (start_time - submit_time).total_seconds()
@@ -202,11 +202,15 @@ def build_job_info(
         for run_num, run_jobs in status_data["runs"].items():
             run_jobs["run"] = [run_jobs["run"][-1]]
 
-    if run_info.get("stage") == "model-run":
+    latest_run_num = max(status_data["runs"].keys())
+    latest_run_info = status_data["runs"][latest_run_num]["run"][-1]
+    if latest_run_info.get("stage") == "model-run":
         try:
             cur_expt_time = expt.get_model_cur_expt_time()
             if cur_expt_time is not None:
-                run_info["cur_expt_time"] = cur_expt_time.isoformat()
+                latest_run_info["cur_expt_time"] = cur_expt_time.isoformat()
+            else:
+                logger.debug("Cannot parse current experiment time: expected cftime.datetime but got None.")
         except (FileNotFoundError, IndexError, OSError, json.JSONDecodeError, ValueError, NotImplementedError) as e:
             logger.debug(f"Cannot parse current experiment time: {e}")
         except Exception as e:
@@ -319,7 +323,7 @@ def display_job_info(data: dict[str, Any]) -> None:
             display_wait_time(job_info.get("qtime", None), job_info.get("stime", None))
 
             print_line("Current Expt Time", "cur_expt_time", run_info)
-            print_line("Model Finish Time:", "model_finish_time", run_info)
+            print_line("Model Finish Time", "model_finish_time", run_info)
             exit_status = run_info.get("exit_status")
             if exit_status is not None:
                 status_str = "Success" if exit_status == 0 else "Failed"

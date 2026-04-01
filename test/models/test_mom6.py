@@ -398,11 +398,6 @@ def test_read_start_date():
     nml['top_key'] = {'key': 'value'}
     f90nml.write(nml, input_path, force=True)
 
-    # Write a timestep into ocean.stats
-    stats_path = os.path.join(expt.work_path, 'ocean.stats')
-    with open(stats_path, 'w') as f:
-        f.write("360,      50.000,\n")
-    
     # Write a calendar and current model time into ocean_solo.res
     ocean_solo_path = os.path.join(expt.work_path, 'INPUT', 'ocean_solo.res')
     os.makedirs(os.path.dirname(ocean_solo_path), exist_ok=True)
@@ -410,8 +405,8 @@ def test_read_start_date():
         f.write("2\n")  # Use Julian calendar
 
     with pytest.raises(ValueError, match=f"Key 'date_init' not found in {input_path}"):
-        cur_expt_time = expt.get_model_cur_expt_time()
-        assert cur_expt_time is None
+        calendar = expt.model.get_calendar(ocean_solo_path)
+        start_date = expt.model.read_start_date(input_path, calendar)
 
 
 def test_read_timestep():
@@ -420,42 +415,19 @@ def test_read_timestep():
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, reproduce=False)
 
-    # Write a restart date into input.nml
-    input_path = os.path.join(expt.work_path, 'input.nml')
-    nml = f90nml.Namelist()
-    nml['ocean_solo_nml'] = {'date_init': [1900, 1, 31, 0, 0, 0]}
-    f90nml.write(nml, input_path, force=True)
-
     # Write a timestep into ocean.stats
     stats_path = os.path.join(expt.work_path, 'ocean.stats')
     with open(stats_path, 'w') as f:
         f.write("0\n")
-    
-    # Write a calendar into ocean_solo.res
-    ocean_solo_path = os.path.join(expt.work_path, 'INPUT', 'ocean_solo.res')
-    os.makedirs(os.path.dirname(ocean_solo_path), exist_ok=True)
-    with open(ocean_solo_path, 'w') as f:
-        f.write("2\n")  # Use Julian calendar
 
     with pytest.raises(IndexError):
-        cur_expt_time = expt.get_model_cur_expt_time()
+        timestep = expt.model.read_timestep(stats_path)
 
 def test_get_calendar():
     """ Test that get_calendar() correctly handle error when ocean_solo.res is empty."""
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, reproduce=False)
-
-    # Write a restart date into input.nml
-    input_path = os.path.join(expt.work_path, 'input.nml')
-    nml = f90nml.Namelist()
-    nml['ocean_solo_nml'] = {'date_init': [1900, 1, 31, 0, 0, 0]}
-    f90nml.write(nml, input_path, force=True)
-
-    # Write a timestep into ocean.stats
-    stats_path = os.path.join(expt.work_path, 'ocean.stats')
-    with open(stats_path, 'w') as f:
-        f.write("0\n")
     
     # Write a calendar into ocean_solo.res
     ocean_solo_path = os.path.join(expt.work_path, 'INPUT', 'ocean_solo.res')
@@ -464,4 +436,4 @@ def test_get_calendar():
         f.write("\n")  # Empty
 
     with pytest.raises(IndexError):
-        cur_expt_time = expt.get_model_cur_expt_time()
+        calendar = expt.model.get_calendar(ocean_solo_path)

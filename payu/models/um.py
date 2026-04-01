@@ -286,8 +286,6 @@ class UnifiedModel(Model):
         start_date_dir = os.path.join(self.expt.work_path, 'atmosphere')
         start_date = self.get_restart_datetime(start_date_dir)
         runtime_sec = self.convert_timestep(log_path)
-        if start_date is None or runtime_sec is None:
-            raise ValueError("Could not determine current experiment time due to missing start date or timestep.")
         cur_expt_time = start_date + datetime.timedelta(seconds=runtime_sec)
         return cur_expt_time
 

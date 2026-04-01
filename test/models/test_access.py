@@ -462,8 +462,7 @@ def test_access_get_um_restart_datetime(um_only_config, remove_restart_dirs):
 
 def test_get_cur_expt_time(um_only_config):
     """
-    Check that a debug message is logged when trying to get the current experiment time
-    for the access model, as this functionality is not yet implemented.
+    Check the current experiment time is correctly parsed for the access model 
     """
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
@@ -499,8 +498,7 @@ def test_get_cur_expt_time(um_only_config):
 ])
 def test_get_cur_expt_time_missing_files(um_only_config, missing_file):
     """
-    Check that a debug message is logged when trying to get the current experiment time
-    for the access model, as this functionality is not yet implemented.
+    Check that FileNotFound is raised when missing restart calendar or log paths 
     """
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))

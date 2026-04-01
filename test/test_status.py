@@ -2,13 +2,15 @@ import json
 import pytest
 from freezegun import freeze_time
 import cftime
+from unittest.mock import MagicMock
 
 from payu.status import (
     find_file_match,
     get_scheduler_log,
     find_scheduler_logs,
     get_job_file_list,
-    build_job_info
+    build_job_info,
+    display_job_info
 )
 
 from payu.experiment import Experiment
@@ -168,6 +170,7 @@ def archive_jobs(tmp_path, request):
                         "payu_current_run": i,
                         "payu_run_id": f"commit-hash{i}",
                         "stage": "archive",
+                        "model_finish_time": "1901-03-15T00:30:00",
                         "payu_run_status": 0,
                         "payu_model_run_status": 0,
                         "timings": {
@@ -301,7 +304,7 @@ def expected_archive_job_info(run_number):
         'job_id': f'test-job-id-{run_number}',
         'run_id': f'commit-hash{run_number}',
         'model_exit_status': 0,
-        'model_finish_time': None,
+        'model_finish_time': '1901-03-15T00:30:00',
         'stage': 'archive',
         'stderr_file': None,
         'stdout_file': None,
@@ -319,7 +322,8 @@ def expected_running_job_info():
         'stage': 'model-run',
         'stderr_file': None,
         'stdout_file': None,
-        'start_time': '2025-08-15T16:30:00'
+        'start_time': '2025-08-15T16:30:00',
+        'cur_expt_time': '1901-01-15T00:30:00'
     }
 
 
@@ -411,11 +415,15 @@ def remove_job_file_paths(data):
 )
 def test_build_job_info(tmp_path, archive_jobs, running_job,
                         queued_job, failed_job, expected):
+    # Mock expt.get_model_cur_expt_time() in build_job_info
+    mock_expt = MagicMock()
+    mock_expt.get_model_cur_expt_time.return_value = cftime.datetime(1901, 1, 15, 0, 30, 0)
 
     all_runs = build_job_info(
         control_path=tmp_path / "control",
         archive_path=tmp_path / "archive",
-        all_runs=True
+        all_runs=True,
+        expt=mock_expt
     )
 
     # Remove job file from check as it contains tmp_path
@@ -455,10 +463,14 @@ def test_build_job_info(tmp_path, archive_jobs, running_job,
 def test_build_job_info_latest(tmp_path, archive_jobs,
                                running_job, queued_job,
                                failed_job, expected):
+    # Mock expt.get_model_cur_expt_time() in build_job_info
+    mock_expt = MagicMock()
+    mock_expt.get_model_cur_expt_time.return_value = cftime.datetime(1901, 1, 15, 0, 30, 0)
 
     latest_data = build_job_info(
         control_path=tmp_path / "control",
         archive_path=tmp_path / "archive",
+        expt=mock_expt
     )
 
     # Remove job file from check as it contains tmp_path
@@ -537,7 +549,7 @@ def test_status_cmd(tmp_path, capsys):
             "queued",
             "Tue Feb 10 15:00:00 2026",
             None,
-            "Current queue time:",
+            "Current Queue Time:",
             "0h 5m ",
         ),
 
@@ -545,14 +557,14 @@ def test_status_cmd(tmp_path, capsys):
         ("model-run", 
         "Tue Feb 10 15:00:00 2026", 
         "Tue Feb 10 15:05:00 2026", 
-        "Total queue time:", 
+        "Total Queue Time:", 
         "0h 5m 0s"),
 
         # Test archived job with total qtime 30 minutes
         ("archive", 
         "Tue Feb 10 15:00:00 2026", 
         "Tue Feb 10 15:30:00 2026", 
-        "Total queue time:", 
+        "Total Queue Time:", 
         "0h 30m 0s"),
     ]
 )
@@ -727,3 +739,51 @@ def test_status_model_finish_time(tmp_path, capsys):
     output = capsys.readouterr().out
     assert "Model Finish Time:" in output
     assert "2026-03-11T15:00:00" in output
+
+
+@pytest.mark.parametrize("archive_jobs,running_job,queued_job,failed_job, job_info",
+    [
+        (True, False, False, False, expected_archive_job_info(3)),
+        (False, True, False, False, expected_running_job_info()),
+        (False, False, True, False, expected_queued_job_info()),
+        (False, False, False, True, expected_failed_job_info()),
+    ])
+def test_display_job_info(tmp_path, capsys, archive_jobs, running_job, queued_job, failed_job, job_info):
+    """ Test that job info is displayed correctly for different stages and available information."""
+    job_info['job_file'] = str(tmp_path / "payu_jobs" / "3" / "run" / "test-job-id-3.json")
+    data = {'runs': {3: {'run': [job_info]}}}
+    display_job_info(data)
+
+    captured = capsys.readouterr().out
+
+    if archive_jobs:
+        assert "Model Finish Time:" in captured
+        assert job_info['model_finish_time'] in captured
+    elif running_job:
+        assert "Current Expt Time:" in captured
+        assert "1901-01-15T00:30:00" in captured
+    else:
+        assert "Current Expt Time:" not in captured
+        assert "Model Finish Time:" not in captured
+
+
+@pytest.mark.parametrize("running_job", [True], indirect=True)
+def test_build_job_info_error_get_cur_expt_time(tmp_path, running_job):
+    """Test that if get_model_cur_expt_time raises an error, other parts of job info are built correctly."""
+    # Mock get_model_cur_expt_time to raise an error
+    mock_expt = MagicMock()
+    mock_expt.get_model_cur_expt_time.side_effect = FileNotFoundError("Log file not found")
+
+    data = build_job_info(
+        control_path=tmp_path / "control",
+        archive_path=tmp_path / "archive",
+        expt=mock_expt
+    )
+
+    # Remove job file from check as it contains tmp_path
+    remove_job_file_paths(data)
+
+    expected_info = expected_running_job_info()
+    del expected_info["cur_expt_time"]
+
+    assert data == {'runs': {3: {'run': [expected_info]}}}
