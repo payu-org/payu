@@ -1,3 +1,4 @@
+import os
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -8,7 +9,7 @@ expect_output_list = [
     "Payu Version",
     "Payu Path",
     "Python Version",
-    "Python Path",
+    "System Path",
     "Machine Info",]
 
 mock_machine_info = MagicMock(return_value="Rocky Linux-8.10-x86_64")
@@ -17,10 +18,9 @@ mock_os_release = {
         'VERSION_ID': '8.10'
     }
 
-mock_payu_env_vars = {'PAYU_PATH': '/path/to/payu'}
+mock_payu_env_vars = {'PAYU_PATH': os.pathsep.join(['/path/to/payu', '/another/path/to/payu'])}
 mock_environ = {
-    'PYTHONPATH': '/path/to/python',
-    'LOADEDMODULES': 'module1 module2'
+    'LOADEDMODULES': 'module1:module2'
 }
 
 def test_support_cmd(capsys):
@@ -32,21 +32,19 @@ def test_support_cmd(capsys):
         captured = capsys.readouterr()
         for expected in expect_output_list:
             assert expected in captured.out
-        assert "Python Path from Environment" in captured.out
-        assert "LOADEDMODULES" in captured.out
+        assert "Loaded Modules" in captured.out
+        assert os.pathsep.join(['/path/to/payu', '/another/path/to/payu']) in captured.out
 
 
 def test_support_cmd_empty_env(capsys):
     """Test the support command with empty environment variables"""
     with patch('payu.subcommands.support_cmd.get_machine_info', mock_machine_info),\
-        patch('payu.subcommands.support_cmd.cli.set_env_vars', return_value={}),\
-        patch.dict('os.environ', {}, clear=True):
+        patch('payu.subcommands.support_cmd.os.environ.get', return_value={}):
         support_cmd.runcmd()
         captured = capsys.readouterr()
         for expected in expect_output_list:
             assert expected in captured.out
-        assert "Python Path from Environment" not in captured.out
-        assert "LOADEDMODULES" not in captured.out
+        assert "Loaded Modules" not in captured.out
 
 
 def test_get_machine_info():
