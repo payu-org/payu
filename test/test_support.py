@@ -11,7 +11,12 @@ expect_output_list = [
     "Python Path",
     "Machine Info",]
 
-mock_machine_info = MagicMock(return_value="Linux test-machine x86_64 GNU/Linux")
+mock_machine_info = MagicMock(return_value="Rocky Linux-8.10-x86_64")
+mock_os_release = {
+        'NAME': 'Rocky Linux',
+        'VERSION_ID': '8.10'
+    }
+
 mock_payu_env_vars = {'PAYU_PATH': '/path/to/payu'}
 mock_environ = {
     'PYTHONPATH': '/path/to/python',
@@ -42,3 +47,11 @@ def test_support_cmd_empty_env(capsys):
             assert expected in captured.out
         assert "Python Path from Environment" not in captured.out
         assert "LOADEDMODULES" not in captured.out
+
+
+def test_get_machine_info():
+    """Test get_machine_info returns expected format"""
+    with patch('platform.freedesktop_os_release', MagicMock(return_value=mock_os_release)),\
+        patch('platform.machine', MagicMock(return_value="x86_64")):
+        machine_info = support_cmd.get_machine_info()
+        assert machine_info == "Rocky Linux-8.10-x86_64"

@@ -4,10 +4,14 @@
 import os
 import sys
 import subprocess
+import platform
+import warnings
 
 # Local
 import payu
 from payu import cli
+
+warning_msg = "Unable to get machine information using platform module."
 
 title = 'support'
 parameters = {'description': 'generate report of system information for debugging and support requests'}
@@ -15,9 +19,15 @@ parameters = {'description': 'generate report of system information for debuggin
 arguments = []
 
 def get_machine_info():
-    """Get machine information using `uname -snrmo`."""
-    result = subprocess.run(['uname', '-snrmo'], capture_output=True, text=True)
-    return result.stdout.strip()
+    """Get machine information using platform module."""
+    os_info = platform.freedesktop_os_release()
+    
+    system_name = os_info.get('NAME', None)
+    version_id = os_info.get('VERSION_ID', None)
+
+    machine_type = platform.machine()
+
+    return f"{system_name}-{version_id}-{machine_type}"
 
 def print_support(label, value):
     """Print support information in a consistent format."""
@@ -36,7 +46,7 @@ def runcmd():
     print_support("Payu Path", payu_path)
 
     # Get python version and path
-    python_version = sys.version.split()[0]
+    python_version = platform.python_version()
     python_path = sys.executable
     print_support("Python Version", python_version)
     print_support("Python Path", python_path)
