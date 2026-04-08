@@ -192,7 +192,7 @@ def test_update_file(mock_repo, uuid, experiment_name,
             True, True, True, False, True, False,
             "3d18b3b6-dd19-49a9-8d9e-c7fa8582f136", "ctrl-mock_branch-3d18b3b6"
         ),
-        # Keep UUID on not new experiement - UUID Exists -legacy archive exists
+        # Keep UUID on not new experiment - UUID Exists -legacy archive exists
         (
             True, True, False, False, True, False,
             "3d18b3b6-dd19-49a9-8d9e-c7fa8582f136", "ctrl"
