@@ -189,13 +189,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
     )
 
 
-def runscript():
-    parser = argparse.ArgumentParser()
-    for arg in arguments:
-        parser.add_argument(*arg['flags'], **arg['parameters'])
-
-    run_args = parser.parse_args()
-
+def runscript(run_args):
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)
 

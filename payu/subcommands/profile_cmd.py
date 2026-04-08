@@ -65,14 +65,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
     cli.submit_job('payu-profile', pbs_config, pbs_vars)
 
 
-def runscript():
-
-    parser = argparse.ArgumentParser()
-    for arg in arguments:
-        parser.add_argument(*arg['flags'], **arg['parameters'])
-
-    run_args = parser.parse_args()
-
+def runscript(run_args):
     pbs_vars = cli.set_env_vars(init_run=run_args.init_run,
                                 n_runs=run_args.n_runs)
     for var in pbs_vars:

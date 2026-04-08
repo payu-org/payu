@@ -54,13 +54,10 @@ mitgcm = ["mnctools>=0.2"]
 
 [project.scripts]
 payu = "payu.cli:parse"
-payu-run = "payu.subcommands.run_cmd:runscript"
-payu-collate = "payu.subcommands.collate_cmd:runscript"
-payu-profile = "payu.subcommands.profile_cmd:runscript"
-payu-sync = "payu.subcommands.sync_cmd:runscript"
-payu-branch = "payu.subcommands.branch_cmd:runscript"
-payu-clone = "payu.subcommands.clone_cmd:runscript"
-payu-checkout = "payu.subcommands.checkout_cmd:runscript"
+payu-run = "payu.cli:parse_run"
+payu-collate = "payu.cli:parse_collate"
+payu-profile = "payu.cli:parse_profile"
+payu-sync = "payu.cli:parse_sync"
 
 [build-system]
 build-backend = "setuptools.build_meta"
