@@ -509,3 +509,25 @@ repository, run::
       payu branch # Display local branches UUIDs
       payu branch --verbose # Display local branches metadata 
       payu branch --remote # Display remote branches UUIDs
+
+
+Getting support
+===============
+
+To display information about the current computing environment and machine 
+configuration, use the support command::
+
+   payu support
+
+The output includes:
+
+* Payu version and installation path.
+
+* Python version and the full system path where packages are loaded from.
+
+* Loaded modules (e.g., PBS).
+
+* Machine information, such as the Operating System and CPU architecture.
+
+This will be helpful in debugging environment issues or providing necessary details 
+when reporting an issue.
