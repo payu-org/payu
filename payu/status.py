@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, Optional
 import warnings
 from datetime import datetime
+import json
+import logging
 
 from payu.schedulers import Scheduler
 from payu.telemetry import (
@@ -16,6 +18,7 @@ from payu.telemetry import (
     remove_job_file
 )
 
+logger = logging.getLogger(__name__)
 
 def find_file_match(pattern: str, path: Path) -> Optional[Path]:
     """Find a file matching the pattern in the given path"""
@@ -111,10 +114,10 @@ def display_wait_time(qtime, stime) -> Optional[str]:
         return None
     elif stime is None:
         start_time = datetime.now()
-        label = "Current queue time"
+        label = "Current Queue Time"
     else:
         start_time = datetime.strptime(stime, "%a %b %d %H:%M:%S %Y")
-        label = "Total queue time"
+        label = "Total Queue Time"
 
     submit_time = datetime.strptime(qtime, "%a %b %d %H:%M:%S %Y")
     wait_time = (start_time - submit_time).total_seconds()
@@ -132,7 +135,8 @@ def build_job_info(
             archive_path: Path,
             control_path: Path,
             run_number: Optional[int] = None,
-            all_runs: Optional[bool] = False
+            all_runs: Optional[bool] = False,
+            expt=None
         ) -> Optional[dict[str, Any]]:
     """
     Generate a dictionary of jobs information (exit status, stage),
@@ -170,6 +174,7 @@ def build_job_info(
             "stage": data.get("stage"),
             "exit_status": data.get("payu_run_status"),
             "model_exit_status": data.get("payu_model_run_status"),
+            "model_finish_time": data.get("model_finish_time", None),
             "stdout_file": str(stdout) if stdout else None,
             "stderr_file": str(stderr) if stderr else None,
             "job_file": str(job_file),
@@ -196,6 +201,20 @@ def build_job_info(
         # Use latest run job
         for run_num, run_jobs in status_data["runs"].items():
             run_jobs["run"] = [run_jobs["run"][-1]]
+
+    latest_run_num = max(status_data["runs"].keys())
+    latest_run_info = status_data["runs"][latest_run_num]["run"][-1]
+    if latest_run_info.get("stage") == "model-run":
+        try:
+            cur_expt_time = expt.get_model_cur_expt_time()
+            if cur_expt_time is not None:
+                latest_run_info["cur_expt_time"] = cur_expt_time.isoformat()
+            else:
+                logger.debug("Cannot parse current experiment time: expected cftime.datetime but got None.")
+        except (FileNotFoundError, IndexError, OSError, json.JSONDecodeError, ValueError, NotImplementedError) as e:
+            logger.debug(f"Cannot parse current experiment time: {e}")
+        except Exception as e:
+            logger.warning(f"Unexpected error while parsing current experiment time: {e}")
 
     return status_data
 
@@ -299,10 +318,12 @@ def display_job_info(data: dict[str, Any]) -> None:
             #read out qtime and stime from the job file
             job_file = run_info.get("job_file")
             job_id = run_info.get("job_id")
-            all_job_info = read_job_file(Path(job_file)).get("scheduler_job_info", {})
-            job_info = all_job_info.get("Jobs", {}).get(job_id, {})
+            all_job_info = read_job_file(Path(job_file))
+            job_info = all_job_info.get("scheduler_job_info", {}).get("Jobs", {}).get(job_id, {})
             display_wait_time(job_info.get("qtime", None), job_info.get("stime", None))
 
+            print_line("Current Expt Time", "cur_expt_time", run_info)
+            print_line("Model Finish Time", "model_finish_time", run_info)
             exit_status = run_info.get("exit_status")
             if exit_status is not None:
                 status_str = "Success" if exit_status == 0 else "Failed"

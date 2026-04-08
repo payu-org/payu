@@ -13,7 +13,6 @@ import subprocess as sp
 from payu import envmod
 from payu.fsops import required_libs
 
-
 class Model(object):
     """Abstract model class."""
 
@@ -448,4 +447,35 @@ class Model(object):
             f'{", ".join(model_types)}. '
             f'{self.model_type} date-based restart pruning requires one of '
             'these sub-models to determine restart dates.'
+        )
+
+    def get_cur_expt_time(self):
+        """For model not implemented experiment time calculate/read-out,
+        raise error."""
+        raise NotImplementedError("Current experiment time not implemented for this model.")
+
+    def get_cur_expt_time_using_submodel(self, model_types):
+        """
+        Use a specified submodel's get_cur_expt_time method
+
+        Parameters
+        ----------
+        model_types: List of submodels in order of priority. Use first
+        submodel in model_types that is present in the experiment.
+
+        Returns:
+        --------
+        Current experiment time in cftime.datetime
+        """
+        for model_type in model_types:
+            for model in self.expt.models:
+                if model.model_type == model_type:
+                    cur_expt_time = model.get_cur_expt_time()
+                    if cur_expt_time is not None:
+                        return cur_expt_time
+        
+        raise NotImplementedError(
+            f'Cannot find any of the specified sub-models: '
+            f'{", ".join(model_types)}. '
+            'to determine current experiment time.'
         )

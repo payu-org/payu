@@ -430,7 +430,24 @@ class AccessOm3(CesmCmeps):
                 "Access-OM3 comprises a data runoff model, but the runoff model in nuopc.runconfig is set "
                 f"to {self.components['rof']}."
             )
-
+        
+    def get_cur_expt_time(self):
+        """Get the current experiment time from file work/log/med.log.
+        ---
+        output:
+            cftime.datetime
+        raises:
+            ValueError if the key string 'memory_write: model date' is not found in the log file
+        """
+        log_path = os.path.join(self.expt.work_path, 'log', 'med.log')
+            
+        with open(log_path, 'r') as f:
+            for line in reversed(f.readlines()):
+                if line.startswith(" memory_write: model date"):
+                    time_str = line.split()[4]
+                    return cftime.datetime.strptime(time_str, '%Y-%m-%dT%H:%M:%S')
+        
+        raise ValueError(f"Key string 'memory_write: model date' not found in {log_path}, cannot determine current experiment time")
 
 class Runconfig:
     """ Simple class for parsing and editing nuopc.runconfig """

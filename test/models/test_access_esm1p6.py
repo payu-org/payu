@@ -1,10 +1,12 @@
 import copy
 import os
 import shutil
+import f90nml
 
 import pytest
 
 import payu
+from payu.models.access_esm1p6 import AccessEsm1p6
 
 from test.common import cd, expt_workdir
 from test.common import tmpdir, ctrldir, labdir, workdir, archive_dir
@@ -150,3 +152,66 @@ def test_esm1p6_patch_optional_config_files(um_only_ctrl_dir,
         set(esm1p6_um_model.optional_config_files) ==
         set(um_standalone_model.optional_config_files).union(expected_files)
     )
+
+
+def test_get_cur_expt_time(um_only_ctrl_dir, esm1p6_um_only_config):
+    """
+    Test that the access-esm1.6 driver correctly parses the model_basis_time.
+    """
+    # Initialise ESM1.6
+    with cd(ctrldir):
+        esm1p6_lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        esm1p6_expt = payu.experiment.Experiment(esm1p6_lab, reproduce=False)
+
+    # write the um.res.yaml with a known restart date
+    restart_calendar_path = os.path.join(esm1p6_expt.work_path, 'atmosphere', 'um.res.yaml')
+    os.makedirs(os.path.dirname(restart_calendar_path), exist_ok=True)
+    with open(restart_calendar_path, 'w') as f:
+        f.write("end_date: 1900-01-31 00:00:00\n")
+
+    #write log file with a known timestep and default step length (30 min)
+    log_path = os.path.join(esm1p6_expt.work_path, 'atmosphere', 'atm.fort6.pe0')
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    with open(log_path, 'w') as f:
+        f.write(f"U_MODEL: STEPS_PER_PERIODim=                    48\n")
+        f.write(f"U_MODEL: SECS_PER_PERIODim=                 86400\n")
+        f.write(f"Atm_Step: Timestep                      10\n")
+
+    cur_expt_time = esm1p6_expt.get_model_cur_expt_time()
+    assert cur_expt_time.isoformat() == "1900-01-31T05:00:00"
+
+
+@pytest.mark.parametrize("missing_file", [
+    (
+        ['um.res.yaml']
+    ),
+    (
+        ['atm.fort6.pe0']
+    ),
+    (
+        ['um.res.yaml', 'atm.fort6.pe0']
+    )
+])
+def test_get_cur_expt_time_missing_files(um_only_ctrl_dir, esm1p6_um_only_config, missing_file):
+    """
+    Test that the access-esm1.6 driver correctly handles missing files.
+    """
+    # Initialise ESM1.6
+    with cd(ctrldir):
+        esm1p6_lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        esm1p6_expt = payu.experiment.Experiment(esm1p6_lab, reproduce=False)
+
+    restart_calendar_path = os.path.join(esm1p6_expt.work_path, 'atmosphere', 'um.res.yaml')
+    log_path = os.path.join(esm1p6_expt.work_path, 'atmosphere', 'atm.fort6.pe0')
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    with open(restart_calendar_path, 'w') as f:
+        f.write("end_date: 1901-03-01 00:00:00\n")
+    open(log_path, 'a').close()
+
+    if 'um.res.yaml' in missing_file:
+        os.remove(restart_calendar_path)
+    if 'atm.fort6.pe0' in missing_file:
+        os.remove(log_path)
+
+    with pytest.raises(FileNotFoundError):
+        cur_expt_time = esm1p6_expt.get_model_cur_expt_time()

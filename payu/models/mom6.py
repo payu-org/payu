@@ -10,6 +10,9 @@
 
 # Standard library
 import os
+from datetime import datetime, timedelta
+import cftime
+from collections import deque
 
 # Extensions
 import f90nml
@@ -130,3 +133,36 @@ class Mom6(MomMixin, Fms):
         mom6_save_docs_files(self)
 
         super().archive()
+
+    def read_start_date(self, input_path, calendar):
+        """Read the start date from input.nml."""
+        input_nml = f90nml.read(input_path)
+        start_date_list = input_nml.get('ocean_solo_nml', {}).get('date_init', None)
+        if start_date_list is None:
+            raise ValueError(f"Key 'date_init' not found in {input_path}")
+        return cftime.datetime(*start_date_list, calendar=calendar)
+
+    def read_timestep(self, stats_path):
+        """ Read the current timestep from ocean.stats."""
+        with open(stats_path, 'r') as f:
+            line = deque(f, maxlen=1)[0]
+            timestep = float(line.split(',')[1])
+            return timestep
+
+    def get_cur_expt_time(self):
+        """Get the current experiment time from log file.
+        --- 
+        output:
+            cftime.datetime
+        """
+        ocean_solo_path = os.path.join(self.expt.work_path, 'INPUT', 'ocean_solo.res')
+        calendar = self.get_calendar(ocean_solo_path)
+
+        input_path = os.path.join(self.expt.work_path, 'input.nml')
+        start_date = self.read_start_date(input_path, calendar)
+
+        stats_path = os.path.join(self.expt.work_path, 'ocean.stats')
+        timestep = self.read_timestep(stats_path)
+
+        cur_expt_time = start_date + timedelta(days=timestep)
+        return cur_expt_time

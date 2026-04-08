@@ -12,9 +12,10 @@ from __future__ import print_function
 
 import os
 import shutil
+import json
+import cftime
 
 from payu.models.model import Model
-
 
 class AccessOm2(Model):
 
@@ -94,3 +95,25 @@ class AccessOm2(Model):
 
         return self.get_restart_datetime_using_submodel(restart_path,
                                                         model_types)
+
+    def get_cur_expt_time(self):
+        """Get the current experiment time from file work/atmosphere/log/matmxx.pe00000.log.
+        ---
+        output:
+            cftime.datetime
+        raises:
+            ValueError if the key 'cur_exp-datetime' is not found in the log file
+        """
+        log_path = os.path.join(self.expt.work_path, 'atmosphere', 'log', 
+                                    'matmxx.pe00000.log')
+            
+        with open(log_path, 'r') as f:
+            for line in reversed(f.readlines()):
+                if 'cur_exp-datetime' in line:
+                    line_json = json.loads(line)
+                    time_str = line_json.get('cur_exp-datetime', None)
+                    if time_str is not None:
+                        return cftime.datetime.strptime(time_str, '%Y-%m-%dT%H:%M:%S')
+
+        raise ValueError(f"Key 'cur_exp-datetime' not found in {log_path}")
+

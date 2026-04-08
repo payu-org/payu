@@ -283,6 +283,11 @@ class Access(Model):
         return self.get_restart_datetime_using_submodel(restart_path,
                                                         model_types)
 
+    def get_cur_expt_time(self):
+        """ Use UM submodel to get the current experiment time."""
+        model_types = ['um']
+        return self.get_cur_expt_time_using_submodel(model_types)
+
     def set_model_pathnames(self):
         pass
 

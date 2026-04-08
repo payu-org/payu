@@ -69,7 +69,7 @@ def timeit(time_name):
 
 
 class Experiment(object):
-    def __init__(self, lab, reproduce=False, force=False, metadata_off=False):
+    def __init__(self, lab, reproduce=False, force=False, metadata_off=False, config_path=None):
         self.init_timings()
         self.lab = lab
         # Check laboratory directories are writable
@@ -82,14 +82,14 @@ class Experiment(object):
             self.force = force
 
         # Initialise experiment metadata - uuid and experiment name
-        self.metadata = Metadata(Path(lab.archive_path), disabled=metadata_off)
+        self.metadata = Metadata(Path(lab.archive_path), disabled=metadata_off, config_path=config_path)
         self.metadata.setup()
 
         # TODO: replace with dict, check versions via key-value pairs
         self.modules = set()
 
         # TODO: __init__ should not be a config dumping ground!
-        self.config = read_config()
+        self.config = read_config(config_path)
 
         # Payu experiment type
         self.debug = self.config.get('debug', False)
@@ -856,6 +856,9 @@ class Experiment(object):
             # or if there was error during file parsing
             pass
         return datetimes
+
+    def get_model_cur_expt_time(self):
+        return self.model.get_cur_expt_time()
 
     def archiving(self):
         """

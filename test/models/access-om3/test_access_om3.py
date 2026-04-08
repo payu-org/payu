@@ -611,3 +611,62 @@ def test_collect_restart_files_nonexist_rpointer():
         assert "Restart pointer file not found at the end of payu run" in str(e.value)
 
     teardown_cmeps_config()
+
+def test_get_cur_expt_time():
+    """ Test if get_cur_expt_time correctly parses the model date from the log file. """
+    cmeps_config(1)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        log_path = os.path.join(model.work_path, "log", "med.log")
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        with open(log_path, "w") as f:
+            f.write(" memory_write: model date = 1900-01-02T00:00:00 \n")
+
+        cur_expt_time = model.get_cur_expt_time()
+
+        assert cur_expt_time.isoformat() == "1900-01-02T00:00:00"
+
+    teardown_cmeps_config()
+    os.remove(log_path)
+
+
+def test_get_cur_expt_time_no_log():
+    """ Test if get_cur_expt_time raise an error if log file is missing. """
+    cmeps_config(1)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        log_path = os.path.join(model.work_path, "log", "med.log")
+
+        assert not os.path.exists(log_path)
+        with pytest.raises(FileNotFoundError):
+            cur_expt_time = model.get_cur_expt_time()
+
+    teardown_cmeps_config()
+
+def test_get_cur_expt_time_no_date():
+    """ Test if get_cur_expt_time raise error if log file does not contain model date. """
+    cmeps_config(1)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        log_path = os.path.join(model.work_path, "log", "med.log")
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        with open(log_path, "w") as f:
+            f.write("This log file does not contain the model date.\n")
+
+        with pytest.raises(ValueError, match="Key string 'memory_write: model date' not found in"):
+            cur_expt_time = model.get_cur_expt_time()
+
+    teardown_cmeps_config()
+    os.remove(log_path)
