@@ -33,6 +33,12 @@ CFTIME_CALENDARS = {
     "GREGORIAN" : "proleptic_gregorian"
 }
 
+restart_error_msg = f"""
+Possible cause: model runtime is shorter than the restart write frequency.
+Fix:
+    1. Remove the incomplete restart subdirectory in the archive path
+    2. Adjust the restart write frequency to write a restart at the end of the model run."""
+
 # Add as needed
 component_info = {
     "mom": {
@@ -328,7 +334,8 @@ class CesmCmeps(Model):
             # rpointer file not exist
             if not os.path.exists(pointer):
                 raise FileNotFoundError(
-                    f"payu: rpointer file {pointer} does not exist!"
+                    f"\nPayu Error: Restart pointer file not found at the end of payu run: {pointer}"
+                    f"{restart_error_msg}"
                     )
 
             with open(pointer, "r") as f:
@@ -348,7 +355,8 @@ class CesmCmeps(Model):
                             continue
 
                     raise FileNotFoundError(
-                        f"payu: restart file {target_restart_path} listed in the rpointer file {pointer} does not exist!"
+                        f"\nPayu Error: Restart file {target_restart_path} listed in the rpointer file {pointer} not found."
+                        f"{restart_error_msg}"
                         )
 
         return sorted(restart_files)
