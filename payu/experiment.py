@@ -24,6 +24,7 @@ import time
 from pathlib import Path
 import warnings
 import pwd
+import logging
 
 # Extensions
 import yaml
@@ -44,6 +45,8 @@ from payu.calendar import parse_date_offset
 from payu.sync import SyncToRemoteArchive
 from payu.metadata import Metadata
 import payu.telemetry as telemetry
+
+logger = logging.getLogger(__name__)
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -108,7 +111,10 @@ class Experiment(object):
         # Stacksize
         # NOTE: Possible PBS issue in setting non-unlimited stacksizes
         stacksize = self.config.get('stacksize', 'unlimited')
-        self.set_stacksize(stacksize)
+        try:
+            self.set_stacksize(stacksize)
+        except ValueError as err:
+            logger.warning('Failed to set stacksize to %s: %s', stacksize, err)
 
         # Initialize the submodels
         self.init_models()
