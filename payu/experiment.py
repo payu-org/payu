@@ -677,7 +677,7 @@ class Experiment(object):
 
             # Use the full path to symlinked exec_name in work as some
             # older MPI libraries complained executable was not in PATH
-            model_prog.append(os.path.join(model.work_path, model.exec_name))
+            model_prog.append(os.path.join(os.path.abspath(model.work_path), model.exec_name))
 
             if model.exec_postfix:
                 model_prog.append(model.exec_postfix)
