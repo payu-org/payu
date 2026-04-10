@@ -41,8 +41,9 @@ def parse():
     parser = generate_parser(is_interactive = True)
 
     # filter out --stacktrace when counting argument numbers
-    filtered_args = [arg for arg in sys.argv if arg != '--stacktrace']
-    arg_count = len(filtered_args)
+    arg_count = len(sys.argv)
+    if '--stacktrace' in sys.argv:
+        arg_count = arg_count - 1
     # Display help if no arguments are provided
     if arg_count == 1:
         parser.print_help()
@@ -52,6 +53,7 @@ def parse():
     args = vars(parser.parse_args())
     run_cmd = args.pop('run_cmd')
 
+    # We pop --stacktrace here so it will not be propagated to runcmd() in subcommands
     stacktrace = args.pop('stacktrace')
     if not stacktrace:
         # Force warnings.warn() to omit the source code line in the message
@@ -85,6 +87,8 @@ def generate_parser(is_interactive=False):
     for cmd in subcmds:
         cmd_parser = subparsers.add_parser(cmd.title, **cmd.parameters)
         cmd_parser.set_defaults(run_cmd=cmd.runcmd)
+        # Add the stacktrace option to all subcommands for consitent CLI UX.
+        # It will be extracted in the parse() and not propagated to subcommand's runcmd()
         cmd_parser.add_argument(*arg_templates.stacktrace['flags'], **arg_templates.stacktrace['parameters'])
 
         for arg in cmd.arguments:

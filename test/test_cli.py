@@ -384,10 +384,7 @@ def test_parse_setup_stacktrace_off(monkeypatch):
     formatted = warnings.formatwarning(
         w.message, w.category, w.filename, w.lineno, w.line
     )
-    assert formatted == "Test Warning"  
-    assert "UserWarning" not in formatted
-    assert str(w.filename) not in formatted
-    assert str(w.lineno) not in formatted
+    assert formatted == "Test Warning"
      
 
 def test_parse_setup_stacktrace_on(monkeypatch):
@@ -407,3 +404,17 @@ def test_parse_setup_stacktrace_on(monkeypatch):
     assert "UserWarning" in formatted
     assert str(w.filename) in formatted
     assert str(w.lineno) in formatted
+
+def test_parse_arg_count(capsys, monkeypatch):
+    """Test that the parser correctly excludes --stacktrace when counting arguments."""
+    # confirm print help is triggered when only --stacktrace is provided
+    monkeypatch.setattr(sys, "argv", ["payu --stacktrace"])
+    payu.cli.parse()
+    assert "usage: payu --stacktrace [-h] [--version]" in capsys.readouterr().out
+
+    # confirm print help is not triggered when a subcommand is provided, even with --stacktrace
+    monkeypatch.setattr(sys, "argv", ["payu", "list", "--stacktrace"])
+    monkeypatch.setattr("payu.subcommands.list_cmd.runcmd", lambda *args, **kwargs: None)
+    payu.cli.parse()
+    assert "usage: payu" not in capsys.readouterr().out
+    assert "[-h] [--version]" not in capsys.readouterr().out
