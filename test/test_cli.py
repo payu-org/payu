@@ -375,6 +375,7 @@ def mock_warn(**kwargs):
 def test_parse_setup_stacktrace_off(monkeypatch):
     """Test that warning message does not include stack trace information
     when --stacktrace is not flagged."""
+    monkeypatch.setattr(warnings, "formatwarning", warnings.formatwarning)
     monkeypatch.setattr(sys, "argv", ["payu", "setup"])
     monkeypatch.setattr("payu.subcommands.setup_cmd.runcmd", mock_warn)
     with pytest.warns(UserWarning) as caught:
@@ -390,6 +391,7 @@ def test_parse_setup_stacktrace_off(monkeypatch):
 def test_parse_setup_stacktrace_on(monkeypatch):
     """Test that warning message includes stack trace information
     when --stacktrace is flagged."""
+    monkeypatch.setattr(warnings, "formatwarning", warnings.formatwarning)
     monkeypatch.setattr(sys, "argv", ["payu", "setup", "--stacktrace"])
     monkeypatch.setattr("payu.subcommands.setup_cmd.runcmd", mock_warn)
     with pytest.warns(UserWarning) as caught:

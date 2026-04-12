@@ -33,7 +33,6 @@ DEFAULT_CONFIG = 'config.yaml'
 
 # Pass the warning through the logger
 logging.captureWarnings(True)
-original_formatwarning = warnings.formatwarning
 
 def parse():
     """Parse the command line inputs and execute the subcommand."""
@@ -60,8 +59,6 @@ def parse():
         warnings.formatwarning = (
             lambda message, category, filename, lineno, line=None: f"{message}"
         )
-    else:
-        warnings.formatwarning = original_formatwarning
         
     run_cmd(**args)
 
