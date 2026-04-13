@@ -16,6 +16,7 @@ import shlex
 import subprocess
 import sys
 import warnings
+import logging
 
 # Local imports
 import payu
@@ -25,31 +26,40 @@ from payu.models import index as supported_models
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 import payu.subcommands
 from payu.logger import setup_logger
+import payu.subcommands.args as arg_templates
 
 # Default configuration
 DEFAULT_CONFIG = 'config.yaml'
 
-# Force warnings.warn() to omit the source code line in the message
-formatwarning_orig = warnings.formatwarning
-warnings.formatwarning = (
-    lambda message, category, filename, lineno, line=None: (
-        formatwarning_orig(message, category, filename, lineno, line='')
-    )
-)
-
+# Pass the warning through the logger
+logging.captureWarnings(True)
 
 def parse():
     """Parse the command line inputs and execute the subcommand."""
     setup_logger()
     parser = generate_parser(is_interactive = True)
+
+    # filter out --stacktrace when counting argument numbers
+    arg_count = len(sys.argv)
+    if '--stacktrace' in sys.argv:
+        arg_count = arg_count - 1
     # Display help if no arguments are provided
-    if len(sys.argv) == 1:
+    if arg_count == 1:
         parser.print_help()
         return
-    if len(sys.argv) > 2:
+    if arg_count > 2:
         parser = generate_parser()
     args = vars(parser.parse_args())
     run_cmd = args.pop('run_cmd')
+
+    # We pop --stacktrace here so it will not be propagated to runcmd() in subcommands
+    stacktrace = args.pop('stacktrace')
+    if not stacktrace:
+        # Force warnings.warn() to omit the source code line in the message
+        warnings.formatwarning = (
+            lambda message, category, filename, lineno, line=None: f"{message}"
+        )
+        
     run_cmd(**args)
 
 
@@ -74,6 +84,9 @@ def generate_parser(is_interactive=False):
     for cmd in subcmds:
         cmd_parser = subparsers.add_parser(cmd.title, **cmd.parameters)
         cmd_parser.set_defaults(run_cmd=cmd.runcmd)
+        # Add the stacktrace option to all subcommands for consitent CLI UX.
+        # It will be extracted in the parse() and not propagated to subcommand's runcmd()
+        cmd_parser.add_argument(*arg_templates.stacktrace['flags'], **arg_templates.stacktrace['parameters'])
 
         for arg in cmd.arguments:
             cmd_parser.add_argument(*arg['flags'], **arg['parameters'])

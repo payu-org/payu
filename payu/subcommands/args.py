@@ -343,3 +343,14 @@ run_number = {
         'help': 'Display information about a specific run number'
     }
 }
+
+# Display stacktrace option
+stacktrace = {
+    'flags': ['--stacktrace'],
+    'parameters': {
+        'dest': 'stacktrace',
+        'action': 'store_true',
+        'default': False,
+        'help': 'Display full stack traces of errors and warnings'
+    }
+}

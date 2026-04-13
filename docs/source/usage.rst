@@ -510,6 +510,21 @@ repository, run::
       payu branch --verbose # Display local branches metadata 
       payu branch --remote # Display remote branches UUIDs
 
+Common flags
+===============
+
+The flag below can be applied to all payu subcommands.
+
+.. option:: -h, --help
+
+   Display help information about the command and its usage.
+
+.. option:: --stacktrace
+   
+   Enable full Python stacktraces for warnings. 
+   By default, payu displays only the warning messages to remain user-friendly. 
+   It will be helpful to enable this flag when debugging internal issues or reporting bugs.
+
 
 Getting support
 ===============

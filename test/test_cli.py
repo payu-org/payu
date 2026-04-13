@@ -1,6 +1,8 @@
 import pytest
 import shlex
 import sys
+from unittest.mock import patch
+import warnings
 
 import payu
 import payu.cli
@@ -28,6 +30,7 @@ def parse_args(parser, cmd):
     arguments = shlex.split(cmd.format(cmd=cmd))
     args = vars(parser.parse_args(arguments[1:]))
     run_cmd = args.pop("run_cmd")
+    stacktrace = args.pop("stacktrace")
     return run_cmd, args
 
 def test_parse(parser):
@@ -365,3 +368,55 @@ def test_parse_clone(parser):
 
     assert args.pop('repository') == 'test_repo'
     assert args.pop('local_directory') == 'local_dir'
+
+def mock_warn(**kwargs):
+        warnings.warn("Test Warning")
+
+def test_parse_setup_stacktrace_off(monkeypatch):
+    """Test that warning message does not include stack trace information
+    when --stacktrace is not flagged."""
+    monkeypatch.setattr(warnings, "formatwarning", warnings.formatwarning)
+    monkeypatch.setattr(sys, "argv", ["payu", "setup"])
+    monkeypatch.setattr("payu.subcommands.setup_cmd.runcmd", mock_warn)
+    with pytest.warns(UserWarning) as caught:
+        payu.cli.parse()
+
+    w = caught[0]
+    formatted = warnings.formatwarning(
+        w.message, w.category, w.filename, w.lineno, w.line
+    )
+    assert formatted == "Test Warning"
+     
+
+def test_parse_setup_stacktrace_on(monkeypatch):
+    """Test that warning message includes stack trace information
+    when --stacktrace is flagged."""
+    monkeypatch.setattr(warnings, "formatwarning", warnings.formatwarning)
+    monkeypatch.setattr(sys, "argv", ["payu", "setup", "--stacktrace"])
+    monkeypatch.setattr("payu.subcommands.setup_cmd.runcmd", mock_warn)
+    with pytest.warns(UserWarning) as caught:
+        payu.cli.parse()
+
+    w = caught[0]
+    formatted = warnings.formatwarning(
+        w.message, w.category, w.filename, w.lineno, w.line
+    )
+    
+    assert "Test Warning" in formatted
+    assert "UserWarning" in formatted
+    assert str(w.filename) in formatted
+    assert str(w.lineno) in formatted
+
+def test_parse_arg_count(capsys, monkeypatch):
+    """Test that the parser correctly excludes --stacktrace when counting arguments."""
+    # confirm print help is triggered when only --stacktrace is provided
+    monkeypatch.setattr(sys, "argv", ["payu --stacktrace"])
+    payu.cli.parse()
+    assert "usage: payu --stacktrace [-h] [--version]" in capsys.readouterr().out
+
+    # confirm print help is not triggered when a subcommand is provided, even with --stacktrace
+    monkeypatch.setattr(sys, "argv", ["payu", "list", "--stacktrace"])
+    monkeypatch.setattr("payu.subcommands.list_cmd.runcmd", lambda *args, **kwargs: None)
+    payu.cli.parse()
+    assert "usage: payu" not in capsys.readouterr().out
+    assert "[-h] [--version]" not in capsys.readouterr().out
