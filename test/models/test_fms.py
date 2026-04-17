@@ -8,10 +8,11 @@ from unittest.mock import patch, MagicMock
 import f90nml
 import pytest
 import yaml
+import json
 
 import payu
 
-from payu.models.fms import get_uncollated_files, get_avail_collate_flags
+from payu.models.fms import get_uncollated_files, get_avail_collate_flags, mapping_log, get_uncollate_hashes
 
 from test.common import tmpdir
 
@@ -290,3 +291,57 @@ def test_get_avail_collate_flags_runtimeerror(mock_run):
     assert "Failed to run" in str(excinfo.value)
     # Ensure error chaining happened
     assert isinstance(excinfo.value.__cause__, OSError)
+
+
+@patch("payu.models.fms.calculate_md5_hash")
+@patch("payu.models.fms.get_job_file_path")
+def test_mapping_log(mock_get_job_file_path, mock_hash):
+    """Test that a mapping collate dictionary is generated correctly"""
+    # Set up mock md5 hash values for the test files
+    mock_hash.side_effect = lambda file_path: f"md5_{os.path.basename(file_path)}"
+    
+    # Set up a temporary job file
+    job_file_path = tmpdir / "archive" / "payu_jobs" / "3" / "collate" / "test-jobid-id-3.json"
+    job_file_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(job_file_path, 'w') as f:
+        json.dump({
+            "stage": "queued",
+        }, f)
+    mock_get_job_file_path.return_value = job_file_path
+
+    # Create a dictionary of uncollated tiles
+    output_dir = str(tmpdir / "output003")
+    restart_dir = str(tmpdir / "restart002")
+    mnc_tiles = {
+        output_dir: {
+            "ocean_1d.res.nc": ["ocean_1d.res.nc.0000", "ocean_1d.res.nc.0001"]
+        },
+        restart_dir: {
+            "ocean_2d.res.nc": ["ocean_2d.res.nc.0000", "ocean_2d.res.nc.0001"],
+            "ocean_3d.res.nc": ["ocean_3d.res.nc.0000", "ocean_3d.res.nc.0001"],
+        }
+    }
+
+    # Call the mapping_log function
+    uncollate_hashes_dict = get_uncollate_hashes(mnc_tiles, restart_dir)
+    mock_model = MagicMock()
+    mock_model.prior_restart_path = restart_dir
+    mapping_log(mock_model, mnc_tiles, uncollate_hashes_dict)
+
+    # Set up the expected mapping dictionary
+    expected_mapping = {
+        "restart002":{
+            "md5_ocean_2d.res.nc": ["md5_ocean_2d.res.nc.0000", "md5_ocean_2d.res.nc.0001"],
+            "md5_ocean_3d.res.nc": ["md5_ocean_3d.res.nc.0000", "md5_ocean_3d.res.nc.0001"],
+        }
+    }
+
+    # Read the job file after collation
+    with open(job_file_path, "r") as job_file:
+        data = json.load(job_file)
+
+    # Confirm only restart collation are recorded in the mapping (but not output collation)
+    assert data["collate_mapping"] == expected_mapping
+
+    # Clean up
+    rmtmp()

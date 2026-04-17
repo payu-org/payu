@@ -963,7 +963,9 @@ class Experiment(object):
         if not collating:
             self.postprocess()
 
+    @timeit("payu_collate_duration_seconds")
     def collate(self):
+        """ Run model collation and record the time taken in seconds to run collation"""
         # Setup modules - load user-defined modules
         self.setup_modules()
 
@@ -1010,6 +1012,7 @@ class Experiment(object):
 
             sp.check_call(shlex.split(cmd))
 
+    @timeit("payu_sync_duration_seconds")
     def sync(self):
         # RUN any user scripts before syncing archive
         envmod.setup()
@@ -1064,6 +1067,7 @@ class Experiment(object):
         default_job_name = os.path.basename(os.getcwd())
         short_job_name = str(self.config.get('jobname', default_job_name))[:15]
 
+        # find all PBS log files including payu runs, collate runs, postscript runs, and sync runs
         log_filenames = [short_job_name + '.o', short_job_name + '.e']
         for postfix in ['_c.o', '_c.e', '_p.o', '_p.e', '_s.o', '_s.e']:
             log_filenames.append(short_job_name[:13] + postfix)

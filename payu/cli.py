@@ -17,6 +17,7 @@ import subprocess
 import sys
 import warnings
 import logging
+from pathlib import Path
 
 # Local imports
 import payu
@@ -27,6 +28,7 @@ from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 import payu.subcommands
 from payu.logger import setup_logger
 import payu.subcommands.args as arg_templates
+from payu.telemetry import write_queued_job_file
 
 # Default configuration
 DEFAULT_CONFIG = 'config.yaml'
@@ -188,7 +190,7 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
     return payu_env_vars
 
 
-def submit_job(script, config, vars=None):
+def submit_job(script, config, vars=None, expt=None, current_run=None, type=None):
     """Submit a userscript the scheduler and return the job ID"""
 
     # TODO: Temporary stub to replicate the old approach
@@ -204,5 +206,16 @@ def submit_job(script, config, vars=None):
     result = result.stdout.decode("utf8").strip()
     print(result)
     job_id = result.split()[-1]
+
+    if expt is not None:
+        write_queued_job_file(
+            archive_path=Path(expt.archive_path),
+            job_id=job_id,
+            type=type,
+            scheduler=expt.scheduler,
+            metadata=expt.metadata,
+            current_run=current_run,
+        )
+
 
     return job_id

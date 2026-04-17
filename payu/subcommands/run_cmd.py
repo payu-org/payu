@@ -173,20 +173,9 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
         # Return error code.
         sys.exit(1)
 
-    job_id = cli.submit_job('payu-run', pbs_config, pbs_vars)
-
     current_run = init_run if init_run is not None else expt.counter
 
-    # This could be done as part of submit_job eventually, but for now
-    # it's only used by the run command.
-    write_queued_job_file(
-        archive_path=Path(expt.archive_path),
-        job_id=job_id,
-        type='run',
-        scheduler=expt.scheduler,
-        metadata=expt.metadata,
-        current_run=current_run,
-    )
+    job_id = cli.submit_job('payu-run', pbs_config, pbs_vars, expt, current_run, type='run')
 
 
 def runscript():
