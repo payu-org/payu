@@ -62,7 +62,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
             qsub_flags.append(flag)
     pbs_config['qsub_flags'] = ' '.join(qsub_flags)
 
-    cli.submit_job('payu-profile', pbs_config, pbs_vars)
+    cli.submit_job('payu-profile', pbs_config, pbs_vars, type='profile')
 
 
 def runscript():

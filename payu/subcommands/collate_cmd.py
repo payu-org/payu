@@ -3,13 +3,17 @@
 # Standard Library
 import argparse
 import os
+from pathlib import Path
+import shutil
 
 # Local
 from payu import cli
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
+from payu.telemetry import write_queued_job_file, get_job_file_path, update_job_file, record_run
 from payu import fsops
+from payu.schedulers.pbs import get_job_info_json
 
 title = 'collate'
 parameters = {'description': 'Collate tiled output into single output files'}
@@ -86,7 +90,28 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path):
 
     pbs_config['qsub_flags'] = ' '.join(qsub_flags)
 
-    cli.submit_job('payu-collate', pbs_config, pbs_vars)
+    # Set up experiment
+    lab = Laboratory(model_type, config_path, lab_path)
+    expt = Experiment(lab)
+    current_run = os.environ.get('PAYU_CURRENT_RUN', '')
+
+    # Submit the collation job
+    job_id = cli.submit_job('payu-collate', pbs_config, pbs_vars, expt, current_run, type='collate')
+
+    # Get the job file path for collation job
+    job_file_path = get_job_file_path(
+            archive_path=Path(expt.archive_path),
+            run_number=expt.counter,
+            timings=expt.timings,
+            scheduler=expt.scheduler,
+            type='collate',
+        )
+
+    # Write initial job information to job file
+    update_job_file(
+        file_path=job_file_path,
+        data=get_job_info_json(job_id)
+    )
 
 
 def runscript():
@@ -108,5 +133,36 @@ def runscript():
                      run_args.config_path,
                      run_args.lab_path)
     expt = Experiment(lab)
-    expt.collate()
-    expt.postprocess()
+    try:
+        # Collate the model output
+        # If collation succeeds, then collate_status is set to 0
+        expt.collate()
+        expt.postprocess()
+        collate_status = 0
+    except:
+        # If collation fails, then collate_status is set to 1
+        collate_status = 1
+        raise
+    finally:
+        # Record collation job information into job file
+        job_id = os.environ.get('PBS_JOBID', '')
+        current_run = os.environ.get('PAYU_CURRENT_RUN', '')
+        job_file_path = get_job_file_path(
+            archive_path=Path(expt.archive_path),
+            run_number=expt.counter,
+            timings=expt.timings,
+            scheduler=expt.scheduler,
+            type='collate',
+        )
+
+        # Record the collation status (duration time and success/failure) in the job file
+        record_run(
+            timings=expt.timings,
+            scheduler=expt.scheduler,
+            run_status=collate_status,
+            config=expt.config,
+            file_path=job_file_path,
+            archive_path=Path(expt.archive_path),
+            run_info_label = "payu_collate_status",
+            stage="exited"
+        )
