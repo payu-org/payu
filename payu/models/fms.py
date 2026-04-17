@@ -18,10 +18,12 @@ from itertools import count
 import fnmatch
 import re
 import warnings
+import json
 
 from payu.models.model import Model
 from payu import envmod
-from payu.fsops import required_libs
+from payu.fsops import required_libs, calculate_md5_hash
+from payu.telemetry import get_job_file_path, update_job_file
 
 # There is a limit on the number of command line arguments in a forked
 # MPI process. This applies only to mppnccombine-fast. The limit is higher
@@ -74,6 +76,75 @@ def get_avail_collate_flags(mppnc_path):
 
     return set(re.findall(r"\B-[A-Za-z0-9]+\b", collate_help.stdout))
 
+
+def get_uncollate_hashes(mnc_tiles, prior_restart_path):
+    """ Map future collated filenames to the MD5 hashes of each uncollated tiles.
+
+    Args:
+        mnc_tiles: A dictionary structured as:
+                   {output_path: {collated_filename: [list_of_tile_filenames]},
+                   restart_path: {collated_filename: [list_of_tile_filenames]}}
+
+    Returns:
+        A dictionary structured as:
+        {future_collated_filename_1: [md5_hash_tile_1a, md5_hash_tile_1b, ...],
+        ...}
+    """
+    uncollate_hashes = {}
+
+    for nc_fname, tiles in mnc_tiles[prior_restart_path].items():
+        # record md5 hashes of all tiles in restart collation
+        uncollate_hashes[nc_fname] = [
+            calculate_md5_hash(os.path.join(prior_restart_path, tile)) for tile in tiles
+        ]
+
+    return uncollate_hashes
+
+def mapping_log(model, mnc_tiles, uncollate_hashes_dict):
+    """ Log a dictionary of collate mapping into job file.
+    Example mapping_collate_dict structure:
+    {   
+        "restart001": {
+            "md5_hash_collated_filename_1": ["md5_hash_tile_1a", "md5_hash_tile_1b", ...],
+            "md5_hash_collated_filename_2": ["md5_hash_tile_2a", "md5_hash_tile_2b", ...],
+            ...
+        }
+    }
+    """
+    if model.prior_restart_path is None:
+        return None
+    else:
+        prior_restart_num = re.search(r'restart(\d+)', model.prior_restart_path).group()
+
+    mapping_collate_dict = {}
+    mapping_collate_dict[prior_restart_num] = {}
+
+    for nc_fname in mnc_tiles[model.prior_restart_path]:
+        # calculate md5 hash of the final collated file
+        nc_path = os.path.join(model.prior_restart_path, nc_fname)
+        collate_hash = calculate_md5_hash(nc_path)
+
+        # match the collated file hash with the list of uncollated tile hashes
+        mapping_collate_dict[prior_restart_num][collate_hash] = uncollate_hashes_dict.pop(nc_fname)
+
+
+    # Write the mapping_collate_dict to job file in
+    # archive/payu_jobs/{current_run}/collate/{job_id}-gadi-pbs.json
+    job_id = os.environ.get('PBS_JOBID', '')
+    current_run = os.environ.get('PAYU_CURRENT_RUN', '')
+
+    job_file_path = get_job_file_path(
+            archive_path=Path(model.expt.archive_path),
+            run_number=model.expt.counter,
+            timings=model.expt.timings,
+            scheduler=model.expt.scheduler,
+            type='collate',
+        )
+    update_job_file(
+        file_path=job_file_path,
+        data={"collate_mapping": mapping_collate_dict}
+    )
+    return mapping_collate_dict
 
 def fms_collate(model):
     """
@@ -202,6 +273,9 @@ def fms_collate(model):
                           .format(len(mnc_tiles[t_base])))
                     print("Warning: collation will be slow and may fail")
 
+    # generate a dictionary of md5 hashes for uncollated tile files
+    uncollate_hashes_dict = get_uncollate_hashes(mnc_tiles, model.prior_restart_path)
+
     cpucount = int(collate_config.get('ncpus',
                    multiprocessing.cpu_count()))
 
@@ -259,6 +333,8 @@ def fms_collate(model):
                 print(op.decode(), file=sys.stderr)
         sys.exit(-1)
 
+    # Get md5 hash for collated files and write collate mapping into job file
+    mapping_log(model, mnc_tiles, uncollate_hashes_dict)
 
 class Fms(Model):
 

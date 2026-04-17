@@ -58,7 +58,7 @@ def runcmd(model_type, config_path, lab_path, dir_path, sync_restarts,
 
     pbs_config['qsub_flags'] = sync_config.get('qsub_flags', '')
 
-    cli.submit_job('payu-sync', pbs_config, pbs_vars)
+    cli.submit_job('payu-sync', pbs_config, pbs_vars, type='sync')
 
 
 def runscript():
