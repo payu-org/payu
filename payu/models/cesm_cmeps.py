@@ -16,6 +16,7 @@ import errno
 import glob
 import shutil
 import multiprocessing
+import subprocess
 
 from payu.fsops import mkdir_p, make_symlink
 from payu.models.model import Model
@@ -38,17 +39,18 @@ component_info = {
         "config_files": ["ice_in"],
     },
     "ww3dev": {
-        "config_files": ["wav_in",
-                         "WW3_PreProc/OM3.Lat",
-                         "WW3_PreProc/OM3.Lon",
-                         "WW3_PreProc/OM3.Dpt",
-                         "WW3_PreProc/OM3.Mask",
-                         "WW3_PreProc/OM3.Obstr",
-                         "WW3_PreProc/namelists_Global.nml",
-                         "WW3_PreProc/ww3_strt.inp",
-                         "WW3_PreProc/ww3_grid.nml",                         
+        "config_files": [
+            "wav_in",
+            "WW3_PreProc/OM3.Lat",
+            "WW3_PreProc/OM3.Lon",
+            "WW3_PreProc/OM3.Dpt",
+            "WW3_PreProc/OM3.Mask",
+            "WW3_PreProc/OM3.Obstr",
+            "WW3_PreProc/namelists_Global.nml",
+            "WW3_PreProc/ww3_strt.inp",
+            "WW3_PreProc/ww3_grid.nml",
         ],
-        "optional_config_files" : [
+        "optional_config_files": [
             "ww3_points.list",
         ],
     },
@@ -177,34 +179,8 @@ class CesmCmeps(Model):
 
         self.runconfig.write()
 
-        # The ww3 mod_def input needs to be generated in work_path and called mod_def.ww3
         if "ww3dev" in self.components.values():
-             # Save the current working directory
-             original_dir = os.getcwd()
-             f_dst = self.work_path
-
-            
-             # Change the current working directory to f_dst
-             os.chdir(f_dst)
-
-             # Extract the directory name from self.exec_path without the base name
-             exec_dir = os.path.dirname(self.exec_path)
-
-             # Run the ww3_grid command using the defined path
-             cmd = os.path.join(exec_dir, "ww3_grid")
-             result = os.system(cmd)
-
-             # Change back to the original directory
-             os.chdir(original_dir)
-
-             # Check if ww3_grid command executed successfully
-             if result == 0:
-                print("mod_def.ww3 generated successfully.")
-             else:
-                print("Error generating mod_def.ww3 file.")
-                raise SystemExit(1)  # Terminate the program with exit code 1
-        else:
-                print("ww3dev component not found in self.components.")
+            self._setup_ww3_mod_def()
 
 
     def archive(self):
@@ -266,6 +242,41 @@ class CesmCmeps(Model):
             fms_collate(self)
         else:
             super().collate()
+
+    def _setup_ww3_mod_def(self):
+        mod_def = "mod_def.ww3"
+        mod_def_input = os.path.join(self.work_input_path, mod_def)
+        mod_def_work = os.path.join(self.work_path, mod_def)
+
+        if os.path.isfile(mod_def_input):
+            make_symlink(mod_def_input, mod_def_work)
+            return
+
+        self._generate_ww3_mod_def()
+
+    def _generate_ww3_mod_def(self):
+        ww3_grid = os.path.join(os.path.dirname(self.exec_path), "ww3_grid")
+        if not os.path.isfile(ww3_grid):
+            raise FileNotFoundError(
+                f"Required WW3 preprocessing executable not found: {ww3_grid}"
+            )
+        if not os.access(ww3_grid, os.X_OK):
+            raise PermissionError(
+                f"WW3 preprocessing executable is not executable: {ww3_grid}"
+            )
+
+        result = subprocess.run([ww3_grid], cwd=self.work_path, check=False)
+        if result.returncode != 0:
+            raise RuntimeError(
+                "Failed to generate WW3 input files "
+                f"with {ww3_grid} (exit code {result.returncode})"
+            )
+
+        mod_def = os.path.join(self.work_path, "mod_def.ww3")
+        if not os.path.isfile(mod_def):
+            raise RuntimeError(
+                "WW3 preprocessing completed without creating mod_def.ww3"
+            )
 
 
 class AccessOm3(CesmCmeps):
