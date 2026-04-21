@@ -353,16 +353,6 @@ class PBS(Scheduler):
         storages.update(find_mounts(extra_search_paths, mounts))
         storages.update(find_mounts(get_manifest_paths(), mounts))
 
-        # Add storage flags. Note that these are sorted to get predictable
-        # behaviour for testing
-        pbs_flags_extend = '+'.join(sorted(storages))
-        if pbs_flags_extend:
-            pbs_flags.append("-l storage={}".format(pbs_flags_extend))
-
-        # Set up environment modules here for PBS.
-        envmod.setup()
-        envmod.module('load', 'pbs')
-
         # Check for custom container launcher script environment variable
         launcher_script = os.environ.get('ENV_LAUNCHER_SCRIPT_PATH')
         if (
@@ -373,6 +363,19 @@ class PBS(Scheduler):
             # Prepend the container launcher script to the python command
             # so the python executable is accessible in the container
             python_exe = f'{launcher_script} {python_exe}'
+
+            # Add the container launcher script path to storage flags
+            storages.update(find_mounts(launcher_script, mounts))
+
+        # Add storage flags. Note that these are sorted to get predictable
+        # behaviour for testing
+        pbs_flags_extend = '+'.join(sorted(storages))
+        if pbs_flags_extend:
+            pbs_flags.append("-l storage={}".format(pbs_flags_extend))
+
+        # Set up environment modules here for PBS.
+        envmod.setup()
+        envmod.module('load', 'pbs')
 
         # Construct job submission command
         cmd = 'qsub {flags} -- {python} {script}'.format(
