@@ -1,4 +1,12 @@
-'''Custom Payu Exceptions - for catching user errors.
+'''Custom Payu Exceptions. For catching user errors.
+ - Use them when user inputs are not recognised. 
+ - They intend to provide a polite, actionable message to users.
+
+Standard Exceptions (ex. ValueError, TypeError) are for the Developer.
+ - Use them to catch exceptions from another piece of code or 
+   function calls.
+ - We want the program to crash with a stack trace so developer 
+   could fix the bug.
 '''
 
 class PayuError(Exception):
@@ -36,4 +44,3 @@ class PayuRunError(PayuError):
     Raised when an active model run fails unexpectedly.
     '''
     exit_code = 5
-    
