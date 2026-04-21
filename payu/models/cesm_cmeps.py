@@ -180,6 +180,8 @@ class CesmCmeps(Model):
         self.runconfig.write()
 
         if "ww3dev" in self.components.values():
+            # WW3 uses a bespoke binary file for configuration (mod_def.ww3),
+            # Generate mod_def.ww3 on the fly based on the WW3 files in the config being run
             self._setup_ww3_mod_def()
 
 
