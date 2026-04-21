@@ -10,6 +10,19 @@ import cftime
 
 
 class MomMixin:
+    def get_calendar(self, ocean_solo_path):
+        """Get the calendar type from the ocean_solo.res file."""
+        with open(ocean_solo_path, 'r') as ocean_solo:
+            line = ocean_solo.readlines()[0]
+            calendar_int = int(line.split()[0])
+
+        cftime_calendars = {
+            1: "360_day",
+            2: "julian",
+            3: "proleptic_gregorian",
+            4: "noleap"
+        }
+        return cftime_calendars[calendar_int]
 
     def get_restart_datetime(self, restart_path):
         """Given a restart path, parse the restart files and
@@ -21,19 +34,11 @@ class MomMixin:
                 'Cannot find ocean_solo.res file, which is required for '
                 'date-based restart pruning')
 
+        calendar = self.get_calendar(ocean_solo_path)
+
         with open(ocean_solo_path, 'r') as ocean_solo:
-            lines = ocean_solo.readlines()
-
-        calendar_int = int(lines[0].split()[0])
-        cftime_calendars = {
-            1: "360_day",
-            2: "julian",
-            3: "proleptic_gregorian",
-            4: "noleap"
-        }
-        calendar = cftime_calendars[calendar_int]
-
-        last_date_line = lines[-1].split()
+            lines = ocean_solo.readlines()[-1]
+            last_date_line = lines.split()
         date_values = [int(i) for i in last_date_line[:6]]
         year, month, day, hour, minute, second = date_values
         return cftime.datetime(year, month, day, hour, minute, second,

@@ -1,138 +1,430 @@
 import copy
 import os
+import datetime
 from pathlib import Path
-import pdb
 import pytest
 import shutil
-import yaml
+from unittest.mock import patch
+
+import json
 
 import payu
-import payu.models.test
 
 from .common import cd, make_random_file, get_manifests
 from .common import tmpdir, ctrldir, labdir, workdir
-from .common import sweep_work, payu_init, payu_setup
+from .common import payu_init, payu_setup, sweep_work
 from .common import config as config_orig
 from .common import write_config
-from .common import make_exe, make_inputs, make_restarts, make_all_files
+from .common import make_exe, make_inputs, make_expt_archive_dir
 
-verbose = True
+# Config files in the test model driver
+CONFIG_FILES = ['data', 'diag', 'input.nml']
+OPTIONAL_CONFIG_FILES = ['opt_data']
+INPUT_NML_FILENAME = 'input.nml'
 
-config = copy.deepcopy(config_orig)
+config_orig = copy.deepcopy(config_orig)
+
+
+@pytest.fixture(autouse=True)
+def setup_and_teardown():
+    # Create tmp, lab and control directories
+    try:
+        tmpdir.mkdir()
+        labdir.mkdir()
+        ctrldir.mkdir()
+    except Exception as e:
+        print(e)
+
+    yield
+
+    # Remove tmp directory
+    try:
+        shutil.rmtree(tmpdir)
+    except Exception as e:
+        print(e)
+
+
+def init_experiment(config):
+    """Helper function to initialize an experiment with a given config."""
+    write_config(config)
+    make_inputs()
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        return expt
+
+
+def test_init():
+    init_experiment(config_orig)
+    # Check all the correct directories have been created
+    for subdir in ['bin', 'input', 'archive', 'codebase']:
+        assert((labdir / subdir).is_dir())
 
 
 def make_config_files():
     """
     Create files required for test model
     """
-
-    config_files = payu.models.test.config_files
-    for file in config_files:
+    for file in CONFIG_FILES:
         make_random_file(ctrldir/file, 29)
 
 
-def setup_module(module):
-    """
-    Put any test-wide setup code in here, e.g. creating test files
-    """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
-    try:
-        tmpdir.mkdir()
-        labdir.mkdir()
-        ctrldir.mkdir()
-        make_all_files()
-    except Exception as e:
-        print(e)
-
+def run_payu_setup(config=config_orig, create_inputs=False,
+                   create_config_files=True):
+    """Helper function to write config.yaml files, make inputs,
+    config files and run experiment setup"""
+    # Setup files
     write_config(config)
-
-
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
-
-    try:
-        # shutil.rmtree(tmpdir)
-        print('removing tmp')
-    except Exception as e:
-        print(e)
-
-# These are integration tests. They have an undesirable dependence on each
-# other. It would be possible to make them independent, but then they'd
-# be reproducing previous "tests", like init. So this design is deliberate
-# but compromised. It means when running an error in one test can cascade
-# and cause other tests to fail.
-#
-# Unfortunate but there you go.
-
-
-def test_init():
+    make_exe()
+    if create_inputs:
+        make_inputs()
+    if create_config_files:
+        make_config_files()
 
     # Initialise a payu laboratory
     with cd(ctrldir):
         payu_init(None, None, str(labdir))
 
-    # Check all the correct directories have been created
-    for subdir in ['bin', 'input', 'archive', 'codebase']:
-        assert((labdir / subdir).is_dir())
+    # Run payu setup
+    payu_setup(lab_path=str(labdir))
+
+
+def test_setup_configuration_files():
+    """Test model config_files are copied to work directory,
+    and that any symlinks are followed"""
+    # Create configuration files
+    all_config_files = CONFIG_FILES + OPTIONAL_CONFIG_FILES
+    for file in all_config_files:
+        if file != INPUT_NML_FILENAME:
+            make_random_file(ctrldir / file, 8)
+
+    # For input.nml, create a file symlink in control directory
+    input_nml_realpath = tmpdir / INPUT_NML_FILENAME
+    input_nml_symlink = ctrldir / INPUT_NML_FILENAME
+    make_random_file(input_nml_realpath, 8)
+    input_nml_symlink.symlink_to(input_nml_realpath)
+    assert input_nml_symlink.is_symlink()
+
+    # Run payu setup
+    run_payu_setup(create_inputs=True)
+
+    # Check config files have been copied to work path
+    for file in all_config_files + ['config.yaml']:
+        filepath = workdir / file
+        assert filepath.exists() and filepath.is_file()
+        assert not filepath.is_symlink()
+        assert filepath.read_bytes() == (ctrldir / file).read_bytes()
+
+
+@pytest.mark.parametrize(
+    "input_path, is_symlink, is_absolute",
+    [
+        (labdir / 'input' / 'lab_inputs', False, False),
+        (ctrldir / 'ctrl_inputs', False, False),
+        (tmpdir / 'symlinked_inputs', True, False),
+        (tmpdir / 'tmp_inputs', False, True)
+    ]
+)
+def test_setup_inputs(input_path, is_symlink, is_absolute):
+    """Test inputs are symlinked to work directory,
+    and added in input manifest"""
+    # Make inputs
+    input_path.mkdir(parents=True, exist_ok=True)
+    for i in range(1, 4):
+        make_random_file(input_path / f'input_00{i}.bin', 1000**2 + i)
+
+    if is_symlink:
+        # Create an input symlink in control directory
+        (ctrldir / input_path.name).symlink_to(input_path)
+
+    # Modify config to specify input path
+    config = copy.deepcopy(config_orig)
+    config['input'] = str(input_path) if is_absolute else input_path.name
+
+    # Run payu setup
+    run_payu_setup(config=config, create_config_files=True)
+
+    input_manifest = get_manifests(ctrldir/'manifests')['input.yaml']
+    for i in range(1, 4):
+        filename = f'input_00{i}.bin'
+        work_input = workdir / filename
+
+        # Check file exists and file size is expected
+        assert work_input.exists() and work_input.is_symlink()
+        assert work_input.stat().st_size == 1000**2 + i
+
+        # Check relative input path is added to manifest
+        filepath = str(Path('work') / filename)
+        assert filepath in input_manifest
+
+        # Check manifest fullpath
+        manifest_fullpath = input_manifest[filepath]['fullpath']
+        assert manifest_fullpath == str(input_path / filename)
+
+        # Check fullpath is a resolved path
+        assert Path(manifest_fullpath).is_absolute()
+        assert not Path(manifest_fullpath).is_symlink()
 
 
 def test_setup():
+    """Test work directory and executable are setup as expected,
+    and re-running setup requires a force=True"""
+    run_payu_setup(create_inputs=True, create_config_files=True)
 
-    # Create some input and executable files
-    make_inputs()
-    make_exe()
+    assert workdir.is_symlink and workdir.is_dir()
 
-    bindir = labdir / 'bin'
-    exe = config['exe']
+    # Check executable symlink is in work directory
+    bin_exe = labdir / 'bin' / config_orig['exe']
+    work_exe = workdir / config_orig['exe']
+    assert work_exe.exists() and work_exe.is_symlink()
+    assert work_exe.resolve() == bin_exe.resolve()
 
-    make_config_files()
-
-    # Run setup
-    payu_setup(lab_path=str(labdir))
-
-    assert(workdir.is_symlink())
-    assert(workdir.is_dir())
-    assert((workdir/exe).resolve() == (bindir/exe).resolve())
-    workdirfull = workdir.resolve()
-
-    config_files = payu.models.test.config_files
-
-    for f in config_files + ['config.yaml']:
-        assert((workdir/f).is_file())
-
-    for i in range(1, 4):
-        assert((workdir/'input_00{i}.bin'.format(i=i)).stat().st_size
-               == 1000**2 + i)
-
+    # Re-run setup - expect an error
     with pytest.raises(SystemExit,
                        match="work path already exists") as setup_error:
         payu_setup(lab_path=str(labdir), sweep=False, force=False)
     assert setup_error.type == SystemExit
 
-    payu_setup(lab_path=str(labdir), sweep=False, force=True)
+    assert workdir.is_symlink and workdir.is_dir()
 
-    assert(workdir.is_symlink())
-    assert(workdir.is_dir())
-    assert((workdir/exe).resolve() == (bindir/exe).resolve())
-    workdirfull = workdir.resolve()
 
-    config_files = payu.models.test.config_files
+def test_sweep():
+    """Test sweeping ephemeral work directory functions
+    correctly"""
+    run_payu_setup(create_inputs=True, create_config_files=True)
 
-    for f in config_files + ['config.yaml']:
-        assert((workdir/f).is_file())
+    assert workdir.is_symlink and workdir.is_dir()
 
-    for i in range(1, 4):
-        assert((workdir/'input_00{i}.bin'.format(i=i)).stat().st_size
-               == 1000**2 + i)
+    sweep_work()
+
+    assert not workdir.exists()
+
+
+@pytest.mark.parametrize(
+    "current_version, min_version",
+    [
+        ("2.0.0", "1.0.0"),
+        ("v0.11.2", "v0.11.1"),
+        ("1.0.0", "1.0.0"),
+        ("1.0.0+4.gabc1234", "1.0.0"),
+        ("1.0.0+0.gxyz987.dirty", "1.0.0"),
+        ("1.1.5", 1.1)
+    ]
+)
+def test_check_payu_version_pass(current_version, min_version):
+    # Mock the payu version
+    with patch('payu.__version__', current_version):
+        # Avoid running Experiment init method
+        with patch.object(payu.experiment.Experiment, '__init__',
+                          lambda x: None):
+            expt = payu.experiment.Experiment()
+
+            # Mock config.yaml
+            expt.config = {
+                "payu_minimum_version": min_version
+            }
+            expt.check_payu_version()
+
+
+@pytest.mark.parametrize(
+    "current_version, min_version",
+    [
+        ("1.0.0", "2.0.0"),
+        ("v0.11", "v0.11.1"),
+        ("1.0.0+4.gabc1234", "1.0.1"),
+        ("1.0.0+0.gxyz987.dirty", "v1.2"),
+    ]
+)
+def test_check_payu_version_fail(current_version, min_version):
+    with patch('payu.__version__', current_version):
+        with patch.object(payu.experiment.Experiment, '__init__',
+                          lambda x: None):
+            expt = payu.experiment.Experiment()
+
+            expt.config = {
+                "payu_minimum_version": min_version
+            }
+
+            with pytest.raises(RuntimeError):
+                expt.check_payu_version()
+
+
+@pytest.mark.parametrize(
+    "current_version", ["1.0.0", "1.0.0+4.gabc1234"]
+)
+def test_check_payu_version_pass_with_no_minimum_version(current_version):
+    with patch('payu.__version__', current_version):
+        with patch.object(payu.experiment.Experiment, '__init__',
+                          lambda x: None):
+            expt = payu.experiment.Experiment()
+
+            # Leave version out of config.yaml
+            expt.config = {}
+
+            # Check runs without an error
+            expt.check_payu_version()
+
+
+@pytest.mark.parametrize(
+    "minimum_version", ["abcdefg", None]
+)
+def test_check_payu_version_configured_invalid_version(minimum_version):
+    with patch('payu.__version__', "1.0.0"):
+        with patch.object(payu.experiment.Experiment, '__init__',
+                          lambda x: None):
+            expt = payu.experiment.Experiment()
+
+            expt.config = {
+                "payu_minimum_version": minimum_version
+            }
+
+            with pytest.raises(ValueError):
+                expt.check_payu_version()
+
+
+# model.expt.runlog.enabled is used in code for writing runlog
+# it can be set as runlog:true or runlog:enable:true in config.yaml
+@pytest.mark.parametrize(
+        "runlog, enabled", 
+        [   
+            (None, True), #default is True
+            (True, True), 
+            (False, False), 
+            ({"enable":True}, True),
+            ({"enable":False}, False)
+         ]
+)
+@pytest.mark.filterwarnings("error")
+def test_runlog_enable(runlog, enabled):
+    config = copy.deepcopy(config_orig)
+    if runlog == None:
+        config.pop('runlog') #remove from config for default case
+    else:
+        config['runlog'] = runlog
+
+    expt = init_experiment(config)
+    model = expt.models[0]
+
+    assert model.expt.runlog.enabled == enabled
+
+
+def test_set_prior_restart_path_no_restarts_in_archive():
+    """Test that prior restart path is set to None if no restarts in archive."""
+    expt = init_experiment(config_orig)
+    assert expt.prior_restart_path is None
+
+
+def test_set_prior_restart_path_with_restart_in_archive(tmp_path):
+    """Test prior restart path is set to restart directory in archive"""
+    # Create an external restart directory
+    user_restart = tmp_path / "external_restart"
+    user_restart.mkdir(parents=True, exist_ok=True)
+
+    # Add restart to config
+    config = copy.deepcopy(config_orig)
+    config["restart"] = str(user_restart)
+
+    # Make an archive directory with a restart
+    make_expt_archive_dir(type='restart', index=9)
+
+    expt = init_experiment(config)
+    assert expt.prior_restart_path == os.path.join(expt.archive_path, 'restart009')
+
+
+def test_set_prior_restart_with_non_zero_counter_and_no_restarts(monkeypatch):
+    """Test set prior restart path warns if the prior restart
+    is not found with a non-zero run counter"""
+    monkeypatch.setenv('PAYU_CURRENT_RUN', '10')
+    msg = (
+        "No prior restart directory found in archive or "
+        "specified in config.yaml"
+    )
+    with pytest.warns(UserWarning, match=msg):
+        expt = init_experiment(config_orig)
+    assert expt.prior_restart_path is None
+
+
+def test_set_prior_restart_with_non_zero_counter_and_restart(tmp_path,
+                                                             monkeypatch):
+    """Test prior restart path is set to restart directory in config.yaml
+    when PAYU_CURRENT_RUN is set to non-zero"""
+    monkeypatch.setenv("PAYU_CURRENT_RUN", "10")
+
+    # Create an external restart directory
+    user_restart = tmp_path / 'restart009'
+    user_restart.mkdir(parents=True, exist_ok=True)
+
+    # Add restart to config
+    config = copy.deepcopy(config_orig)
+    config['restart'] = str(user_restart)
+    msg = r'Starting run from restart directory \(in config.yaml\):*'
+    with pytest.warns(UserWarning, match=msg):
+        expt = init_experiment(config)
+    assert expt.prior_restart_path == str(user_restart)
+
+    # Test error is raised if restart directory does not exist
+    user_restart.rmdir()
+
+    error_msg = rf'No restart directory found at {user_restart}.*'
+    with pytest.raises(ValueError, match=error_msg):
+        expt = init_experiment(config)
+
+
+def test_setup_timing():
+    """Check timings are initialised and payu setup
+    time is recorded"""
+    make_exe()
+    make_inputs()
+    make_config_files()
+    config = copy.deepcopy(config_orig)
+    # Add setup userscript
+    config['userscripts'] = {
+        'setup': 'echo "Running setup userscript"'
+    }
+
+    # Initialize the experiment
+    expt = init_experiment(config)
+    # Test timings are initialized
+    assert expt.timings is not None
+    assert "payu_start_time" in expt.timings
+    assert isinstance(expt.timings['payu_start_time'], datetime.datetime)
+    assert len(expt.timings) == 1
+
+    with cd(ctrldir):
+        expt.setup()
+
+    # Check setup method time has been recorded
+    assert len(expt.timings) == 3
+    assert 'payu_setup_duration_seconds' in expt.timings
+    assert isinstance(expt.timings['payu_setup_duration_seconds'], float)
+    assert 'setup_userscript_duration_seconds' in expt.timings
+    assert isinstance(expt.timings['setup_userscript_duration_seconds'], float)
+
+
+def test_setup_telemetry_file(tmp_path):
+    """Check job file used for telemetry is created at setup"""
+    make_exe()
+    make_inputs()
+    make_config_files()
+
+    expt = init_experiment(config_orig)
+    with cd(ctrldir):
+        expt.job_file = tmp_path / 'job-id.json'
+        # Run setup
+        expt.setup()
+
+    path = tmp_path / 'job-id.json'
+    assert path.exists() and path.is_file()
+
+    with open(path, 'r') as f:
+        data = json.load(f)
+    assert data['stage'] == 'setup'
+    assert data['payu_current_run'] == 0
+
+def test_null_userscripts():
+    '''Test when userscripts is set to null in config.yaml'''
+    config_orig_null = copy.deepcopy(config_orig)
+    config_orig_null['userscripts'] = None
+    expt = init_experiment(config_orig_null)
+    assert expt.userscripts == {}

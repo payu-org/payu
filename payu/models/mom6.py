@@ -10,14 +10,22 @@
 
 # Standard library
 import os
+from datetime import datetime, timedelta
+import cftime
+from collections import deque
 
 # Extensions
 import f90nml
+import shutil
+from warnings import warn
+from glob import glob
 
 # Local
 from payu.models.fms import Fms
 from payu.models.mom_mixin import MomMixin
+from payu.git_utils import GitRepository
 
+MOM6_DOCS = ["MOM_parameter_doc.*","available_diags.*"]
 
 def mom6_add_parameter_files(model):
     """Add parameter files defined in input.nml to model configuration files.
@@ -41,6 +49,32 @@ def mom6_add_parameter_files(model):
         else:
             model.config_files.extend(filenames)
 
+def mom6_save_docs_files(model):
+    """Add docs files created as MOM output back to the control directory"""
+    docs_folder = os.path.join(model.control_path, 'docs')
+    os.makedirs(docs_folder, exist_ok=True)
+
+    # copy everything that matches MOM_parameter_doc.* to the control dir
+    for pattern in MOM6_DOCS:
+        for f in glob(os.path.join(model.work_path, pattern)):
+            try:
+                shutil.copy(f, docs_folder)
+            except Exception as e:
+                warn(e)
+
+    if model.expt.runlog.enabled: #if runlog true, default to true
+        # commit new files to the control dir
+        repo = GitRepository(repo_path = model.control_path)
+
+        paths_to_commit = []
+        for pattern in MOM6_DOCS:
+            for i in glob(os.path.join(docs_folder, pattern)):
+                paths_to_commit.append(i)
+
+        repo.commit(
+            commit_message = "payu archive: documentation of MOM6 run-time configuration" ,
+            paths_to_commit = paths_to_commit
+        )
 
 class Mom6(MomMixin, Fms):
     """Interface to GFDL's MOM6 ocean model."""
@@ -82,8 +116,7 @@ class Mom6(MomMixin, Fms):
 
         input_nml = f90nml.read(input_fpath)
 
-        if ((self.expt.counter == 0 or self.expt.repeat_run) and
-                self.prior_restart_path is None):
+        if (self.prior_restart_path is None):
             input_type = 'n'
         else:
             input_type = 'r'
@@ -93,3 +126,43 @@ class Mom6(MomMixin, Fms):
             input_nml['SIS_input_nml']['input_filename'] = input_type
 
         f90nml.write(input_nml, input_fpath, force=True)
+
+    def archive(self):
+        # Move any the MOM_parameter_docs output back into the control repo 
+        # and commit it for documentation
+        mom6_save_docs_files(self)
+
+        super().archive()
+
+    def read_start_date(self, input_path, calendar):
+        """Read the start date from input.nml."""
+        input_nml = f90nml.read(input_path)
+        start_date_list = input_nml.get('ocean_solo_nml', {}).get('date_init', None)
+        if start_date_list is None:
+            raise ValueError(f"Key 'date_init' not found in {input_path}")
+        return cftime.datetime(*start_date_list, calendar=calendar)
+
+    def read_timestep(self, stats_path):
+        """ Read the current timestep from ocean.stats."""
+        with open(stats_path, 'r') as f:
+            line = deque(f, maxlen=1)[0]
+            timestep = float(line.split(',')[1])
+            return timestep
+
+    def get_cur_expt_time(self):
+        """Get the current experiment time from log file.
+        --- 
+        output:
+            cftime.datetime
+        """
+        ocean_solo_path = os.path.join(self.expt.work_path, 'INPUT', 'ocean_solo.res')
+        calendar = self.get_calendar(ocean_solo_path)
+
+        input_path = os.path.join(self.expt.work_path, 'input.nml')
+        start_date = self.read_start_date(input_path, calendar)
+
+        stats_path = os.path.join(self.expt.work_path, 'ocean.stats')
+        timestep = self.read_timestep(stats_path)
+
+        cur_expt_time = start_date + timedelta(days=timestep)
+        return cur_expt_time

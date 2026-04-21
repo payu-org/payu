@@ -12,8 +12,9 @@ import warnings
 from pathlib import Path
 from typing import Optional
 import shutil
+import sys
 
-from ruamel.yaml import YAML, CommentedMap
+from ruamel.yaml import YAML, CommentedMap, constructor
 import git
 
 from payu.fsops import read_config, DEFAULT_CONFIG_FNAME, list_archive_dirs
@@ -21,6 +22,14 @@ from payu.laboratory import Laboratory
 from payu.metadata import Metadata, UUID_FIELD, METADATA_FILENAME
 from payu.git_utils import GitRepository, git_clone, PayuBranchError
 
+LAB_WRITE_ACCESS_ERROR = """
+Failed to initialise laboratory directories. Skipping creating metadata,
+setting up restart configuration, and archive/work symlinks.
+
+To fix, first modify/remove the config.yaml options that determine laboratory
+path. Then either run 'payu setup' or rerun checkout command with the current
+git branch, e.g. `payu checkout -r  <RESTART_PATH> <CURRENT_BRANCH>`
+"""
 
 NO_CONFIG_FOUND_MESSAGE = """No configuration file found on this branch.
 Skipping adding new metadata file and creating archive/work symlinks.
@@ -36,10 +45,34 @@ To checkout an existing branch, run:
 Where BRANCH_NAME is the name of the branch"""
 
 
-def check_restart(restart_path: Optional[Path],
-                  archive_path: Path) -> Optional[Path]:
-    """Checks for valid prior restart path. Returns resolved restart path
-    if valid, otherwise returns None"""
+def remove_traceback_hook(kind, message, traceback):
+    """Remove traceback for only PayuBranchError"""
+    if kind is PayuBranchError:
+        print(f'{kind.__name__}: {message}', file=sys.stderr)
+    else:
+        sys.__excepthook__(kind, message, traceback)
+
+# Override the default exception hook to remove traceback
+sys.excepthook = remove_traceback_hook
+
+
+def check_restart(restart_path: Path,
+                  archive_path: Optional[Path] = None) -> Optional[Path]:
+    """Checks if restart path exists and whether the archive already
+    has pre-existing restarts. Returns a resolved restart path
+
+    Parameters
+    ----------
+    restart_path: Path
+        Absolute, or relative, restart path to start experiment from
+    archive_path: Optional[Path], default None
+        Experiment archive directory to check for pre-existing restarts files
+
+    Returns
+    ----------
+    Optional[Path]
+        Absolute restart path if a valid path, otherwise None
+    """
 
     # Check for valid path
     if not restart_path.exists():
@@ -51,7 +84,7 @@ def check_restart(restart_path: Optional[Path],
     restart_path = restart_path.resolve()
 
     # Check for pre-existing restarts in archive
-    if archive_path.exists():
+    if archive_path and archive_path.exists():
         if len(list_archive_dirs(archive_path, dir_type="restart")) > 0:
             warnings.warn((
                 f"Pre-existing restarts found in archive: {archive_path}."
@@ -67,8 +100,18 @@ def add_restart_to_config(restart_path: Path, config_path: Path) -> None:
     restart in archive"""
 
     # Default ruamel yaml preserves comments and multiline strings
-    yaml = YAML()
-    config = yaml.load(config_path)
+    try:
+        yaml = YAML()
+        config = yaml.load(config_path)
+    except constructor.DuplicateKeyError as e:
+        # PyYaml which is used to read config allows duplicate keys
+        # These will get removed when the configuration file is modified
+        warnings.warn(
+            "Removing any subsequent duplicate keys from config.yaml"
+        )
+        yaml = YAML()
+        yaml.allow_duplicate_keys = True
+        config = yaml.load(config_path)
 
     # Add in restart path
     config['restart'] = str(restart_path)
@@ -126,7 +169,7 @@ def checkout_branch(branch_name: str,
     start_point: Optional[str]
         Branch name or commit hash to start new branch from
     restart_path: Optional[Path]
-        Absolute restart path to start experiment from
+        Restart path to start experiment from
     config_path: Optional[Path]
         Path to configuration file - config.yaml
     control_path: Optional[Path]
@@ -148,8 +191,15 @@ def checkout_branch(branch_name: str,
     # Check config file exists on checked out branch
     config_path = check_config_path(config_path)
 
-    # Initialise Lab and Metadata
+    # Initialise Lab
     lab = Laboratory(model_type, config_path, lab_path)
+    try:
+        lab.initialize()
+    except PermissionError:
+        print(LAB_WRITE_ACCESS_ERROR)
+        raise
+
+    # Initialise metadata
     metadata = Metadata(Path(lab.archive_path),
                         branch=branch_name,
                         config_path=config_path)
@@ -188,7 +238,7 @@ def switch_symlink(lab_dir_path: Path, control_path: Path,
     sym_path = control_path / sym_dir
 
     # Remove symlink if it already exists
-    if sym_path.exists() and sym_path.is_symlink:
+    if sym_path.is_symlink():
         previous_path = sym_path.resolve()
         sym_path.unlink()
         print(f"Removed {sym_dir} symlink to {previous_path}")
@@ -202,6 +252,7 @@ def switch_symlink(lab_dir_path: Path, control_path: Path,
 def clone(repository: str,
           directory: Path,
           branch: Optional[str] = None,
+          start_point: Optional[str] = None,
           new_branch_name: Optional[str] = None,
           keep_uuid: bool = False,
           model_type: Optional[str] = None,
@@ -217,11 +268,11 @@ def clone(repository: str,
         directory: Path
             The control directory where the repository will be cloned
         branch: Optional[str]
-            Name of branch to clone and checkout
+            Name of branch to checkout during the git clone
+        start_point: Optional[str]
+            Branch-name/commit/tag to start new branch from
         new_branch_name: Optional[str]
-            Name of new branch to create and checkout.
-            If branch is also defined, the new branch will start from the
-            latest commit of the branch.
+            Name of new branch to create and checkout
         keep_uuid: bool, default False
             Keep UUID unchanged, if it exists
         config_path: Optional[Path]
@@ -233,11 +284,15 @@ def clone(repository: str,
         lab_path: Optional[Path]
             Path to laboratory directory
         restart_path: Optional[Path]
-            Absolute restart path to start experiment from
+            Restart path to start experiment from
         parent_experiment: Optional[str]
             Parent experiment UUID to add to generated metadata
 
     Returns: None
+
+    Note: branch, if defined, can be set to avoid initially checking out the
+    default branch during git clone - this is useful for repositories where
+    the default branch is not a payu configuration.
     """
     # Resolve directory to an absolute path
     control_path = directory.resolve()
@@ -249,8 +304,21 @@ def clone(repository: str,
             "and use `payu checkout` if it is the same git repository"
         )
 
+    # Check -b is set when -s/--start-point is set
+    if start_point is not None and new_branch_name is None:
+        raise PayuBranchError(
+            "Starting from a specific commit or tag requires a new branch "
+            "name to be specified. Use the --new-branch/-b flag in payu clone "
+            "to create a new git branch.\n"
+            "For more infomation on payu clone, run `payu clone --help`"
+        )
+
     # git clone the repository
     repo = git_clone(repository, control_path, branch)
+
+    if restart_path:
+        # Check path exists and resolve to an absolute path
+        restart_path = check_restart(restart_path)
 
     owd = os.getcwd()
     try:
@@ -268,7 +336,8 @@ def clone(repository: str,
                             control_path=control_path,
                             model_type=model_type,
                             lab_path=lab_path,
-                            parent_experiment=parent_experiment)
+                            parent_experiment=parent_experiment,
+                            start_point=start_point)
         else:
             # Checkout branch
             if branch is None:
@@ -287,10 +356,11 @@ def clone(repository: str,
         # Remove directory if incomplete checkout
         shutil.rmtree(control_path)
         msg = (
-            "Incomplete checkout. To run payu clone again, modify/remove " +
-            "the checkout new branch flag: --new-branch/-b, or " +
-            "checkout existing branch flag: --branch/-B " +
-            f"\n  Checkout error: {e}"
+            "Incomplete checkout. To run payu clone again, modify/remove "
+            "the checkout new branch flag: --new-branch/-b, or "
+            "checkout existing branch flag: --branch/-B "
+            f"\n  Checkout error: {e}\n"
+            "For more infomation on payu clone, run `payu clone --help`"
         )
         raise PayuBranchError(msg)
     finally:
@@ -372,7 +442,7 @@ def list_branches(config_path: Optional[Path] = None,
     control_path = get_control_path(config_path)
     git_repo = GitRepository(control_path)
 
-    current_branch = git_repo.repo.active_branch
+    current_branch = git_repo.get_branch()
     print(f"* Current Branch: {current_branch.name}")
     print_branch_metadata(current_branch, verbose)
 

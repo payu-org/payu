@@ -15,10 +15,11 @@ import os
 import sys
 import shutil
 import stat
+from pathlib import Path
 
 from yamanifest.manifest import Manifest as YaManifest
 
-from payu.fsops import make_symlink, mkdir_p
+from payu.fsops import make_symlink
 
 
 # fast_hashes = ['nchash','binhash']
@@ -26,6 +27,16 @@ fast_hashes = ['binhash']
 full_hashes = ['md5']
 all_hashes = fast_hashes + full_hashes
 
+def path_full_match(fullpath, ignore_patterns):
+    """
+    Iteratively check if ignore patterns match filepath. If any pattern matches, return True.
+    """
+    for pattern in ignore_patterns:
+        # Check each part of the filepath against the pattern
+        for p in Path(fullpath).parts:  
+            if Path(p).match(pattern):
+                return True
+    return False
 
 class PayuManifest(YaManifest):
     """
@@ -44,90 +55,82 @@ class PayuManifest(YaManifest):
         self.fast_hashes = fast_hashes
         self.full_hashes = full_hashes
 
-        if ignore is not None:
-            self.ignore = ignore
+        self.ignore = ignore
 
-        self.needsync = False
-        self.existing_filepaths = set()
-
-    def check_fast(self, reproduce=False, **args):
+    def calculate_fast(self, previous_manifest):
         """
-        Check hash value for all filepaths using a fast hash function and fall
-        back to slower full hash functions if fast hashes fail to agree.
+        Calculate hash value for all filepaths using a fast hash function and
+        fall back to slower full hash functions if fast hashes fail to agree,
+        with the pre-existing manifest
         """
-        hashvals = {}
-
-        fast_check = self.check_file(
+        # Calculate all fast hashes
+        self.add(
             filepaths=self.data.keys(),
-            hashvals=hashvals,
             hashfn=self.fast_hashes,
-            shortcircuit=True,
-            **args
+            force=True,
+            fullpaths=[self.fullpath(fpath) for fpath
+                       in list(self.data.keys())]
         )
 
-        if not fast_check:
+        # If fast hashes from previous manifest match, use previous full hashes
+        # to avoid re-calculating slow hashes
+        self.update_matching_hashes(other=previous_manifest)
 
-            # Save all the fast hashes for failed files that we've already
-            # calculated
-            for filepath in hashvals:
-                for hash, val in hashvals[filepath].items():
-                    self.data[filepath]['hashes'][hash] = val
+        # Search for new files and files with changed fast hashes
+        changed_filepaths = set()
+        for filepath in self.data.keys():
+            for hash in self.data[filepath]['hashes'].values():
+                if hash is None:
+                    changed_filepaths.add(filepath)
 
-            if reproduce:
-                for filepath in hashvals:
-                    print('Check failed for {0} {1}'
-                          ''.format(filepath, hashvals[filepath]))
-                    tmphash = {}
-                    full_check = self.check_file(
-                        filepaths=filepath,
-                        hashfn=self.full_hashes,
-                        hashvals=tmphash,
-                        shortcircuit=False,
-                        **args
+        # Calculate full hashes for these changed filepaths
+        if len(changed_filepaths) > 0:
+            self.add(
+                filepaths=list(changed_filepaths),
+                hashfn=self.full_hashes,
+                force=True,
+                fullpaths=[self.fullpath(fpath) for fpath
+                           in list(changed_filepaths)]
+            )
+
+    def check_reproduce(self, previous_manifest):
+        """
+        Compare full hashes with previous manifest
+        """
+        # Use paths in both manifests to pick up new and missing files
+        all_filepaths = set(self.data.keys()).union(
+            previous_manifest.data.keys()
+        )
+        differences = []
+        for filepath in all_filepaths:
+            for hashfn in self.full_hashes:
+                hash = self.get(filepath, hashfn)
+                previous_hash = previous_manifest.get(filepath, hashfn)
+
+                if hash is None:
+                    differences.append(
+                        f"  {filepath}: Missing file (file not in " +
+                        "calculated manifest)"
+                    )
+                elif previous_hash is None:
+                    differences.append(
+                        f"  {filepath}: New file (file not in stored manifest)"
+                    )
+                elif hash != previous_hash:
+                    differences.append(
+                        f"  {filepath}: {hashfn}: {previous_hash} != {hash}"
                     )
 
-                    if full_check:
-                        # File is still ok, so replace fast hashes
-                        print('Full hashes ({0}) checked ok'
-                              ''.format(self.full_hashes))
-                        print('Updating fast hashes for {0} in {1}'
-                              ''.format(filepath, self.path))
-                        self.add_fast(filepath, force=True)
-                        print('Saving updated manifest')
-                        self.needsync = True
-                    else:
-                        sys.stderr.write(
-                            'Run cannot reproduce: manifest {0} is not '
-                            'correct\n'.format(self.path)
-                        )
-                        for path, hashdict in tmphash.items():
-                            print('    {0}:'.format(path))
-                            for hash, val in hashdict.items():
-                                hash_table = self.data[path]['hashes']
-                                hash_table_val = hash_table.get(hash, None)
-                                print('        {0}: {1} != {2}'
-                                      ''.format(hash, val, hash_table_val))
-                        sys.exit(1)
-            else:
-                # Not relevant if full hashes are correct. Regenerate full
-                # hashes for all filepaths that failed fast check.
-                print('Updating full hashes for {0} files in {1}'
-                      ''.format(len(hashvals), self.path))
+        if len(differences) != 0:
+            sys.stderr.write(
+                f'Run cannot reproduce: manifest {self.path} is not correct\n'
+            )
+            print(f"Manifest path: stored hash != calculated hash")
+            for row in differences:
+                print(row)
 
-                # Add all full hashes at once -- much faster. Definitely want
-                # to force the full hash to be updated. In the specific case of
-                # an empty hash the value will be None, without force it will
-                # be written as null.
-                self.add(
-                    filepaths=list(hashvals.keys()),
-                    hashfn=self.full_hashes,
-                    force=True,
-                    fullpaths=[self.fullpath(fpath) for fpath
-                               in list(hashvals.keys())]
-                )
+            sys.exit(1)
 
-                # Flag need to update version on disk
-                self.needsync = True
 
     def add_filepath(self, filepath, fullpath, hashes, copy=False):
         """
@@ -141,10 +144,9 @@ class PayuManifest(YaManifest):
         if os.path.isdir(fullpath):
             return False
 
-        # Ignore anything matching the ignore patterns
-        for pattern in self.ignore:
-            if fnmatch.fnmatch(os.path.basename(fullpath), pattern):
-                return False
+        # Iteratively check if ignore patterns match any part in fullpath
+        if path_full_match(fullpath, self.ignore):
+            return False
 
         if filepath not in self.data:
             self.data[filepath] = {}
@@ -155,9 +157,6 @@ class PayuManifest(YaManifest):
 
         if copy:
             self.data[filepath]['copy'] = copy
-
-        if filepath in self.existing_filepaths:
-            self.existing_filepaths.remove(filepath)
 
         return True
 
@@ -187,15 +186,11 @@ class PayuManifest(YaManifest):
         Payu integration function for creating symlinks in work directories
         which point back to the original file.
         """
-        # Check file exists. It may have been deleted but still in manifest
         if not os.path.exists(self.fullpath(filepath)):
-            print('File not found: {filepath}'.format(
-                  filepath=self.fullpath(filepath)))
-            if self.contains(filepath):
-                print('removing from manifest')
-                self.delete(filepath)
-                self.needsync = True
-                self.existing_filepaths.discard(filepath)
+            raise FileNotFoundError(
+                "Unable to create symlink in work directory. "
+                f"File not found: {self.fullpath(filepath)}"
+            )
         else:
             try:
                 destdir = os.path.dirname(filepath)
@@ -218,15 +213,6 @@ class PayuManifest(YaManifest):
                                               orig=self.fullpath(filepath),
                                               local=filepath))
                 raise
-            finally:
-                self.existing_filepaths.discard(filepath)
-
-    def make_links(self):
-        """
-        Used to make all links at once for reproduce runs or scaninputs=False
-        """
-        for filepath in list(self):
-            self.make_link(filepath)
 
     def copy(self, path):
         """
@@ -271,9 +257,21 @@ class Manifest(object):
         if isinstance(self.ignore, str):
             self.ignore = [self.ignore]
 
+        # Warn if ignore patterns are set to None
+        # And set to default patterns
+        if self.ignore is None:
+            self.ignore = ['.*']
+            print("Warning: Manifest `ignore` pattern is set to NULL. \n"
+                  "Using default ignore pattern to ignore hidden files.\n")
+        
+        # Warn if ignore patterns are empty lists
+        if len(self.ignore) == 0:
+            print("Warning: Manifest `ignore` pattern is set to an empty list. \n"
+                  "All files (including hidden files) will be included!!!\n")
+
         # Initialise manifests and reproduce flags
         self.manifests = {}
-        self.have_manifest = {}
+        self.previous_manifests = {}
         reproduce_config = self.manifest_config.get('reproduce', {})
         self.reproduce = {}
         for mf in ['input', 'restart', 'exe']:
@@ -281,14 +279,7 @@ class Manifest(object):
             self.reproduce[mf] = reproduce_config.get(mf, reproduce)
 
         # Make sure the manifests directory exists
-        mkdir_p(os.path.dirname(self.manifests['exe'].path))
-
-        # Set flag to auto-scan input directories
-        self.scaninputs = self.manifest_config.get('scaninputs', True)
-
-        if self.reproduce['input'] and self.scaninputs:
-            print("scaninputs set to False when reproduce input is True")
-            self.scaninputs = False
+        os.makedirs(os.path.dirname(self.manifests['exe'].path), exist_ok=True)
 
     def init_mf(self, mf):
         # Initialise a sub-manifest object
@@ -298,7 +289,14 @@ class Manifest(object):
             fast_hashes=self.fast_hashes,
             full_hashes=self.full_hashes
         )
-        self.have_manifest[mf] = False
+
+        # Initialise a sub-manifest object to store pre-existing manifests
+        self.previous_manifests[mf] = PayuManifest(
+            os.path.join('manifests', '{}.yaml'.format(mf)),
+            ignore=self.ignore,
+            fast_hashes=self.fast_hashes,
+            full_hashes=self.full_hashes
+        )
 
     def __iter__(self):
         """
@@ -311,96 +309,43 @@ class Manifest(object):
         """Return the number of manifests in the manifest class."""
         return len(self.manifests)
 
-    def load(self):
+    def load_manifests(self):
         """
-        Load manifests
+        Load pre-existing manifests
         """
-        for mf in self.manifests:
-            self.have_manifest[mf] = False
-            if (os.path.exists(self.manifests[mf].path)):
+        for mf in self.previous_manifests:
+            manifest_path = self.previous_manifests[mf].path
+            if os.path.exists(manifest_path):
                 try:
-                    print('Loading {mf} manifest: {path}'
-                          ''.format(mf=mf, path=self.manifests[mf].path))
-                    self.manifests[mf].load()
+                    print(f'Loading {mf} manifest: {manifest_path}')
+                    self.previous_manifests[mf].load()
                 except Exception as e:
-                    print('Error loading {mf} manifest: '
-                          '{error}'.format(mf=mf, error=e))
-                finally:
-                    if len(self.manifests[mf]) > 0:
-                        self.have_manifest[mf] = True
+                    print(f'Error loading {mf} manifest: {e}')
 
     def setup(self):
-
         # Load all available manifests
-        self.load()
-
-        if self.have_manifest['input']:
-            if self.scaninputs:  # Must be False for reproduce=True
-                # Save existing filepath information
-                self.manifests['input'].existing_filepaths = \
-                    set(self.manifests['input'].data.keys())
-
-        if self.have_manifest['exe']:
-            if not self.reproduce['exe']:
-                # Re-initialise exe manifest. Trivial to recreate
-                # and means no check required for changed executable
-                # paths
-                self.init_mf('exe')
-
-        if self.have_manifest['restart']:
-            if not self.reproduce['restart']:
-                # Re-initialise restart manifest. Only keep restart manifest
-                # if reproduce. Normally want to scan for new restarts
-                self.init_mf('restart')
-
-        # Check to make all manifests that should be populated are and
-        # make links in work directory for existing manifests
-        for mf in self.manifests.keys():
-            if self.have_manifest[mf]:
-                # Don't make links for inputs when scaninputs is True
-                if mf == 'input' and self.scaninputs:
-                    continue
-                print('Making {} links'.format(mf))
-                self.manifests[mf].make_links()
-            else:
-                if self.reproduce[mf]:
-                    print('{} manifest must exist if reproduce is True'
-                          ''.format(mf.capitalize()))
-                    exit(1)
+        self.load_manifests()
 
     def check_manifests(self):
-
-        print("Checking exe and input manifests")
-        self.manifests['exe'].check_fast(reproduce=self.reproduce['exe'])
-
-        if not self.reproduce['input']:
-            if len(self.manifests['input'].existing_filepaths) > 0:
-                # Delete missing filepaths from input manifest
-                for filepath in self.manifests['input'].existing_filepaths:
-                    print('File no longer in input directory: {file} '
-                          'removing from manifest'.format(file=filepath))
-                    self.manifests['input'].delete(filepath)
-                self.manifests['input'].needsync = True
-
-        self.manifests['input'].check_fast(reproduce=self.reproduce['input'])
-
-        if self.reproduce['restart']:
-            print("Checking restart manifest")
-        else:
-            print("Creating restart manifest")
-            self.manifests['restart'].needsync = True
-        self.manifests['restart'].check_fast(
-                reproduce=self.reproduce['restart'])
-
-        # Write updates to version on disk
+        print("Checking exe, input and restart manifests")
         for mf in self.manifests:
-            if self.manifests[mf].needsync:
+            # Calculate hashes in manifests
+            self.manifests[mf].calculate_fast(self.previous_manifests[mf])
+
+            if self.reproduce[mf]:
+                # Compare manifest with previous manifest
+                self.manifests[mf].check_reproduce(self.previous_manifests[mf])
+
+        # Update manifests if there's any changes, or create file if empty
+        for mf in self.manifests:
+            if (self.manifests[mf].data != self.previous_manifests[mf].data
+                    or len(self.manifests[mf]) == 0):
                 print("Writing {}".format(self.manifests[mf].path))
                 self.manifests[mf].dump()
 
     def copy_manifests(self, path):
 
-        mkdir_p(path)
+        os.makedirs(path, exist_ok=True)
         try:
             for mf in self.manifests:
                 self.manifests[mf].copy(path)
@@ -421,11 +366,11 @@ class Manifest(object):
             # Only link if filepath was added
             self.manifests[manifest].make_link(filepath)
 
-    def get_all_fullpaths(self):
+    def get_all_previous_fullpaths(self):
         """
         Return a list of all fullpaths in manifest files
         """
         files = []
-        for mf in self.manifests:
-            files.extend(self.manifests[mf].get_fullpaths())
+        for mf in self.previous_manifests:
+            files.extend(self.previous_manifests[mf].get_fullpaths())
         return files

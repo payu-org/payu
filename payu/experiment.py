@@ -11,6 +11,7 @@ from __future__ import print_function
 # Standard Library
 import datetime
 import errno
+from functools import wraps
 import os
 import re
 import resource
@@ -19,16 +20,22 @@ import shlex
 import shutil
 import subprocess as sp
 import sysconfig
+import time
 from pathlib import Path
+import warnings
+import pwd
 
 # Extensions
 import yaml
+from packaging import version
 
 # Local
 from payu import envmod
-from payu.fsops import mkdir_p, make_symlink, read_config, movetree
+from payu.fsops import make_symlink, read_config, movetree
 from payu.fsops import list_archive_dirs
-from payu.schedulers.pbs import get_job_info, pbs_env_init, get_job_id
+from payu.fsops import run_script_command
+from payu.fsops import needs_subprocess_shell
+from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 from payu.models import index as model_index
 import payu.profilers
 from payu.runlog import Runlog
@@ -36,6 +43,7 @@ from payu.manifest import Manifest
 from payu.calendar import parse_date_offset
 from payu.sync import SyncToRemoteArchive
 from payu.metadata import Metadata
+import payu.telemetry as telemetry
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -45,10 +53,27 @@ core_modules = ['python', 'payu']
 default_restart_freq = 5
 
 
-class Experiment(object):
+def timeit(time_name):
+    """Decorator to time a function and store the elapsed time in seconds
+    to the timings dictionary in the class"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            start_time = time.perf_counter()
+            result = func(self, *args, **kwargs)
+            elapsed_time = time.perf_counter() - start_time
+            self.timings[time_name] = elapsed_time
+            return result
+        return wrapper
+    return decorator
 
-    def __init__(self, lab, reproduce=False, force=False):
+
+class Experiment(object):
+    def __init__(self, lab, reproduce=False, force=False, metadata_off=False, config_path=None):
+        self.init_timings()
         self.lab = lab
+        # Check laboratory directories are writable
+        self.lab.initialize()
 
         if not force:
             # check environment for force flag under PBS
@@ -56,17 +81,15 @@ class Experiment(object):
         else:
             self.force = force
 
-        self.start_time = datetime.datetime.now()
-
         # Initialise experiment metadata - uuid and experiment name
-        self.metadata = Metadata(Path(lab.archive_path))
+        self.metadata = Metadata(Path(lab.archive_path), disabled=metadata_off, config_path=config_path)
         self.metadata.setup()
 
         # TODO: replace with dict, check versions via key-value pairs
         self.modules = set()
 
         # TODO: __init__ should not be a config dumping ground!
-        self.config = read_config()
+        self.config = read_config(config_path)
 
         # Payu experiment type
         self.debug = self.config.get('debug', False)
@@ -112,13 +135,14 @@ class Experiment(object):
 
         # Miscellaneous configurations
         # TODO: Move this stuff somewhere else
-        self.userscripts = self.config.get('userscripts', {})
+        userscript_val = self.config.get('userscripts', {})
+        self.userscripts = userscript_val if isinstance(userscript_val, dict) else {}
 
         self.profilers = []
 
         init_script = self.userscripts.get('init')
         if init_script:
-            self.run_userscript(init_script)
+            self.run_userscript(init_script, 'init')
 
         self.runlog = Runlog(self)
 
@@ -132,13 +156,39 @@ class Experiment(object):
 
         self.run_id = None
 
+        self.user_modules_paths = None
+
+        # Initialize scheduler instance
+        self.scheduler_name = self.config.get('scheduler',
+                                              DEFAULT_SCHEDULER_CONFIG)
+        self.scheduler = scheduler_index[self.scheduler_name]()
+        self.job_file = None
+
+
+    def set_job_file(self, type='run'):
+        """Set the job file for the payu job"""
+        self.job_file = telemetry.get_job_file_path(
+            archive_path=Path(self.archive_path),
+            run_number=self.counter,
+            timings=self.timings,
+            scheduler=self.scheduler,
+            type=type,
+        )
+
+
+    def init_timings(self):
+        """Initialize an timings dictionary with the current time."""
+        self.timings = {
+            "payu_start_time": datetime.datetime.now(),
+        }
+
     def init_models(self):
 
         self.model_name = self.config.get('model')
         assert self.model_name
 
         model_fields = ['model', 'exe', 'input', 'ncpus', 'npernode', 'build',
-                        'mpthreads', 'exe_prefix']
+                        'mpthreads', 'exe_prefix', 'model_config']
 
         # XXX: Temporarily adding this to model config...
         model_fields += ['mask']
@@ -201,11 +251,9 @@ class Experiment(object):
         try:
             output_dirs = list_archive_dirs(archive_path=self.archive_path,
                                             dir_type=output_type)
-        except EnvironmentError as exc:
-            if exc.errno == errno.ENOENT:
-                output_dirs = None
-            else:
-                raise
+        except FileNotFoundError:
+            # Archive path does not exist yet
+            return None
 
         if output_dirs and len(output_dirs):
             return int(output_dirs[-1].lstrip(output_type))
@@ -220,9 +268,22 @@ class Experiment(object):
         resource.setrlimit(resource.RLIMIT_STACK,
                            (stacksize, resource.RLIM_INFINITY))
 
-    def load_modules(self):
-        # NOTE: This function is increasingly irrelevant, and may be removable.
+    def setup_modules(self):
+        """Setup modules and get paths added to $PATH by user-modules"""
+        envmod.setup()
 
+        # Get user modules info from config
+        user_modulepaths = self.config.get('modules', {}).get('use', [])
+        user_modules = self.config.get('modules', {}).get('load', [])
+
+        # Run module use + load commands for user-defined modules, and
+        # get a set of paths and loaded modules added by loading the modules
+        loaded_mods, paths = envmod.setup_user_modules(user_modules,
+                                                       user_modulepaths)
+        self.user_modules_paths = paths
+        self.loaded_user_modules = [] if loaded_mods is None else loaded_mods
+
+    def load_modules(self):
         # Scheduler
         sched_modname = self.config.get('scheduler', 'pbs')
         self.modules.add(sched_modname)
@@ -245,19 +306,13 @@ class Experiment(object):
             if len(mod) > 0:
                 print('mod '+mod)
                 mod_base = mod.split('/')[0]
-                if mod_base not in core_modules:
+                if (mod_base not in core_modules and
+                        mod not in self.loaded_user_modules):
                     envmod.module('unload', mod)
 
         # Now load model-dependent modules
         for mod in self.modules:
             envmod.module('load', mod)
-
-        # User-defined modules
-        user_modules = self.config.get('modules', {}).get('load', [])
-        for mod in user_modules:
-            envmod.module('load', mod)
-
-        envmod.module('list')
 
         for prof in self.profilers:
             prof.load_modules()
@@ -308,12 +363,10 @@ class Experiment(object):
         self.stdout_fname = self.lab.model_type + '.out'
         self.stderr_fname = self.lab.model_type + '.err'
 
-        self.job_fname = 'job.yaml'
         self.env_fname = 'env.yaml'
 
         self.output_fnames = (self.stderr_fname,
                               self.stdout_fname,
-                              self.job_fname,
                               self.env_fname)
 
     def set_output_paths(self):
@@ -341,12 +394,21 @@ class Experiment(object):
         self.restart_path = os.path.join(self.archive_path, restart_dir)
 
         # Prior restart path
-
+        # Check if there are any restart directories in archive
+        no_restarts = self.max_output_index(output_type="restart") is None
         # Check if a user restart directory is avaiable
         user_restart_dir = self.config.get('restart')
-        if (self.counter == 0 or self.repeat_run) and user_restart_dir:
-            # TODO: Some user friendliness needed...
-            assert (os.path.isdir(user_restart_dir))
+        if (no_restarts or self.repeat_run) and user_restart_dir:
+            if not os.path.isdir(user_restart_dir):
+                raise ValueError(
+                    f"No restart directory found at {user_restart_dir}. "
+                    "Check 'restart:' field in config.yaml."
+                )
+            if self.counter > 0 and not self.repeat_run:
+                warnings.warn(
+                    "Starting run from restart directory (in config.yaml): "
+                    f"{user_restart_dir}"
+                )
             self.prior_restart_path = user_restart_dir
         else:
             prior_restart_dir = 'restart{0:03}'.format(self.counter - 1)
@@ -357,24 +419,59 @@ class Experiment(object):
             else:
                 self.prior_restart_path = None
                 if self.counter > 0 and not self.repeat_run:
-                    # TODO: This warning should be replaced with an abort in
-                    #       setup
-                    print('payu: warning: No restart files found.')
+                    warnings.warn(
+                        "No prior restart directory found in archive "
+                        "or specified in config.yaml"
+                    )
 
         for model in self.models:
             model.set_model_output_paths()
 
-    def build_model(self):
 
-        self.load_modules()
+    def check_payu_version(self):
+        """Check current payu version is greater than minimum required
+        payu version, if configured"""
+        # TODO: Move this function to a setup file if setup is moved to
+        # a separate file?
+        minimum_version_fieldname = "payu_minimum_version"
+        if minimum_version_fieldname not in self.config:
+            # Skip version check
+            return
 
-        for model in self.models:
-            model.get_codebase()
+        minimum_version = str(self.config[minimum_version_fieldname])
+        try:
+            # Attempt to parse the version
+            parsed_minimum_version = version.parse(minimum_version)
+        except version.InvalidVersion:
+            raise ValueError(
+                "Invalid version in configuration file (config.yaml) for "
+                f"'{minimum_version_fieldname}': {minimum_version}"
+            )
 
-        for model in self.models:
-            model.build_model()
+        # Get the current version of the package
+        current_version = payu.__version__
 
+        # Compare versions
+        if version.parse(current_version) < parsed_minimum_version:
+            raise RuntimeError(
+                f"Payu version {current_version} does not meet the configured "
+                f"minimum version. A version >= {minimum_version} is "
+                "required to run this configuration."
+            )
+
+    @timeit("payu_setup_duration_seconds")
     def setup(self, force_archive=False):
+        # Check version
+        self.check_payu_version()
+
+        # Setup the payu run job file
+        telemetry.setup_run_job_file(
+            file_path=self.job_file,
+            scheduler=self.scheduler,
+            metadata=self.metadata,
+            extra_info=self.setup_run_info(),
+            timings=self.timings,
+        )
 
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
@@ -392,10 +489,10 @@ class Experiment(object):
                          '             payu sweep and then payu run'
                          .format(path=self.work_path))
 
-        mkdir_p(self.work_path)
+        os.makedirs(self.work_path, exist_ok=True)
 
         if force_archive:
-            mkdir_p(self.archive_path)
+            os.makedirs(self.archive_path, exist_ok=True)
             make_symlink(self.archive_path, self.archive_sym_path)
 
         # Archive the payu config
@@ -413,6 +510,11 @@ class Experiment(object):
             sp.check_call(shlex.split(cmd))
 
         make_symlink(self.work_path, self.work_sym_path)
+
+        # Set up executable paths - first search through paths added by modules
+        self.setup_modules()
+        for model in self.models:
+            model.setup_executable_paths()
 
         # Set up all file manifests
         self.manifest.setup()
@@ -432,7 +534,7 @@ class Experiment(object):
 
         setup_script = self.userscripts.get('setup')
         if setup_script:
-            self.run_userscript(setup_script)
+            self.run_userscript(setup_script, 'setup')
 
         # Profiler setup
         expt_profs = self.config.get('profilers', [])
@@ -449,17 +551,11 @@ class Experiment(object):
 
         # Check restart pruning for valid configuration values and
         # warns user if more restarts than expected would be pruned
-        if self.config.get('archive', True):
+        if self.archiving():
             self.get_restarts_to_prune()
 
+    @timeit("payu_run_duration_seconds")
     def run(self, *user_flags):
-        # XXX: This was previously done in reversion
-        envmod.setup()
-
-        # Add any user-defined module dir(s) to MODULEPATH
-        for module_dir in self.config.get('modules', {}).get('use', []):
-            envmod.module('use', module_dir)
-
         self.load_modules()
 
         f_out = open(self.stdout_fname, 'w')
@@ -556,12 +652,8 @@ class Experiment(object):
             model_npernode = model.config.get('npernode')
             # TODO: New Open MPI format?
             if model_npernode:
-                if model_npernode % 2 == 0:
-                    npernode_flag = ('-map-by ppr:{0}:socket'
-                                     ''.format(model_npernode / 2))
-                else:
-                    npernode_flag = ('-map-by ppr:{0}:node'
-                                     ''.format(model_npernode))
+                npernode_flag = ('-map-by ppr:{0}:node'
+                                  ''.format(model_npernode))
 
                 if self.config.get('scalasca', False):
                     npernode_flag = '\"{0}\"'.format(npernode_flag)
@@ -581,7 +673,13 @@ class Experiment(object):
             # older MPI libraries complained executable was not in PATH
             model_prog.append(os.path.join(model.work_path, model.exec_name))
 
+            if model.exec_postfix:
+                model_prog.append(model.exec_postfix)
+
             mpi_progs.append(' '.join(model_prog))
+
+        # List all loaded environment modules
+        envmod.module("list")
 
         cmd = '{runcmd} {flags} {exes}'.format(
             runcmd=mpi_runcmd,
@@ -600,17 +698,29 @@ class Experiment(object):
         if self.config.get('coredump', False):
             enable_core_dump()
 
-        # Dump out environment
-        with open(self.env_fname, 'w') as file:
-            file.write(yaml.dump(dict(os.environ), default_flow_style=False))
 
         self.runlog.create_manifest()
         if self.runlog.enabled:
             self.runlog.commit()
+            # Record the run id into env.yaml as a variable
+            os.environ['PAYU_RUN_ID'] = str(self.run_id)
 
+        # Dump out environment
+        with open(self.env_fname, 'w') as file:
+            file.write(yaml.dump(dict(os.environ), default_flow_style=False))
+
+        # Update run info file
+        telemetry.update_run_job_file(
+            file_path=self.job_file,
+            stage='model-run',
+            manifests=self.manifest,
+            extra_info=self.run_info(),
+            timings=self.timings,
+        )
         # NOTE: This may not be necessary, since env seems to be getting
         # correctly updated.  Need to look into this.
         print(cmd)
+        runcmd_start_time = time.perf_counter()
         if env:
             # TODO: Replace with mpirun -x flag inputs
             proc = sp.Popen(shlex.split(cmd), stdout=f_out, stderr=f_err,
@@ -619,39 +729,19 @@ class Experiment(object):
             rc = proc.returncode
         else:
             rc = sp.call(shlex.split(cmd), stdout=f_out, stderr=f_err)
-
         f_out.close()
         f_err.close()
 
-        self.finish_time = datetime.datetime.now()
+        self.run_job_status = rc
+        runcmd_elapsed_time = time.perf_counter() - runcmd_start_time
+        self.timings["payu_model_run_duration_seconds"] = runcmd_elapsed_time
 
-        info = get_job_info()
-
-        if info is None:
-            # Not being run under PBS, reverse engineer environment
-            info = {
-                'PAYU_PATH': os.path.dirname(self.payu_path)
-            }
-
-        # Add extra information to save to jobinfo
-        info.update(
-            {
-                'PAYU_CONTROL_DIR': self.control_path,
-                'PAYU_RUN_ID': self.run_id,
-                'PAYU_CURRENT_RUN': self.counter,
-                'PAYU_N_RUNS':  self.n_runs,
-                'PAYU_JOB_STATUS': rc,
-                'PAYU_START_TIME': self.start_time.isoformat(),
-                'PAYU_FINISH_TIME': self.finish_time.isoformat(),
-                'PAYU_WALLTIME': "{0} s".format(
-                    (self.finish_time - self.start_time).total_seconds()
-                ),
-            }
+        # Update telemetry file
+        telemetry.update_run_job_file(
+            file_path=self.job_file,
+            extra_info=self.model_run_info(),
+            timings=self.timings,
         )
-
-        # Dump job info
-        with open(self.job_fname, 'w') as file:
-            file.write(yaml.dump(info, default_flow_style=False))
 
         # Remove any empty output files (e.g. logs)
         for fname in os.listdir(self.work_path):
@@ -669,12 +759,12 @@ class Experiment(object):
         if rc != 0:
             # Backup logs for failed runs
             error_log_dir = os.path.join(self.archive_path, 'error_logs')
-            mkdir_p(error_log_dir)
+            os.makedirs(error_log_dir, exist_ok=True)
 
-            # NOTE: This is PBS-specific
-            job_id = get_job_id(short=False)
+            # NOTE: This is only implemented for PBS scheduler
+            job_id = self.scheduler.get_job_id(short=False)
 
-            if job_id == '':
+            if job_id == '' or job_id is None:
                 job_id = str(self.run_id)[:6]
 
             for fname in self.output_fnames:
@@ -694,7 +784,7 @@ class Experiment(object):
 
             error_script = self.userscripts.get('error')
             if error_script:
-                self.run_userscript(error_script)
+                self.run_userscript(error_script, 'error')
 
             # Terminate payu
             sys.exit('payu: Model exited with error code {0}; aborting.'
@@ -720,25 +810,88 @@ class Experiment(object):
 
         run_script = self.userscripts.get('run')
         if run_script:
-            self.run_userscript(run_script)
+            self.run_userscript(run_script, 'run')
 
+    def setup_run_info(self):
+        """Return a dictionary with initial run state information"""
+        return {
+            'payu_current_run': self.counter,
+            'payu_n_runs':  self.n_runs,
+            'payu_version': payu.__version__,
+            'payu_path': os.path.dirname(self.payu_path),
+            'payu_config': self.config,
+            'user_id':  pwd.getpwuid(os.getuid()).pw_name,
+            'payu_control_path': str(self.control_path),
+            'payu_archive_path': str(self.archive_path),
+        }
+
+    def run_info(self):
+        """Return a dictionary with run state information (pre model run)"""
+        return {
+            'payu_run_id': self.run_id,
+        }
+
+    def model_run_info(self):
+        """Return a dictionary with run state information after model run"""
+        return {
+            'payu_model_run_status': self.run_job_status,
+        }
+
+    def get_model_restart_datetimes(self):
+        """Return dictionary of current and previous restart datetimes
+        for the model. Catches any exceptions raised"""
+        restart_path = self.restart_path
+        prior_restart_path = self.prior_restart_path
+        datetimes = {}
+        try:
+            restart_dt = self.model.get_restart_datetime(restart_path)
+            datetimes = {'model_finish_time': restart_dt}
+            if prior_restart_path is not None:
+                prior_restart_dt = self.model.get_restart_datetime(
+                    prior_restart_path
+                )
+                datetimes['model_start_time'] = prior_restart_dt
+        except Exception:
+            # Ignore if model does not support parsing restart datetimes
+            # or if there was error during file parsing
+            pass
+        return datetimes
+
+    def get_model_cur_expt_time(self):
+        return self.model.get_cur_expt_time()
+
+    def archiving(self):
+        """
+        Determine whether to run archive step based on config.yaml settings.
+        Default to True when archive settings are absent.
+        """
+        archive_config = self.config.get('archive', {})
+        return archive_config.get('enable', True)
+
+    @timeit("payu_archive_duration_seconds")
     def archive(self, force_prune_restarts=False):
-        if not self.config.get('archive', True):
+        if not self.archiving():
             print('payu: not archiving due to config.yaml setting.')
             return
 
+        # Update telemetry run info stage
+        telemetry.update_run_job_file(
+            file_path=self.job_file,
+            stage='archive',
+            timings=self.timings
+        )
         # Check there is a work directory, otherwise bail
         if not os.path.exists(self.work_sym_path):
             sys.exit('payu: error: No work directory to archive.')
 
-        mkdir_p(self.archive_path)
+        os.makedirs(self.archive_path, exist_ok=True)
         make_symlink(self.archive_path, self.archive_sym_path)
 
         # Remove work symlink
         if os.path.islink(self.work_sym_path):
             os.remove(self.work_sym_path)
 
-        mkdir_p(self.restart_path)
+        os.makedirs(self.restart_path, exist_ok=True)
 
         for model in self.models:
             model.archive()
@@ -752,6 +905,12 @@ class Experiment(object):
             sys.exit('payu: error: Output path already exists.')
 
         movetree(self.work_path, self.output_path)
+
+        # Record model restart datetimes in telemetry
+        telemetry.update_run_job_file(
+            file_path=self.job_file,
+            model_restart_datetimes=self.get_model_restart_datetimes()
+        )
 
         # Remove any outdated restart files
         try:
@@ -777,6 +936,11 @@ class Experiment(object):
         elif py_libpath not in ld_libpaths.split(':'):
             os.environ['LD_LIBRARY_PATH'] = f'{py_libpath}:{ld_libpaths}'
 
+        # Run archive user script before collation job is submitted
+        archive_script = self.userscripts.get('archive')
+        if archive_script:
+            self.run_userscript(archive_script, 'archive')
+
         collate_config = self.config.get('collate', {})
         collating = collate_config.get('enable', True)
         if collating:
@@ -795,15 +959,14 @@ class Experiment(object):
             )
             sp.check_call(shlex.split(cmd))
 
-        archive_script = self.userscripts.get('archive')
-        if archive_script:
-            self.run_userscript(archive_script)
-
         # Ensure postprocessing runs if model not collating
         if not collating:
             self.postprocess()
 
     def collate(self):
+        # Setup modules - load user-defined modules
+        self.setup_modules()
+
         for model in self.models:
             model.collate()
 
@@ -813,15 +976,20 @@ class Experiment(object):
 
     def postprocess(self):
         """Submit any postprocessing scripts or remote syncing if enabled"""
+
         # First submit postprocessing script
         if self.postscript:
+            self.set_userscript_env_vars()
             envmod.setup()
             envmod.module('load', 'pbs')
 
-            cmd = 'qsub {script}'.format(script=self.postscript)
+            # Name of this PBS job is set to "payu_postscript"
+            cmd = 'qsub -N payu_postscript {script}'.format(script=self.postscript)
 
-            cmd = shlex.split(cmd)
-            sp.check_call(cmd)
+            if needs_subprocess_shell(cmd):
+                sp.check_call(cmd, shell=True)
+            else:
+                sp.check_call(shlex.split(cmd))
 
         # Submit a sync script if remote syncing is enabled
         sync_config = self.config.get('sync', {})
@@ -847,7 +1015,7 @@ class Experiment(object):
         envmod.setup()
         pre_sync_script = self.userscripts.get('sync')
         if pre_sync_script:
-            self.run_userscript(pre_sync_script)
+            self.run_userscript(pre_sync_script, 'sync')
 
         # Run rsync commmands
         SyncToRemoteArchive(self).run()
@@ -863,41 +1031,31 @@ class Experiment(object):
         cmd = shlex.split(cmd)
         sp.call(cmd)
 
-    def run_userscript(self, script_cmd):
-        # First try to interpret the argument as a full command:
+    def set_userscript_env_vars(self):
+        """Save information of output directories and current run to
+        environment variables, so they can be accessed via user-scripts"""
+        os.environ.update(
+            {
+                'PAYU_CURRENT_OUTPUT_DIR': self.output_path,
+                'PAYU_CURRENT_RESTART_DIR': self.restart_path,
+                'PAYU_ARCHIVE_DIR': self.archive_path,
+                'PAYU_CURRENT_RUN': str(self.counter)
+            }
+        )
+
+    def run_userscript(self, script_cmd: str, type: str):
+        """Run a user defined script or subcommand at various stages of the
+        payu submissions. Save the time taken in seconds to run the
+        userscripts"""
+        start_time = time.perf_counter()
         try:
-            sp.check_call(shlex.split(script_cmd))
-        except EnvironmentError as exc:
-            # Now try to run the script explicitly
-            if exc.errno == errno.ENOENT:
-                cmd = os.path.join(self.control_path, script_cmd)
-                # Simplistic recursion check
-                assert os.path.isfile(cmd)
-                self.run_userscript(cmd)
-
-            # If we get a "non-executable" error, then guess the type
-            elif exc.errno == errno.EACCES:
-                # TODO: Move outside
-                ext_cmd = {'.py': sys.executable,
-                           '.sh': '/bin/bash',
-                           '.csh': '/bin/tcsh'}
-
-                _, f_ext = os.path.splitext(script_cmd)
-                shell_name = ext_cmd.get(f_ext)
-                if shell_name:
-                    print('payu: warning: Assuming that {0} is a {1} script '
-                          'based on the filename extension.'
-                          ''.format(os.path.basename(script_cmd),
-                                    os.path.basename(shell_name)))
-                    cmd = ' '.join([shell_name, script_cmd])
-                    self.run_userscript(cmd)
-                else:
-                    # If we can't guess the shell, then abort
-                    raise
-        except sp.CalledProcessError as exc:
-            # If the script runs but the output is bad, then warn the user
-            print('payu: warning: user script \'{0}\' failed (error {1}).'
-                  ''.format(script_cmd, exc.returncode))
+            self.set_userscript_env_vars()
+            run_script_command(script_cmd,
+                               control_path=Path(self.control_path))
+        finally:
+            # Always record the time taken
+            elapsed_time = time.perf_counter() - start_time
+            self.timings[f"{type}_userscript_duration_seconds"] = elapsed_time
 
     def sweep(self, hard_sweep=False):
         # TODO: Fix the IO race conditions!
@@ -909,6 +1067,9 @@ class Experiment(object):
         log_filenames = [short_job_name + '.o', short_job_name + '.e']
         for postfix in ['_c.o', '_c.e', '_p.o', '_p.e', '_s.o', '_s.e']:
             log_filenames.append(short_job_name[:13] + postfix)
+            
+        if self.postscript:
+            log_filenames.extend(['payu_postscript.o', 'payu_postscript.e'])
 
         logs = [
             f for f in os.listdir(os.curdir) if os.path.isfile(f) and (
@@ -925,7 +1086,7 @@ class Experiment(object):
             print('payu: Moving pbs_logs to {0}'.format(pbs_log_path))
             shutil.move(legacy_pbs_log_path, pbs_log_path)
         else:
-            mkdir_p(pbs_log_path)
+            os.makedirs(pbs_log_path, exist_ok=True)
 
         for f in logs:
             print('Moving log {0}'.format(f))

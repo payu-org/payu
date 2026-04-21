@@ -12,7 +12,7 @@ import f90nml
 
 from payu.models.fms import Fms
 from payu.models.mom_mixin import MomMixin
-from payu.fsops import mkdir_p, make_symlink
+from payu.fsops import make_symlink
 
 
 class Mom(MomMixin, Fms):
@@ -26,10 +26,6 @@ class Mom(MomMixin, Fms):
         self.model_type = 'mom'
         self.default_exec = 'fms_MOM_SIS.x'
 
-        # Default repo and build details.
-        self.repo_url = 'git://github.com/BreakawayLabs/mom.git'
-        self.repo_tag = 'master'
-        self.build_command = './MOM_compile.csh --platform nci --type MOM_SIS'
 
         self.config_files = [
             'data_table',
@@ -47,19 +43,7 @@ class Mom(MomMixin, Fms):
     def set_model_pathnames(self):
         super(Mom, self).set_model_pathnames()
 
-        self.build_exec_path = os.path.join(self.codebase_path, 'exec', 'nci',
-                                            'MOM_SIS')
-        self.build_path = os.path.join(self.codebase_path, 'exp')
 
-    def build_model(self):
-        super(Mom, self).build_model()
-
-        # Model is built, now copy over mppnccombine.
-        mppnc_exec = 'mppnccombine.nci'
-
-        mppnc_src = os.path.join(self.codebase_path, 'bin', mppnc_exec)
-        mppnc_dest = os.path.join(self.expt.lab.bin_path, 'mppnccombine')
-        shutil.copy(mppnc_src, mppnc_dest)
 
     def setup(self):
         # FMS initialisation
@@ -67,7 +51,7 @@ class Mom(MomMixin, Fms):
 
         if not self.top_level_model:
             # Make log dir
-            mkdir_p(os.path.join(self.work_path, 'log'))
+            os.makedirs(os.path.join(self.work_path, 'log'), exist_ok=True)
 
         input_nml_path = os.path.join(self.work_path, 'input.nml')
         input_nml = f90nml.read(input_nml_path)

@@ -98,8 +98,10 @@ These settings are primarily used by the PBS scheduler.
    setting is applied to any ``qsub`` calls.
 
 ``jobfs``
-   Request a non-default amount of storage that is local to the compute.
-   See `NCI jobfs documentation`_ and the `CLEX blog for details`_.
+   The maximum amount of local disk available to the job on the hosting compute nodes. 
+   If this is missing in the submission, the value is set to 100 MiB. 
+   The `jobfs` allocation in a multiple-node jobs will be distributed equally among every nodes.
+   See `NCI jobfs documentation`_ and the `CLEX blog`_ for details.
 
 ``storage``
    On the NCI system gadi all storage mount points must be specified, except
@@ -118,8 +120,8 @@ These settings are primarily used by the PBS scheduler.
             scratch:
                   - zz3
 
-.. _`NCI jobfs documentation`: https://opus.nci.org.au/display/Help/PBS+Directives+Explained#PBSDirectivesExplained--ljobfs=%3C10GB%3E
-.. _`CLEX blog for details`: https://climate-cms.org/posts/2022-11-10-jobfs.html#what-is-pbs-jobfs
+.. _`NCI jobfs documentation`: https://opus.nci.org.au/spaces/Help/pages/236881349/PBS+Directives...#PBSDirectives...--ljobfs=%3C10GB%3E
+.. _`CLEX blog`: https://coecms.github.io/posts/2022-11-10-jobfs.html
 
 Model
 -----
@@ -144,7 +146,7 @@ configuration.
 ``input``
    Listing of the directories containing model input fields, linked to the
    experiment during setup. This can either be the name of a directory in the
-   laboratory's ``input`` directory::
+   control directory or in laboratory's ``input`` directory::
 
       input: core_inputs
 
@@ -163,9 +165,18 @@ configuration.
    directory of the list takes precedence.
 
 ``exe``
-   Binary executable for the model. This can either be a filename in the
-   laboratory's ``bin`` directory, or an absolute filepath. Various model
-   drivers typically define their own default executable names.
+   Binary executable for the model. This can be a filename or an absolute
+   filepath. If it's a filename, it needs be found in either the laboratory's
+   ``bin`` directory, or in paths added to ``$PATH`` by loaded environment
+   modules (see configuring :ref:`modules<configuring-modules>` for how to load
+   modules).
+   Various model drivers typically define their own default executable names.
+
+``exe_prefix``
+   Optional string that is added immediately before the model executable in the
+   MPI run command. It appears after `mpirun` and any MPI related flags, for
+   example, `mpirun <mpi-flags> <exe_prefix> <model-exe>`.
+   This can be useful for configuring profilers or valgrind.
 
 ``submodels``
    If one is running a coupled model containing several submodels, then each
@@ -174,25 +185,26 @@ configuration.
 
       model: access
       submodels:
-         atmosphere:
-            model: matm
-            exe: matm_MPI1_nt62.exe
-            input: iaf_matm_simon
-            ncpus: 1
-         ocean:
+         -  name: atmosphere
+            model: um
+            ncpus: 192
+            exe: um_hg3.exe
+            input: /g/data/vk83/configurations/inputs/atmosphere
+         - name: ocean
             model: mom
-            exe: fms_MOM_ACCESS_kate.x
-            input: iaf_mom
-            ncpus: 120
-         ice:
-            model: cice
-            exe: cice_MPI1_6p.exe
-            input: iaf_cice
-            ncpus: 6
-         coupler:
+            ncpus: 180
+            exe: fms_ACCESS-ESM.x
+            input: /g/data/vk83/configurations/inputs/ocean
+         - name: ice
+            model: cice5
+            ncpus: 12
+            exe: cice_access-esm1.6_360x300_12x1_12p.exe
+            input: /g/data/vk83/configurations/inputs/ice
+         - name: coupler
             model: oasis
-            input: iaf_oasis
             ncpus: 0
+            input: /g/data/vk83/configurations/inputs/oasis
+
 
 ``restart_freq`` (*Default:* ``5``)
    Specifies the rate of saved restart files. This rate can be either an 
@@ -212,9 +224,9 @@ configuration.
    For example, ``restart_freq: 10YS`` would save earliest restart of the year,
    10 years from the last permanently archived restart's datetime.
 
-   Please note that currently, only ACCESS-OM2, MOM5 and MOM6 models support
-   date-based restart frequency, as it depends on the payu model driver being
-   able to parse restarts files for a datetime.
+   Please note that currently, only ACCESS-ESM1.5, ACCESS-OM2, ACCESS-OM3, MOM5 
+   , MOM6 and UM7 models support date-based restart frequency, as it depends on the payu 
+   model driver being able to parse restarts files for a datetime.
 
 ``restart_history``
     Specifies how many of the most recent restart files to retain regardless of 
@@ -251,33 +263,39 @@ section for details.
       reproducible experiments. The default value is the value of the global
       ``reproduce`` flag, which is set using a command line argument and
       defaults to *False*. These options **override** the global ``reproduce``
-      flag. If set to *True* payu will refuse to run if the hashes in the
+      flag. If set to *True* payu will refuse to run if the MD5 hashes in the
       relevant manifest do not match.
 
       ``exe`` (*Default: global reproduce flag*)
-            Enforce executable reproducibility. If set to *True* will refuse to
-            run if hashes do not match.
+            Enforce executable reproducibility.
 
       ``input`` (*Default: global reproduce flag*)
-            Enforce input file reproducibility. If set to *True* will refuse to
-            run if hashes do no match. Will not search for any new files.
+            Enforce input file reproducibility.
 
       ``restart`` (*Default: global reproduce flag*)
             Enforce restart file reproducibility.
 
-``scaninputs`` (*Default: True*)
-      Scan input directories for new files. Set to *False* when reproduce input
-      is *True*.
+``ignore`` (*Default:* ``[.*]``):
+      List of ``glob`` patterns which match files to ignore when scanning input directories.
+      A file will be ignored if any part of its full path matches one of the patterns.
+      This is an array, so multiple patterns can be specified on multiple lines. 
+      The default is .** which ignores all hidden files and directories on a POSIX filesystem. 
+      To include hidden files and directories, set this option to an empty list ``[]``.
 
-      If a manifest file is complete and it is desirable to not add spurious
-      files to the manifest but allow existing files to change, setting this
-      option to *False* would allow that behaviour.
+Archiving
+---------
 
-``ignore`` (*Default: .\**):
-      List of ``glob`` patterns which match files to ignore when scanning input
-      directories. This is an array, so multiple patterns can be specified on
-      multiple lines. The default is *.\** which ignores all hidden files on a
-      POSIX filesystem.
+``archive``
+      On completion of a model run, payu moves model output, restart, and log
+      files from the temporary work area to the experiment archive directory.
+      The following settings control the steps taken during the archive step:
+
+      ``enable`` (*Default:* ``True``)
+            Flag to enable/disable the archive step. If ``False`` all output, restart,
+            and log files will remain in the work directory, and any collation, post-processing,
+            and syncing will not be run.
+      ``compress_logs`` (*Default:* ``True``)
+            Compress model log files into a tarball. Currently only implemented for CICE4.
 
 
 Collation
@@ -351,24 +369,23 @@ FMS based model only options:
    is then ``ncpus / nthreads``
 
 
-Postprocessing
+.. _User_processing:
+
+User Processing
 --------------
 
-``collate`` (*Default:* ``True``)
-   Controls whether or not a collation job is submitted after model execution.
-
-   This is typically ``True``, although individual model drivers will often set
-   the default value to ``False`` if collation is unnecessary.
-
-   See above for specific ``collate`` options.
-
 ``userscripts``
-   Namelist to include separate userscripts or subcommands at various stages of
+   Configure userscripts or subcommands to run at various :ref:`stages<experiment-steps>` of
    a payu submission. Inputs can be either script names (``some_script.sh``) or
    individual subcommands (``echo "some_data" > input.nml``, ``qsub
-   some_script.sh``).
+   some_script.sh``). Userscripts are run within the same PBS job as the model 
+   execution unless the script starts a new PBS job. Userscripts therefore have
+   the same compute, storage and network access as the model. The exceptions to 
+   this are when ``payu setup`` is called directly, then the relevant userscripts 
+   will run on the login node, and the ``sync`` userscript, which runs in the 
+   ``sync`` job.
 
-   Specific scripts are defined below:
+   Specific stages are defined below:
 
    ``init``
       User-defined command to be called after experiment initialization, but
@@ -382,24 +399,27 @@ Postprocessing
       User-defined command to be called after model execution but prior to
       model output archive.
 
-   ``archive``
-      User-defined command to be called after model archival, but prior to any
-      postprocessing operations, such as ``payu collate``.
-
    ``error``
       User-defined command to be called if model does not run correctly and
       returns an error code. Useful for automatic error postmortem.
+
+   ``archive``
+      User-defined command to be called after model archival, but prior to any
+      postprocessing operations, such as ``payu collate``.
    
    ``sync``
-      User-defined command to be called at the start of the ``sync`` pbs job.
-      This is useful for any post-processing before syncing files to a remote
-      archive.
+      User-defined command to be called at the start of the ``sync`` PBS job. 
+      This is useful for any post-processing before syncing files to a remote 
+      archive. Note these scripts are only run if automatic syncing is enabled 
+      or if payu sync is run manually.
 
 ``postscript``
    This is an older, less user-friendly, method to submit a script after ``payu`` 
    has completed all steps that might alter the output directory. e.g. collation.
-   Unlike the ``userscripts``, it does not support user commands. These scripts 
-   are always re-submitted via ``qsub``.
+   Unlike the ``userscripts``, it does not support user commands. 
+   These scripts are always re-submitted via ``qsub``. 
+   Payu sets the job name to ``payu_postscript`` using the ``-N`` option in the command line, 
+   which overrides any job name specified in the PBS script.
 
 ``sync`` 
    Sync archive to a remote directory using rsync. Make sure that the 
@@ -425,6 +445,12 @@ Postprocessing
    ``ncpus`` (*Default:* ``1``)
       Number of ncpus required for the job.
 
+   ``base_path``
+      Base directory to sync archive outputs to, when ``path`` is not set.
+      Payu will add the experiment name to the path, 
+      where experiment name is the name used for the experiment work and archive directories. 
+      Full destination directory is `<base_path>/<expt_name>/`.
+
    ``path``
       Destination path to sync archive outputs to. This must be a unique 
       absolute path for your experiment, otherwise, outputs will be 
@@ -447,7 +473,7 @@ Postprocessing
             - 'iceh.????-??-??.nc'
             - '*-IN-PROGRESS'
 
-   ``exclude_uncollated`` (*Default:* ``True`` if collation is enabled)
+   ``exclude_uncollated`` (*Default:* ``False``)
       Flag to exclude uncollated files from being synced. This is equivalent 
       to adding ``--exclude *.nc.*``.
 
@@ -498,6 +524,7 @@ Experiment Tracking
 Miscellaneous
 =============
 
+.. _restart:
 ``restart``
    Specify the full path to a restart directory from which to start the run.
    This is known as a "warm start". This option has no effect if there is an
@@ -560,9 +587,12 @@ Miscellaneous
    command-line flag. 
 
 ``repeat``
-   Ignore any restart files and repeat the initial run upon resubmission. This
-   is generally only used for testing purposes, such as bit reproducibility.
+   Remove any archived restart files and repeat the initial run upon resubmission. 
+   The repeated runs start from the same :ref:`user-defined restart <restart>` or 
+   initial condition. This is generally only used for testing purposes, such as bit 
+   reproducibility.
 
+.. _configuring-modules:
 ``modules``
    Specify lists of environment modules and/or directories
    to load/use at the start of the PBS job, for example::
@@ -575,11 +605,21 @@ Miscellaneous
             - parallel-netcdf-1.12.3
             - xerces-c-3.2.3
 
-   This is seldom needed, because payu is good at automatically determining
-   the environment modules required by model executables. If the modules
-   require `module use` in order to be found, this command can also be run
+   As environment modules can be used to determine model executable paths,
+   the modules loaded are required to be unique. This means modules should be
+   specified with a version, and modules of the same name and version
+   should not be found in multiple module directories.
+   If the modules require `module use` in order to be found, this command can also be run
    prior to `payu run` instead of listing the directory under the `use` option,
    e.g.::
 
       module use /path/to/module/directory
       payu run
+
+``payu_minimum_version``
+   Specify the minimum version of payu required to run the configuration.
+   At the start of experiment setup, payu checks whether its current version
+   is an earlier version, and if so, payu will refuse to run.
+   This is useful for models that require features that are in later versions
+   of payu.
+   Note that this check will only run with payu versions later than `1.1.5`.

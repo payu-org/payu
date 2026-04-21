@@ -30,14 +30,25 @@ dependencies = [
     "tenacity >=8.0.0",
     "cftime",
     "GitPython >=3.1.40",
-    "ruamel.yaml >=0.18.5"
+    "ruamel.yaml >=0.18.5",
+    "packaging",
+    "netCDF4",
+    "jsonschema", 
+    "colorama",
+    "filelock",
+    "questionary",
+    "prompt_toolkit >=3.0.0"
 ]
 
 [project.optional-dependencies]
 test = [
     "pytest",
+    "pytest-cov",
     "pylint",
-    "Sphinx"
+    "Sphinx",
+    "pytest-cov",
+    "mnctools",
+    "freezegun"
 ]
 mitgcm = ["mnctools>=0.2"]
 
@@ -62,6 +73,10 @@ requires = [
 include = ["payu*"]
 namespaces = false
 
+[tool.pytest.ini_options]
+addopts = "--cov=payu"
+testpaths = ["test/"]
+
 [tool.versioneer]
 VCS = "git"
 style = "pep440"
@@ -69,3 +84,8 @@ versionfile_source = "payu/_version.py"
 versionfile_build = "payu/_version.py"
 tag_prefix = ""
 parentdir_prefix = "payu-"
+
+[tool.coverage.run]
+omit = [
+    "payu/_version.py",
+]

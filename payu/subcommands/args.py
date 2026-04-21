@@ -156,7 +156,8 @@ repository = {
     'parameters': {
         'dest': 'repository',
         'help': 'The repository to clone from. This can be either a local \
-                 path or git url'
+                 path or git url',
+        'default': None
     }
 }
 
@@ -165,7 +166,8 @@ local_directory = {
     'flags': [],
     'parameters': {
         'dest': 'local_directory',
-        'help': 'The directory to clone into'
+        'help': 'The directory to clone into',
+        'default': None
     }
 }
 
@@ -188,6 +190,17 @@ clone_branch = {
         'dest':     'branch',
         'default':  None,
         'help': 'Clone and checkout this branch'
+    }
+}
+
+# Clone branch
+clone_start_point = {
+    'flags': ('--start-point', '-s'),
+    'parameters': {
+        'action':   'store',
+        'dest': 'start_point',
+        'default':  None,
+        'help': 'New branch will start from this commit or tag'
     }
 }
 
@@ -273,5 +286,71 @@ remote = {
         'action': 'store_true',
         'default':  False,
         'help': 'Display metadata of branches in remote directory'
+    }
+}
+
+
+# Disable metadata + UUID generation
+metadata_off = {
+    'flags': ['--metadata-off', '-M'],
+    'parameters': {
+        'dest': 'metadata_off',
+        'action': 'store_true',
+        'default': False,
+        'help': 'Disable experiment metadata and UUID generation and commits'
+    }
+}
+
+# Json output option
+json_output = {
+    'flags': ['--json'],
+    'parameters': {
+        'dest': 'json_output',
+        'action': 'store_true',
+        'default': False,
+        'help': 'Output the results in JSON format'
+    }
+}
+
+# Update jobs option
+update_jobs = {
+    'flags': ['--update'],
+    'parameters': {
+        'dest': 'update_jobs',
+        'action': 'store_true',
+        'default': False,
+        'help': 'Update the job files with the latest data from the scheduler'
+    }
+}
+
+# Display all runs option
+all_runs = {
+    'flags': ['--all'],
+    'parameters': {
+        'dest': 'all_runs',
+        'action': 'store_true',
+        'default': False,
+        'help': 'Display information about all runs, not just the latest run'
+    }
+}
+
+# Display specific run number
+run_number = {
+    'flags': ['-n'],
+    'parameters': {
+        'dest': 'run_number',
+        'action': 'store',
+        'help': 'Display information about a specific run number'
+    }
+}
+
+# Display stacktrace option
+stacktrace = {
+    'flags': ['--stacktrace'],
+    'parameters': {
+        'dest': 'stacktrace',
+        'action': 'store_true',
+        'default': False,
+        'help': 'Display full stack traces of errors and warnings'
     }
 }

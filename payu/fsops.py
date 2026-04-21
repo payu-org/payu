@@ -16,7 +16,11 @@ import shutil
 import sys
 import shlex
 import subprocess
-from typing import Union, List
+from typing import Union, List, Any
+import tempfile
+import json
+import stat
+import warnings
 
 # Extensions
 import yaml
@@ -27,15 +31,10 @@ DEFAULT_CONFIG_FNAME = 'config.yaml'
 # Delete this once this bug in Lustre is fixed
 CHECK_LUSTRE_PATH_LEN = True
 
-
-def mkdir_p(path):
-    """Create a new directory; ignore if it already exists."""
-
-    try:
-        os.makedirs(path)
-    except EnvironmentError as exc:
-        if exc.errno != errno.EEXIST:
-            raise
+# File extensions to script interpreters
+EXTENSION_TO_INTERPRETER = {'.py': sys.executable,
+                            '.sh': '/bin/bash',
+                            '.csh': '/bin/tcsh'}
 
 
 def movetree(src, dst, symlinks=False):
@@ -57,6 +56,27 @@ def movetree(src, dst, symlinks=False):
     shutil.rmtree(src)
 
 
+class DuplicateKeyWarnLoader(yaml.SafeLoader):
+    def construct_mapping(self, node, deep=False):
+        """Add warning for duplicate keys in yaml file, as currently
+        PyYAML overwrites duplicate keys even though in YAML, keys
+        are meant to be unique
+        """
+        mapping = {}
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            value = self.construct_object(value_node, deep=deep)
+            if key in mapping:
+                warnings.warn(
+                    "Duplicate key found in config.yaml: "
+                    f"key '{key}' with value '{value}'. "
+                    f"This overwrites the original value: '{mapping[key]}'"
+                )
+            mapping[key] = value
+
+        return super().construct_mapping(node, deep)
+
+
 def read_config(config_fname=None):
     """Parse input configuration file and return a config dict."""
 
@@ -65,7 +85,7 @@ def read_config(config_fname=None):
 
     try:
         with open(config_fname, 'r') as config_file:
-            config = yaml.safe_load(config_file)
+            config = yaml.load(config_file, Loader=DuplicateKeyWarnLoader)
 
         # NOTE: A YAML file with no content returns `None`
         if config is None:
@@ -98,6 +118,12 @@ def read_config(config_fname=None):
               "without 'collate_' prefix")
 
     config['collate'] = collate_config
+
+    # Transform legacy archive config options
+    archive_config = config.pop('archive', {})
+    if type(archive_config) is bool:
+        archive_config = {'enable': archive_config}
+    config['archive'] = archive_config
 
     # Transform legacy modules config options
     modules_config = config.pop('modules', {})
@@ -229,3 +255,130 @@ def list_archive_dirs(archive_path: Union[Path, str],
 
     dirs.sort(key=lambda d: int(d.lstrip(dir_type)))
     return dirs
+
+
+def atomic_write_file(
+            file_path: Path,
+            data: dict[str, Any],
+        ) -> None:
+    """Write the job information to a temporary file and
+    replace the existing if it exists so the update is atomic"""
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode='w', dir=file_path.parent, delete=False
+    ) as temp_file:
+        json.dump(data, temp_file, ensure_ascii=False, indent=4)
+        temp_name = temp_file.name
+    os.replace(temp_name, file_path)
+
+    # Ensure status file has same permissions as parent directory
+    os.chmod(file_path, stat.S_IMODE(file_path.parent.stat().st_mode))
+
+
+def run_script_command(script_cmd: str, control_path: Path) -> None:
+    """Run a user defined script or command.
+
+    Parameters
+    ----------
+    script_cmd : string
+        String of user-script command defined in configuration file
+    control_path : Path
+        The control directory of the experiment
+
+    Raises
+    ------
+    RuntimeError
+        If there's was an error running the user-script
+    """
+    try:
+        _run_script(script_cmd, control_path)
+    except Exception as e:
+        error_msg = f"User defined script/command failed to run: {script_cmd}"
+        raise RuntimeError(error_msg) from e
+
+
+def needs_subprocess_shell(command: str) -> bool:
+    """Check if command contains shell specific values. For example, file
+    redirections, pipes or logical operators.
+
+    Parameters
+    ----------
+    command: string
+        String of command to run in subprocess call
+
+    Returns
+    -------
+    bool
+        Returns True if command requires a subprocess shell, False otherwise
+    """
+    shell_values = ['>', '<', '|', '&&', '$', '`']
+    for value in shell_values:
+        if value in command:
+            return True
+    return False
+
+
+def env_with_python_path():
+    """Return a copy of current environment variables with PATH
+    modified to ensure the path to the python interpreter is the
+    first entry (even if it was already in the PATH)."""
+    # Get the directory of the current Python interpreter
+    python_dir = os.path.dirname(sys.executable)
+
+    # Copy current environment and PATH variable
+    env = os.environ.copy()
+    current_path = env.get("PATH", "")
+    path_dirs = current_path.split(os.pathsep) if current_path else []
+
+    # Remove the python dir if it already exists in PATH
+    path_dirs = [p for p in path_dirs if p != python_dir]
+
+    # Prepend the python dir to PATH
+    env["PATH"] = os.pathsep.join([python_dir] + path_dirs)
+    return env
+
+
+def _run_script(script_cmd: str, control_path: Path) -> None:
+    """Helper recursive function to attempt running a script command.
+
+    Parameters
+    ----------
+    script_cmd : string
+        The script command to attempt to run in subprocess call
+    control_path: Path
+        The control directory to use for resolving relative filepaths, if file
+        is not found
+    """
+    # First try to interpret the argument as a full command
+    try:
+        if needs_subprocess_shell(script_cmd):
+            subprocess.check_call(script_cmd, shell=True,
+                                  env=env_with_python_path())
+        else:
+            subprocess.check_call(shlex.split(script_cmd),
+                                  env=env_with_python_path())
+        print(script_cmd)
+
+    except FileNotFoundError:
+        # Check if script is a file in the control directory
+        cmd = control_path / script_cmd
+        if cmd.is_file():
+            _run_script(str(cmd), control_path)
+        else:
+            raise
+
+    except PermissionError:
+        # Guess the type of interpreter using the file extension
+        _, file_ext = os.path.splitext(script_cmd)
+        shell_name = EXTENSION_TO_INTERPRETER.get(file_ext, None)
+        if shell_name:
+            print(
+                f'payu: warning: Assuming that {os.path.basename(script_cmd)} '
+                f'is a {os.path.basename(shell_name)} script based on the '
+                'filename extension.'
+            )
+
+            cmd = f'{shell_name} {script_cmd}'
+            _run_script(cmd, control_path)
+        else:
+            raise

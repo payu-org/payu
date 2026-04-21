@@ -1,9 +1,12 @@
 import argparse
 from argparse import Namespace
+import json
+import copy
 import os
 from pathlib import Path
 import shutil
 import sys
+from unittest.mock import patch
 
 import pdb
 import pytest
@@ -15,15 +18,239 @@ from payu.fsops import read_config
 from payu.laboratory import Laboratory
 from payu.schedulers import pbs
 from payu.schedulers import index as scheduler_index
+from payu.schedulers.pbs import PBS
 
 from .common import cd, make_random_file, get_manifests
-from .common import tmpdir, ctrldir, labdir, workdir, payudir
-from .common import config, sweep_work, payu_init, payu_setup
+from .common import tmpdir, ctrldir, labdir, workdir, payudir, archive_dir
+from .common import sweep_work, payu_init, payu_setup
+from .common import config as original_config
 from .common import write_config
 from .common import make_exe, make_inputs, make_restarts
 from .common import make_payu_exe, make_all_files
 
 verbose = True
+
+config = copy.deepcopy(original_config)
+
+
+def _fake_pbsnodes_dict(nodes):
+    """Build a pbsnodes -F json compatible payload."""
+    return {"nodes": {name: {"resources_available": ra} for name, ra in nodes.items()}}
+
+def test_get_queue_node_shape_picks_node_shape(monkeypatch):
+
+    payload = _fake_pbsnodes_dict({
+        # Matching topology clx
+        "node001": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+        "node002": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+        # spr
+        "node003": {"topology": "cpu-spr", "ncpus": 104, "mem": "536870912KB"},  # 512GB
+        "node004": {"topology": "cpu-spr", "ncpus": 104, "mem": "536870912KB"},  # 512GB
+
+        # Non-matching topology - should be ignored
+        "node005": {"topology": "cpu-xyz", "ncpus": 12, "mem": "12582912KB"},  # 12GB
+    })
+    
+    monkeypatch.setattr(pbs, "read_pbsnode_file", lambda: payload)
+
+    ncpus, mem = pbs.PBS.get_queue_node_shape("normal")
+
+    assert ncpus == 48
+    assert mem == 192
+
+
+def test_get_queue_node_shape_no_matching_topology(monkeypatch):
+
+    payload = _fake_pbsnodes_dict({
+        # Non-matching topology - should be ignored
+        "node001": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+        "node002": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+    })
+
+    monkeypatch.setattr(pbs, "read_pbsnode_file", lambda: payload)
+
+    with pytest.raises(ValueError, match=r"No nodes matched"):
+        pbs.PBS.get_queue_node_shape("normalsr")
+
+@pytest.mark.parametrize("file_exist, timestamp, expected_rerun",
+    [
+        (True, 0, 1),  # No timestamp
+        (True, 100, 1),  # Old timestamp
+        (True, 9999999999, 0),  # Recent timestamp
+        (False, 0, 1),  # File doesn't exist
+    ]
+)
+def test_read_pbsnode_file_different_age(monkeypatch, file_exist, timestamp, expected_rerun):
+    """ Test if read_pbsnodes_file will rerun given different aged `pbsnodes.json`. """
+    payload = _fake_pbsnodes_dict({
+        # Non-matching topology - should be ignored
+        "node001": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+        "node002": {"topology": "cpu-clx", "ncpus": 48, "mem": "201326592KB"},  # 192GB
+    })
+
+    # Create a fake pbsnodes.json file
+    pbsnodes_json_path = archive_dir / "pbs" / "pbsnodes.json"
+    pbsnodes_json_path.parent.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv('PAYU_PBSNODES_CACHE', str(pbsnodes_json_path))
+    if file_exist:
+        data = {
+            "timestamp": timestamp,
+            "nodes": payload["nodes"]
+        }
+        with open(pbsnodes_json_path, "w") as f:
+            json.dump(data, f)
+    else:
+        pbsnodes_json_path.unlink(missing_ok=True)
+
+    # Set up a run counter
+    run_counter = 0
+    def fake_run(*args, **kwargs):
+        nonlocal run_counter
+        run_counter += 1
+        return payload
+
+    monkeypatch.setattr(pbs, "_run_pbsnodes_json", fake_run)
+    pbs.PBS.get_queue_node_shape("normal")
+
+    assert run_counter == expected_rerun
+
+@pytest.mark.parametrize("pbsnode_cache, xdg_cache, home_dir, expected_path", 
+    [
+        # Test with only PAYU_PBSNODES_CACHE set
+        (str(tmpdir / "pbs_cache" / "pbsnodes.json"), 
+        None, 
+        None, 
+        tmpdir / "pbs_cache" / "pbsnodes.json"),
+
+        # Test with only XDG_CACHE_HOME set
+        (None, 
+        str(tmpdir / "xdg_cache"), 
+        None, 
+        tmpdir / "xdg_cache" / "pbs" / "pbsnodes.json"),
+
+        # Test with PAYU_PBSNODES_CACHE and XDG_CACHE_HOME set
+        (str(tmpdir / "pbs_cache" / "pbsnodes.json"), 
+        str(tmpdir / "xdg_cache"), 
+        None, 
+        tmpdir / "pbs_cache" / "pbsnodes.json"),
+
+        # Test with neither set (should default to $HOME/.cache directory)
+        (None, 
+        None, 
+        str(tmpdir), 
+        tmpdir / ".cache" / "pbs" / "pbsnodes.json"),
+    ]
+)
+def test_get_pbsnodes_cache_path(monkeypatch, pbsnode_cache, xdg_cache, home_dir, expected_path):
+    """ Test if get_pbsnodes_cache_path returns the correct pbsnodes.json path """
+    if pbsnode_cache:
+        monkeypatch.setenv('PAYU_PBSNODES_CACHE', pbsnode_cache)
+    else:
+        monkeypatch.delenv('PAYU_PBSNODES_CACHE', raising=False)
+    if xdg_cache:
+        monkeypatch.setenv('XDG_CACHE_HOME', xdg_cache)
+    else:
+        monkeypatch.delenv('XDG_CACHE_HOME', raising=False)
+
+    monkeypatch.setenv('HOME', home_dir)
+    path = pbs.get_pbsnodes_cache_path()
+    assert path == expected_path
+
+
+
+def test_mem_convert_requires_kb_suffix():
+    with pytest.raises(ValueError, match=r"not in kb format"):
+        pbs.PBS._mem_convert_kb_to_gb("192GB")
+
+
+def test_run_pbsnodes_json_timeout(monkeypatch):
+    def fake_run(*args, **kwargs):
+        raise pbs.subprocess.TimeoutExpired(cmd=kwargs.get("args", ["pbsnodes"]), timeout=kwargs.get("timeout", 1))
+
+    monkeypatch.setattr(pbs.subprocess, "run", fake_run)
+
+    with pytest.raises(RuntimeError, match=r"timed out"):
+        pbs._run_pbsnodes_json(timeout=1)
+
+
+def test_get_queue_walltime_hours_correct_boundaries():
+    assert pbs.PBS.get_queue_walltime_hours("normal", 1) == 48
+    assert pbs.PBS.get_queue_walltime_hours("normal", 672) == 48
+
+    assert pbs.PBS.get_queue_walltime_hours("normal", 673) == 24
+    assert pbs.PBS.get_queue_walltime_hours("normal", 1440) == 24
+
+    assert pbs.PBS.get_queue_walltime_hours("normal", 1441) == 10
+    assert pbs.PBS.get_queue_walltime_hours("normal", 2976) == 10
+
+    assert pbs.PBS.get_queue_walltime_hours("normal", 2977) == 5
+    assert pbs.PBS.get_queue_walltime_hours("normal", 20736) == 5
+
+
+def test_get_queue_walltime_hours_unknown_queue():
+    with pytest.raises(ValueError, match=r"Unknown queue"):
+        pbs.PBS.get_queue_walltime_hours("nonexistent_queue", 1)
+
+
+def test_get_queue_walltime_hours_exceeds_max_cpus():
+    with pytest.raises(ValueError, match=r"exceed maximum.*normalsr.*10400"):
+        pbs.PBS.get_queue_walltime_hours("normalsr", 10504)
+
+
+@pytest.mark.parametrize(
+    "walltime, expected_hours",
+    [
+        (3600, 1.0),
+        (600, 1/6),
+
+        # SS string format only
+        ("05", 5/3600),
+
+        # MM:SS
+        ("10:00", 10/60),
+        ("01:00", 1/60),
+
+        # H:M:S
+        ("1:0:0", 1.0),
+        ("01:0:0", 1.0),
+        ("1:30:00", 1.5),
+        ("01:30:00", 1.5),
+    ],
+)
+def test_parse_walltime_valid_inputs(walltime, expected_hours):
+    assert pbs.PBS.parse_walltime(walltime) == pytest.approx(expected_hours)
+
+
+@pytest.mark.parametrize(
+    "walltime, limit, raise_error",
+    [
+        # valid
+        ("1:00:00", 2, False),
+        ("01:00:00", 1, False),
+        ("01:30:00", 1, True),
+        (3600, 2, False),
+        ("10:00", 0.2, False),
+        ("05", 0.01, False),
+    ],
+)
+def test_validate_walltime_with_queue_limits(monkeypatch, walltime, limit, raise_error):
+    # Patch get_queue_walltime_hours to avoid dependency on queue config
+    def dummy_get_queue_walltime_hours(cls, queue, ncpus):
+        return limit
+
+    monkeypatch.setattr(pbs.PBS, "get_queue_walltime_hours",
+                        classmethod(dummy_get_queue_walltime_hours)
+                        )
+
+    # two dummy variables
+    queue = "normalsr"
+    ncpus = 120
+
+    if raise_error:
+        with pytest.raises(ValueError):
+            pbs.PBS.validate_walltime_with_queue_limits(walltime, queue, ncpus)
+    else:
+        pbs.PBS.validate_walltime_with_queue_limits(walltime, queue, ncpus)
 
 
 def setup_module(module):
@@ -232,7 +459,91 @@ def test_run():
         assert(args.remaining[-1].endswith(payu_cmd))
 
 
+@patch("payu.schedulers.pbs.pbs_env_init", return_value=True)
+@patch("payu.schedulers.pbs.check_exe_path", side_effect=lambda x, y: y)
+@pytest.mark.parametrize(
+    "env_exists,file_exists,file_exe,expected_cmd",
+    [
+        # Test backwards compatibility with no launcher script
+        (False, False, False, "/path/to/python payu-run"),
+        # With only launcher script env set
+        (True, False, False, "/path/to/python payu-run"),
+        # With launch script env and file exists
+        (True, True, False, "/path/to/python payu-run"),
+        # With launch script env, file exists, and file is executable
+        (True, True, True, "{tmp_path}/launcher.sh /path/to/python payu-run")
+    ],
+)
+def test_submit_launcher_script_setting(
+    mock_pbs_env_init, mock_check_exe_path,
+    env_exists, file_exists, file_exe, expected_cmd, tmp_path, monkeypatch
+):
+    config = {
+        "control_path": "/path/to/experiment"
+    }
+
+    # Setup based on test parameters
+    if env_exists:
+        monkeypatch.setenv("ENV_LAUNCHER_SCRIPT_PATH",
+                           f"{tmp_path}/launcher.sh")
+    if file_exists:
+        launcher_script_path = tmp_path / "launcher.sh"
+        launcher_script_path.write_text("#!/bin/bash\necho 'Running...'\n")
+        if file_exe:
+            launcher_script_path.chmod(0o755)
+
+    # Generate the qsub command
+    pbs_cmd = pbs.PBS().submit("payu-run", config,
+                               python_exe="/path/to/python")
+
+    _, cmd = pbs_cmd.split("--")
+    assert cmd.strip() == expected_cmd.format(tmp_path=tmp_path)
+
+
 def test_tenacity():
 
     # This should fail and do nothing
-    pbs.get_qstat_info()
+    pbs.get_job_info_json()
+
+def test_get_all_job_info(monkeypatch):
+    """Test that get_all_job_info correctly parses the results."""
+    fake_qstat = {
+        "timestamp": "2026-03-03T10:00:00",
+        "server": "pbs-server-01",
+        "Jobs": {
+            "12345": {
+                "Job_Name": "test_job_1",
+                "job_state": "Q",
+            },
+            "67890": {
+                "Job_Name": "test_job_2",
+                "job_state": "R",
+            },
+        },
+    }
+    expected = {
+        "12345": {
+            "timestamp": "2026-03-03T10:00:00",
+            "server": "pbs-server-01",
+            "Jobs": {
+                "12345": {
+                    "Job_Name": "test_job_1",
+                    "job_state": "Q",
+                }
+            },
+        },
+        "67890": {
+            "timestamp": "2026-03-03T10:00:00",
+            "server": "pbs-server-01",
+            "Jobs": {
+                "67890": {
+                    "Job_Name": "test_job_2",
+                    "job_state": "R",
+                }
+            },
+        },
+    }
+
+    monkeypatch.setattr(pbs, "get_job_info_json", lambda: fake_qstat)
+    result = PBS().get_all_job_info()
+    assert result == expected

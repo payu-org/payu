@@ -8,7 +8,18 @@ from __future__ import print_function
 import os
 import pwd
 
-from payu.fsops import mkdir_p, read_config
+from payu.fsops import read_config
+
+LAB_INITIALIZE_ERROR = """
+The configured laboratory directory may not have write access. Edit/remove one
+(or more) of the following config.yaml options that determine the laboratory
+path:
+    - 'project': The project to use for payu PBS jobs. Default: ${PROJECT}
+    - 'shortpath' Top-level directory for laboratory
+        Default: /scratch/${PROJECT}
+    - 'laboratory': Top-level directory for the model laboratory
+        Default: /scratch/${PROJECT}/${USER}/${MODEL}
+"""
 
 
 class Laboratory(object):
@@ -67,7 +78,7 @@ class Laboratory(object):
         # Default path settings
 
         # Append project name if present (NCI-specific)
-        default_project = os.environ.get('PROJECT', '')
+        default_project = config.get('project', os.environ.get('PROJECT', ''))
         default_short_path = os.path.join(self.base, default_project)
         default_user = pwd.getpwuid(os.getuid()).pw_name
 
@@ -84,7 +95,13 @@ class Laboratory(object):
 
     def initialize(self):
         """Create the laboratory directories."""
-        mkdir_p(self.archive_path)
-        mkdir_p(self.bin_path)
-        mkdir_p(self.codebase_path)
-        mkdir_p(self.input_basepath)
+        try:
+            os.makedirs(self.archive_path, exist_ok=True)
+            os.makedirs(self.bin_path, exist_ok=True)
+            os.makedirs(self.codebase_path, exist_ok=True)
+            os.makedirs(self.input_basepath, exist_ok=True)
+        except PermissionError as e:
+            print(LAB_INITIALIZE_ERROR)
+            raise PermissionError(
+                f"Failed to initialise laboratory directories. Error: {e}"
+            )

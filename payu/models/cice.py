@@ -17,6 +17,9 @@ import os
 import sys
 import shutil
 import datetime
+import struct
+import re
+import tarfile
 
 # Extensions
 import f90nml
@@ -36,24 +39,28 @@ class Cice(Model):
         self.model_type = 'cice'
         self.default_exec = 'cice'
 
-        # Default repo details
-        self.repo_url = 'https://github.com/CWSL/cice4.git'
-        self.repo_tag = 'access'
 
         self.config_files = ['cice_in.nml']
         self.optional_config_files = ['input_ice.nml']
 
         self.ice_nml_fname = 'cice_in.nml'
 
+        self.history_nml_fname = 'ice_history.nml'  # only used by payu
+
         self.set_timestep = self.set_local_timestep
 
         self.copy_inputs = False
 
+        # regex patterns for matching log files. When empty, no logs compressed
+        self.logs_to_compress = [r"iceout[0-9]{3}",
+                                 r"debug\.root\.[0-9]{2}",
+                                 r"ice_diag\.d",
+                                 r"ice_diag_out"]
+        self.log_tar_name = "logfiles.tar.gz"
+
     def set_model_pathnames(self):
         super(Cice, self).set_model_pathnames()
 
-        self.build_exec_path = os.path.join(self.codebase_path,
-                                            'build_access-om_360x300_6p')
 
         ice_nml_path = os.path.join(self.control_path, self.ice_nml_fname)
         self.ice_in = f90nml.read(ice_nml_path)
@@ -61,7 +68,12 @@ class Cice(Model):
         # Assume local paths are relative to the work path
         setup_nml = self.ice_in['setup_nml']
 
-        res_path = os.path.normpath(setup_nml['restart_dir'])
+        try:
+            res_path = os.path.normpath(setup_nml['restart_dir'])
+        except KeyError:
+            raise RuntimeError(
+                f"`restart_dir` must be set in {self.ice_nml_fname} for payu to run"
+            )
         input_dir = setup_nml.get('input_dir', None)
 
         if input_dir is None:
@@ -117,7 +129,7 @@ class Cice(Model):
             res_path = os.path.join(self.work_path, res_path)
         self.work_restart_path = res_path
 
-        work_out_path = os.path.normpath(setup_nml['history_dir'])
+        work_out_path = os.path.normpath(setup_nml.get('history_dir', ''))
 
         if not os.path.isabs(work_out_path):
             work_out_path = os.path.join(self.work_path, work_out_path)
@@ -148,48 +160,62 @@ class Cice(Model):
     def get_ptr_restart_dir(self):
         return os.path.relpath(self.work_init_path, self.work_path)
 
-    def get_access_ptr_restart_dir(self):
-        # The ACCESS build of CICE assumes that restart_dir is 'RESTART'
-        # TODO: Move to ACCESS driver
-        return '.'
-
     def setup(self):
         super(Cice, self).setup()
 
-        setup_nml = self.ice_in['setup_nml']
-        init_date = datetime.date(year=setup_nml['year_init'], month=1, day=1)
+        # If there is a seperate ice_history.nml,
+        # update the cice namelist with its contents
+        history_nml_fpath = os.path.join(self.control_path,
+                                         self.history_nml_fname)
+        if os.path.isfile(history_nml_fpath):
+            history_nml = f90nml.read(history_nml_fpath)
+            self.ice_in.patch(history_nml)
 
+        setup_nml = self.ice_in['setup_nml']
+
+        if self.prior_restart_path:
+            self._make_restart_ptr()
+
+            # Update input namelist
+            setup_nml['runtype'] = 'continue'
+            setup_nml['restart'] = True
+
+        else:
+            # Locate and link any restart files (if required)
+            if not setup_nml['ice_ic'] in ('none', 'default'):
+                self.link_restart(setup_nml['ice_ic'])
+
+            if setup_nml['restart']:
+                self.link_restart(setup_nml['pointer_file'])
+
+        self._calc_runtime()
+
+        # Write any changes to the work directory copy of the cice
+        # namelist
+        nml_path = os.path.join(self.work_path, self.ice_nml_fname)
+        self.ice_in.write(nml_path, force=True)
+
+    def _calc_runtime(self):
+        """
+        Calculate 1: the previous number of timesteps simulated, and 2:
+        the number of timesteps to simulate in the next run.
+        Modifies the working self.ice_in namelist in place
+
+        Note 1: This method is overridden in the cice5 driver.
+
+        Note 2: For ESM1.5, the actual model start date and run time are
+        controlled via the separate input_ice.nml namelist, with relevant
+        calculations in the access driver.
+        """
+        setup_nml = self.ice_in['setup_nml']
+
+        init_date = datetime.date(year=setup_nml['year_init'], month=1, day=1)
         if setup_nml['days_per_year'] == 365:
             caltype = cal.NOLEAP
         else:
             caltype = cal.GREGORIAN
 
         if self.prior_restart_path:
-            # Generate ice.restart_file
-            # TODO: better check of restart filename
-            iced_restart_file = None
-            iced_restart_files = [f for f in self.get_prior_restart_files()
-                                  if f.startswith('iced.')]
-
-            if len(iced_restart_files) > 0:
-                iced_restart_file = sorted(iced_restart_files)[-1]
-
-            if iced_restart_file is None:
-                print('payu: error: No restart file available.')
-                sys.exit(errno.ENOENT)
-
-            res_ptr_path = os.path.join(self.work_init_path,
-                                        'ice.restart_file')
-            if os.path.islink(res_ptr_path):
-                # If we've linked in a previous pointer it should be deleted
-                os.remove(res_ptr_path)
-            with open(res_ptr_path, 'w') as res_ptr:
-                res_dir = self.get_ptr_restart_dir()
-                print(os.path.join(res_dir, iced_restart_file), file=res_ptr)
-
-            # Update input namelist
-            setup_nml['runtype'] = 'continue'
-            setup_nml['restart'] = True
 
             prior_nml_path = os.path.join(self.prior_restart_path,
                                           self.ice_nml_fname)
@@ -211,22 +237,17 @@ class Cice(Model):
             prior_setup_nml = f90nml.read(prior_nml_path)['setup_nml']
 
             # The total time in seconds since the beginning of the experiment
-            total_runtime = prior_setup_nml['istep0'] + prior_setup_nml['npt']
-            total_runtime = total_runtime * prior_setup_nml['dt']
+            prior_runtime = prior_setup_nml['istep0'] + prior_setup_nml['npt']
+            prior_runtime_seconds = prior_runtime * prior_setup_nml['dt']
+
         else:
-            # Locate and link any restart files (if required)
-            if not setup_nml['ice_ic'] in ('none', 'default'):
-                self.link_restart(setup_nml['ice_ic'])
+            # If no prior restart directory exists, set the prior runtime to 0
+            prior_runtime_seconds = 0
 
-            if setup_nml['restart']:
-                self.link_restart(setup_nml['pointer_file'])
-
-            # Initialise runtime
-            total_runtime = 0
-
-        # Set runtime for this run.
+        # Calculate runtime for this run.
         if self.expt.runtime:
-            run_start_date = cal.date_plus_seconds(init_date, total_runtime,
+            run_start_date = cal.date_plus_seconds(init_date,
+                                                   prior_runtime_seconds,
                                                    caltype)
             run_runtime = cal.runtime_from_date(
                 run_start_date,
@@ -239,16 +260,11 @@ class Cice(Model):
         else:
             run_runtime = setup_nml['npt']*setup_nml['dt']
 
-        # Now write out new run start date and total runtime.
+        # Add the prior runtime and new runtime to the working copy of the
+        # CICE namelist.
         setup_nml['npt'] = run_runtime / setup_nml['dt']
-        assert(total_runtime % setup_nml['dt'] == 0)
-        setup_nml['istep0'] = int(total_runtime / setup_nml['dt'])
-
-        # Force creation of a dump (restart) file at end of run
-        setup_nml['dump_last'] = True
-
-        nml_path = os.path.join(self.work_path, self.ice_nml_fname)
-        self.ice_in.write(nml_path, force=True)
+        assert (prior_runtime_seconds % setup_nml['dt'] == 0)
+        setup_nml['istep0'] = int(prior_runtime_seconds / setup_nml['dt'])
 
     def set_local_timestep(self, t_step):
         dt = self.ice_in['setup_nml']['dt']
@@ -302,6 +318,46 @@ class Cice(Model):
         else:
             shutil.rmtree(self.work_input_path)
 
+        archive_config = self.expt.config.get('archive', {})
+        compressing_logs = archive_config.get('compress_logs', True)
+        if compressing_logs:
+            self.compress_log_files()
+
+    def get_log_files(self):
+        """
+        Find model log files in the work directory based on regex patterns
+        in self.logs_to_compress.
+
+        Returns
+        -------
+        log_files: list of paths to model log files.
+        """
+        if not self.logs_to_compress:
+            return
+
+        log_files = []
+        for filename in os.listdir(self.work_path):
+            if re.match("|".join(self.logs_to_compress), filename):
+                log_files.append(os.path.join(self.work_path, filename))
+        return log_files
+
+    def compress_log_files(self):
+        """
+        Compress model log files into tarball.
+        """
+        log_files = self.get_log_files()
+        if not log_files:
+            return
+
+        with tarfile.open(name=os.path.join(self.work_path, self.log_tar_name),
+                          mode="w:gz") as tar:
+            for file in log_files:
+                tar.add(file, arcname=os.path.basename(file))
+
+        # Delete files after tarball is written
+        for file in log_files:
+            os.remove(file)
+
     def collate(self):
         pass
 
@@ -319,6 +375,136 @@ class Cice(Model):
             if os.path.isfile(test_path):
                 input_path = test_path
                 break
-        assert input_path
+        if input_path is None:
+            raise RuntimeError(
+                f"Cannot find previous restart file, expected {fpath} to exist"
+            )
 
         make_symlink(input_path, input_work_path)
+
+    def _make_restart_ptr(self):
+        """
+        CICE4 restart pointers are created in the access driver, where
+        the correct run start dates are available.
+        """
+        pass
+
+    def overwrite_restart_ptr(self,
+                              run_start_date,
+                              previous_runtime,
+                              calendar_file):
+        """
+        Generate restart pointer file 'ice.restart_file' pointing to
+        'iced.YYYYMMDD' with the correct start date.
+        Additionally check that the `iced.YYYYMNDD` restart file's header
+        has the correct previous runtime.
+        Typically called from the access driver, which provides the
+        the correct date and runtime.
+
+        Parameters
+        ----------
+        run_start_date: datetime.date
+            Start date of the new simulation
+        previous_runtime:  int
+            Seconds between experiment initialisation date and start date
+        calendar_file:  str
+            Calendar restart file used to calculate timing information
+        """
+        # Expected iced restart file name
+        iced_restart_file = self.find_matching_iced(self.prior_restart_path,
+                                                    run_start_date)
+
+        res_ptr_path = os.path.join(self.work_init_path,
+                                    'ice.restart_file')
+        if os.path.islink(res_ptr_path):
+            # If we've linked in a previous pointer it should be deleted
+            os.remove(res_ptr_path)
+
+        iced_path = os.path.join(self.prior_restart_path,
+                                 iced_restart_file)
+
+        # Check binary restart has correct time
+        self._cice4_check_date_consistency(iced_path,
+                                           previous_runtime,
+                                           calendar_file)
+
+        with open(res_ptr_path, 'w') as res_ptr:
+            res_dir = self.get_ptr_restart_dir()
+            res_ptr.write(os.path.join(res_dir, iced_restart_file))
+
+    def _cice4_check_date_consistency(self,
+                                      iced_path,
+                                      previous_runtime,
+                                      calendar_file):
+        """
+        Check that the previous runtime in iced restart file header
+        matches the runtime calculated from the calendar restart file.
+
+        Parameters
+        ----------
+        iced_path: str or Path
+            Path to iced restart file
+        previous_runtime:  int
+            Seconds between experiment initialisation date and start date
+        calendar_file:  str or Path
+            Calendar restart file used to calculate timing information
+        """
+        _, _, cice_iced_runtime, _ = read_binary_iced_header(iced_path)
+        if previous_runtime != cice_iced_runtime:
+            msg = (f"Previous runtime from calendar file "
+                   f"{calendar_file}: {previous_runtime} "
+                   "does not match previous runtime in restart"
+                   f"file {iced_path}: {cice_iced_runtime}.")
+            raise RuntimeError(msg)
+
+    def find_matching_iced(self, dir_path, date):
+        """
+        Check a directory for an iced.YYYYMMDD restart file matching a
+        specified date.
+        Raises an error if the expected file is not found.
+
+        Parameters
+        ----------
+        dir_path: str or Path
+            Path to directory containing iced restart files
+        date: datetime.date
+            Date for matching iced file names
+
+        Returns
+        -------
+        iced_file_name: str
+            Name of iced restart file found in dir_path matching
+            the specified date
+        """
+        # Expected iced restart file name
+        date_int = cal.date_to_int(date)
+        iced_restart_file = f"iced.{date_int:08d}"
+
+        dir_files = [f for f in os.listdir(dir_path)
+                     if os.path.isfile(os.path.join(dir_path, f))]
+
+        if iced_restart_file not in dir_files:
+            msg = (f"CICE restart file not found in {dir_path}. Expected "
+                   f"{iced_restart_file} to exist. Is 'dumpfreq' set "
+                   f"in {self.ice_nml_fname} consistently with the run-length?"
+                   )
+            raise FileNotFoundError(msg)
+
+        return iced_restart_file
+
+
+CICE4_RESTART_HEADER_SIZE = 24
+CICE4_RESTART_HEADER_FORMAT = '>iidd'
+
+
+def read_binary_iced_header(iced_path):
+    """
+    Read header information from a CICE4 binary restart file.
+    """
+    with open(iced_path, 'rb') as iced_file:
+        header = iced_file.read(CICE4_RESTART_HEADER_SIZE)
+        bint, istep0, time, time_forc = struct.unpack(
+                                            CICE4_RESTART_HEADER_FORMAT,
+                                            header)
+
+    return (bint, istep0, time, time_forc)

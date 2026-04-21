@@ -10,7 +10,6 @@
 import os
 import shutil
 
-from payu.fsops import mkdir_p
 from payu.models.model import Model
 
 
@@ -58,7 +57,7 @@ class Qgcm(Model):
                 os.remove(f_path)
 
         # Archive the restart files
-        mkdir_p(self.restart_path)
+        os.makedirs(self.restart_path, exist_ok=True)
 
         restart_files = [f for f in os.listdir(self.work_path)
                          if f.endswith('lastday.nc')]

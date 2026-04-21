@@ -1,12 +1,20 @@
+# Standard imports
 import os
 import argparse
+from pathlib import Path
 
+import sys
+import logging
+
+# Local imports
 from payu import cli
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
 from payu import fsops
 from payu.manifest import Manifest
+from payu.telemetry import write_queued_job_file, record_run
+from payu.schedulers.pbs import PBS
 
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
@@ -15,10 +23,30 @@ arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory, args.reproduce, args.force,
              args.force_prune_restarts]
 
+logger = logging.getLogger(__name__)
+
+
+def validate_platform_node(platform, queue, get_queue_node_shape):
+    """
+    Validate platform node setting against the queue node shape for the active scheduler.
+    """
+    if not platform:
+        return
+
+    cpu, mem = get_queue_node_shape(queue)
+
+    if platform.get("nodesize") != cpu:
+        raise ValueError(
+            f"platform.nodesize must be {cpu} for queue '{queue}' in config.yaml"
+        )
+    if "nodemem" in platform and platform.get("nodemem") > mem:
+        raise ValueError(
+            f"platform.nodemem {platform.get('nodemem')}GB exceeds queue max {mem}GB for queue '{queue}' in config.yaml"
+        )
+
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
            reproduce=False, force=False, force_prune_restarts=False):
-
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
     pbs_vars = cli.set_env_vars(init_run=init_run,
@@ -28,15 +56,35 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
                                 force=force,
                                 force_prune_restarts=force_prune_restarts)
 
+    # Initialise Experiment early so we can detect scheduler
+    # Run experiment initialisation to update metadata,
+    # and determine the run counter and uuid before job submission
+    lab = Laboratory(model_type, config_path, lab_path)
+    expt = Experiment(lab, reproduce=reproduce, force=force)
+
     # Set the queue
     # NOTE: Maybe force all jobs on the normal queue
-    if 'queue' not in pbs_config:
-        pbs_config['queue'] = 'normal'
+    # Is there a reason to force all jobs onto a specific queue?
+    queue = pbs_config.get("queue", "normal")
 
-    # TODO: Create drivers for servers
-    platform = pbs_config.get('platform', {})
-    max_cpus_per_node = platform.get('nodesize', 48)
-    max_ram_per_node = platform.get('nodemem', 192)
+    platform = pbs_config.get("platform", {})
+
+    if expt.scheduler_name == 'pbs':
+        cpu_q, mem_q = PBS.get_queue_node_shape(queue)
+
+        if platform:
+            validate_platform_node(platform, queue, PBS.get_queue_node_shape)
+
+        max_cpus_per_node = platform.get("nodesize", cpu_q)
+        max_ram_per_node = platform.get("nodemem", mem_q)
+
+    elif expt.scheduler_name == 'slurm':
+        # TODO for non-PBS schedulers, such as Sotonix slurm setup on Pawsey
+        max_cpus_per_node = 64
+        max_ram_per_node = 256  # GB
+    else:
+        max_cpus_per_node = platform.get("nodesize", 48)
+        max_ram_per_node = platform.get("nodemem", 192)
 
     # Adjust the CPUs for any model-specific settings
     # TODO: Incorporate this into the Model driver
@@ -97,6 +145,17 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
     # Update the (possibly unchanged) value of ncpus
     pbs_config['ncpus'] = n_cpus
 
+    # Validate walltime against queue limits
+    walltime = pbs_config.get('walltime')
+    if walltime:
+        if expt.scheduler_name == "pbs":
+            PBS.validate_walltime_with_queue_limits(walltime, queue, n_cpus)
+        if expt.scheduler_name == "slurm":
+            # TODO for non-PBS schedulers, such as Sotonix slurm setup on Pawsey
+            pass
+    else:
+        raise ValueError("Walltime must be specified in the configuration for scheduler jobs.")
+
     # Set memory to use the complete node if unspecified
     pbs_mem = pbs_config.get('mem')
     if not pbs_mem:
@@ -107,11 +166,30 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
         pbs_config['mem'] = '{0}GB'.format(pbs_mem)
 
-    cli.submit_job('payu-run', pbs_config, pbs_vars)
+    # Check if the work directory exists, then show warning to the user.
+    if os.path.exists(expt.work_path) and not expt.force:
+        logger.error('Work path already exists. Please use `payu sweep` or use `payu run -f`.')
+
+        # Return error code.
+        sys.exit(1)
+
+    job_id = cli.submit_job('payu-run', pbs_config, pbs_vars)
+
+    current_run = init_run if init_run is not None else expt.counter
+
+    # This could be done as part of submit_job eventually, but for now
+    # it's only used by the run command.
+    write_queued_job_file(
+        archive_path=Path(expt.archive_path),
+        job_id=job_id,
+        type='run',
+        scheduler=expt.scheduler,
+        metadata=expt.metadata,
+        current_run=current_run,
+    )
 
 
 def runscript():
-
     parser = argparse.ArgumentParser()
     for arg in arguments:
         parser.add_argument(*arg['flags'], **arg['parameters'])
@@ -120,6 +198,7 @@ def runscript():
 
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)
+
     expt = Experiment(lab, reproduce=run_args.reproduce, force=run_args.force)
 
     n_runs_per_submit = expt.config.get('runspersub', 1)
@@ -129,17 +208,36 @@ def runscript():
 
         print('nruns: {0} nruns_per_submit: {1} subrun: {2}'
               ''.format(expt.n_runs, n_runs_per_submit, subrun))
-
-        expt.setup()
-        expt.run()
-        expt.archive(force_prune_restarts=run_args.force_prune_restarts)
+        # Set job filepath for the payu run
+        expt.set_job_file(type='run')
+        try:
+            expt.setup()
+            expt.run()
+            expt.archive(force_prune_restarts=run_args.force_prune_restarts)
+            run_status = 0
+        except:
+            run_status = 1
+            raise
+        finally:
+            # Record job information for experiment run
+            record_run(
+                timings=expt.timings,
+                scheduler=expt.scheduler,
+                run_status=run_status,
+                config=expt.config,
+                file_path=expt.job_file,
+                archive_path=Path(expt.archive_path),
+            )
 
         # Finished runs
         if expt.n_runs == 0:
             break
 
-        # Need to manually increment the run counter if still looping
+        # Check if still looping
         if n_runs_per_submit > 1 and subrun < n_runs_per_submit:
+            # Re-initialise the experiment method timings
+            expt.init_timings()
+            # Need to manually increment the run counter if still looping
             expt.counter += 1
             # Re-initialize manifest: important to clear out restart manifest
             # note no attempt to preserve reproduce flag, it makes no sense

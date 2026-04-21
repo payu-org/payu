@@ -5,6 +5,7 @@ Using the GitPython library for interacting with Git
 
 import warnings
 from pathlib import Path
+import sys
 from typing import Optional, Union, List, Dict
 
 import git
@@ -57,17 +58,39 @@ class GitRepository:
             repo = get_git_repository(repo_path, catch_error=catch_error)
         self.repo = repo
 
-    def get_branch_name(self) -> Optional[str]:
+    def get_branch(self) -> Optional[git.Head]:
         """Return the current git branch or None if repository path is
         not a git repository"""
         if self.repo:
-            return str(self.repo.active_branch)
+            if self.repo.head.is_detached:
+                sys.exit("\nRepo is in a detached HEAD state.\n"
+                         "Before running again checkout a branch using\n\n"
+                         "    payu checkout <branch>\n\n")
+            else:
+                return self.repo.active_branch
+        else:
+            return None
+
+    def get_branch_name(self) -> Optional[str]:
+        """Return the current git branch or None if repository path is
+        not a git repository"""
+
+        branch = self.get_branch()
+
+        if branch is not None:
+            return branch.name
+        else:
+            return None
 
     def get_hash(self) -> Optional[str]:
         """Return the current git commit hash or None if repository path is
           not a git repository"""
         if self.repo:
-            return self.repo.active_branch.object.hexsha
+            branch = self.repo.get_branch()
+            if branch is not None:
+                return branch.object.hexsha
+            else:
+                return None
 
     def get_origin_url(self) -> Optional[str]:
         """Return url of remote origin if it exists"""
@@ -102,7 +125,7 @@ class GitRepository:
         untracked_files = [Path(self.repo_path) / path
                            for path in self.repo.untracked_files]
         for path in paths_to_commit:
-            if self.repo.git.diff(None, path) or path in untracked_files:
+            if self.repo.git.diff(None, path) or Path(path) in untracked_files:
                 self.repo.index.add([path])
                 changes = True
 
@@ -124,7 +147,19 @@ class GitRepository:
         objects"""
         branch_names_dict = {}
         for remote in self.repo.remotes:
-            remote.fetch()
+            try:
+                remote.fetch()
+            except git.exc.GitCommandError:
+                warnings.warn(
+                    f"Failed to fetch from remote repository: {remote.name} " +
+                    f"(url: {remote.url}). Payu is not able to determine " +
+                    "remote branch names, which are used in payu checkout " +
+                    "to check if a branch already exists, or when creating " +
+                    "a new branch from a remote branch.",
+                    PayuGitWarning
+                )
+                continue
+
             for ref in remote.refs:
                 branch_names_dict[ref.remote_head] = ref
         return branch_names_dict

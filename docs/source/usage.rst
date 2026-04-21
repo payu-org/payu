@@ -115,15 +115,20 @@ For example::
 Where ``${REPOSITORY}`` is the git URL or path of the repository to clone from, 
 for example, https://github.com/payu-org/mom-example.git.
 
-To clone and checkout an existing git branch, use the ``--branch`` flag and 
+To clone and checkout an existing git branch, use the ``-B/--branch`` flag and
 specify the branch name::
 
       payu clone --branch ${EXISTING_BRANCH} ${REPOSITORY} my_expt
 
-To create and checkout a new git branch use ``--new-branch`` and specify a 
-new branch name:
+To create and checkout a new git branch use ``-b/--new-branch`` and specify a
+new branch name::
 
       payu clone --new-branch ${NEW_BRANCH} ${REPOSITORY} my_expt
+
+To create a new git branch starting from a tag or commit, use ``-s/--start-point``
+flag::
+
+      payu clone -b ${NEW_BRANCH} -s {COMMIT_HASH|TAG} ${REPOSITORY} my_expt
 
 To see more configuration options for ``payu clone``, 
 run:: 
@@ -133,7 +138,22 @@ run::
 As an alternative to creating and checking out branches with ``payu clone``, 
 ``payu checkout`` can be used instead (see :ref:`usage-metadata`). 
 
+Payu clone interactive mode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+An interactive mode is available to guide you through the cloning process. 
+To start this, simply run::
 
+      payu clone
+
+Interactive mode will prompt for all required inputs. 
+The workflow of the interactive mode is as follows:
+
+.. image:: ../diagrams/payu_clone_flowchart.svg
+   :align: center
+   :alt: Flowchart of the payu clone interactive workflow
+   :width: 300px
+
+.. _Create-experiment:
 Create experiment
 -----------------
 
@@ -247,7 +267,7 @@ called ``stop_run`` in the control directory.
 It is possible to require that a run reproduce an existing run using the 
 ``-r/--reproduce`` flag:
 
-  payu run -r
+   payu run -r
 
 When this invoked all the manifests are read in and hashes checked for consistency
 and only if all executables, inputs and restart files are unchanged will the run
@@ -268,8 +288,55 @@ If restart pruning configuration has changed, there may be warnings if
 many restarts will be pruned as a result. If this is desired, at the next 
 run use ``-F/--force-prune-restarts`` flag:
 
-  payu run --force-prune-restarts
+   payu run --force-prune-restarts
 
+
+Monitoring payu jobs
+====================
+
+To monitor the status of running and finished payu run jobs, run::
+
+   payu status
+
+By default, this displays information about the latest run number.
+This includes:
+
+* Scheduler job ID
+
+* Filepaths to the scheduler standard output and error files (if available)
+
+* Current or last stage of the run, which may be:
+
+   * ``queued`` - Job submitted to the scheduler
+
+   * ``setup`` - Job has started running, and payu is setting up for the
+     model run
+
+   * ``model-run`` - Model is running
+
+   * ``archive`` - Model run has finished, and payu is archiving the output
+
+* Exit status of the payu run (if available). This is set at the end of a payu
+  run so may not reflect the exit status of the scheduler job, e.g., if
+  a subsequent payu run on the same job submission fails.
+
+* The exit status of the model run MPI command (if available)
+
+* Filepath to a JSON job file, which stores additional information about the
+  payu run, such as the manifests, payu configuration, scheduler information
+  queried during the run, and timings of steps in the payu run.
+
+To display all runs, including failed runs, use ``--all`` flag, for example::
+
+   payu status --all
+
+To display the status of a specific run number, use the ``-n`` flag::
+
+   payu status -n 10
+
+To output JSON-formatted status information, use the ``--json`` flag::
+
+   payu status --json
 
 Cleaning up 
 ===========
@@ -300,6 +367,7 @@ use it with caution.
 Hard sweeps will only delete the run output for your particular experiment.
 Other experiment runs will not be harmed by this command.
 
+.. _Postprocessing:
 
 Postprocessing
 ==============
@@ -441,3 +509,40 @@ repository, run::
       payu branch # Display local branches UUIDs
       payu branch --verbose # Display local branches metadata 
       payu branch --remote # Display remote branches UUIDs
+
+Common flags
+===============
+
+The flag below can be applied to all payu subcommands.
+
+.. option:: -h, --help
+
+   Display help information about the command and its usage.
+
+.. option:: --stacktrace
+   
+   Enable full Python stacktraces for warnings. 
+   By default, payu displays only the warning messages to remain user-friendly. 
+   It will be helpful to enable this flag when debugging internal issues or reporting bugs.
+
+
+Getting support
+===============
+
+To display information about the current computing environment and machine 
+configuration, use the support command::
+
+   payu support
+
+The output includes:
+
+* Payu version and installation path.
+
+* Python version and the full system path where packages are loaded from.
+
+* Loaded modules (e.g., PBS).
+
+* Machine information, such as the Operating System and CPU architecture.
+
+This will be helpful in debugging environment issues or providing necessary details 
+when reporting an issue.

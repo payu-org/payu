@@ -9,6 +9,7 @@ metadata
 
 import requests
 import shutil
+import os
 import uuid
 import warnings
 from datetime import datetime
@@ -18,7 +19,7 @@ from typing import Optional, Union
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
-from payu.fsops import read_config, mkdir_p
+from payu.fsops import read_config
 from payu.git_utils import GitRepository
 
 # A truncated uuid is used for branch-uuid aware experiment names
@@ -36,7 +37,10 @@ MODEL_FIELD = "model"
 METADATA_FILENAME = "metadata.yaml"
 
 # Metadata Schema
-SCHEMA_URL = "https://raw.githubusercontent.com/ACCESS-NRI/schema/80a3ce720af14b2b5e718630e1b52e7b3d22ea95/au.org.access-nri/model/output/experiment-metadata/1-0-3.json"
+SCHEMA_VERSION = "1-0-3"
+SCHEMA_COMMIT_HASH = "cff183437134592723b09af6620e5cb190abeb22" 
+SCHEMA_URL = f"https://raw.githubusercontent.com/ACCESS-NRI/schema/{SCHEMA_COMMIT_HASH}/au.org.access-nri/model/output/experiment-metadata/{SCHEMA_VERSION}.json"
+placeholder_text = "__REPLACE_ME__"
 
 class MetadataWarning(Warning):
     pass
@@ -58,13 +62,18 @@ class Metadata:
         config_path : Optional[Path]
             Configuration Path. The default is config.yaml in the current
             working directory. This is also set in fsop.read_config
+        disabled : bool, default False
+            Flag to disable metadata and UUID generation and commits. The
+            legacy name (control directory name) for experiments names
+            in archive will be used instead.
     """
 
     def __init__(self,
                  laboratory_archive_path: Path,
                  config_path: Optional[Path] = None,
                  branch: Optional[str] = None,
-                 control_path: Optional[Path] = None) -> None:
+                 control_path: Optional[Path] = None,
+                 disabled: Optional[bool] = False) -> None:
         self.config = read_config(config_path)
         self.metadata_config = self.config.get('metadata', {})
 
@@ -74,8 +83,12 @@ class Metadata:
         self.filepath = self.control_path / METADATA_FILENAME
         self.lab_archive_path = laboratory_archive_path
 
-        # Config flag to disable creating metadata files and UUIDs
-        self.enabled = self.metadata_config.get('enable', True)
+        # Check if metadata has been disabled in call, env flag under PBS,
+        # or in config.yaml
+        self.enabled = (
+            not disabled and
+            self.metadata_config.get('enable', True)
+        )
 
         if self.enabled:
             self.repo = GitRepository(self.control_path, catch_error=True)
@@ -161,7 +174,7 @@ class Metadata:
             # Metadata/UUID generation is disabled, so leave UUID out of
             # experiment name
             self.experiment_name = legacy_name
-            print("Metadata is disabled in config.yaml.",
+            print("Metadata and UUID generation is disabled.",
                   f"Experiment name used for archival: {self.experiment_name}")
             return
 
@@ -335,7 +348,7 @@ class Metadata:
 
     def copy_to_archive(self) -> None:
         """Copy metadata file to archive"""
-        mkdir_p(self.archive_path)
+        os.makedirs(self.archive_path, exist_ok=True)
         shutil.copy(self.filepath, self.archive_path / METADATA_FILENAME)
         # Note: The existence of an archive is used for determining
         # experiment names and whether to generate a new UUID
@@ -355,15 +368,35 @@ def get_schema_from_github():
 def add_template_metadata_values(metadata: CommentedMap) -> None:
     """Add in templates for un-set metadata values"""
     schema = get_schema_from_github()
+    comment_line = []
+    anchor_key = None
+    anchor_description = ""
 
     for key, value in schema.get('properties', {}).items():
         if key not in metadata:
             # Add field with commented description of value
             description = value.get('description', None)
             if description is not None:
-                metadata[key] = None
-                metadata.yaml_add_eol_comment(description, key)
+                if key == "schema_version":
+                    # Set the schema to 1-0-3
+                    metadata[key] = SCHEMA_VERSION
+                    anchor_key = key
+                    anchor_description = description
+                elif key == "description" or key == "long_description":
+                    # Add placeholder description for description field
+                    metadata[key] = placeholder_text
+                    metadata.yaml_add_eol_comment(description, key)
+                    anchor_key = key
+                    anchor_description = description
+                else:
+                    comment_line.append(f"# {key}: {description}")
 
+    # Add any remaining keys and descriptions as comments at the end of the file,
+    # anchored to the last key                
+    if not anchor_key:
+        anchor_key = next(reversed(metadata), None)
+
+    metadata.yaml_add_eol_comment(anchor_description + "\n" + "\n".join(comment_line), anchor_key)
 
 def generate_uuid() -> str:
     """Generate a new uuid"""

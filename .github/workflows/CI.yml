@@ -31,10 +31,6 @@ jobs:
       - run: |
           python3 -m pip install --upgrade build && python3 -m build
 
-      - uses: actions/upload-artifact@v3
-        with:
-          path: ./dist
-
   conda-build:
     name: Conda Build
     runs-on: ubuntu-latest
@@ -51,9 +47,12 @@ jobs:
           auto-activate-base: false
           show-channel-urls: true
 
-      - name: Run conda build
-        shell: bash -el {0}
-        run: conda build . --no-anaconda-upload
+      - name: Build conda package
+        uses: ACCESS-NRI/action-build-and-upload-conda-packages@v2.0.1
+        with:
+          meta_yaml_dir: conda
+          label: main
+          upload: false
 
   tests:
     name: Tests
@@ -62,7 +61,7 @@ jobs:
     # Run the job for different versions of python
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -77,11 +76,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip' # caching pip dependencies
 
-      - name: Install dependencies
-        run: pip install -r test/requirements_test.txt
-
-      - name: Install payu
-        run: pip install .
+      - name: Install payu and test dependencies
+        run: python3 -m pip install '.[test]'
 
       - name: Check payu installed correctly
         run: payu list
@@ -90,22 +86,13 @@ jobs:
         run: pylint --extension-pkg-whitelist=netCDF4 --ignored-modules=backports -E payu
 
       - name: Run tests
-        run: |
-          PYTHONPATH=. pytest --cov=payu -s test;
+        run: python -m pytest --cov-report=xml
 
-      - name: Coveralls
-        uses: AndreMiras/coveralls-python-action@f5fd5c309b39d01599fb92c72d4f7409ea78aec9 # v20201129
+      - name: Upload code coverage report to Codecov
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
-          parallel: true
+          files: ./coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Make docs
         run: cd docs && make html
-
-  coveralls_finish:
-    name: Coveralls Finished
-    needs: tests
-    runs-on: ubuntu-latest
-    steps:
-    - uses: AndreMiras/coveralls-python-action@f5fd5c309b39d01599fb92c72d4f7409ea78aec9 # v20201129
-      with:
-        parallel-finished: true

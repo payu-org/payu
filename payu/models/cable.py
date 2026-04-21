@@ -17,7 +17,6 @@ import f90nml
 import yaml
 
 # Local
-from payu.fsops import mkdir_p
 from payu.models.model import Model
 
 
@@ -158,7 +157,7 @@ class Cable(Model):
         super(Cable, self).archive()
 
         # Archive the restart files
-        mkdir_p(self.restart_path)
+        os.makedirs(self.restart_path, exist_ok=True)
 
         restart_files = [f for f in os.listdir(self.work_restart_path)
                          if f.endswith('restart.nc')]
@@ -171,7 +170,7 @@ class Cable(Model):
 
         # Move all logs into a logs subdir
         log_path = os.path.join(self.work_path, 'logs')
-        mkdir_p(log_path)
+        os.makedirs(log_path, exist_ok=True)
         log_files = [f for f in os.listdir(self.work_path)
                      if f.startswith('cable_log')]
         for f in log_files:

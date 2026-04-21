@@ -20,7 +20,6 @@ import f90nml
 import yaml
 
 # Local
-from payu.fsops import mkdir_p
 from payu.models.model import Model
 
 
@@ -75,7 +74,7 @@ class Mitgcm(Model):
         # Generic model setup
         super(Mitgcm, self).setup()
 
-        if self.prior_restart_path and not self.expt.repeat_run:
+        if self.prior_restart_path:
             # Determine total number of timesteps since initialisation
             core_restarts = [f for f in os.listdir(self.prior_restart_path)
                              if f.startswith('pickup.')]
@@ -128,8 +127,7 @@ class Mitgcm(Model):
                 # Assume n_timesteps and dt set correctly
                 pass
 
-        if t_start is None or (self.prior_restart_path
-           and not self.expt.repeat_run):
+        if t_start is None or self.prior_restart_path:
             # Look for a restart file from a previous run
             if os.path.exists(restart_calendar_path):
                 with open(restart_calendar_path, 'r') as restart_file:
@@ -252,7 +250,7 @@ class Mitgcm(Model):
                 sh.move(f_path, self.work_path)
             os.rmdir(path)
 
-        mkdir_p(self.restart_path)
+        os.makedirs(self.restart_path, exist_ok=True)
 
         # Move pickups but don't include intermediate pickupts ('ckpt's)
         restart_files = [f for f in os.listdir(self.work_path)

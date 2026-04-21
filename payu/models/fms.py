@@ -16,6 +16,8 @@ import subprocess as sp
 import sys
 from itertools import count
 import fnmatch
+import re
+import warnings
 
 from payu.models.model import Model
 from payu import envmod
@@ -56,6 +58,23 @@ def get_uncollated_files(dir):
     return [f.name for f
             in sorted(tile_fnames, key=lambda e: int(e.suffixes[-1][1:]))]
 
+
+def get_avail_collate_flags(mppnc_path):
+    """
+    Returns a set of the available mppnccombine flags parsed from the help string
+
+    Parameters
+    ----------
+    mppnc_path: The mppnccombine executable path
+    """
+    try:
+        collate_help = sp.run([mppnc_path, '-h'], stdout=sp.PIPE, text=True)
+    except Exception as e:
+        raise RuntimeError(f"Failed to run '{mppnc_path} -h' to detemine available flags") from e
+
+    return set(re.findall(r"\B-[A-Za-z0-9]+\b", collate_help.stdout))
+
+
 def fms_collate(model):
     """
     Collate model output using mppnccombine. This is broken out of the Fms class so that it can
@@ -76,8 +95,7 @@ def fms_collate(model):
     mpi = collate_config.get('mpi', False)
 
     if mpi:
-        # Must use envmod to be able to load mpi modules for collation
-        envmod.setup()
+        # Load mpi modules for collation
         model.expt.load_modules()
         default_exe = 'mppnccombine-fast'
     else:
@@ -92,8 +110,7 @@ def fms_collate(model):
                 mppnc_path = os.path.join(model.expt.lab.bin_path, f)
                 break
     else:
-        if not os.path.isabs(mppnc_path):
-            mppnc_path = os.path.join(model.expt.lab.bin_path, mppnc_path)
+        mppnc_path = model.expand_executable_path(mppnc_path)
 
     assert mppnc_path, 'No mppnccombine program found'
 
@@ -103,7 +120,25 @@ def fms_collate(model):
         if mpi:
             collate_flags = '-r'
         else:
-            collate_flags = '-n4 -z -m -r'
+            collate_flags = '-n4 -m -r'
+
+            # Unfortunately there are two versions of mppnccombine floating around that support
+            # different flags:
+            # 1. https://github.com/ACCESS-NRI/MOM5/tree/master/src/postprocessing/mppnccombine
+            # 2. https://github.com/NOAA-GFDL/FRE-NCtools/tree/main/src/mpp-nccombine
+            # Here we parse the available flags from the help string to determine which version
+            # we are using and set the compression flag accordingly
+            avail_collate_flags = get_avail_collate_flags(mppnc_path)
+            
+            if "-z" in avail_collate_flags:
+                # Legacy mppnccombine uses -z to turn on compression
+                # Default deflate level is 5
+                collate_flags += " -z"
+            elif "-d" in avail_collate_flags:
+                # Set deflate level to 5
+                collate_flags += " -d 5"
+            else:
+                warnings.warn("No compression flag set for mppnccombine")
 
     if mpi:
         # The output file is the first argument after the flags
@@ -111,6 +146,8 @@ def fms_collate(model):
         # the output
         collate_flags = " ".join([collate_flags, '-o'])
         envmod.lib_update(required_libs(mppnc_path), 'libmpi.so')
+        # List all loaded environment modules
+        envmod.module("list")
 
     # Import list of collated files to ignore
     collate_ignore = collate_config.get('ignore')

@@ -7,3 +7,5 @@ index = {
     'pbs': PBS,
     'slurm': Slurm,
 }
+
+DEFAULT_SCHEDULER_CONFIG = 'pbs'

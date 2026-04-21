@@ -7,12 +7,10 @@ import shutil
 
 import yaml
 
-import payu
-
 # Namespace clash if import setup_cmd.runcmd as setup. For
 # consistency use payu_ prefix for all commands
 from payu.subcommands.init_cmd import runcmd as payu_init
-from payu.subcommands.setup_cmd import runcmd as payu_setup_orignal
+from payu.subcommands.setup_cmd import runcmd as payu_setup_original
 from payu.subcommands.sweep_cmd import runcmd as payu_sweep
 
 ctrldir_basename = 'ctrl'
@@ -48,12 +46,11 @@ config = {
             'exe': 'test.exe',
             'input': 'testrun_1',
             'manifest': {
-                        'scaninputs': False,
-                        'reproduce': {
-                                        'input': False,
-                                        'exe': False
-                                        }
-                        },
+                'reproduce': {
+                    'input': False,
+                    'exe': False
+                }
+            },
             'runlog': False,
             "experiment": ctrldir_basename,
             "metadata": {
@@ -107,7 +104,8 @@ def sweep_work(hard_sweep=False):
         payu_sweep(model_type=None,
                    config_path=None,
                    hard_sweep=hard_sweep,
-                   lab_path=str(labdir))
+                   lab_path=str(labdir),
+                   metadata_off=False)
 
 
 def payu_setup(model_type=None,
@@ -116,7 +114,8 @@ def payu_setup(model_type=None,
                force_archive=None,
                reproduce=None,
                sweep=True,
-               force=False):
+               force=False,
+               metadata_off=False):
     """
     Wrapper around original setup command to provide default arguments
     and run in ctrldir
@@ -126,25 +125,30 @@ def payu_setup(model_type=None,
             payu_sweep(model_type=None,
                        config_path=None,
                        hard_sweep=False,
-                       lab_path=str(labdir))
-        payu_setup_orignal(model_type,
+                       lab_path=str(labdir),
+                       metadata_off=False)
+        payu_setup_original(model_type,
                            config_path,
                            lab_path,
                            force_archive,
                            reproduce,
-                           force)
+                           force,
+                           metadata_off=False)
 
 
 def write_config(config, path=config_path):
     with path.open('w') as file:
-        file.write(yaml.dump(config, default_flow_style=False))
+        file.write(yaml.dump(config, default_flow_style=False,
+                   sort_keys=False))
 
 
-def make_exe():
+def make_exe(exe_name=None):
     # Create a fake executable file
     bindir = labdir / 'bin'
     bindir.mkdir(parents=True, exist_ok=True)
-    exe_path = bindir / config['exe']
+    if not exe_name:
+        exe_name =  config['exe']
+    exe_path = bindir / exe_name
     exe_size = 199
     make_random_file(exe_path, exe_size)
     exe_path.chmod(exe_path.stat().st_mode | stat.S_IEXEC)

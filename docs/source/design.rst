@@ -47,6 +47,47 @@ Work Path
    Experiments that are actively running are stored in the work path. For an
    experiment named ``myrun``, the default directory is ``${LAB}/work/myrun``.
 
+.. _experiment-steps:
+Experiment Steps
+================
+
+Payu runs through several steps to setup, run and clean-up an experiment, outlined below:
+
+init
+   Experiment initialization runs first, and includes reading in configuration information and updating the metadata.
+
+setup
+   Setup creates the ephemeral work directory and updates manifests. It is what is run with the ``payu setup`` command. 
+
+run
+   This is the step which does any automated ``runlog`` commands (``git commit``) and executes the model.
+
+error
+   The error stage is entered if the model runs but returns an error code.
+
+archive
+   If the model run is succesful, payu archives the results from the work directory to the output directories.
+
+Post-processing PBS Jobs
+======================
+
+After payu completes the experiment steps, there are some optional post-processing steps 
+which will submit follow-up PBS jobs to do further processing on the archived output.
+
+collate
+   When enabled, payu joins a number of smaller files which contain different
+   parts of the model grid together into target output files.
+
+postscript
+   Users can specify arbitrary post-processing scripts, which runs as a separate PBS job. 
+   This step is after the collate job is completed successfully, if collate is enabled.
+
+sync
+   When enabled, payu syncs the archive directory with a specificed remote directory.
+   Payu sync job is submitted after the collate job is completed successfully, if collate is enabled.
+   Currently, ``postscript`` and ``sync`` jobs are submitted at the same time.
+   As a result, ``payu sync`` does not wait for the postscript job to complete, 
+   and does not sync the most recent ``output`` directory (see :ref:`Postprocessing` and :ref:`User_processing`).
 
 Style Guide
 ===========

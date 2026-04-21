@@ -6,22 +6,257 @@
 
 # Standard library
 import os
+from pathlib import Path
 import re
 import sys
 import shlex
 import subprocess
+from typing import Any, Dict, Optional
+import warnings
+from collections import Counter
+
+import json
+from tenacity import retry, stop_after_delay
+from datetime import datetime, timedelta
+from filelock import SoftFileLock, Timeout
 
 import payu.envmod as envmod
-from payu.fsops import check_exe_path
+from payu.fsops import check_exe_path, atomic_write_file
 from payu.manifest import Manifest
 from payu.schedulers.scheduler import Scheduler
 
-from tenacity import retry, stop_after_delay
+PBSNODE_TIMEOUT = 60
+LOCK_TIMEOUT = 5
+LOCK_LIFETIME = 8
+
+def get_pbsnodes_cache_path() -> Path:
+    """Get the path of pbsnodes.json cache file, 
+    If not set, then use default cache path."""
+
+    env_path = os.environ.get("PAYU_PBSNODES_CACHE")
+    if env_path:
+        return Path(env_path)
+    else:
+        cache_dir = os.environ.get('XDG_CACHE_HOME', Path.home() / ".cache")
+        return Path(cache_dir) / "pbs" / "pbsnodes.json"
+
+def check_pbsnode_file(pbsnodes_json_path):
+    """ Check if pbsnodes.json file is recent (< 7 days) and rerun pbsnodes if not. """
+    expire_day = 7
+    refresh_cache_file = True
+    
+    # Check if pbsnodes.json exists
+    if pbsnodes_json_path.exists():
+        try:
+            # Check if the file is recent (modified within the last 7 days)
+            with pbsnodes_json_path.open() as f:
+                pbsnodes_json = json.load(f)
+            timestamp = datetime.fromtimestamp(pbsnodes_json.get("timestamp", 0))
+
+            if (datetime.now() - timestamp) < timedelta(days=expire_day):
+                refresh_cache_file = False
+
+        except json.JSONDecodeError:
+            # Cache file is invalid, pass as it will be refreshed below
+            pass
+
+    # If the cached file is not recent or doesn't exist, rerun pbsnodes and cache the result
+    if refresh_cache_file:   
+        new_pbsnodes_json = _run_pbsnodes_json(timeout=PBSNODE_TIMEOUT)
+
+        pbsnodes_json_path.parent.mkdir(parents=True, exist_ok=True)
+        lock = SoftFileLock(str(pbsnodes_json_path) + ".lock", lifetime=LOCK_LIFETIME, timeout=LOCK_TIMEOUT)
+        try:
+            with lock:
+                atomic_write_file(pbsnodes_json_path, new_pbsnodes_json)
+        except Timeout:
+            warnings.warn(f"Could not acquire lock to write pbsnodes cache file {pbsnodes_json_path}.\n"
+             f"Cache into {pbsnodes_json_path}.tmp instead.")
+            atomic_write_file(pbsnodes_json_path.with_suffix(".tmp"), new_pbsnodes_json)
+        
+
+def read_pbsnode_file() -> Dict[str, Any]:
+    """ Read pbsnodes.json file and return the parsed JSON data. """ 
+    pbsnodes_json_path = get_pbsnodes_cache_path()
+    check_pbsnode_file(pbsnodes_json_path)
+    try:
+        with pbsnodes_json_path.open() as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"Failed to decode JSON from {pbsnodes_json_path} after timestamp checking."
+        ) from e
+        
+
+def _run_pbsnodes_json(timeout: int) -> Dict[str, Any]:
+    """Run pbsnodes -a -F json and return parsed Json output."""
+    cmd = ["pbsnodes", "-a", "-F", "json"]
+    try:
+        pbsnodes_output = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(
+            f"Unable to collect pbs node info: command timed out after {timeout} seconds"
+        ) from e
+
+    try:
+        return json.loads(pbsnodes_output.stdout)
+    except json.JSONDecodeError as e:
+        error_msg = (pbsnodes_output.stdout or "")
+        raise RuntimeError(
+            f"Failed to decode JSON output from pbsnodes command: {' '.join(cmd)}"
+            f"\n Output: {error_msg}"
+        ) from e
 
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
 class PBS(Scheduler):
-    # TODO: __init__
+    name = "pbs"
+
+    # Define walltime maps in (cpus, hours) for different queues
+    WALLTIME_MAPS = {
+        "normal": [
+            (672, 48),
+            (1440, 24),
+            (2976, 10),
+            (20736, 5),
+        ],
+        "express": [
+            (480, 24),
+            (3168, 5),
+        ],
+        "normalsr": [
+            (1040, 48),
+            (2080, 24),
+            (4160, 10),
+            (10400, 5),
+        ],
+        "expresssr": [
+            (1040, 24),
+            (2080, 5),
+        ],
+        "normalbw": [
+            (336, 48),
+            (840, 24),
+            (1736, 10),
+            (10080, 5),
+        ],
+        "expressbw": [
+            (280, 24),
+            (1848, 5),
+        ],
+        "normalsl": [
+            (288, 48),
+            (608, 24),
+            (1984, 10),
+            (3200, 5),
+        ],
+    }
+
+    # Map payu queue names to pbsnode topology tags
+    QUEUE_MAPS = {
+        "normal":   "cpu-clx",
+        "normalsr": "cpu-spr",
+        "normalbw": "cpu-bdw",
+        "normalsl": "cpu-skl",
+        "express":   "cpu-clx",
+        "expresssr": "cpu-spr",
+        "expressbw": "cpu-bdw",
+    }
+
+    @classmethod
+    def get_queue_walltime_hours(cls, queue: str, ncpus) -> int:
+        """
+        Get the queue walltime (in hours) for a given queue.
+        """
+        limits = cls.WALLTIME_MAPS.get(queue)
+        if not limits:
+            raise ValueError(f"Unknown queue: {queue}")
+
+        # Check maximum cpu limit
+        max_cpus = limits[-1][0]
+        if ncpus > max_cpus:
+            raise ValueError(
+                f"Requested CPUs ({ncpus}) exceed maximum "
+                f"for queue '{queue}' ({max_cpus})"
+            )
+
+        for cpu_limit, hours in limits:
+            if ncpus <= cpu_limit:
+                return hours
+
+    @staticmethod
+    def parse_walltime(walltime: int | str) -> float:
+        # For time like inputs, yaml has auto-parsed correct time format (non-zero-padded formats) to int values
+        # such as 1:30:00, 1:00, rather than 01:30:00 or 01:00
+        # yaml also parse unquoted numeric values such as 05 as int(5)
+        if isinstance(walltime, int):
+            return walltime / 3600
+
+        # for zero-padded formats
+        s = walltime.strip()
+
+        # covers numeric string like "05"
+        if s.isdigit():
+            return int(s) / 3600
+
+        parts = s.split(":")
+
+        if len(parts) == 2:
+            # covers 01:00 format
+            m, s = map(int, parts)
+            h = 0
+        elif len(parts) == 3:
+            # covers 01:30:00 format
+            h, m, s = map(int, parts)
+        else:
+            raise ValueError(f"Invalid walltime format: {walltime!r}")
+        return (h*3600 + m*60 + s) / 3600
+
+    @classmethod
+    def validate_walltime_with_queue_limits(cls, walltime: int | str, queue: str, ncpus: int):
+        requested_hours = cls.parse_walltime(walltime)
+        limit = cls.get_queue_walltime_hours(queue, ncpus)
+        if limit is not None and requested_hours > limit:
+            raise ValueError(
+                f"Requested walltime of {requested_hours} hours exceeds "
+                f"the limit of {limit} hours for queue '{queue}' with "
+                f"{ncpus} CPUs."
+            )
+
+    @staticmethod
+    def _mem_convert_kb_to_gb(mem_kb: str) -> int:
+        s = str(mem_kb).strip().lower()
+        if not s.endswith("kb"):
+            raise ValueError(f"Memory string '{mem_kb}' is not in kb format")
+        return int(s.replace("kb", "")) // (1024 * 1024)
+
+    @classmethod
+    def get_queue_node_shape(cls, queue: str) -> tuple[int, int]:
+        """
+        Get the node shape (cpu count and memory) for a given queue.
+        """
+        tag = cls.QUEUE_MAPS.get(queue)
+        # collect all node information from pbsnodes
+        data = read_pbsnode_file()
+
+        ncpus, mem = [], []
+        for node in data["nodes"].values():
+            ra = node["resources_available"]
+            if tag not in ra.get("topology", ""):
+                continue
+            ncpus.append(int(ra["ncpus"]))
+            mem.append(cls._mem_convert_kb_to_gb(ra["mem"]))
+
+        if not ncpus or not mem:
+            raise ValueError(f"No nodes matched queue '{queue}' (tag '{tag}')")
+
+        return Counter(ncpus).most_common(1)[0][0], Counter(mem).most_common(1)[0][0]
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
         """Prepare a correct PBS command string"""
@@ -128,6 +363,17 @@ class PBS(Scheduler):
         envmod.setup()
         envmod.module('load', 'pbs')
 
+        # Check for custom container launcher script environment variable
+        launcher_script = os.environ.get('ENV_LAUNCHER_SCRIPT_PATH')
+        if (
+            launcher_script
+            and Path(launcher_script).is_file()
+            and os.access(launcher_script, os.X_OK)
+        ):
+            # Prepend the container launcher script to the python command
+            # so the python executable is accessible in the container
+            python_exe = f'{launcher_script} {python_exe}'
+
         # Construct job submission command
         cmd = 'qsub {flags} -- {python} {script}'.format(
             flags=' '.join(pbs_flags),
@@ -137,43 +383,100 @@ class PBS(Scheduler):
 
         return cmd
 
+    def get_job_id(self, short: bool = True) -> Optional[str]:
+        """Get PBS job ID
 
-# TODO: These support functions can probably be integrated into the class
+        Parameters
+        ----------
+        short: bool, default True
+            Return shortened form of the job ID
 
-def get_job_id(short=True):
+        Returns
+        ----------
+        Optional[str]
+            Job id if defined, None otherwise
+        """
+
+        jobid = os.environ.get('PBS_JOBID', '')
+
+        if short:
+            # Strip off '.rman2'
+            jobid = jobid.split('.')[0]
+
+        return jobid
+
+    def get_job_info(self) -> Optional[Dict[str, Any]]:
+        """
+        Get information about the job from the PBS server
+
+        Returns
+        ----------
+        Optional[Dict[str, Any]]
+            Dictionary of information extracted from qstat output
+        """
+        jobid = self.get_job_id()
+
+        info = None
+
+        if not jobid == '' and jobid is not None:
+            info = get_job_info_json(jobid)
+
+        return info
+
+
+    def get_all_job_info(self) -> Optional[Dict[str, Any]]:
+        """
+        Get information about all jobs from the PBS server
+
+        Returns
+        ----------
+        Optional[Dict[str, Any]]
+            Dictionary of information extracted from qstat output
+        """
+        info = get_job_info_json()
+        if info is None:
+            return None
+        metadata = {k: v for k, v in info.items() if k != "Jobs"}  
+        result = { 
+            job_id: {**metadata, "Jobs": {job_id: job_info}}  
+            for job_id, job_info in info.get("Jobs", {}).items()
+        }  
+        return result
+
+
+@retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
+def get_job_info_json(
+            job_id: Optional[str] = None
+        ) -> Optional[Dict[str, Any]]:
     """
-    Return PBS job id
+    Get full job information in JSON format from qstat. It is wrapped in retry
+    with timeout to allow for PBS server to be slow to respond.
+    If job_id is provided, get info for that job; otherwise, get info for
+    all jobs.
+    If timeout occurs or invalid json, return None
     """
+    cmd = ["qstat", "-f", "-F", "json"]
+    if job_id:
+        cmd.append(job_id)
 
-    jobid = os.environ.get('PBS_JOBID', '')
-
-    if short:
-        # Strip off '.rman2'
-        jobid = jobid.split('.')[0]
-
-    return(jobid)
-
-
-def get_job_info():
-    """
-    Get information about the job from the PBS server
-    """
-    jobid = get_job_id()
-
-    info = None
-
-    if not jobid == '':
-        info = get_qstat_info('-ft {0}'.format(jobid), 'Job Id:')
-
-    if info is not None:
-        # Select the dict for this job (there should only be one
-        # entry in any case)
-        info = info['Job Id: {}'.format(jobid)]
-
-        # Add the jobid to the dict and then return
-        info['Job_ID'] = jobid
-
-    return info
+    # Parse the JSON output
+    try:
+        qstat_output = subprocess.run(
+            cmd, capture_output=True, text=True, check=True,
+        )
+        return json.loads(qstat_output.stdout)
+    except json.JSONDecodeError as e:
+        warnings.warn(
+            f"Failed to decode JSON output from qstat command: {' '.join(cmd)}"
+            f"\n Error: {e}"
+        )
+        raise
+    except subprocess.CalledProcessError as e:
+        warnings.warn(
+            f"Failed to run qstat command: {' '.join(cmd)}"
+            f"\n Error: {e}"
+        )
+        raise
 
 
 def pbs_env_init():
@@ -196,37 +499,6 @@ def pbs_env_init():
     except IOError as ec:
         print('Unable to find PBS_CONF_FILE ... ' + pbs_conf_fpath)
         sys.exit(1)
-
-
-# Wrap this in retry from tenancity. Keep trying for 10 seconds and
-# even if still fails return None
-@retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
-def get_qstat_info(qflag, header, projects=None, users=None):
-
-    qstat = os.path.join(os.environ['PBS_EXEC'], 'bin', 'qstat')
-    cmd = '{} {}'.format(qstat, qflag)
-
-    cmd = shlex.split(cmd)
-    output = subprocess.check_output(cmd)
-    if sys.version_info.major >= 3:
-        output = output.decode()
-
-    entries = (e for e in output.split('{}: '.format(header)) if e)
-
-    # Immediately remove any non-project entries
-    if projects or users:
-        entries = (e for e in entries
-                   if any('project = {}'.format(p) in e for p in projects)
-                   or any('Job_Owner = {}'.format(u) in e for u in users))
-
-    attribs = ((k.split('.')[0], v.replace('\n\t', '').split('\n'))
-               for k, v in (e.split('\n', 1) for e in entries))
-
-    status = {k: dict((kk.strip(), vv.strip())
-              for kk, vv in (att.split('=', 1) for att in v if att))
-              for k, v in attribs}
-
-    return status
 
 
 def encode_mount(mount):
@@ -277,6 +549,6 @@ def get_manifest_paths():
     storage paths
     """
     tmpmanifest = Manifest(config={}, reproduce=False)
-    tmpmanifest.load()
+    tmpmanifest.load_manifests()
 
-    return tmpmanifest.get_all_fullpaths()
+    return tmpmanifest.get_all_previous_fullpaths()

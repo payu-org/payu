@@ -1,16 +1,18 @@
 import copy
 import shutil
 from pathlib import Path
+import subprocess
 
 import pytest
 import git
 from ruamel.yaml import YAML
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from payu.branch import add_restart_to_config, check_restart, switch_symlink
-from payu.branch import checkout_branch, clone, list_branches
+from payu.branch import checkout_branch, clone, list_branches, PayuBranchError
 from payu.metadata import MetadataWarning
 from payu.fsops import read_config
+from payu.subcommands import clone_cmd
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -109,6 +111,19 @@ def test_add_restart_to_config(test_config, expected_config):
     assert updated_config == expected_config
 
 
+def test_check_restart_relative_path():
+    """Test an relative restart path is resolved to an absolute path"""
+    restart_path = tmpdir / "archive" / "tmpRestart"
+    restart_path.mkdir(parents=True)
+
+    with cd(tmpdir):
+        relative_restart_path = Path("archive") / "tmpRestart"
+        assert not relative_restart_path.is_absolute()
+
+        resolved_path = check_restart(relative_restart_path)
+        assert resolved_path.is_absolute()
+
+
 def test_check_restart_with_non_existent_restart():
     """Test restart path that does not exist raises a warning"""
     restart_path = tmpdir / "restartDNE"
@@ -200,6 +215,27 @@ def test_switch_symlink_when_no_symlink_exists_and_no_archive():
     # Assert no symlink
     assert not archive_symlink.exists()
     assert not archive_symlink.is_symlink()
+
+
+def test_switch_symkink_when_previous_symlink_dne():
+    # Point archive symlink to a directory that does not exist anymore
+    lab_archive = labdir / "archive"
+    previous_archive_dir = lab_archive / "ExperimentDNE"
+
+    archive_symlink = ctrldir / "archive"
+    archive_symlink.symlink_to(previous_archive_dir)
+
+    # New Experiment
+    experiment_name = "Experiment1"
+    archive_dir = lab_archive / experiment_name
+    archive_dir.mkdir(parents=True)
+
+    # Test Function
+    switch_symlink(lab_archive, ctrldir, experiment_name, "archive")
+
+    # Assert new symlink is created
+    assert archive_symlink.exists() and archive_symlink.is_symlink()
+    assert archive_symlink.resolve() == archive_dir
 
 
 def check_metadata(expected_uuid,
@@ -329,12 +365,16 @@ def test_checkout_existing_branch_with_no_metadata(mock_uuid):
     expected_no_uuid_msg = (
         "No experiment uuid found in metadata. Generating a new uuid"
     )
+    expected_no_archive_msg = (
+        "No pre-existing archive found. Generating a new uuid"
+    )
 
     with cd(ctrldir):
         # Test checkout existing branch with no existing metadata
         with pytest.warns(MetadataWarning, match=expected_no_uuid_msg):
-            checkout_branch(branch_name="Branch1",
-                            lab_path=labdir)
+            with pytest.warns(MetadataWarning, match=expected_no_archive_msg):
+                checkout_branch(branch_name="Branch1",
+                                lab_path=labdir)
 
     # Check metadata was created and commited
     branch1_experiment_name = f"{ctrldir_basename}-Branch1-574ea2c9"
@@ -476,6 +516,39 @@ def test_checkout_branch_with_restart_path(mock_uuid):
                           expected_parent_uuid=uuid1)
 
 
+@patch("payu.laboratory.Laboratory.initialize")
+def test_checkout_laboratory_path_error(mock_lab_initialise):
+    mock_lab_initialise.side_effect = PermissionError
+
+    repo = setup_control_repository()
+    current_commit = repo.active_branch.object.hexsha
+
+    with cd(ctrldir):
+        # Test raises a permission error
+        with pytest.raises(PermissionError):
+            checkout_branch(branch_name="Branch1",
+                            is_new_branch=True,
+                            lab_path=labdir)
+
+    # Assert new commit has not been added
+    assert repo.active_branch.object.hexsha == current_commit
+
+    assert str(repo.active_branch) == "Branch1"
+    assert not (ctrldir / "metadata.yaml").exists()
+
+    # Test removing lab directory
+    shutil.rmtree(labdir)
+    mock_lab_initialise.side_effect = None
+    with cd(ctrldir):
+        # Test runs without an error - directory is initialised
+        checkout_branch(branch_name="Branch2",
+                        is_new_branch=True,
+                        lab_path=labdir)
+
+    # Assert new commit has been added
+    assert repo.active_branch.object.hexsha != current_commit
+
+
 @patch("uuid.uuid4")
 def test_clone(mock_uuid):
     # Create a repo to clone
@@ -534,6 +607,113 @@ def test_clone(mock_uuid):
 
     # Check local branches
     assert [head.name for head in cloned_repo2.heads] == ["Branch1", "Branch2"]
+
+
+@pytest.mark.parametrize(
+    "start_point_type", ["commit", "tag"]
+)
+def test_clone_startpoint(start_point_type):
+    # Create a repo to clone
+    source_repo_path = tmpdir / "sourceRepo"
+    source_repo_path.mkdir()
+    source_repo = setup_control_repository(path=source_repo_path)
+
+    # Create branch1
+    branch1 = source_repo.create_head("Branch1")
+    branch1_commit = branch1.object.hexsha
+    if start_point_type == "tag":
+        source_repo.create_tag('v1.0', ref=branch1.commit)
+        start_point = 'v1.0'
+    elif start_point_type == "commit":
+        start_point = branch1_commit
+
+    # Add another commit on main branch so the commit is different to branch1
+    (source_repo_path / "mock_file.txt").touch()
+    source_repo.index.add("mock_file.txt")
+    source_repo.index.commit("Another commit with a mock file")
+
+    source_repo_commit = source_repo.active_branch.object.hexsha
+    assert source_repo_commit != branch1_commit
+
+    # Run Clone
+    cloned_repo_path = tmpdir / "clonedRepo"
+    with cd(tmpdir):
+        clone(
+            repository=str(source_repo_path),
+            directory=cloned_repo_path,
+            lab_path=labdir,
+            new_branch_name="Branch3",
+            start_point=start_point
+        )
+
+    cloned_repo = git.Repo(cloned_repo_path)
+
+    # Check branched starting from start point
+    second_latest_commit = list(cloned_repo.iter_commits(max_count=2))[1]
+    assert second_latest_commit.hexsha == branch1_commit
+
+    # Latest commit is different (new commit from metadata)
+    assert source_repo_commit != cloned_repo.active_branch.object.hexsha
+
+
+def test_clone_startpoint_with_no_new_branch_error():
+    """Test clone when -s/--start-point is used without -b/--new-branch"""
+    # Create a repo to clone
+    source_repo_path = tmpdir / "sourceRepo"
+    source_repo_path.mkdir()
+    source_repo = setup_control_repository(path=source_repo_path)
+
+    # Create branch1
+    branch1 = source_repo.create_head("Branch1")
+    branch1_commit = branch1.object.hexsha
+
+    expected_msg = (
+        "Starting from a specific commit or tag requires a new branch "
+        "name to be specified. Use the --new-branch/-b flag in payu clone "
+        "to create a new git branch."
+    )
+
+    # Run Clone
+    cloned_repo_path = tmpdir / "clonedRepo"
+    with cd(tmpdir):
+        with pytest.raises(PayuBranchError, match=expected_msg):
+            clone(
+                repository=str(source_repo_path),
+                directory=cloned_repo_path,
+                lab_path=labdir,
+                start_point=branch1_commit,
+            )
+
+    # Check cloned repo is not created
+    assert not cloned_repo_path.exists()
+
+
+def test_clone_with_relative_restart_path():
+    """Test clone with a restart path that is relative with respect to
+    the directory in which the clone command is run from"""
+    # Create a repo to clone
+    source_repo_path = tmpdir / "sourceRepo"
+    source_repo_path.mkdir()
+    setup_control_repository(path=source_repo_path)
+
+    # Create restart path
+    restart_path = tmpdir / "archive" / "tmpRestart"
+    restart_path.mkdir(parents=True)
+    relative_restart_path = Path("archive") / "tmpRestart"
+
+    cloned_repo_path = tmpdir / "clonedRepo"
+    with cd(tmpdir):
+        # Run clone
+        clone(repository=str(source_repo_path),
+              directory=cloned_repo_path,
+              lab_path=labdir,
+              restart_path=relative_restart_path)
+
+    # Test restart was added to config.yaml file
+    with cd(cloned_repo_path):
+        config = read_config()
+
+    assert config["restart"] == str(restart_path)
 
 
 def add_and_commit_metadata(repo, metadata):
@@ -626,3 +806,166 @@ Remote Branch: {main_branch_name}
     No config file found"""
     captured = capsys.readouterr()
     assert captured.out.strip() == expected_remote_output
+
+def test_safe_ask_handles_interrupt(monkeypatch):
+    """ Test safe_ask function handles KeyboardInterrupt and exits properly"""
+    mock_question = MagicMock()
+    mock_question.ask.side_effect = KeyboardInterrupt
+
+    with pytest.raises(SystemExit) as e:
+        clone_cmd.safe_ask(mock_question)
+
+    assert e.value.code == 0
+
+def test_fetch_branches(monkeypatch):
+    """ Test if fetch_branches correctly fetches branches from remote repository"""
+    mock_stdout = """abcdef	refs/heads/master
+ghijk	refs/heads/branch1
+"""
+    mock_run = MagicMock(return_value=MagicMock(stdout=mock_stdout))
+    monkeypatch.setattr("subprocess.run", mock_run)
+    branches = clone_cmd.fetch_branches("https://test_repo.git")
+    assert branches == ["master", "branch1"]
+
+def test_fetch_tags(monkeypatch):
+    """ Test if fetch_tags correctly fetches tags from remote repository"""
+    mock_stdout = """abcdef	refs/tags/v1.0
+ghijk	refs/tags/v2.0"""
+    mock_run = MagicMock(return_value=MagicMock(stdout=mock_stdout))
+    monkeypatch.setattr("subprocess.run", mock_run)
+    tags = clone_cmd.fetch_tags("https://test_repo.git")
+    assert tags == ["v1.0", "v2.0"]
+
+def test_fetch_branches_tags_invalid_url(monkeypatch, capsys):
+    """ Test if fetch_branches correctly handles errors"""
+    error_to_raise = subprocess.CalledProcessError(
+                        returncode=1, 
+                        cmd="git ls-remote"
+                    )
+    mock_run = MagicMock(side_effect=error_to_raise)
+    monkeypatch.setattr("subprocess.run", mock_run)
+    with pytest.raises(SystemExit):
+        clone_cmd.fetch_branches("https://invalid-url.com")
+    
+    assert "Error fetching branches:" in capsys.readouterr().out
+
+    with pytest.raises(SystemExit):
+        clone_cmd.fetch_tags("https://invalid-url.com")
+        
+    assert "Error fetching tags:" in capsys.readouterr().out
+
+def test_validate_local_directory():
+    """ Test validate_local_directory correctly checks and return True when directory not exists or empty"""
+    # Create a directory that exists and is not empty
+    existing_dir = tmpdir / "existing_dir"
+    existing_dir.mkdir()
+    (existing_dir / "file.txt").touch()
+    existing_msg = clone_cmd.validate_local_directory(existing_dir)
+    assert existing_msg == f"The directory already exists and is not empty.\nPlease choose a different directory."
+
+    # Create a directory that exists and is empty
+    empty_dir = tmpdir / "empty_dir"
+    empty_dir.mkdir()
+    assert clone_cmd.validate_local_directory(empty_dir) == True
+    
+
+    # Create a directory that does not exist
+    new_dir = tmpdir / "new_dir"
+    assert clone_cmd.validate_local_directory(new_dir) == True
+
+    # cleanup
+    shutil.rmtree(existing_dir)
+    shutil.rmtree(empty_dir)
+    
+
+def test_validate_restart_path():
+    """Test validate_restart_path correctly returns True when restart path exists and not empty"""
+    # Create a directory that exists and is not empty
+    existing_dir = tmpdir / "existing_dir"
+    existing_dir.mkdir()
+    (existing_dir / "file.txt").touch()
+    assert clone_cmd.validate_restart_path(existing_dir) == True
+
+    # Create a directory that exists and is empty
+    empty_dir = tmpdir / "empty_dir"
+    empty_dir.mkdir()
+    empty_msg = clone_cmd.validate_restart_path(empty_dir)
+    assert empty_msg == "Restart path does not exist or is empty. Please enter a valid path."
+
+    # Create a directory that does not exist
+    new_dir = tmpdir / "new_dir"
+    new_msg = clone_cmd.validate_restart_path(new_dir)
+    assert new_msg == "Restart path does not exist or is empty. Please enter a valid path."
+    
+    # cleanup
+    shutil.rmtree(existing_dir)
+    shutil.rmtree(empty_dir)
+
+def test_prompts_for_clone_from_branch_not_new_experiment(monkeypatch):
+    """ Test prompts_for_clone build a command correctly based on user input:
+    clone a branch + not a new experiment"""
+    mock_run = MagicMock()
+    monkeypatch.setattr("subprocess.run", mock_run)
+
+    monkeypatch.setattr(clone_cmd, "ask_for_repo_url", lambda: "https://test_repo.git")
+    monkeypatch.setattr(clone_cmd, "select_branch_or_tag", lambda: "An existing branch")
+    monkeypatch.setattr(clone_cmd, "fetch_branches", lambda repository: ["master", "branch1"])
+    monkeypatch.setattr(clone_cmd, "ask_for_branch_name", lambda branches: "master")
+    monkeypatch.setattr(clone_cmd, "ask_for_local_directory", lambda: "new_expt_local_dir")
+    monkeypatch.setattr(clone_cmd, "confirm_new_experiment", lambda: False)
+    monkeypatch.setattr(clone_cmd, "ask_for_restart_path", lambda: tmpdir / "restart_path")
+    
+    result = clone_cmd.prompts_for_clone(None, None)
+    assert result['repository'] == "https://test_repo.git"
+    assert result['branch'] == "master"
+    assert result['local_directory'] == "new_expt_local_dir"
+    assert result['restart_path'] == tmpdir / "restart_path"
+    assert result['new_branch_name'] is None
+    assert result['keep_uuid'] is True
+
+def test_prompts_for_clone_from_branch_new_experiment(monkeypatch):
+    """ Test prompts_for_clone build a command correctly based on user input:
+    clone a branch + new experiment + no restart path"""
+    mock_run = MagicMock()
+    monkeypatch.setattr("subprocess.run", mock_run)
+
+    monkeypatch.setattr(clone_cmd, "ask_for_repo_url", lambda: "https://test_repo.git")
+    monkeypatch.setattr(clone_cmd, "select_branch_or_tag", lambda: "An existing branch")
+    monkeypatch.setattr(clone_cmd, "fetch_branches", lambda repository: ["master", "branch1"])
+    monkeypatch.setattr(clone_cmd, "ask_for_branch_name", lambda branches: "master")
+    monkeypatch.setattr(clone_cmd, "ask_for_local_directory", lambda: "new_expt_local_dir")
+    monkeypatch.setattr(clone_cmd, "confirm_new_experiment", lambda: True)
+    monkeypatch.setattr(clone_cmd, "ask_for_new_branch_name", lambda: "new_branch")
+    monkeypatch.setattr(clone_cmd, "confirm_restart_path", lambda: False)
+
+    result = clone_cmd.prompts_for_clone(None, None)
+    assert result['repository'] == "https://test_repo.git"
+    assert result['branch'] == "master"
+    assert result['local_directory'] == "new_expt_local_dir"
+    assert result['restart_path'] == None
+    assert result['new_branch_name'] == "new_branch"
+    assert result['keep_uuid'] is False
+
+def test_prompts_for_clone_from_tag_with_restart(monkeypatch):
+    """ Test prompts_for_clone build a command correctly based on user input:
+    clone a tag + with restart path"""
+    mock_run = MagicMock()
+    monkeypatch.setattr("subprocess.run", mock_run)
+
+    monkeypatch.setattr(clone_cmd, "ask_for_repo_url", lambda: "https://test_repo.git")
+    monkeypatch.setattr(clone_cmd, "select_branch_or_tag", lambda: "A tag or a commit")
+    monkeypatch.setattr(clone_cmd, "fetch_tags", lambda repository: ["v1.0", "v2.0"])
+    monkeypatch.setattr(clone_cmd, "ask_for_tag_or_commit", lambda tags: "v1.0")
+    monkeypatch.setattr(clone_cmd, "ask_for_local_directory", lambda: "new_expt_local_dir")
+    monkeypatch.setattr(clone_cmd, "ask_for_new_branch_name", lambda: "new_branch")
+    monkeypatch.setattr(clone_cmd, "confirm_restart_path", lambda: True)
+    monkeypatch.setattr(clone_cmd, "ask_for_restart_path", lambda: tmpdir / "restart_path")
+
+    result = clone_cmd.prompts_for_clone(None, None)
+    assert result['repository'] == "https://test_repo.git"
+    assert result['branch'] == None
+    assert result['start_point'] == "v1.0"
+    assert result['local_directory'] == "new_expt_local_dir"
+    assert result['restart_path'] == tmpdir / "restart_path"
+    assert result['new_branch_name'] == "new_branch"
+    assert result['keep_uuid'] is False
