@@ -276,7 +276,7 @@ def ask_for_local_directory():
     """Ask the user for the name of the local directory they want to create."""
     # check if path is empty
     return safe_ask(questionary.text(
-        "How would you like to name your local experiment directory?",
+        "What would you like to name your local control directory?",
         validate=validate_local_directory,
         style=accessible_style
     ))
