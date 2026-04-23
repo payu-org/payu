@@ -9,6 +9,7 @@ import f90nml
 import pytest
 import yaml
 import json
+from yamanifest.hashing import _hashlib
 
 import payu
 
@@ -293,12 +294,12 @@ def test_get_avail_collate_flags_runtimeerror(mock_run):
     assert isinstance(excinfo.value.__cause__, OSError)
 
 
-@patch("payu.models.fms.calculate_md5_hash")
+@patch("payu.models.fms._hashlib")
 @patch("payu.models.fms.get_job_file_path")
 def test_mapping_log(mock_get_job_file_path, mock_hash):
     """Test that a mapping collate dictionary is generated correctly"""
     # Set up mock md5 hash values for the test files
-    mock_hash.side_effect = lambda file_path: f"md5_{os.path.basename(file_path)}"
+    mock_hash.side_effect = lambda file_path, hashfn: f"md5_{os.path.basename(file_path)}"
     
     # Set up a temporary job file
     job_file_path = tmpdir / "archive" / "payu_jobs" / "3" / "collate" / "test-jobid-id-3.json"
