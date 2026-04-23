@@ -4,10 +4,9 @@ import os
 import shutil
 from unittest.mock import patch
 from pathlib import Path
-import hashlib
 
 # import payu packages
-from payu.fsops import atomic_write_file, movetree, calculate_md5_hash
+from payu.fsops import atomic_write_file, movetree
 
 # import some common variables for testing
 from .common import tmpdir, testdir, make_all_files
@@ -131,32 +130,4 @@ def test_atomic_write_file_disrupt_dump(monkeypatch):
     with open(orig_file, 'r') as f:
         content_after_error = json.load(f)
     assert content_after_error == content
-
-
-def test_calculate_md5_hash():
-    """Test that calculate_md5_hash returns the correct hash for a given file"""
-    # Create a temporary file with known content
-    test_file = tmpdir / "test_file.txt"
-    test_content = b"Hello payu!"
-    with open(test_file, "wb") as f:
-        f.write(test_content)
-
-    # Calculate the expected MD5 hash
-    expected_hash = hashlib.md5(test_content).hexdigest()
-
-    # Call the function to calculate the MD5 hash
-    result_hash = calculate_md5_hash(test_file)
-
-    assert result_hash == expected_hash
-    os.remove(test_file)
-
-
-def test_calculate_md5_hash_file_not_found():
-    """Test that calculate_md5_hash raises FileNotFoundError when file does not exist"""
-    non_exist_file = tmpdir / "non_existent_file.txt"
-
-    with pytest.raises(FileNotFoundError) as excinfo:
-        calculate_md5_hash(non_exist_file)
-
-    assert "File not found" in str(excinfo.value)
 

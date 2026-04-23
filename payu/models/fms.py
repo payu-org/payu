@@ -20,9 +20,11 @@ import re
 import warnings
 import json
 
+from yamanifest.hashing import _hashlib
+
 from payu.models.model import Model
 from payu import envmod
-from payu.fsops import required_libs, calculate_md5_hash
+from payu.fsops import required_libs
 from payu.telemetry import get_job_file_path, update_job_file
 
 # There is a limit on the number of command line arguments in a forked
@@ -95,7 +97,7 @@ def get_uncollate_hashes(mnc_tiles, prior_restart_path):
     for nc_fname, tiles in mnc_tiles[prior_restart_path].items():
         # record md5 hashes of all tiles in restart collation
         uncollate_hashes[nc_fname] = [
-            calculate_md5_hash(os.path.join(prior_restart_path, tile)) for tile in tiles
+            _hashlib(os.path.join(prior_restart_path, tile), hashfn='md5') for tile in tiles
         ]
 
     return uncollate_hashes
@@ -122,7 +124,7 @@ def mapping_log(model, mnc_tiles, uncollate_hashes_dict):
     for nc_fname in mnc_tiles[model.prior_restart_path]:
         # calculate md5 hash of the final collated file
         nc_path = os.path.join(model.prior_restart_path, nc_fname)
-        collate_hash = calculate_md5_hash(nc_path)
+        collate_hash = _hashlib(nc_path, hashfn='md5')
 
         # match the collated file hash with the list of uncollated tile hashes
         mapping_collate_dict[prior_restart_num][collate_hash] = uncollate_hashes_dict.pop(nc_fname)

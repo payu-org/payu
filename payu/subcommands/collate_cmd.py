@@ -90,15 +90,15 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path):
 
     pbs_config['qsub_flags'] = ' '.join(qsub_flags)
 
-    # Set up experiment
+    # Initialise experiment to determine archive path and run number (which is needed to write job file)
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab)
     current_run = os.environ.get('PAYU_CURRENT_RUN', '')
 
-    # Submit the collation job
+    # Submit the collation job and write queue job file
     job_id = cli.submit_job('payu-collate', pbs_config, pbs_vars, expt, current_run, type='collate')
 
-    # Get the job file path for collation job
+    # Acquire the job file path
     job_file_path = get_job_file_path(
             archive_path=Path(expt.archive_path),
             run_number=expt.counter,

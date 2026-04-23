@@ -21,7 +21,6 @@ import tempfile
 import json
 import stat
 import warnings
-import hashlib
 
 # Extensions
 import yaml
@@ -383,15 +382,3 @@ def _run_script(script_cmd: str, control_path: Path) -> None:
             _run_script(cmd, control_path)
         else:
             raise
-
-def calculate_md5_hash(file_path):
-    """ Calculate the md5 hash of a file"""
-    # Make sure the file exists
-    if not os.path.isfile(file_path):
-        raise FileNotFoundError("File not found")
-
-    hash_md5 = hashlib.md5()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-    return hash_md5.hexdigest()
