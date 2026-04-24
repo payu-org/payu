@@ -24,8 +24,7 @@ from payu.schedulers.scheduler import Scheduler
 from payu.fsops import atomic_write_file
 
 # Environment variable for external telemetry configuration file
-TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG"
-TELEMETRY_CONFIG_VERSION = "1-0-0"
+TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG_PATH"
 
 # Required telemetry configuration fields
 CONFIG_FIELDS = {
@@ -133,11 +132,10 @@ def get_external_telemetry_config(
     If a valid file does not exist, return None
     """
     # Check path to telemetry config file exists
-    config_dir = Path(os.environ[TELEMETRY_CONFIG])
-    config_path = config_dir / f"{TELEMETRY_CONFIG_VERSION}.json"
+    config_path = Path(os.environ[TELEMETRY_CONFIG])
     if not (config_path.exists() and config_path.is_file()):
         error_msg = (
-            f"No config file found at {TELEMETRY_CONFIG}: {config_path}."
+            f"No config file found at the path specified by {TELEMETRY_CONFIG}: {config_path}."
         )
         write_error_log(archive_path, job_file_path, error_msg)
         return None
@@ -148,7 +146,7 @@ def get_external_telemetry_config(
             telemetry_config = json.load(f)
     except json.JSONDecodeError:
         error_msg = (
-            "Error parsing json in configuration file at "
+            "Error parsing json in configuration file specified by "
             f"{TELEMETRY_CONFIG}: {config_path}."
         )
         write_error_log(archive_path, job_file_path, error_msg)
@@ -159,7 +157,7 @@ def get_external_telemetry_config(
     if missing_fields:
         error_msg = (
             f"Required field(s) {missing_fields} not found in configuration "
-            f"file at {TELEMETRY_CONFIG}: {config_path}."
+            f"file specified by {TELEMETRY_CONFIG}: {config_path}."
         )
         write_error_log(archive_path, job_file_path, error_msg)
         return None

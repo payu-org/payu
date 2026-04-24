@@ -113,15 +113,13 @@ def mock_telemetry_get_external_config():
 @pytest.fixture
 def config_path(tmp_path):
     """Returns the path to the telemetry config file"""
-    config_dir = tmp_path / "telemetry_config"
-    config_dir.mkdir()
-    return config_dir / "1-0-0.json"
+    return tmp_path / "telemetry_config.json"
 
 
 @pytest.fixture
 def setup_env(config_path, monkeypatch):
     """Set the telemetry config environment variable for the test"""
-    monkeypatch.setenv(TELEMETRY_CONFIG, str(config_path.parent))
+    monkeypatch.setenv(TELEMETRY_CONFIG, str(config_path))
 
 
 @pytest.fixture
@@ -165,7 +163,7 @@ def test_get_external_telemetry_config_no_file(
             tmp_path, setup_env, config_path
         ):
     expected_error = (
-        f"No config file found at {TELEMETRY_CONFIG}: {config_path}."
+        f"No config file found at the path specified by {TELEMETRY_CONFIG}: {config_path}."
     )
     check_invalid_get_external_config(tmp_path, expected_error)
 
@@ -193,7 +191,7 @@ def test_get_external_telemetry_config_missing_fields(
 
     expected_error = (
         f"Required field(s) {set([missing_field])} not found in "
-        f"configuration file at {TELEMETRY_CONFIG}: {config_path}."
+        f"configuration file specified by {TELEMETRY_CONFIG}: {config_path}."
     )
     check_invalid_get_external_config(tmp_path, expected_error)
 
@@ -225,7 +223,7 @@ def test_get_external_telemetry_config_invalid_json(
         f.write("{invalid_json")
 
     expected_error = (
-        f"Error parsing json in configuration file at "
+        f"Error parsing json in configuration file specified by "
         f"{TELEMETRY_CONFIG}: {config_path}."
     )
     check_invalid_get_external_config(tmp_path, expected_error)
