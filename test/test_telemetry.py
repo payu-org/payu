@@ -285,8 +285,15 @@ def test_telemetry_not_enabled_no_environment_config(
     # Ensure telemetry config is not in os environment
     if TELEMETRY_CONFIG in os.environ:
         monkeypatch.delenv(TELEMETRY_CONFIG, raising=False)
-
-    record_telemetry(run_info={}, config={},
+    # Ensure the other conditions to skip record_telemetry are not met
+    config = {
+        "telemetry": {
+            "enable": True
+        }
+    }
+    run_info={"payu_model_run_status": "fake_value"}
+    
+    record_telemetry(run_info=run_info, config=config,
                      archive_path=tmp_path / "archive",
                      job_file_path=tmp_path / "job_file.json")
 
@@ -294,20 +301,24 @@ def test_telemetry_not_enabled_no_environment_config(
     mock_telemetry_get_external_config.assert_not_called()
     mock_post_telemetry_data.assert_not_called()
 
-
 def test_telemetry_not_enabled_config(
             tmp_path,
+            monkeypatch,
             mock_telemetry_get_external_config,
             mock_post_telemetry_data,
             setup_env
         ):
+    # Ensure telemetry config is not enabled
     config = {
         "telemetry": {
             "enable": False
         }
     }
-
-    record_telemetry(run_info={}, config={},
+    # Ensure the other conditions to skip record_telemetry are not met
+    monkeypatch.setenv(TELEMETRY_CONFIG, "Some_value")
+    run_info={"payu_model_run_status": "fake_value"}
+    
+    record_telemetry(run_info=run_info, config=config,
                      archive_path=tmp_path / "archive",
                      job_file_path=tmp_path / "job_file.json")
 
