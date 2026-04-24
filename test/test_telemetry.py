@@ -301,6 +301,30 @@ def test_telemetry_not_enabled_no_environment_config(
     mock_telemetry_get_external_config.assert_not_called()
     mock_post_telemetry_data.assert_not_called()
 
+def test_telemetry_not_enabled_empty_environment_config(
+            tmp_path,
+            mock_telemetry_get_external_config,
+            mock_post_telemetry_data,
+            monkeypatch
+        ):
+    # Ensure telemetry config in environment is set and empty
+    monkeypatch.setenv(TELEMETRY_CONFIG, "")
+    # Ensure the other conditions to skip record_telemetry are not met
+    config = {
+        "telemetry": {
+            "enable": True
+        }
+    }
+    run_info={"payu_model_run_status": "fake_value"}
+
+    record_telemetry(run_info=run_info, config=config,
+                     archive_path=tmp_path / "archive",
+                     job_file_path=tmp_path / "job_file.json")
+
+    # Check post telemetry method was not called
+    mock_telemetry_get_external_config.assert_not_called()
+    mock_post_telemetry_data.assert_not_called()
+
 def test_telemetry_not_enabled_config(
             tmp_path,
             monkeypatch,

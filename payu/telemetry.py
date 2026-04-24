@@ -270,7 +270,7 @@ def record_telemetry(run_info: dict[str, Any],
     # and whether the model was run
     if not (
         config.get("telemetry", {}).get("enable", True)
-        and TELEMETRY_CONFIG in os.environ
+        and os.environ.get(TELEMETRY_CONFIG) not in (None, "")
         and "payu_model_run_status" in run_info
     ):
         return
