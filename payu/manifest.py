@@ -16,6 +16,7 @@ import sys
 import shutil
 import stat
 from pathlib import Path
+import time
 
 from yamanifest.manifest import Manifest as YaManifest
 
@@ -232,6 +233,19 @@ class PayuManifest(YaManifest):
             hashes.append(self.get(filepath, hashfn))
         return hashes
 
+def parallel_calculate_fast(manifest, previous_manifest, reproduce):
+        """
+        Wrapper for calculate_fast function for use with mpi4py Pool
+        """
+        manifest.calculate_fast(previous_manifest)
+
+        if reproduce:
+            manifest.check_reproduce(previous_manifest)
+
+        if (manifest.data != previous_manifest.data
+            or len(manifest) == 0):
+            print("Writing {}".format(manifest.path))
+            manifest.dump()
 
 class Manifest(object):
     """
@@ -328,20 +342,20 @@ class Manifest(object):
 
     def check_manifests(self):
         print("Checking exe, input and restart manifests")
+        task = []
         for mf in self.manifests:
-            # Calculate hashes in manifests
-            self.manifests[mf].calculate_fast(self.previous_manifests[mf])
+            self.manifests[mf].numproc = 1
+            task.append((self.manifests[mf], self.previous_manifests[mf], self.reproduce[mf]))
 
-            if self.reproduce[mf]:
-                # Compare manifest with previous manifest
-                self.manifests[mf].check_reproduce(self.previous_manifests[mf])
-
-        # Update manifests if there's any changes, or create file if empty
-        for mf in self.manifests:
-            if (self.manifests[mf].data != self.previous_manifests[mf].data
-                    or len(self.manifests[mf]) == 0):
-                print("Writing {}".format(self.manifests[mf].path))
-                self.manifests[mf].dump()
+        # Parallelise the calculation of fast hashes with multiprocessing Pool
+        start_time = time.perf_counter()
+        from mpi4py.util.pool import Pool
+        print("Calculating manifests in parallel with mpi4py Pool")
+        with Pool() as pool:
+            result = pool.starmap(parallel_calculate_fast, task)
+        
+        end_time = time.perf_counter()
+        print(f"Manifest check completed in {end_time - start_time:.2f} seconds")
 
     def copy_manifests(self, path):
 

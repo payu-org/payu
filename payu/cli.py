@@ -126,7 +126,10 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
     if not is_conda():
         # Setup Python dynamic library link
         lib_paths = sysconfig.get_config_vars('LIBDIR')
-        payu_env_vars['LD_LIBRARY_PATH'] = ':'.join(lib_paths)
+        
+        mpi_lib_path = get_mpi_lib_path()
+        payu_env_vars['LD_LIBRARY_PATH'] = ':'.join(lib_paths) + ':' + mpi_lib_path
+        print(f"Adding MPI library path to LD_LIBRARY_PATH: {mpi_lib_path}")
 
     if 'PYTHONPATH' in os.environ:
         payu_env_vars['PYTHONPATH'] = os.environ['PYTHONPATH']
@@ -206,3 +209,10 @@ def submit_job(script, config, vars=None):
     job_id = result.split()[-1]
 
     return job_id
+
+def get_mpi_lib_path():
+    """load openmpi module to check library paths for mpi4pi pool"""
+    result = subprocess.run("module show openmpi | grep PATH", shell=True, capture_output=True, text=True)
+    output = result.stdout.split()[2]
+    mpi_lib_path = output.replace('/bin', '/lib')
+    return mpi_lib_path #'/apps/openmpi/5.0.8/lib'
