@@ -5,17 +5,14 @@ this data to telemetry services at the end of a run, if configured.
 
 import datetime
 import json
+import jsonschema
 import os
-import stat
 from pathlib import Path
 import requests
-import shutil
-import tempfile
 import threading
 from typing import Any, Optional
 import warnings
 from filelock import FileLock, Timeout
-import warnings
 
 import cftime
 
@@ -25,6 +22,7 @@ from payu.fsops import atomic_write_file
 
 # Environment variable for external telemetry configuration file
 TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG_PATH"
+TELEMETRY_CONFIG_SCHEMA = Path(__file__).parent / "telemetry" / "telemetry_config.schema.json"
 
 # Required telemetry configuration fields
 CONFIG_FIELDS = {
@@ -152,12 +150,15 @@ def get_external_telemetry_config(
         write_error_log(archive_path, job_file_path, error_msg)
         return None
 
-    # Check for required fields in the telemetry configuration
-    missing_fields = CONFIG_FIELDS.values() - telemetry_config.keys()
-    if missing_fields:
+    # Check that the telemetry configuration follows its schema
+    with open(TELEMETRY_CONFIG_SCHEMA, 'r') as f:
+        schema = json.load(f)
+    try:
+        jsonschema.validate(instance=telemetry_config, schema=schema)
+    except jsonschema.ValidationError as e:
         error_msg = (
-            f"Required field(s) {missing_fields} not found in configuration "
-            f"file specified by {TELEMETRY_CONFIG}: {config_path}."
+            f"The telemetry configuration file {config_path} specified by {TELEMETRY_CONFIG} "
+            f"does not follow the required schema: {e.message}"
         )
         write_error_log(archive_path, job_file_path, error_msg)
         return None

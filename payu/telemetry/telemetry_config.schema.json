@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+        "telemetry_url",
+        "telemetry_token",
+        "telemetry_service_name",
+        "hostname"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "version": {
+            "type": "string"
+        },
+        "telemetry_url": {
+            "type": "string",
+            "format": "uri"
+        },
+        "telemetry_proxy_url": {
+            "type": "string",
+            "format": "uri"
+        },
+        "telemetry_token": {
+            "type": "string"
+        },
+        "telemetry_service_name": {
+            "type": "string"
+        },
+        "hostname": {
+            "type": "string"
+        }
+    }
+}

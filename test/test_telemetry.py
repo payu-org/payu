@@ -174,7 +174,7 @@ def test_get_external_telemetry_config_no_file(
     "telemetry_service_name",
     "telemetry_token",
 ])
-def test_get_external_telemetry_config_missing_fields(
+def test_get_external_telemetry_config_failed_schema_validation(
             tmp_path, setup_env, config_path, missing_field
         ):
     config_data = {
@@ -190,8 +190,8 @@ def test_get_external_telemetry_config_missing_fields(
         json.dump(config_data, f)
 
     expected_error = (
-        f"Required field(s) {set([missing_field])} not found in "
-        f"configuration file specified by {TELEMETRY_CONFIG}: {config_path}."
+        f"The telemetry configuration file {config_path} specified by {TELEMETRY_CONFIG} does "
+        f"not follow the required schema: '{missing_field}' is a required property"
     )
     check_invalid_get_external_config(tmp_path, expected_error)
 
