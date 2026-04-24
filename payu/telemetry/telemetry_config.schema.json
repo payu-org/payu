@@ -10,24 +10,30 @@
     "additionalProperties": false,
     "properties": {
         "version": {
-            "type": "string"
+            "type": "string",
+            "description": "The version of the telemetry configuration"
         },
         "telemetry_url": {
             "type": "string",
-            "format": "uri"
+            "format": "uri",
+            "description": "The endpoint URL for the payu telemetry service"
         },
         "telemetry_proxy_url": {
             "type": "string",
-            "format": "uri"
+            "format": "uri",
+            "description": "The proxy URL for the payu telemetry service"
         },
         "telemetry_token": {
-            "type": "string"
+            "type": "string",
+            "description": "The authentication token for the payu telemetry service"
         },
         "telemetry_service_name": {
-            "type": "string"
+            "type": "string",
+            "description": "The name of the service sending telemetry data"
         },
         "hostname": {
-            "type": "string"
+            "type": "string",
+            "description": "The name of the HPC host where payu is running"
         }
     }
 }
