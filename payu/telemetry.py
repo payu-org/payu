@@ -7,6 +7,7 @@ import datetime
 import json
 import jsonschema
 import os
+from importlib.resources import files
 from pathlib import Path
 import requests
 import threading
@@ -22,7 +23,7 @@ from payu.fsops import atomic_write_file
 
 # Environment variable for external telemetry configuration file
 TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG_PATH"
-TELEMETRY_CONFIG_SCHEMA = Path(__file__).parent / "telemetry" / "telemetry_config.schema.json"
+TELEMETRY_CONFIG_SCHEMA = files(__package__) / "telemetry" / "telemetry_config.schema.json"
 
 # Required telemetry configuration fields
 CONFIG_FIELDS = {
