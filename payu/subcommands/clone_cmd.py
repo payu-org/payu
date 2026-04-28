@@ -15,16 +15,31 @@ from payu.branch import clone
 import payu.subcommands.args as args
 
 accessible_style = questionary.Style([
-    ('question', 'bold'),               
-    ('answer', 'fg:#ff9800 bold'),
-    ('selected', 'fg:#ff9800'),
+    # Question
+    ("question", "bold"),
+
+    # Input text
+    ("text", "fg: default bold"),
+
+    # Answer
+    ("answer", "fg: default"),
+
+    # Pointer
+    ("pointer", "fg: default bold"),
+
+    # Highlighted (selected in list)
+    ("highlighted", "italic bold"),
+
+    # --- Autocomplete dropdown ---
+    ("completion-menu.completion", "bg: default fg: default italic"),
+    ("completion-menu.completion.current", "bg: default fg: default bold"),
 ])
 
 example_url_msg = "(e.g., https://github.com/payu-org/bowl1.git, or /path/to/local/experiment"
 
 def qprint(message):
     """Helper function to print messages in a consistent style."""
-    questionary.print(message, style="fg:yellow")
+    questionary.print(message, style="bold")
 
 def print_restart_number_message():
     print(
@@ -206,7 +221,8 @@ def ask_for_repo_url():
         "Please enter the URL of the repository, or the local path of a configuration you want to clone:",
         instruction=example_url_msg+"; 'Tab' to browse, '/' to enter folder)",
         validate=lambda text: True if text else "Repository URL/directory cannot be empty.",
-        completer=path_completer
+        completer=path_completer,
+        style=accessible_style
     ))
 
 def select_branch_or_tag():
@@ -216,7 +232,9 @@ def select_branch_or_tag():
         choices=[
             "An existing branch",
             "A tag or a commit",
-        ]))
+        ],
+        style=accessible_style
+    ))
 
 def ask_for_branch_name(branches):
     """Ask the user for the name of the branch they want to clone."""
@@ -258,15 +276,17 @@ def ask_for_local_directory():
     """Ask the user for the name of the local directory they want to create."""
     # check if path is empty
     return safe_ask(questionary.text(
-        "How would you like to name your local experiment directory?",
-        validate=validate_local_directory
+        "What would you like to name your local control directory?",
+        validate=validate_local_directory,
+        style=accessible_style
     ))
 
 def confirm_new_experiment():
     """Ask the user if this is a new experiment"""
     is_new_expt = safe_ask(questionary.select(
         "Is this a new experiment? (If yes, payu will create a new branch.)",
-        choices=["Yes", "No"]
+        choices=["Yes", "No"],
+        style=accessible_style
     ))
     if is_new_expt == "Yes":
         return True
@@ -285,7 +305,8 @@ def confirm_restart_path():
     """Ask the user if they want to specify a restart path to start from."""
     is_restart = safe_ask(questionary.select(
         "Do you want to specify a custom restart path? (If no, the default restart/initial conditions will be used.)",
-        choices=["Yes", "No"]
+        choices=["Yes", "No"],
+        style=accessible_style
         ))
     if is_restart == "Yes":
         return True
@@ -310,5 +331,6 @@ def ask_for_restart_path():
     return safe_ask(questionary.text(
                 "Please enter the restart path you want to use" + instruction,
                 validate=validate_restart_path,
-                completer=path_completer
+                completer=path_completer,
+                style=accessible_style
             ))
