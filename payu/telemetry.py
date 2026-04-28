@@ -198,6 +198,7 @@ def post_telemetry_data(url: str,
                         service_name: str,
                         archive_path: Path,
                         job_file_path: Path,
+                        type: str,
                         proxy_url: Optional[str] = None,
                         request_timeout: int = REQUEST_TIMEOUT,
                         ) -> None:
@@ -230,7 +231,7 @@ def post_telemetry_data(url: str,
     }
 
     data = {
-        "service": service_name,
+        "service": service_name + "." + type,
         "version": TELEMETRY_VERSION,
         "telemetry": data
     }
@@ -265,7 +266,8 @@ def post_telemetry_data(url: str,
 def record_telemetry(run_info: dict[str, Any],
                      config: dict[str, Any],
                      job_file_path: Path,
-                     archive_path: Path) -> None:
+                     archive_path: Path,
+                     type: str) -> None:
     """If configured, post the telemetry data for the payu run"""
     # Check for config.yaml option to disable telemetry, and if an
     # environment variable for an external telemetry config file is set,
@@ -300,6 +302,7 @@ def record_telemetry(run_info: dict[str, Any],
             "archive_path": archive_path,
             "job_file_path": job_file_path,
             "proxy_url": external_config.get(OPTIONAL_CONFIG_FIELDS["PROXY_URL"]),
+            "type": type,
         },
     )
     thread.start()
@@ -541,6 +544,7 @@ def record_run(
             config: dict[str, Any],
             file_path: Path,
             archive_path: Path,
+            type: Optional[str] = "run",
             run_info_label: Optional[str] = "payu_run_status",
             stage: Optional[str] = None,
         ) -> None:
@@ -580,4 +584,4 @@ def record_run(
     run_info = update_job_file(file_path=file_path, data=run_info)
 
     record_telemetry(run_info=run_info, config=config,
-                     job_file_path=file_path, archive_path=archive_path)
+                     job_file_path=file_path, archive_path=archive_path, type=type)
