@@ -93,25 +93,10 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path):
     # Initialise experiment to determine archive path and run number (which is needed to write job file)
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab)
-    current_run = os.environ.get('PAYU_CURRENT_RUN', '')
+    expt.set_counters(keep_run_number=True)
 
     # Submit the collation job and write queue job file
-    job_id = cli.submit_job('payu-collate', pbs_config, pbs_vars, expt, current_run, type='collate')
-
-    # Acquire the job file path
-    job_file_path = get_job_file_path(
-            archive_path=Path(expt.archive_path),
-            run_number=expt.counter,
-            timings=expt.timings,
-            scheduler=expt.scheduler,
-            type='collate',
-        )
-
-    # Write initial job information to job file
-    update_job_file(
-        file_path=job_file_path,
-        data=get_job_info_json(job_id)
-    )
+    job_id = cli.submit_job('payu-collate', pbs_config, pbs_vars, expt, expt.counter, type='collate')
 
 
 def runscript():
@@ -163,6 +148,7 @@ def runscript():
             config=expt.config,
             file_path=job_file_path,
             archive_path=Path(expt.archive_path),
+            type="collate",
             run_info_label = "payu_collate_status",
             stage="exited"
         )

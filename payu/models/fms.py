@@ -129,23 +129,6 @@ def mapping_log(model, mnc_tiles, uncollate_hashes_dict):
         # match the collated file hash with the list of uncollated tile hashes
         mapping_collate_dict[prior_restart_num][collate_hash] = uncollate_hashes_dict.pop(nc_fname)
 
-
-    # Write the mapping_collate_dict to job file in
-    # archive/payu_jobs/{current_run}/collate/{job_id}-gadi-pbs.json
-    job_id = os.environ.get('PBS_JOBID', '')
-    current_run = os.environ.get('PAYU_CURRENT_RUN', '')
-
-    job_file_path = get_job_file_path(
-            archive_path=Path(model.expt.archive_path),
-            run_number=model.expt.counter,
-            timings=model.expt.timings,
-            scheduler=model.expt.scheduler,
-            type='collate',
-        )
-    update_job_file(
-        file_path=job_file_path,
-        data={"collate_mapping": mapping_collate_dict}
-    )
     return mapping_collate_dict
 
 def fms_collate(model):
@@ -336,7 +319,8 @@ def fms_collate(model):
         sys.exit(-1)
 
     # Get md5 hash for collated files and write collate mapping into job file
-    mapping_log(model, mnc_tiles, uncollate_hashes_dict)
+    mapping_collate_dict = mapping_log(model, mnc_tiles, uncollate_hashes_dict)
+    return mapping_collate_dict
 
 class Fms(Model):
 
@@ -367,4 +351,5 @@ class Fms(Model):
         shutil.move(self.work_restart_path, self.restart_path)
 
     def collate(self):
-        fms_collate(self)
+        mapping_collate_dict = fms_collate(self)
+        return mapping_collate_dict

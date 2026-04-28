@@ -368,7 +368,7 @@ def display_job_info(data: dict[str, Any]) -> None:
             display_log_job_files(run_info)
 
             # display the collate job information
-            collate_info = run_info.get("collate_info", None)
+            collate_info = run_info.get("collate_info")
             if collate_info:
                 print(f"  {'-' * 12} Collate Info {'-' * 12}")
                 print_line("Job ID", "job_id", collate_info)
