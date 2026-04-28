@@ -11,7 +11,7 @@ from payu import cli
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
-from payu.telemetry import write_queued_job_file, get_job_file_path, update_job_file, record_run
+from payu.telemetry import record_run
 from payu import fsops
 from payu.schedulers.pbs import get_job_info_json
 
@@ -93,10 +93,17 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path):
     # Initialise experiment to determine archive path and run number (which is needed to write job file)
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab)
-    expt.set_counters(keep_run_number=True)
+    if init_run is None:
+        # Get the latest run number from the restart/output folder numbering
+        # and set it as the run number to write job file
+        expt.set_counters(keep_run_number=True)
+        init_run = expt.counter
 
+    print(f"init_run: {init_run}")
     # Submit the collation job and write queue job file
-    job_id = cli.submit_job('payu-collate', pbs_config, pbs_vars, expt, expt.counter, type='collate')
+    cli.submit_job('payu-collate', pbs_config, pbs_vars, expt=expt, current_run = init_run, type='collate')
+
+    
 
 
 def runscript():
@@ -130,15 +137,7 @@ def runscript():
         raise
     finally:
         # Record collation job information into job file
-        job_id = os.environ.get('PBS_JOBID', '')
-        current_run = os.environ.get('PAYU_CURRENT_RUN', '')
-        job_file_path = get_job_file_path(
-            archive_path=Path(expt.archive_path),
-            run_number=expt.counter,
-            timings=expt.timings,
-            scheduler=expt.scheduler,
-            type='collate',
-        )
+        job_file_path = expt.set_job_file(type='collate')
 
         # Record the collation status (duration time and success/failure) in the job file
         record_run(
