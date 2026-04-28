@@ -167,13 +167,16 @@ class Experiment(object):
 
     def set_job_file(self, type='run'):
         """Set the job file for the payu job"""
-        self.job_file = telemetry.get_job_file_path(
+        job_file = telemetry.get_job_file_path(
             archive_path=Path(self.archive_path),
             run_number=self.counter,
             timings=self.timings,
             scheduler=self.scheduler,
             type=type,
         )
+        if type == 'run':
+            self.job_file = job_file
+        return job_file
 
 
     def init_timings(self):
@@ -218,7 +221,7 @@ class Experiment(object):
         else:
             self.model = None
 
-    def set_counters(self):
+    def set_counters(self, keep_run_number=False):
         # Assume that ``set_paths`` has already been called
         assert self.archive_path
 
@@ -235,13 +238,19 @@ class Experiment(object):
             # Check for restart index
             max_restart_index = self.max_output_index(output_type="restart")
             if max_restart_index is not None:
-                self.counter = 1 + max_restart_index
+                if keep_run_number:
+                    self.counter = int(max_restart_index)
+                else:
+                    self.counter = 1 + max_restart_index
             else:
                 # Now look for output directories,
                 # as repeat runs do not generate restart files.
                 max_output_index = self.max_output_index()
                 if max_output_index is not None:
-                    self.counter = 1 + max_output_index
+                    if keep_run_number:
+                        self.counter = int(max_output_index)
+                    else:
+                        self.counter = 1 + max_output_index
                 else:
                     self.counter = 0
 
@@ -968,9 +977,21 @@ class Experiment(object):
         """ Run model collation and record the time taken in seconds to run collation"""
         # Setup modules - load user-defined modules
         self.setup_modules()
+        full_mapping_collate_dict = {}
 
         for model in self.models:
-            model.collate()
+            mapping_collate_dict = model.collate()
+            if mapping_collate_dict is not None:
+                full_mapping_collate_dict.update(mapping_collate_dict)
+
+        # Write the full_mapping_collate_dict to job file in
+        # archive/payu_jobs/{latest_run_number}/collate/{job_id}-gadi-pbs.json
+        self.set_counters(keep_run_number=True)
+        job_file_path = self.set_job_file(type='collate')
+        telemetry.update_job_file(
+            file_path=job_file_path,
+            data={"collate_mapping": full_mapping_collate_dict}
+        )
 
     def profile(self):
         for model in self.models:
