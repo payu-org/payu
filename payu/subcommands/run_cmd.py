@@ -175,7 +175,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
     current_run = init_run if init_run is not None else expt.counter
 
-    job_id = cli.submit_job('payu-run', pbs_config, pbs_vars, expt, current_run, type='run')
+    cli.submit_job('payu-run', pbs_config, pbs_vars, expt, current_run, type='run')
 
 
 def runscript():

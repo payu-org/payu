@@ -327,7 +327,7 @@ def test_mapping_log(mock_get_job_file_path, mock_hash):
     uncollate_hashes_dict = get_uncollate_hashes(mnc_tiles, restart_dir)
     mock_model = MagicMock()
     mock_model.prior_restart_path = restart_dir
-    mapping_log(mock_model, mnc_tiles, uncollate_hashes_dict)
+    mapping_collate_dict = mapping_log(mock_model, mnc_tiles, uncollate_hashes_dict)
 
     # Set up the expected mapping dictionary
     expected_mapping = {
@@ -336,13 +336,9 @@ def test_mapping_log(mock_get_job_file_path, mock_hash):
             "md5_ocean_3d.res.nc": ["md5_ocean_3d.res.nc.0000", "md5_ocean_3d.res.nc.0001"],
         }
     }
-
-    # Read the job file after collation
-    with open(job_file_path, "r") as job_file:
-        data = json.load(job_file)
-
+    
     # Confirm only restart collation are recorded in the mapping (but not output collation)
-    assert data["collate_mapping"] == expected_mapping
+    assert mapping_collate_dict == expected_mapping
 
     # Clean up
     rmtmp()

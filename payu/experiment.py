@@ -977,8 +977,12 @@ class Experiment(object):
         """ Run model collation and record the time taken in seconds to run collation"""
         # Setup modules - load user-defined modules
         self.setup_modules()
-        full_mapping_collate_dict = {}
 
+        # Counters does not increase for collate runs
+        # This is used to determine the job file path
+        self.set_counters(keep_run_number=True)
+
+        full_mapping_collate_dict = {}
         for model in self.models:
             mapping_collate_dict = model.collate()
             if mapping_collate_dict is not None:
@@ -986,7 +990,7 @@ class Experiment(object):
 
         # Write the full_mapping_collate_dict to job file in
         # archive/payu_jobs/{latest_run_number}/collate/{job_id}-gadi-pbs.json
-        self.set_counters(keep_run_number=True)
+        
         job_file_path = self.set_job_file(type='collate')
         telemetry.update_job_file(
             file_path=job_file_path,
