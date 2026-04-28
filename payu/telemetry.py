@@ -198,7 +198,6 @@ def post_telemetry_data(url: str,
                         service_name: str,
                         archive_path: Path,
                         job_file_path: Path,
-                        type: str,
                         proxy_url: Optional[str] = None,
                         request_timeout: int = REQUEST_TIMEOUT,
                         ) -> None:
@@ -231,7 +230,7 @@ def post_telemetry_data(url: str,
     }
 
     data = {
-        "service": service_name + "." + type,
+        "service": service_name,
         "version": TELEMETRY_VERSION,
         "telemetry": data
     }
@@ -267,11 +266,13 @@ def record_telemetry(run_info: dict[str, Any],
                      config: dict[str, Any],
                      job_file_path: Path,
                      archive_path: Path,
-                     type: str) -> None:
+                     type: str = "run") -> None:
     """If configured, post the telemetry data for the payu run"""
     # Check for config.yaml option to disable telemetry, and if an
     # environment variable for an external telemetry config file is set,
     # and whether the model was run
+    if type != "run":
+        return
     if not (
         config.get("telemetry", {}).get("enable", True)
         and TELEMETRY_CONFIG in os.environ
@@ -302,7 +303,6 @@ def record_telemetry(run_info: dict[str, Any],
             "archive_path": archive_path,
             "job_file_path": job_file_path,
             "proxy_url": external_config.get(OPTIONAL_CONFIG_FIELDS["PROXY_URL"]),
-            "type": type,
         },
     )
     thread.start()
@@ -321,8 +321,8 @@ def get_job_file_path_with_id(
     return (
         archive_path / "payu_jobs" / str(run_number) / type / f"{job_id}.json"
     )
-    
-    
+
+
 def get_job_file_path(
             archive_path: Path,
             run_number: int,
@@ -540,12 +540,11 @@ def update_run_job_file(
 def record_run(
             timings: dict[str, Any],
             scheduler: Scheduler,
-            run_status: int,
+            status: int,
             config: dict[str, Any],
             file_path: Path,
             archive_path: Path,
             type: Optional[str] = "run",
-            run_info_label: Optional[str] = "payu_run_status",
             stage: Optional[str] = None,
         ) -> None:
     """Record the run information for the current run and post telemetry
@@ -558,8 +557,8 @@ def record_run(
         and model run
     scheduler: Scheduler
         Scheduler object for the run - used to query recent job information
-    run_status: int
-        Status of the payu run as a whole, 0 for success, 1 for failure
+    status: int
+        Status of the payu run/collate as a whole, 0 for success, 1 for failure
     config: dict[str, Any]
         Configuration (config.yaml) - used to check if telemetry is enabled
     file_path: Path
@@ -568,7 +567,7 @@ def record_run(
         Path to the archive directory for the experiment
     """
     # Additional information to the run info
-    run_info = {run_info_label: run_status}
+    run_info = {f"payu_{type}_status": status}
     if stage:
         run_info["stage"] = stage
 

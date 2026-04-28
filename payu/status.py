@@ -3,7 +3,6 @@ Methods used by the `payu status` command to display the status of
 payu runs by inspecting the job files generated for telemetry,
 scheduler stdout/stderr logs, and querying the scheduler
 """
-import os
 from pathlib import Path
 from typing import Any, Optional
 import warnings
