@@ -14,6 +14,8 @@ import os
 import re
 import glob
 import shutil
+import multiprocessing
+import subprocess
 import cftime
 from warnings import warn
 
@@ -55,9 +57,18 @@ component_info = {
         "config_files": ["ice_in"],
     },
     "ww3dev": {
-        "config_files": ["wav_in"],
-        "optional_config_files" : [
-            "ww3_shel.nml",
+        "config_files": [
+            "wav_in",
+            "WW3_PreProc/OM3.Lat",
+            "WW3_PreProc/OM3.Lon",
+            "WW3_PreProc/OM3.Dpt",
+            "WW3_PreProc/OM3.Mask",
+            "WW3_PreProc/OM3.Obstr",
+            "WW3_PreProc/namelists_Global.nml",
+            "WW3_PreProc/ww3_strt.inp",
+            "WW3_PreProc/ww3_grid.nml",
+        ],
+        "optional_config_files": [
             "ww3_points.list",
         ],
     },
@@ -181,19 +192,11 @@ class CesmCmeps(Model):
 
         self.runconfig.write(os.path.join(self.work_path, NUOPC_CONFIG))
 
-        # Horrible hack to make a link to the mod_def.ww3 input in the work
-        # directory
-        # The ww3 mod_def input needs to be in work_path and called mod_def.ww3
         if "ww3dev" in self.components.values():
-            f_name = "mod_def.ww3"
-            f_src = os.path.join(self.work_input_path, f_name)
-            f_dst = os.path.join(self.work_path, f_name)
+            # WW3 uses a bespoke binary file for configuration (mod_def.ww3),
+            # Generate mod_def.ww3 on the fly based on the WW3 files in the config being run
+            self._setup_ww3_mod_def()
 
-            if os.path.isfile(f_src):
-                make_symlink(f_src, f_dst)
-            else:
-                # TODO: copied this from other models. Surely we want to exit here or something
-                print('payu: error: Unable to find mod_def.ww3 file in input directory')
 
     def _setup_checks(self):
         # check pelayout fits within requested cpucount
@@ -372,6 +375,40 @@ class CesmCmeps(Model):
         else:
             super().collate()
 
+    def _setup_ww3_mod_def(self):
+        mod_def = "mod_def.ww3"
+        mod_def_input = os.path.join(self.work_input_path, mod_def)
+        mod_def_work = os.path.join(self.work_path, mod_def)
+
+        if os.path.isfile(mod_def_input):
+            make_symlink(mod_def_input, mod_def_work)
+            return
+
+        self._generate_ww3_mod_def()
+
+    def _generate_ww3_mod_def(self):
+        ww3_grid = os.path.join(os.path.dirname(self.exec_path), "ww3_grid")
+        if not os.path.isfile(ww3_grid):
+            raise FileNotFoundError(
+                f"Required WW3 preprocessing executable not found: {ww3_grid}"
+            )
+        if not os.access(ww3_grid, os.X_OK):
+            raise PermissionError(
+                f"WW3 preprocessing executable is not executable: {ww3_grid}"
+            )
+
+        result = subprocess.run([ww3_grid], cwd=self.work_path, check=False)
+        if result.returncode != 0:
+            raise RuntimeError(
+                "Failed to generate WW3 input files "
+                f"with {ww3_grid} (exit code {result.returncode})"
+            )
+
+        mod_def = os.path.join(self.work_path, "mod_def.ww3")
+        if not os.path.isfile(mod_def):
+            raise RuntimeError(
+                "WW3 preprocessing completed without creating mod_def.ww3"
+            )
     def get_restart_datetime(self, restart_path):
         """Given a restart path, parse the restart files and
         return a cftime datetime (for date-based restart pruning)
