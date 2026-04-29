@@ -43,6 +43,7 @@ from payu.sync import SyncToRemoteArchive
 from payu.metadata import Metadata
 import payu.telemetry as telemetry
 from payu.git_utils import get_git_repository, PayuGitWarning
+import payu.errors as errors
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -484,8 +485,9 @@ class Experiment(object):
 
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
-            sys.exit('payu: error: Output path already exists: '
-                     '{path}.'.format(path=self.output_path))
+            raise errors.PayuError(f'Output path already exists: {self.output_path}')
+            # sys.exit('payu: error: Output path already exists: '
+            #          '{path}.'.format(path=self.output_path))
 
         # Confirm that no work path already exists
         if os.path.exists(self.work_path):
