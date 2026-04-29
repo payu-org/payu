@@ -2,6 +2,7 @@ import json
 import pytest
 import os
 from unittest.mock import patch
+from yamanifest.hashing import _hashlib
 
 # import payu packages
 from payu.fsops import atomic_write_file
@@ -80,3 +81,4 @@ def test_atomic_write_file_disrupt_dump(monkeypatch):
     with open(orig_file, 'r') as f:
         content_after_error = json.load(f)
     assert content_after_error == content
+

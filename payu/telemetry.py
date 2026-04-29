@@ -265,11 +265,14 @@ def post_telemetry_data(url: str,
 def record_telemetry(run_info: dict[str, Any],
                      config: dict[str, Any],
                      job_file_path: Path,
-                     archive_path: Path) -> None:
+                     archive_path: Path,
+                     type: str = "run") -> None:
     """If configured, post the telemetry data for the payu run"""
     # Check for config.yaml option to disable telemetry, and if an
     # environment variable for an external telemetry config file is set,
     # and whether the model was run
+    if type != "run":
+        return
     if not (
         config.get("telemetry", {}).get("enable", True)
         and TELEMETRY_CONFIG in os.environ
@@ -340,7 +343,7 @@ def get_job_file_path(
         archive_path=archive_path,
         run_number=run_number,
         job_id=file_id,
-        type='run'
+        type=type
     )
     return file_path
 
@@ -541,6 +544,9 @@ def record_run(
             config: dict[str, Any],
             file_path: Path,
             archive_path: Path,
+            type: Optional[str] = "run",
+            run_info_label: Optional[str] = "payu_run_status",
+            stage: Optional[str] = None,
         ) -> None:
     """Record the run information for the current run and post telemetry
     if enabled
@@ -562,7 +568,9 @@ def record_run(
         Path to the archive directory for the experiment
     """
     # Additional information to the run info
-    run_info = {"payu_run_status": run_status}
+    run_info = {run_info_label: run_status}
+    if stage:
+        run_info["stage"] = stage
 
     # Query the scheduler just before recording the run information to
     # try get the most up-to-date information of the usage statistics
@@ -576,4 +584,4 @@ def record_run(
     run_info = update_job_file(file_path=file_path, data=run_info)
 
     record_telemetry(run_info=run_info, config=config,
-                     job_file_path=file_path, archive_path=archive_path)
+                     job_file_path=file_path, archive_path=archive_path, type=type)

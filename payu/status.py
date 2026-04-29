@@ -3,7 +3,7 @@ Methods used by the `payu status` command to display the status of
 payu runs by inspecting the job files generated for telemetry,
 scheduler stdout/stderr logs, and querying the scheduler
 """
-
+import os
 from pathlib import Path
 from typing import Any, Optional
 import warnings
@@ -184,6 +184,31 @@ def build_job_info(
         run_num = data["payu_current_run"]
         runs.setdefault(run_num, {"run": []})["run"].append(run_info)
 
+        collate_dir = archive_path / "payu_jobs" / str(run_num) / "collate"
+        if collate_dir.exists():
+            collate_files = sorted(list(collate_dir.glob("*.json")), key=lambda f: f.stat().st_mtime)
+
+            if collate_files:
+                collate_file = collate_files[-1]
+                collate_data = read_job_file(Path(collate_file))
+
+                stdout, stderr = find_scheduler_logs(
+                    job_id=collate_data.get("scheduler_job_id"),
+                    control_path=control_path,
+                    archive_path=archive_path,
+                    type=collate_data.get("scheduler_type")
+                )
+                
+                collate_info = {
+                    "job_id": collate_data.get("scheduler_job_id"),
+                    "stage": collate_data.get("stage"),
+                    "exit_status": collate_data.get("payu_collate_status"),
+                    "stdout_file": str(stdout) if stdout else None,
+                    "stderr_file": str(stderr) if stderr else None,
+                    "job_file": str(collate_file),
+                }
+                run_info["collate_info"] = collate_info
+
     # Sort runs by run number
     status_data["runs"] = dict(
         sorted(runs.items(), key=lambda item: int(item[0]))
@@ -287,21 +312,31 @@ def update_all_job_files(
                         data={"payu_run_status": 1}
                     )
                 
-
-
-def print_line(label: str, key: Any, data: dict[str, Any]) -> None:
-    """Print a line with label and value from the data,
-    if it is defined"""
+def print_line(label: str, key: Any, data: dict[str, Any], is_status: bool = False) -> None:
+    """Print a line with label and value from the data, if it is defined. 
+    If is_status is True, print the status string (Success/Failed) as well."""
     value = data.get(key)
     label_width = 18
     if value is not None and value != "":
-        print(f"  {f'{label}:':<{label_width}} {value}")
+        if is_status:
+            status_str = "Success" if value == 0 else "Failed"
+            print(f"  {f'{label}:':<{label_width}} {value} ({status_str})")
+        else:
+            print(f"  {f'{label}:':<{label_width}} {value}")
 
+
+def display_log_job_files(run_info: dict[str, Any]) -> None:
+    """Display the log and job files block inside the payu status output"""
+    print_line("Output Log", "stdout_file", run_info)
+    print_line("Error Log", "stderr_file", run_info)
+    print_line("Job File", "job_file", run_info)
+   
 
 def display_job_info(data: dict[str, Any]) -> None:
     """
     Display the job information in a human-readable way
     """
+    line_width = 40
     runs = data.get("runs", {})
     if not runs:
         print("No run information available.")
@@ -309,13 +344,15 @@ def display_job_info(data: dict[str, Any]) -> None:
 
     for run_number, jobs in runs.items():
         for run_info in jobs["run"]:
-            print("=" * 40)
+            print("=" * line_width)
             print(f"Run: {run_number}")
+            print("-" * line_width)
+            # Display the job information for the payu run
             print_line("Job ID", "job_id", run_info)
             print_line("Run ID", "run_id", run_info)
             print_line("Stage", "stage", run_info)
 
-            #read out qtime and stime from the job file
+            # read out qtime and stime from the job file
             job_file = run_info.get("job_file")
             job_id = run_info.get("job_id")
             all_job_info = read_job_file(Path(job_file))
@@ -324,15 +361,21 @@ def display_job_info(data: dict[str, Any]) -> None:
 
             print_line("Current Expt Time", "cur_expt_time", run_info)
             print_line("Model Finish Time", "model_finish_time", run_info)
-            exit_status = run_info.get("exit_status")
-            if exit_status is not None:
-                status_str = "Success" if exit_status == 0 else "Failed"
-                print(f"  Exit Status:       {exit_status} ({status_str})")
-            model_exit = run_info.get("model_exit_status")
-            if model_exit is not None:
-                status_str = "Success" if model_exit == 0 else "Failed"
-                print(f"  Model Exit Code:   {model_exit} ({status_str})")
-            print_line("Output Log", "stdout_file", run_info)
-            print_line("Error Log", "stderr_file", run_info)
-            print_line("Job File", "job_file", run_info)
-    print("=" * 40)
+            print_line("Exit Status", "exit_status", run_info, is_status=True)
+            print_line("Model Exit Code", "model_exit_status", run_info, is_status=True)
+
+            # Display payu run log and job file paths
+            display_log_job_files(run_info)
+
+            # display the collate job information
+            collate_info = run_info.get("collate_info")
+            if collate_info:
+                print(f"  {'-' * 12} Collate Info {'-' * 12}")
+                print_line("Job ID", "job_id", collate_info)
+                print_line("Stage", "stage", collate_info)
+                print_line("Exit Status", "exit_status", collate_info, is_status=True)
+
+                # Display payu collate log and job file paths
+                display_log_job_files(collate_info)
+
+    print("=" * line_width)
