@@ -888,7 +888,8 @@ class Experiment(object):
         )
         # Check there is a work directory, otherwise bail
         if not os.path.exists(self.work_sym_path):
-            raise errors.PayuFileNotFoundError('payu: error: No work directory to archive.')
+            raise errors.PayuFileNotFoundError('payu: error: \
+                No work directory to archive.')
             # sys.exit('payu: error: No work directory to archive.')
 
         os.makedirs(self.archive_path, exist_ok=True)
@@ -909,7 +910,8 @@ class Experiment(object):
 
         # Double-check that the run path does not exist
         if os.path.exists(self.output_path):
-            sys.exit('payu: error: Output path already exists.')
+            raise errors.PayuError('payu: error: output path already exists')
+            # sys.exit('payu: error: Output path already exists.')
 
         movetree(self.work_path, self.output_path)
 

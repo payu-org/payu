@@ -33,16 +33,23 @@ class PayuFileNotFoundError(PayuError):
     exit_code = 3
 
 
-class PayuBranchError(PayuError):
-    '''
-    Raised when there are issues with Git branches.
-    '''
-    exit_code = 4
-
-
 class PayuRunError(PayuError):
     '''
     Raised when an active model run fails unexpectedly.
     '''
+    exit_code = 4
+
+
+class PayuGitError(PayuError):
+    '''
+    Raised when there are Git related issues .
+    '''
     exit_code = 5
+
+
+class PayuBranchError(PayuError):
+    '''
+    Custom exception for payu branch operations
+    '''
+    exit_code = 6
  
