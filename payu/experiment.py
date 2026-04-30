@@ -476,7 +476,8 @@ class Experiment(object):
 
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
-            raise errors.PayuError(f'payu: error: output path already exists: {self.output_path}')
+            raise errors.PayuError(f'payu: error: output path already exists:\
+                 {self.output_path}')
             # sys.exit('payu: error: Output path already exists: '
             #          '{path}.'.format(path=self.output_path))
 
@@ -487,8 +488,11 @@ class Experiment(object):
                       '      Sweeping as --force option is True.')
                 self.sweep()
             else:
-                raise errors.PayuError(f"""payu: error: work path already exists: {self.work_path}.
-                             payu sweep and then payu run""")
+                raise errors.PayuError(
+                    f'''
+                    payu: error: work path already exists: {self.work_path}.
+                             payu sweep and then payu run
+                    ''')
             
                 # sys.exit('payu: error: work path already exists: {path}.\n'
                 #          '             payu sweep and then payu run'

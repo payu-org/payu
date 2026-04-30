@@ -126,7 +126,8 @@ class PayuManifest(YaManifest):
 
         if len(differences) != 0:
             diff_text = '\n'.join(str(row) for row in differences)
-            raise errors.PayuRunError(f'''
+            raise errors.PayuRunError(
+                f'''
                 Run cannot reproduce: manifest {self.path} is not correct.
                 Manifest path: stored hash != calculated hash
                 {diff_text}

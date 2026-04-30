@@ -19,6 +19,7 @@ import requests
 
 # Local
 from payu.fsops import DEFAULT_CONFIG_FNAME
+import payu.errors as errors
 
 
 # Compatibility
@@ -137,10 +138,16 @@ class Runlog(object):
                                     ssh_key)
 
         if not os.path.isfile(ssh_key_path):
-            print('payu: error: Github SSH key {key} not found.'
-                  ''.format(key=ssh_key_path))
-            print('payu: error: Run `payu ghsetup` to generate a new key.')
-            sys.exit(-1)
+            raise errors.PayuGitError(
+                f'''
+                payu: error: GitHub SSH Key {ssh_key_path} not found.
+                payu: error: Run `payu ghsetup` to generate a new key.
+                ''')
+
+            # print('payu: error: Github SSH key {key} not found.'
+            #       ''.format(key=ssh_key_path))
+            # print('payu: error: Run `payu ghsetup` to generate a new key.')
+            # sys.exit(-1)
 
         cmd = ('ssh-agent bash -c "ssh-add {key}; git push --all payu"'
                ''.format(key=ssh_key_path))
@@ -180,8 +187,9 @@ class Runlog(object):
 
             else:
                 # TODO: Exit with grace
-                print('payu: abort!')
-                sys.exit(-1)
+                raise errors.PayuGitError('payu: error: abort!')
+                # print('payu: abort!')
+                # sys.exit(-1)
 
             repo_query_url = os.path.join(github_api_url, 'orgs', org_name,
                                           'repos')
@@ -240,11 +248,20 @@ class Runlog(object):
                    ''.format(name=remote_name, url=remote_url))
             subprocess.check_call(shlex.split(cmd), cwd=self.expt.control_path)
         elif git_remotes[remote_name] != remote_url:
-            print('payu: error: Existing remote URL does not match '
-                  'the proposed URL.')
-            print('payu: error: To delete the old remote, type '
-                  '`git remote rm {name}`.'.format(name=remote_name))
-            sys.exit(-1)
+            raise errors.PayuGitError(
+                f'''
+                payu: error: Existing remote URL does not match 
+                the proposed URL.
+                
+                payu: error: To delete the old remote, type 
+                `git remote rm {remote_name}`
+                ''')
+
+            # print('payu: error: Existing remote URL does not match '
+            #       'the proposed URL.')
+            # print('payu: error: To delete the old remote, type '
+            #       '`git remote rm {name}`.'.format(name=remote_name))
+            # sys.exit(-1)
 
         # 4. Generate a payu-specific SSH key
         default_ssh_key = 'id_rsa_payu_' + expt_name
