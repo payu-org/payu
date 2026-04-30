@@ -29,6 +29,7 @@ import payu.calendar as cal
 from payu.fsops import make_symlink
 from payu.models.model import Model
 from payu.namcouple import Namcouple
+import payu.errors as errors
 
 
 class Cice(Model):
@@ -97,26 +98,38 @@ class Cice(Model):
                 input_path = path
             else:
                 if path != input_path:
-                    print('payu: error: Grid file path in {nmlfile} '
-                          '({path}) does not match input path '
-                          '({inputpath})'.format(
-                            nmlfile=self.ice_nml_fname,
-                            path=path,
-                            inputpath=input_path))
-                    sys.exit(1)
+                    raise errors.PayuError(
+                        f'''
+                        payu: error: Grid file path in {self.ice_nml_fname} 
+                        ({path}) does not match input path 
+                        ({input_path})
+                        ''')
+                    # print('payu: error: Grid file path in {nmlfile} '
+                    #       '({path}) does not match input path '
+                    #       '({inputpath})'.format(
+                    #         nmlfile=self.ice_nml_fname,
+                    #         path=path,
+                    #         inputpath=input_path))
+                    # sys.exit(1)
 
         # Check for consistency in input paths due to cice having the same
         # information in multiple locations
         path, _ = os.path.split(self.ice_in['grid_nml'].get('kmt_file'))
         path = os.path.normpath(path)
         if path != input_path:
-            print('payu: error: '
-                  'kmt file path in {nmlfile} ({path}) does not match '
-                  'input path ({inputpath})'.format(
-                    nmlfile=self.ice_nml_fname,
-                    path=path,
-                    inputpath=input_path))
-            sys.exit(1)
+            raise errors.PayuError(
+                f'''
+                payu: error: 
+                kmt file path in {self.ice_nml_fname} ({path}) does not match 
+                input path ({input_path})
+                ''')
+            # print('payu: error: '
+            #       'kmt file path in {nmlfile} ({path}) does not match '
+            #       'input path ({inputpath})'.format(
+            #         nmlfile=self.ice_nml_fname,
+            #         path=path,
+            #         inputpath=input_path))
+            # sys.exit(1)
 
         if not os.path.isabs(input_path):
             input_path = os.path.join(self.work_path, input_path)
@@ -230,9 +243,15 @@ class Cice(Model):
             # If we cannot find a prior namelist, then we cannot determine
             # the start time and must abort the run.
             if not os.path.exists(prior_nml_path):
-                print('payu: error: Cannot find prior namelist {nml}'.format(
-                    nml=self.ice_nml_fname))
-                sys.exit(errno.ENOENT)
+                raise errors.PayuFileNotFoundError(
+                    f'''
+                    payu: error: Cannot find prior namelist {self.ice_nml_fname}
+                    '''
+                )
+
+                # print('payu: error: Cannot find prior namelist {nml}'.format(
+                #     nml=self.ice_nml_fname))
+                # sys.exit(errno.ENOENT)
 
             prior_setup_nml = f90nml.read(prior_nml_path)['setup_nml']
 
