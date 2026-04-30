@@ -30,6 +30,7 @@ import payu.errors as errors
 # Only need one hashfn in the list of full_hashes to calculate the collate mapping.
 full_hashes = full_hashes[0]
 
+
 # There is a limit on the number of command line arguments in a forked
 # MPI process. This applies only to mppnccombine-fast. The limit is higher
 # than this, but mppnccombine-fast is very slow with large numbers of files
