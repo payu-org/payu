@@ -888,7 +888,8 @@ class Experiment(object):
         )
         # Check there is a work directory, otherwise bail
         if not os.path.exists(self.work_sym_path):
-            sys.exit('payu: error: No work directory to archive.')
+            raise errors.PayuFileNotFoundError('payu: error: No work directory to archive.')
+            # sys.exit('payu: error: No work directory to archive.')
 
         os.makedirs(self.archive_path, exist_ok=True)
         make_symlink(self.archive_path, self.archive_sym_path)
