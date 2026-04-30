@@ -12,13 +12,8 @@ import git
 import configparser
 
 
-class PayuBranchError(Exception):
-    """Custom exception for payu branch operations"""
-
-
 class PayuGitWarning(Warning):
     """Custom warning class - useful for testing"""
-
 
 def get_git_repository(repo_path: Union[Path, str],
                        initialise: bool = False,
@@ -63,9 +58,16 @@ class GitRepository:
         not a git repository"""
         if self.repo:
             if self.repo.head.is_detached:
-                sys.exit("\nRepo is in a detached HEAD state.\n"
-                         "Before running again checkout a branch using\n\n"
-                         "    payu checkout <branch>\n\n")
+                raise errors.PayuGitError("""
+                Repo is in detached HEAD state.
+                Before running again checkout a branch using 
+
+                    payu checkout <branch>
+
+                """)
+                # sys.exit("\nRepo is in a detached HEAD state.\n"
+                #          "Before running again checkout a branch using\n\n"
+                #          "    payu checkout <branch>\n\n")
             else:
                 return self.repo.active_branch
         else:
