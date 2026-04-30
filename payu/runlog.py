@@ -13,7 +13,7 @@ import git
 # Local
 from payu.fsops import DEFAULT_CONFIG_FNAME
 from payu.git_utils import GitRepository, get_git_repository
-
+import payu.errors as errors
 
 class Runlog(object):
     def __init__(self, expt):
@@ -94,4 +94,3 @@ class Runlog(object):
             remote.push(all=True)
         except Exception as e:
             print(f"payu: error: Failed to push runlog changes to remote repository: {e}.")
-
