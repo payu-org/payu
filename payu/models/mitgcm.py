@@ -23,6 +23,7 @@ yaml.default_flow_style = False
 
 # Local
 from payu.models.model import Model
+import payu.errors as errors 
 
 
 class Mitgcm(Model):
@@ -83,8 +84,11 @@ class Mitgcm(Model):
             try:
                 # NOTE: Use the most recent, in case of multiple restarts
                 n_iter0 = max([int(f.split('.')[1]) for f in core_restarts])
-            except ValueError:
-                sys.exit("payu: error: no restart files found.")
+            except ValueError as e:
+                raise errors.PayuFileNotFoundError(
+                    'payu: error: no restart files found') from e
+                    
+                # sys.exit("payu: error: no restart files found.")
         else:
             n_iter0 = 0
 
