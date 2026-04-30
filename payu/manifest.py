@@ -21,6 +21,9 @@ from yamanifest.manifest import Manifest as YaManifest
 
 from payu.fsops import make_symlink
 
+# Internal
+import payu.errors as errors
+
 
 # fast_hashes = ['nchash','binhash']
 fast_hashes = ['binhash']
@@ -122,14 +125,21 @@ class PayuManifest(YaManifest):
                     )
 
         if len(differences) != 0:
-            sys.stderr.write(
-                f'Run cannot reproduce: manifest {self.path} is not correct\n'
-            )
-            print(f"Manifest path: stored hash != calculated hash")
-            for row in differences:
-                print(row)
+            diff_text = '\n'.join(str(row) for row in differences)
+            raise errors.PayuRunError(f'''
+                Run cannot reproduce: manifest {self.path} is not correct.
+                Manifest path: stored hash != calculated hash
+                {diff_text}
+                ''')
 
-            sys.exit(1)
+            # sys.stderr.write(
+            #     f'Run cannot reproduce: manifest {self.path} is not correct\n'
+            # )
+            # print(f"Manifest path: stored hash != calculated hash")
+            # for row in differences:
+            #     print(row)
+
+            # sys.exit(1)
 
 
     def add_filepath(self, filepath, fullpath, hashes, copy=False):
