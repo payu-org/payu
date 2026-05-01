@@ -12,6 +12,7 @@ import subprocess as sp
 
 from payu import envmod
 from payu.fsops import required_libs
+import payu.errors as errors
 
 class Model(object):
     """Abstract model class."""
@@ -139,8 +140,14 @@ class Model(object):
 
                     self.input_paths.append(rel_path)
                 else:
-                    sys.exit('payu: error: Input directory {0} not found; '
-                             'aborting.'.format(rel_path))
+                    raise errors.PayuFileNotFoundError(
+                        f'''
+                        payu: error: Input directory {rel_path} not found;
+                        aborting.
+                        '''
+                    )
+                    # sys.exit('payu: error: Input directory {0} not found; '
+                    #          'aborting.'.format(rel_path))
 
     def set_model_output_paths(self):
 
