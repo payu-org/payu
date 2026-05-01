@@ -24,6 +24,7 @@ import payu.envmod as envmod
 from payu.fsops import check_exe_path, atomic_write_file
 from payu.manifest import Manifest
 from payu.schedulers.scheduler import Scheduler
+import payu.errors as errors
 
 PBSNODE_TIMEOUT = 60
 LOCK_TIMEOUT = 5
@@ -305,8 +306,10 @@ class PBS(Scheduler):
 
         pbs_join = pbs_config.get('join', 'n')
         if pbs_join not in ('oe', 'eo', 'n'):
-            print('payu: error: unknown qsub IO stream join setting.')
-            sys.exit(-1)
+            raise errors.PayuRunError(
+                'payu: error: unknown qsub IO stream join setting.')
+            # print('payu: error: unknown qsub IO stream join setting.')
+            # sys.exit(-1)
         else:
             pbs_flags.append('-j {join}'.format(join=pbs_join))
 
@@ -500,8 +503,10 @@ def pbs_env_init():
                 except ValueError:
                     pass
     except IOError as ec:
-        print('Unable to find PBS_CONF_FILE ... ' + pbs_conf_fpath)
-        sys.exit(1)
+        raise errors.PayuFileNotFoundError(
+            f'Unable to find PBS_CONF_FILE ... {pbs_conf_fpath}') from ec
+        # print('Unable to find PBS_CONF_FILE ... ' + pbs_conf_fpath)
+        # sys.exit(1)
 
 
 def encode_mount(mount):
