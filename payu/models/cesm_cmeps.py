@@ -24,6 +24,7 @@ from payu.models.mom6 import mom6_add_parameter_files, mom6_save_docs_files
 
 NUOPC_CONFIG = "nuopc.runconfig"
 NUOPC_RUNSEQ = "nuopc.runseq"
+INPUT_DIR = 'INPUT'
 
 # mapping of runconfig to cftime calendars:
 # these match the supported calendars in CMEPS
@@ -132,8 +133,8 @@ class CesmCmeps(Model):
 
         super().set_model_pathnames()
 
-        self.work_input_path = os.path.join(self.work_path, 'INPUT')
-        
+        self.work_input_path = os.path.join(self.work_path, INPUT_DIR)
+
         # MOM restarts are dealt with via pointer files (see below). Use work_restart_path
         # for additional restarts (e.g. generic tracer flux restarts)
         self.get_runconfig(self.control_path)
@@ -144,6 +145,24 @@ class CesmCmeps(Model):
 
     def setup(self):
         super().setup()
+
+        # Special handling to also copy INPUT folder for optional input files
+        # e.g. mask_table, channel_list etc
+        src = os.path.join(self.control_path, INPUT_DIR)
+        if os.path.exists(src):
+            # Check for conflicting files before copying
+            for root, dirs, files in os.walk(src):
+                rel_path = os.path.relpath(root, src)
+                dst_path = os.path.join(self.work_input_path, rel_path)
+
+                for fname in files:
+                    dst_file = os.path.join(dst_path, fname)
+                    if os.path.exists(dst_file):
+                        raise FileExistsError(f"File already exists in INPUT dir: {dst_file}")
+
+            # Merge directories
+            shutil.copytree(src, self.work_input_path,
+                            symlinks=True, dirs_exist_ok=True)
 
         # Read components from nuopc.runconfig
         self.get_components()
