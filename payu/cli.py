@@ -29,6 +29,7 @@ import payu.subcommands
 from payu.logger import setup_logger
 import payu.subcommands.args as arg_templates
 from payu.telemetry import write_queued_job_file
+import payu.errors as errors
 
 # Default configuration
 DEFAULT_CONFIG = 'config.yaml'
