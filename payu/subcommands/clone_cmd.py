@@ -39,7 +39,7 @@ example_url_msg = "(e.g., https://github.com/payu-org/bowl1.git, or /path/to/loc
 
 def qprint(message):
     """Helper function to print messages in a consistent style."""
-    questionary.print(message, style="bold")
+    questionary.print(message, style="reverse bold")
 
 def print_restart_number_message():
     print(
@@ -83,6 +83,7 @@ def runcmd(model_type, config_path, lab_path, keep_uuid,
     if repository is None and local_directory is None:
         qprint("Welcome to the Payu Clone Wizard!")
         qprint("Press 'Ctrl+C' at any time to exit.")
+        qprint("Flowchart is available in Payu documentation > Usage > Setting up the laboratory.")
         user_params = prompts_for_clone(repository, local_directory)
         repository = user_params.get('repository')
         local_directory = user_params.get('local_directory')
@@ -218,7 +219,7 @@ def ask_for_repo_url():
     """Ask the user for the repository URL they want to clone."""
     path_completer = PathCompleter(only_directories=True, expanduser=True)
     return safe_ask(questionary.text(
-        "Please enter the URL of the repository, or the local path of a configuration you want to clone:",
+        "URL of the repository, or local path of the configuration to be cloned:\n",
         instruction=example_url_msg+"; 'Tab' to browse, '/' to enter folder)",
         validate=lambda text: True if text else "Repository URL/directory cannot be empty.",
         completer=path_completer,
@@ -239,7 +240,7 @@ def select_branch_or_tag():
 def ask_for_branch_name(branches):
     """Ask the user for the name of the branch they want to clone."""
     return safe_ask(questionary.autocomplete(
-        "Please enter the name of the branch you want to clone ('Tab' to browse all branches):",
+        "Name of the branch to be cloned ('Tab' to browse all branches):",
         choices=branches,
         validate=lambda text: True if text in branches
                                 else "Branch name is not valid.",
@@ -250,14 +251,14 @@ def ask_for_tag_or_commit(all_tags):
     """Ask the user for the name of the tag or commit hash they want to clone."""
     if all_tags:
         return safe_ask(questionary.autocomplete(
-            "Please enter the name of the tag or the commit hash you want to clone from ('Tab' to browse all tags):",
+            "Name of the tag or the commit hash to be cloned ('Tab' to browse all tags):",
             choices=all_tags,
             validate=lambda text: True if text else "Tag or commit cannot be empty.",
             style=accessible_style
         ))
     else:
         return safe_ask(questionary.text(
-            "Please enter the name of the tag or the commit hash you want to clone from:",
+            "Name of the tag or the commit hash to be cloned:",
             validate=lambda text: True if text else "Tag or commit cannot be empty.",
             style=accessible_style
         ))
@@ -276,7 +277,7 @@ def ask_for_local_directory():
     """Ask the user for the name of the local directory they want to create."""
     # check if path is empty
     return safe_ask(questionary.text(
-        "What would you like to name your local control directory?",
+        "Please name your local control directory:",
         validate=validate_local_directory,
         style=accessible_style
     ))
@@ -296,9 +297,10 @@ def confirm_new_experiment():
 def ask_for_new_branch_name():
     """Ask the user for the name of the new branch they want to create."""
     return safe_ask(questionary.text(
-            "What would you like to name your new branch",
+            "Please name your new branch:",
             instruction="(Note: this won't be shared to the online repository automatically)",
-            validate=lambda text: True if text else "Branch name cannot be empty."
+            validate=lambda text: True if text else "Branch name cannot be empty.",
+            style=accessible_style
         ))
 
 def confirm_restart_path():
