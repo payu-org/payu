@@ -540,12 +540,11 @@ def update_run_job_file(
 def record_run(
             timings: dict[str, Any],
             scheduler: Scheduler,
-            run_status: int,
+            status: int,
             config: dict[str, Any],
             file_path: Path,
             archive_path: Path,
             type: Optional[str] = "run",
-            run_info_label: Optional[str] = "payu_run_status",
             stage: Optional[str] = None,
         ) -> None:
     """Record the run information for the current run and post telemetry
@@ -558,8 +557,8 @@ def record_run(
         and model run
     scheduler: Scheduler
         Scheduler object for the run - used to query recent job information
-    run_status: int
-        Status of the payu run as a whole, 0 for success, 1 for failure
+    status: int
+        Status of the payu run/collate as a whole, 0 for success, 1 for failure
     config: dict[str, Any]
         Configuration (config.yaml) - used to check if telemetry is enabled
     file_path: Path
@@ -568,7 +567,7 @@ def record_run(
         Path to the archive directory for the experiment
     """
     # Additional information to the run info
-    run_info = {run_info_label: run_status}
+    run_info = {f"payu_{type}_status": status}
     if stage:
         run_info["stage"] = stage
 

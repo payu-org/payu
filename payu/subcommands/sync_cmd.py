@@ -67,7 +67,8 @@ def runcmd(model_type, config_path, lab_path, dir_path, sync_restarts,
         expt.set_counters(keep_run_number=True)
         init_run = expt.counter
 
-    cli.submit_job('payu-sync', pbs_config, pbs_vars, expt, current_run = init_run, type='sync')
+    # Submit PBS job with expt = None so no job file is written
+    cli.submit_job('payu-sync', pbs_config, pbs_vars)
 
 
 def runscript():

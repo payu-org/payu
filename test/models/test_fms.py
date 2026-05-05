@@ -1,17 +1,8 @@
-import copy
 import os
-from pathlib import Path
-import pdb
 import shutil
 from unittest.mock import patch, MagicMock
 
-import f90nml
 import pytest
-import yaml
-import json
-from yamanifest.hashing import _hashlib
-
-import payu
 
 from payu.models.fms import get_uncollated_files, get_avail_collate_flags, mapping_log, get_uncollate_hashes
 
@@ -294,21 +285,11 @@ def test_get_avail_collate_flags_runtimeerror(mock_run):
     assert isinstance(excinfo.value.__cause__, OSError)
 
 
-@patch("payu.models.fms._hashlib")
-@patch("payu.models.fms.get_job_file_path")
-def test_mapping_log(mock_get_job_file_path, mock_hash):
+@patch("payu.models.fms.hashlib")
+def test_mapping_log(mock_hash):
     """Test that a mapping collate dictionary is generated correctly"""
     # Set up mock md5 hash values for the test files
     mock_hash.side_effect = lambda file_path, hashfn: f"md5_{os.path.basename(file_path)}"
-    
-    # Set up a temporary job file
-    job_file_path = tmpdir / "archive" / "payu_jobs" / "3" / "collate" / "test-jobid-id-3.json"
-    job_file_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(job_file_path, 'w') as f:
-        json.dump({
-            "stage": "queued",
-        }, f)
-    mock_get_job_file_path.return_value = job_file_path
 
     # Create a dictionary of uncollated tiles
     output_dir = str(tmpdir / "output003")
@@ -327,7 +308,7 @@ def test_mapping_log(mock_get_job_file_path, mock_hash):
     uncollate_hashes_dict = get_uncollate_hashes(mnc_tiles, restart_dir)
     mock_model = MagicMock()
     mock_model.prior_restart_path = restart_dir
-    mapping_collate_dict = mapping_log(mock_model, mnc_tiles, uncollate_hashes_dict)
+    mapping_collate_dict = mapping_log(mock_model, uncollate_hashes_dict)
 
     # Set up the expected mapping dictionary
     expected_mapping = {

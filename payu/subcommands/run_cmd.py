@@ -13,7 +13,7 @@ from payu.laboratory import Laboratory
 import payu.subcommands.args as args
 from payu import fsops
 from payu.manifest import Manifest
-from payu.telemetry import write_queued_job_file, record_run
+from payu.telemetry import record_run
 from payu.schedulers.pbs import PBS
 
 title = 'run'
@@ -212,7 +212,7 @@ def runscript():
             record_run(
                 timings=expt.timings,
                 scheduler=expt.scheduler,
-                run_status=run_status,
+                status=run_status,
                 config=expt.config,
                 file_path=expt.job_file,
                 archive_path=Path(expt.archive_path),

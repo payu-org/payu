@@ -70,8 +70,8 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
         # and use it as the run number to write job file
         expt.set_counters(keep_run_number=True)
         init_run = expt.counter
-
-    cli.submit_job('payu-profile', pbs_config, pbs_vars, expt, current_run = init_run, type='profile')
+    # Submit PBS job with expt = None so no job file is written
+    cli.submit_job('payu-profile', pbs_config, pbs_vars)
 
 
 def runscript():

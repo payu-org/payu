@@ -562,7 +562,7 @@ def test_telemetry_payu_run(tmp_path, config_path, setup_env,
             record_run(
                 timings=timings,
                 scheduler=mock_scheduler,
-                run_status=0,
+                status=0,
                 config={},
                 file_path=file_path,
                 archive_path=tmp_path / "archive",

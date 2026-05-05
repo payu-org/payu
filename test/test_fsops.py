@@ -2,7 +2,6 @@ import json
 import pytest
 import os
 from unittest.mock import patch
-from yamanifest.hashing import _hashlib
 
 # import payu packages
 from payu.fsops import atomic_write_file

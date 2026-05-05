@@ -164,19 +164,19 @@ class Experiment(object):
         self.scheduler = scheduler_index[self.scheduler_name]()
         self.job_file = None
 
-
-    def set_job_file(self, type='run'):
-        """Set the job file for the payu job"""
-        job_file = telemetry.get_job_file_path(
+    def get_job_file(self, type='run'):
+        """ Get the job file for the payu job."""
+        return telemetry.get_job_file_path(
             archive_path=Path(self.archive_path),
             run_number=self.counter,
             timings=self.timings,
             scheduler=self.scheduler,
             type=type,
         )
-        if type == 'run':
-            self.job_file = job_file
-        return job_file
+
+    def set_job_file(self):
+        """Set the job file for the payu job"""
+        self.job_file = self.get_job_file(type='run')
 
 
     def init_timings(self):
@@ -978,22 +978,20 @@ class Experiment(object):
         # Setup modules - load user-defined modules
         self.setup_modules()
 
-        # Counters does not increase for collate runs
-        # This is used to determine the job file path
-        self.set_counters(keep_run_number=True)
-
         full_mapping_collate_dict = {}
         for model in self.models:
             mapping_collate_dict = model.collate()
             if mapping_collate_dict is not None:
                 full_mapping_collate_dict.update(mapping_collate_dict)
 
+        # Counters does not increase for collate runs
+        # This is used to determine the job file path
+        self.set_counters(keep_run_number=True)
+
         # Write the full_mapping_collate_dict to job file in
         # archive/payu_jobs/{latest_run_number}/collate/{job_id}-gadi-pbs.json
-        
-        job_file_path = self.set_job_file(type='collate')
         telemetry.update_job_file(
-            file_path=job_file_path,
+            file_path=self.get_job_file(type='collate'),
             data={"collate_mapping": full_mapping_collate_dict}
         )
 
