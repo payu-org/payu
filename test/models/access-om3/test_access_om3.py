@@ -44,7 +44,7 @@ def teardown_module(module):
     """
 
     try:
-        # shutil.rmtree(tmpdir)
+        shutil.rmtree(tmpdir)
         print('removing tmp')
     except Exception as e:
         print(e)
@@ -358,17 +358,19 @@ def test__setup_extra_config_files():
     cmeps_config(1)
 
     with cd(ctrldir):
+        os.makedirs('masks_lists')
+
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, reproduce=False)
         model = expt.models[0]
-        # extra_config_dir = os.path.join(config_path, )
-        os.makedirs(model.extra_config_dir)
+
 
         model._setup_extra_config_files()
 
         assert os.path.isdir(os.path.join(model.work_path,model.extra_config_dir))
 
-        os.rmdir(model.extra_config_dir)
+        shutil.rmtree('masks_lists')
+        shutil.rmtree(os.path.join(model.work_path,model.extra_config_dir))
 
     teardown_cmeps_config()
 
@@ -385,7 +387,7 @@ def test__setup_extra_config_files_not_required():
 
         model._setup_extra_config_files()
 
-        assert ~os.path.isdir(os.path.join(model.work_path,model.extra_config_dir))
+        assert os.path.isdir(os.path.join(model.work_path,model.extra_config_dir)) is False
 
     teardown_cmeps_config()
 
