@@ -3,6 +3,7 @@ import sys
 
 from payu import envmod
 from payu.profilers.profiler import Profiler
+import payu.errors as errors
 
 
 class OpenSpeedShop(Profiler):
@@ -20,17 +21,24 @@ class OpenSpeedShop(Profiler):
         if oss:
             oss_runcmd = oss.get('runcmd')
             if not oss_runcmd:
-                print('payu: error: OpenSpeedShop requires an executable.')
-                sys.exit(1)
+                raise errors.PayuError(
+                    'payu: error: OpenSpeedShop requires an executable')
+                # print('payu: error: OpenSpeedShop requires an executable.')
+                # sys.exit(1)
 
             cmd = '{0} "{1}"'.format(oss_runcmd, cmd)
 
             if oss_runcmd.startswith('osshwc'):
                 oss_hwc = oss.get('hwc')
                 if not oss_hwc:
-                    print('payu: error: This OSS command requires hardware '
-                          'counters.')
-                    sys.exit(1)
+                    raise errors.PayuError(
+                        '''
+                        payu: error: This OSS command required hardware 
+                        counters.
+                        ''')
+                    # print('payu: error: This OSS command requires hardware '
+                    #       'counters.')
+                    # sys.exit(1)
                 else:
                     cmd = ' '.join([cmd, oss_hwc])
 

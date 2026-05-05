@@ -27,6 +27,7 @@ from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 import payu.subcommands
 from payu.logger import setup_logger
 import payu.subcommands.args as arg_templates
+import payu.errors as errors
 
 # Default configuration
 DEFAULT_CONFIG = 'config.yaml'
@@ -59,8 +60,23 @@ def parse():
         warnings.formatwarning = (
             lambda message, category, filename, lineno, line=None: f"{message}"
         )
-        
-    run_cmd(**args)
+    try:
+        run_cmd(**args)
+
+    except errors.PayuError as e:
+        # CLEAN EXIT for expected errors
+        if stacktrace:
+            # Shows the full stacktrace
+            logging.exception(str(e), exc_info=True)
+        else:
+            print(f'payu: error: {e}', file=sys.stderr)
+        sys.exit(1)
+
+    except Exception as e:
+        # CRASH EXIT for unexpected bugs (ValueError, TypeError etc.)
+        print('payu: An unexpected internal error occurred!', file=sys.stderr)
+        logging.exception(str(e)) # Always show stacktrace for unknown bugs
+        sys.exit(1)
 
 
 def generate_parser(is_interactive=False):

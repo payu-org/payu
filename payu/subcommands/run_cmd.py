@@ -15,6 +15,7 @@ from payu import fsops
 from payu.manifest import Manifest
 from payu.telemetry import write_queued_job_file, record_run
 from payu.schedulers.pbs import PBS
+import payu.errors as errors
 
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
@@ -168,10 +169,12 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
     # Check if the work directory exists, then show warning to the user.
     if os.path.exists(expt.work_path) and not expt.force:
-        logger.error('Work path already exists. Please use `payu sweep` or use `payu run -f`.')
+        raise errors.PayuRunError(
+            'Work path already exists. Please use `payu sweep` or use `payu run -f`.')
+        # logger.error('Work path already exists. Please use `payu sweep` or use `payu run -f`.')
 
         # Return error code.
-        sys.exit(1)
+        # sys.exit(1)
 
     job_id = cli.submit_job('payu-run', pbs_config, pbs_vars)
 
