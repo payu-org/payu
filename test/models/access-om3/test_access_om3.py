@@ -44,7 +44,7 @@ def teardown_module(module):
     """
 
     try:
-        shutil.rmtree(tmpdir)
+        # shutil.rmtree(tmpdir)
         print('removing tmp')
     except Exception as e:
         print(e)
@@ -250,7 +250,7 @@ def test__setup_checks_io(ncpu, pio_numiotasks, pio_stride, pio_root, pio_typena
 
         model._setup_checks()
 
-    teardown_cmeps_config()
+    # teardown_cmeps_config()
 
 
 @pytest.mark.parametrize("ncpu, pio_numiotasks, pio_stride, pio_root, pio_typename", [
@@ -351,6 +351,43 @@ def test__setup_checks_bad_io(pio_numiotasks, pio_stride):
 
     teardown_cmeps_config()
 
+# test copy extra config files directory is copied
+@pytest.mark.filterwarnings("error")
+def test__setup_extra_config_files():
+
+    cmeps_config(1)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+        # extra_config_dir = os.path.join(config_path, )
+        os.makedirs(model.extra_config_dir)
+
+        model._setup_extra_config_files()
+
+        assert os.path.isdir(os.path.join(model.work_path,model.extra_config_dir))
+
+        os.rmdir(model.extra_config_dir)
+
+    teardown_cmeps_config()
+
+# test extra config files directory isn't required
+@pytest.mark.filterwarnings("error")
+def test__setup_extra_config_files_not_required():
+
+    cmeps_config(1)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        model._setup_extra_config_files()
+
+        assert ~os.path.isdir(os.path.join(model.work_path,model.extra_config_dir))
+
+    teardown_cmeps_config()
 
 # test restart datetime pruning
 
