@@ -2,7 +2,10 @@ import json
 import pytest
 from freezegun import freeze_time
 import cftime
-from unittest.mock import MagicMock
+import shutil
+from unittest.mock import Mock, MagicMock
+
+from test.common import cd, tmpdir, labdir, write_config, ctrldir_basename, ctrldir
 
 from payu.status import (
     find_file_match,
@@ -13,6 +16,7 @@ from payu.status import (
     display_job_info
 )
 
+from payu.laboratory import Laboratory
 from payu.experiment import Experiment
 from payu.subcommands.status_cmd import runcmd
 from payu.git_utils import PayuGitWarning
@@ -101,10 +105,10 @@ def test_find_scheduler_logs_pbs(tmp_path, scheduler, jobid, base_dir,
     assert path2 == stderr_path
 
 
-def write_job_file(archive_path, job_id, run_number, job_data):
+def write_job_file(archive_path, job_id, run_number, job_data, type="run"):
     """Helper function to write job data to a file"""
     job_file = (
-        archive_path / "payu_jobs" / str(run_number) / "run" / f"{job_id}.json"
+        archive_path / "payu_jobs" / str(run_number) / type / f"{job_id}.json"
     )
     job_file.parent.mkdir(parents=True, exist_ok=True)
     with open(job_file, 'w') as f:
@@ -478,6 +482,55 @@ def test_build_job_info_latest(tmp_path, archive_jobs,
 
     assert latest_data == expected
 
+@pytest.mark.parametrize(
+    "archive_jobs",
+    [(True)],
+    indirect=["archive_jobs"]
+)
+def test_build_job_info_collate(tmp_path, archive_jobs):
+    """ Test collate job info is correctly included in build_job_info."""
+    # Build test collate job file
+    job_id = "test-collate-id-2"
+    job_file = write_job_file(
+        archive_path=tmp_path / "archive",
+        job_id=job_id,
+        run_number=2,
+        job_data={
+            "scheduler_job_id": f"{job_id}.gadi-pbs",
+            "scheduler_type": "pbs",
+            "stage": "exited",
+            "payu_current_run": "2",
+            "payu_collate_status": 0,
+        },
+        type="collate"
+    )
+
+    # Mock expt.get_model_cur_expt_time() in build_job_info
+    mock_expt = MagicMock()
+    mock_expt.get_model_cur_expt_time.return_value = cftime.datetime(1901, 1, 15, 0, 30, 0)
+
+    latest_data = build_job_info(
+        control_path=tmp_path / "control",
+        archive_path=tmp_path / "archive",
+        expt=mock_expt
+    )
+
+    # Build expected info with collate info included
+    expected_run_info = expected_archive_job_info(2)
+    expected_collate_info = {
+        "job_id": f"{job_id}.gadi-pbs",
+        "stage": "exited",
+        "exit_status": 0,
+        "stdout_file": None,
+        "stderr_file": None,
+        "job_file": f"{job_file}"
+    }
+
+    # Remove job file from check as it contains tmp_path
+    remove_job_file_paths(latest_data)
+
+    assert latest_data['runs'][2]['run'][0] == expected_run_info
+    assert latest_data['runs'][2]['collate'][0] == expected_collate_info
 
 def test_status_cmd_no_metadata(tmp_path):
     """Test error raised when metadata is not setup - rather than
@@ -787,3 +840,36 @@ def test_build_job_info_error_get_cur_expt_time(tmp_path, running_job):
     del expected_info["cur_expt_time"]
 
     assert data == {'runs': {3: {'run': [expected_info]}}}
+
+
+def test_get_job_file(tmp_path):
+    """Test the expt.get_job_file function returns the correct path"""
+    tmpdir.mkdir(parents=True, exist_ok=True)
+    labdir.mkdir(parents=True, exist_ok=True)
+    ctrldir.mkdir(parents=True, exist_ok=True)
+
+    # Write a minimal config file
+    config = {
+            'laboratory': 'lab',
+            'jobname': 'testrun',
+            'model': 'mom6',
+            'exe': 'test.exe',
+            'experiment': ctrldir_basename,
+            'metadata': {
+                'enable': False
+            }
+    }
+    write_config(config)
+
+    # Set up a mock experiment
+    with cd(ctrldir):
+        lab = Laboratory(lab_path=str(labdir))
+        expt = Experiment(lab, reproduce=False)
+    expt.archive_path = tmpdir / "archive" 
+    expt.counter = 3
+    expt.scheduler.get_job_id = Mock(return_value="12345")
+
+    assert expt.get_job_file() == expt.archive_path / "payu_jobs" / "3" / "run" / "12345.json"
+    assert expt.get_job_file(type='collate') == expt.archive_path / "payu_jobs" / "3" / "collate" / "12345.json"
+
+    shutil.rmtree(tmpdir)

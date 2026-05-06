@@ -164,16 +164,19 @@ class Experiment(object):
         self.scheduler = scheduler_index[self.scheduler_name]()
         self.job_file = None
 
-
-    def set_job_file(self, type='run'):
-        """Set the job file for the payu job"""
-        self.job_file = telemetry.get_job_file_path(
+    def get_job_file(self, type='run'):
+        """ Get the job file for the payu job."""
+        return telemetry.get_job_file_path(
             archive_path=Path(self.archive_path),
             run_number=self.counter,
             timings=self.timings,
             scheduler=self.scheduler,
             type=type,
         )
+
+    def set_job_file(self):
+        """Set the job file for the payu job"""
+        self.job_file = self.get_job_file(type='run')
 
 
     def init_timings(self):
@@ -218,7 +221,7 @@ class Experiment(object):
         else:
             self.model = None
 
-    def set_counters(self):
+    def set_counters(self, keep_run_number=False):
         # Assume that ``set_paths`` has already been called
         assert self.archive_path
 
@@ -235,13 +238,19 @@ class Experiment(object):
             # Check for restart index
             max_restart_index = self.max_output_index(output_type="restart")
             if max_restart_index is not None:
-                self.counter = 1 + max_restart_index
+                if keep_run_number:
+                    self.counter = int(max_restart_index)
+                else:
+                    self.counter = 1 + max_restart_index
             else:
                 # Now look for output directories,
                 # as repeat runs do not generate restart files.
                 max_output_index = self.max_output_index()
                 if max_output_index is not None:
-                    self.counter = 1 + max_output_index
+                    if keep_run_number:
+                        self.counter = int(max_output_index)
+                    else:
+                        self.counter = 1 + max_output_index
                 else:
                     self.counter = 0
 
@@ -963,12 +972,28 @@ class Experiment(object):
         if not collating:
             self.postprocess()
 
+    @timeit("payu_collate_duration_seconds")
     def collate(self):
+        """ Run model collation and record the time taken in seconds to run collation"""
         # Setup modules - load user-defined modules
         self.setup_modules()
 
+        full_mapping_collate_dict = {}
         for model in self.models:
-            model.collate()
+            mapping_collate_dict = model.collate()
+            if mapping_collate_dict is not None:
+                full_mapping_collate_dict.update(mapping_collate_dict)
+
+        # Counters does not increase for collate runs
+        # This is used to determine the job file path
+        self.set_counters(keep_run_number=True)
+
+        # Write the full_mapping_collate_dict to job file in
+        # archive/payu_jobs/{latest_run_number}/collate/{job_id}-gadi-pbs.json
+        telemetry.update_job_file(
+            file_path=self.get_job_file(type='collate'),
+            data={"collate_mapping": full_mapping_collate_dict}
+        )
 
     def profile(self):
         for model in self.models:
@@ -1010,6 +1035,7 @@ class Experiment(object):
 
             sp.check_call(shlex.split(cmd))
 
+    @timeit("payu_sync_duration_seconds")
     def sync(self):
         # RUN any user scripts before syncing archive
         envmod.setup()
@@ -1064,6 +1090,7 @@ class Experiment(object):
         default_job_name = os.path.basename(os.getcwd())
         short_job_name = str(self.config.get('jobname', default_job_name))[:15]
 
+        # find all PBS log files including payu runs, collate runs, postscript runs, and sync runs
         log_filenames = [short_job_name + '.o', short_job_name + '.e']
         for postfix in ['_c.o', '_c.e', '_p.o', '_p.e', '_s.o', '_s.e']:
             log_filenames.append(short_job_name[:13] + postfix)

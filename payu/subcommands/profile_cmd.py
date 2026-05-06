@@ -62,6 +62,11 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
             qsub_flags.append(flag)
     pbs_config['qsub_flags'] = ' '.join(qsub_flags)
 
+    # Initialise experiment to determine archive path and run number (which is needed to write job file)
+    lab = Laboratory(model_type, config_path, lab_path)
+    expt = Experiment(lab)
+
+    # Submit PBS job with expt = None so no job file is written
     cli.submit_job('payu-profile', pbs_config, pbs_vars)
 
 

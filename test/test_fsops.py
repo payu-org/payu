@@ -80,3 +80,4 @@ def test_atomic_write_file_disrupt_dump(monkeypatch):
     with open(orig_file, 'r') as f:
         content_after_error = json.load(f)
     assert content_after_error == content
+

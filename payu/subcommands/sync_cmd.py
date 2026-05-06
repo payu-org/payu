@@ -58,6 +58,16 @@ def runcmd(model_type, config_path, lab_path, dir_path, sync_restarts,
 
     pbs_config['qsub_flags'] = sync_config.get('qsub_flags', '')
 
+    # Initialise experiment to determine archive path and run number (which is needed to write job file)
+    lab = Laboratory(model_type, config_path, lab_path)
+    expt = Experiment(lab)
+    if init_run is None:
+        # Get the latest run number from the restart/output folder numbering
+        # and use it as the run number to write job file
+        expt.set_counters(keep_run_number=True)
+        init_run = expt.counter
+
+    # Submit PBS job with expt = None so no job file is written
     cli.submit_job('payu-sync', pbs_config, pbs_vars)
 
 

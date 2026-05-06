@@ -265,11 +265,14 @@ def post_telemetry_data(url: str,
 def record_telemetry(run_info: dict[str, Any],
                      config: dict[str, Any],
                      job_file_path: Path,
-                     archive_path: Path) -> None:
+                     archive_path: Path,
+                     type: str = "run") -> None:
     """If configured, post the telemetry data for the payu run"""
     # Check for config.yaml option to disable telemetry, and if an
     # environment variable for an external telemetry config file is set,
     # and whether the model was run
+    if type != "run":
+        return
     if not (
         config.get("telemetry", {}).get("enable", True)
         and TELEMETRY_CONFIG in os.environ
@@ -340,7 +343,7 @@ def get_job_file_path(
         archive_path=archive_path,
         run_number=run_number,
         job_id=file_id,
-        type='run'
+        type=type
     )
     return file_path
 
@@ -537,10 +540,12 @@ def update_run_job_file(
 def record_run(
             timings: dict[str, Any],
             scheduler: Scheduler,
-            run_status: int,
+            status: int,
             config: dict[str, Any],
             file_path: Path,
             archive_path: Path,
+            type: Optional[str] = "run",
+            stage: Optional[str] = None,
         ) -> None:
     """Record the run information for the current run and post telemetry
     if enabled
@@ -552,8 +557,8 @@ def record_run(
         and model run
     scheduler: Scheduler
         Scheduler object for the run - used to query recent job information
-    run_status: int
-        Status of the payu run as a whole, 0 for success, 1 for failure
+    status: int
+        Status of the payu run/collate as a whole, 0 for success, 1 for failure
     config: dict[str, Any]
         Configuration (config.yaml) - used to check if telemetry is enabled
     file_path: Path
@@ -562,7 +567,9 @@ def record_run(
         Path to the archive directory for the experiment
     """
     # Additional information to the run info
-    run_info = {"payu_run_status": run_status}
+    run_info = {f"payu_{type}_status": status}
+    if stage:
+        run_info["stage"] = stage
 
     # Query the scheduler just before recording the run information to
     # try get the most up-to-date information of the usage statistics
@@ -576,4 +583,4 @@ def record_run(
     run_info = update_job_file(file_path=file_path, data=run_info)
 
     record_telemetry(run_info=run_info, config=config,
-                     job_file_path=file_path, archive_path=archive_path)
+                     job_file_path=file_path, archive_path=archive_path, type=type)

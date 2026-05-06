@@ -3,12 +3,14 @@
 # Standard Library
 import argparse
 import os
+from pathlib import Path
 
 # Local
 from payu import cli
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
+from payu.telemetry import record_run
 from payu import fsops
 
 title = 'collate'
@@ -86,7 +88,14 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path):
 
     pbs_config['qsub_flags'] = ' '.join(qsub_flags)
 
-    cli.submit_job('payu-collate', pbs_config, pbs_vars)
+    # Initialise experiment to determine archive path and run number (which is needed to write job file)
+    lab = Laboratory(model_type, config_path, lab_path)
+    expt = Experiment(lab)
+
+    # Submit the collation job and write queue job file
+    cli.submit_job('payu-collate', pbs_config, pbs_vars, expt=expt, current_run = init_run, type='collate')
+
+    
 
 
 def runscript():
@@ -108,5 +117,28 @@ def runscript():
                      run_args.config_path,
                      run_args.lab_path)
     expt = Experiment(lab)
-    expt.collate()
-    expt.postprocess()
+    try:
+        # Collate the model output
+        # If collation succeeds, then collate_status is set to 0
+        expt.collate()
+        expt.postprocess()
+        collate_status = 0
+    except:
+        # If collation fails, then collate_status is set to 1
+        collate_status = 1
+        raise
+    finally:
+        # Record collation job information into job file
+        job_file_path = expt.get_job_file(type='collate')
+
+        # Record the collation status (duration time and success/failure) in the job file
+        record_run(
+            timings=expt.timings,
+            scheduler=expt.scheduler,
+            status=collate_status,
+            config=expt.config,
+            file_path=job_file_path,
+            archive_path=Path(expt.archive_path),
+            type="collate",
+            stage="exited"
+        )
