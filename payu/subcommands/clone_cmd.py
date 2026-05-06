@@ -9,6 +9,7 @@ from pathlib import Path
 import questionary
 import subprocess
 import sys
+import os
 from prompt_toolkit.completion import PathCompleter
 
 from payu.branch import clone
@@ -33,13 +34,16 @@ accessible_style = questionary.Style([
     # --- Autocomplete dropdown ---
     ("completion-menu.completion", "bg: default fg: default italic"),
     ("completion-menu.completion.current", "bg: default fg: default bold"),
+
+    # --- Validation error ---
+    ("validation-toolbar", "reverse bold"),
 ])
 
 example_url_msg = "(e.g., https://github.com/payu-org/bowl1.git, or /path/to/local/experiment"
 
 def qprint(message):
     """Helper function to print messages in a consistent style."""
-    questionary.print(message, style="reverse bold")
+    questionary.print(message, style="bold")
 
 def print_restart_number_message():
     print(
@@ -81,9 +85,11 @@ def runcmd(model_type, config_path, lab_path, keep_uuid,
            parent_experiment, start_point):
     """Execute the command."""
     if repository is None and local_directory is None:
+        qprint("="*50)
         qprint("Welcome to the Payu Clone Wizard!")
         qprint("Press 'Ctrl+C' at any time to exit.")
-        qprint("Flowchart is available in Payu documentation > Usage > Setting up the laboratory.")
+        qprint("Type 'flow' during any prompt to view the flowchart.")
+        qprint("-"*50)
         user_params = prompts_for_clone(repository, local_directory)
         repository = user_params.get('repository')
         local_directory = user_params.get('local_directory')
@@ -161,6 +167,7 @@ def prompts_for_clone(repository, local_directory):
 
     cli_command += f" {repository}"
     cli_command += f" {local_directory}"
+    qprint("="*50)
     qprint("Running command:")
     qprint('`' + cli_command + '`')
     return {
@@ -205,13 +212,31 @@ def fetch_tags(url):
         print(f"Error fetching tags: {e}")
         sys.exit(1)
 
+def show_flowchart():
+    """Show the flowchart for the clone process."""
+    try:
+        flowchart_path = os.path.join(
+            os.path.dirname(__file__),
+            "../../docs/diagrams/payu_clone_flowchart.ascii"
+        )
+        if not os.path.exists(flowchart_path):
+            qprint("-- Flowchart file not found. --")
+            return
+        subprocess.run(["vi", "-R", flowchart_path], check=True)
+    except Exception as e:
+        print(f"-- Error showing flowchart: {e} --")
+
 def safe_ask(question_obj):
     """ A helper function to safely ask a question and handle KeyboardInterrupt. """
     try:
-        answer = question_obj.ask()
-        if answer is None:
-            sys.exit(0)
-        return answer
+        while True:
+            answer = question_obj.ask()
+            if answer is None:
+                sys.exit(0)
+            if answer == "flow":
+                show_flowchart()
+                continue
+            return answer
     except KeyboardInterrupt:
         sys.exit(0)
 
@@ -219,32 +244,36 @@ def ask_for_repo_url():
     """Ask the user for the repository URL they want to clone."""
     path_completer = PathCompleter(only_directories=True, expanduser=True)
     return safe_ask(questionary.text(
-        "URL of the repository, or local path of the configuration to be cloned:\n",
+        "Please enter URL of the repository, or local path of the configuration to be cloned:",
         instruction=example_url_msg+"; 'Tab' to browse, '/' to enter folder)",
         validate=lambda text: True if text else "Repository URL/directory cannot be empty.",
         completer=path_completer,
-        style=accessible_style
+        style=accessible_style,
+        qmark = "🍺"
     ))
 
 def select_branch_or_tag():
     """Ask the user if they want to clone based on an existing branch or a tag/commit."""
     return safe_ask(questionary.select(
-        "Do you want to clone the repo based on:",
+        "Payu will clone the repo based on:",
         choices=[
             "An existing branch",
             "A tag or a commit",
         ],
-        style=accessible_style
+        style=accessible_style,
+        qmark = "🍺"
     ))
 
 def ask_for_branch_name(branches):
     """Ask the user for the name of the branch they want to clone."""
+    all_choices = ["flow"] + branches
     return safe_ask(questionary.autocomplete(
         "Name of the branch to be cloned ('Tab' to browse all branches):",
-        choices=branches,
-        validate=lambda text: True if text in branches
+        choices=all_choices,
+        validate=lambda text: True if text in all_choices
                                 else "Branch name is not valid.",
-        style=accessible_style
+        style=accessible_style,
+        qmark = "🍺"
     ))
 
 def ask_for_tag_or_commit(all_tags):
@@ -254,17 +283,22 @@ def ask_for_tag_or_commit(all_tags):
             "Name of the tag or the commit hash to be cloned ('Tab' to browse all tags):",
             choices=all_tags,
             validate=lambda text: True if text else "Tag or commit cannot be empty.",
-            style=accessible_style
+            style=accessible_style,
+            qmark = "🍺"
         ))
     else:
         return safe_ask(questionary.text(
             "Name of the tag or the commit hash to be cloned:",
             validate=lambda text: True if text else "Tag or commit cannot be empty.",
-            style=accessible_style
+            style=accessible_style,
+            qmark = "🍺"
         ))
 
 def validate_local_directory(path_str):
     """Validate the local directory path provided by the user."""
+    if path_str == "flow":
+        return True  # Don't validate if user is asking to see the flowchart
+
     if not path_str:
         return "Directory name cannot be empty."
 
@@ -279,7 +313,8 @@ def ask_for_local_directory():
     return safe_ask(questionary.text(
         "Please name your local control directory:",
         validate=validate_local_directory,
-        style=accessible_style
+        style=accessible_style,
+        qmark = "🍺"
     ))
 
 def confirm_new_experiment():
@@ -287,7 +322,8 @@ def confirm_new_experiment():
     is_new_expt = safe_ask(questionary.select(
         "Is this a new experiment? (If yes, payu will create a new branch.)",
         choices=["Yes", "No"],
-        style=accessible_style
+        style=accessible_style,
+        qmark = "🍺"
     ))
     if is_new_expt == "Yes":
         return True
@@ -300,7 +336,8 @@ def ask_for_new_branch_name():
             "Please name your new branch:",
             instruction="(Note: this won't be shared to the online repository automatically)",
             validate=lambda text: True if text else "Branch name cannot be empty.",
-            style=accessible_style
+            style=accessible_style,
+            qmark = "🍺"
         ))
 
 def confirm_restart_path():
@@ -308,7 +345,8 @@ def confirm_restart_path():
     is_restart = safe_ask(questionary.select(
         "Do you want to specify a custom restart path? (If no, the default restart/initial conditions will be used.)",
         choices=["Yes", "No"],
-        style=accessible_style
+        style=accessible_style,
+        qmark = "🍺"
         ))
     if is_restart == "Yes":
         return True
@@ -317,6 +355,9 @@ def confirm_restart_path():
 
 def validate_restart_path(path_str):
     """Validate the restart path exists and is not empty."""
+    if path_str == "flow":
+        return True  # Don't validate if user is asking to see the flowchart
+
     if not path_str:
         return "Restart path cannot be empty."
     
@@ -334,5 +375,6 @@ def ask_for_restart_path():
                 "Please enter the restart path you want to use" + instruction,
                 validate=validate_restart_path,
                 completer=path_completer,
-                style=accessible_style
+                style=accessible_style,
+                qmark = "🍺"
             ))
