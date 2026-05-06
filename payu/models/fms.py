@@ -168,7 +168,8 @@ def fms_collate(model):
     else:
         mppnc_path = model.expand_executable_path(mppnc_path)
 
-    assert mppnc_path, 'No mppnccombine program found'
+    if not mppnc_path:
+        raise FileNotFoundError('No mppnccombine program found')
 
     # Check config for collate command line options
     collate_flags = collate_config.get('flags')
