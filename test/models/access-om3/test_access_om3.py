@@ -358,7 +358,7 @@ def test__setup_extra_config_files():
     cmeps_config(1)
 
     with cd(ctrldir):
-        os.makedirs('masks_lists')
+        os.makedirs('tables_lists')
 
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, reproduce=False)
@@ -369,7 +369,7 @@ def test__setup_extra_config_files():
 
         assert os.path.isdir(os.path.join(model.work_path,model.extra_config_dir))
 
-        shutil.rmtree('masks_lists')
+        shutil.rmtree('tables_lists')
         shutil.rmtree(os.path.join(model.work_path,model.extra_config_dir))
 
     teardown_cmeps_config()
