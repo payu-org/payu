@@ -21,8 +21,10 @@ from payu.metadata import Metadata
 from payu.schedulers.scheduler import Scheduler
 from payu.fsops import atomic_write_file
 
-# Environment variable for external telemetry configuration file
+# Environment variables from payu environment
 TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG_PATH"
+TELEMETRY_ENV_VERSION = "PAYU_TELEMETRY_ENV_VERSION"
+
 TELEMETRY_CONFIG_SCHEMA = files(__package__) / "telemetry" / "telemetry_config.schema.json"
 
 # Required telemetry configuration fields
@@ -288,6 +290,8 @@ def record_telemetry(run_info: dict[str, Any],
 
     # Add hostname to the run info fields
     run_info["hostname"] = external_config[CONFIG_FIELDS["HOSTNAME"]]
+    # Add environment version to the run info fields
+    run_info["env_version"] = os.environ.get(TELEMETRY_ENV_VERSION)
 
     # Using threading to run the one post request in the background
     thread = threading.Thread(

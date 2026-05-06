@@ -15,12 +15,10 @@
         },
         "telemetry_url": {
             "type": "string",
-            "format": "uri",
             "description": "The endpoint URL for the payu telemetry service"
         },
         "telemetry_proxy_url": {
             "type": "string",
-            "format": "uri",
             "description": "The proxy URL for the payu telemetry service"
         },
         "telemetry_token": {
