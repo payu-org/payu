@@ -73,6 +73,9 @@ requires = [
 include = ["payu*"]
 namespaces = false
 
+[tool.setuptools.package-data]
+"payu" = ["telemetry/*.json"]
+
 [tool.pytest.ini_options]
 addopts = "--cov=payu"
 testpaths = ["test/"]

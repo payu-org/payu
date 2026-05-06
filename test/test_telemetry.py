@@ -113,15 +113,13 @@ def mock_telemetry_get_external_config():
 @pytest.fixture
 def config_path(tmp_path):
     """Returns the path to the telemetry config file"""
-    config_dir = tmp_path / "telemetry_config"
-    config_dir.mkdir()
-    return config_dir / "1-0-0.json"
+    return tmp_path / "telemetry_config.json"
 
 
 @pytest.fixture
 def setup_env(config_path, monkeypatch):
     """Set the telemetry config environment variable for the test"""
-    monkeypatch.setenv(TELEMETRY_CONFIG, str(config_path.parent))
+    monkeypatch.setenv(TELEMETRY_CONFIG, str(config_path))
 
 
 @pytest.fixture
@@ -165,7 +163,7 @@ def test_get_external_telemetry_config_no_file(
             tmp_path, setup_env, config_path
         ):
     expected_error = (
-        f"No config file found at {TELEMETRY_CONFIG}: {config_path}."
+        f"No config file found at the path specified by {TELEMETRY_CONFIG}: {config_path}."
     )
     check_invalid_get_external_config(tmp_path, expected_error)
 
@@ -176,7 +174,7 @@ def test_get_external_telemetry_config_no_file(
     "telemetry_service_name",
     "telemetry_token",
 ])
-def test_get_external_telemetry_config_missing_fields(
+def test_get_external_telemetry_config_failed_schema_validation(
             tmp_path, setup_env, config_path, missing_field
         ):
     config_data = {
@@ -192,8 +190,8 @@ def test_get_external_telemetry_config_missing_fields(
         json.dump(config_data, f)
 
     expected_error = (
-        f"Required field(s) {set([missing_field])} not found in "
-        f"configuration file at {TELEMETRY_CONFIG}: {config_path}."
+        f"The telemetry configuration file {config_path} specified by {TELEMETRY_CONFIG} does "
+        f"not follow the required schema: '{missing_field}' is a required property"
     )
     check_invalid_get_external_config(tmp_path, expected_error)
 
@@ -225,7 +223,7 @@ def test_get_external_telemetry_config_invalid_json(
         f.write("{invalid_json")
 
     expected_error = (
-        f"Error parsing json in configuration file at "
+        f"Error parsing json in configuration file specified by "
         f"{TELEMETRY_CONFIG}: {config_path}."
     )
     check_invalid_get_external_config(tmp_path, expected_error)
@@ -287,8 +285,15 @@ def test_telemetry_not_enabled_no_environment_config(
     # Ensure telemetry config is not in os environment
     if TELEMETRY_CONFIG in os.environ:
         monkeypatch.delenv(TELEMETRY_CONFIG, raising=False)
-
-    record_telemetry(run_info={}, config={},
+    # Ensure the other conditions to skip record_telemetry are not met
+    config = {
+        "telemetry": {
+            "enable": True
+        }
+    }
+    run_info={"payu_model_run_status": "fake_value"}
+    
+    record_telemetry(run_info=run_info, config=config,
                      archive_path=tmp_path / "archive",
                      job_file_path=tmp_path / "job_file.json")
 
@@ -296,20 +301,48 @@ def test_telemetry_not_enabled_no_environment_config(
     mock_telemetry_get_external_config.assert_not_called()
     mock_post_telemetry_data.assert_not_called()
 
+def test_telemetry_not_enabled_empty_environment_config(
+            tmp_path,
+            mock_telemetry_get_external_config,
+            mock_post_telemetry_data,
+            monkeypatch
+        ):
+    # Ensure telemetry config in environment is set and empty
+    monkeypatch.setenv(TELEMETRY_CONFIG, "")
+    # Ensure the other conditions to skip record_telemetry are not met
+    config = {
+        "telemetry": {
+            "enable": True
+        }
+    }
+    run_info={"payu_model_run_status": "fake_value"}
+
+    record_telemetry(run_info=run_info, config=config,
+                     archive_path=tmp_path / "archive",
+                     job_file_path=tmp_path / "job_file.json")
+
+    # Check post telemetry method was not called
+    mock_telemetry_get_external_config.assert_not_called()
+    mock_post_telemetry_data.assert_not_called()
 
 def test_telemetry_not_enabled_config(
             tmp_path,
+            monkeypatch,
             mock_telemetry_get_external_config,
             mock_post_telemetry_data,
             setup_env
         ):
+    # Ensure telemetry config is not enabled
     config = {
         "telemetry": {
             "enable": False
         }
     }
-
-    record_telemetry(run_info={}, config={},
+    # Ensure the other conditions to skip record_telemetry are not met
+    monkeypatch.setenv(TELEMETRY_CONFIG, "Some_value")
+    run_info={"payu_model_run_status": "fake_value"}
+    
+    record_telemetry(run_info=run_info, config=config,
                      archive_path=tmp_path / "archive",
                      job_file_path=tmp_path / "job_file.json")
 

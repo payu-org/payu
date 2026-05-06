@@ -5,17 +5,15 @@ this data to telemetry services at the end of a run, if configured.
 
 import datetime
 import json
+import jsonschema
 import os
-import stat
+from importlib.resources import files
 from pathlib import Path
 import requests
-import shutil
-import tempfile
 import threading
 from typing import Any, Optional
 import warnings
 from filelock import FileLock, Timeout
-import warnings
 
 import cftime
 
@@ -23,9 +21,11 @@ from payu.metadata import Metadata
 from payu.schedulers.scheduler import Scheduler
 from payu.fsops import atomic_write_file
 
-# Environment variable for external telemetry configuration file
-TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG"
-TELEMETRY_CONFIG_VERSION = "1-0-0"
+# Environment variables from payu environment
+TELEMETRY_CONFIG = "PAYU_TELEMETRY_CONFIG_PATH"
+TELEMETRY_ENV_VERSION = "PAYU_TELEMETRY_ENV_VERSION"
+
+TELEMETRY_CONFIG_SCHEMA = files(__package__) / "telemetry" / "telemetry_config.schema.json"
 
 # Required telemetry configuration fields
 CONFIG_FIELDS = {
@@ -133,11 +133,10 @@ def get_external_telemetry_config(
     If a valid file does not exist, return None
     """
     # Check path to telemetry config file exists
-    config_dir = Path(os.environ[TELEMETRY_CONFIG])
-    config_path = config_dir / f"{TELEMETRY_CONFIG_VERSION}.json"
+    config_path = Path(os.environ[TELEMETRY_CONFIG])
     if not (config_path.exists() and config_path.is_file()):
         error_msg = (
-            f"No config file found at {TELEMETRY_CONFIG}: {config_path}."
+            f"No config file found at the path specified by {TELEMETRY_CONFIG}: {config_path}."
         )
         write_error_log(archive_path, job_file_path, error_msg)
         return None
@@ -148,18 +147,21 @@ def get_external_telemetry_config(
             telemetry_config = json.load(f)
     except json.JSONDecodeError:
         error_msg = (
-            "Error parsing json in configuration file at "
+            "Error parsing json in configuration file specified by "
             f"{TELEMETRY_CONFIG}: {config_path}."
         )
         write_error_log(archive_path, job_file_path, error_msg)
         return None
 
-    # Check for required fields in the telemetry configuration
-    missing_fields = CONFIG_FIELDS.values() - telemetry_config.keys()
-    if missing_fields:
+    # Check that the telemetry configuration follows its schema
+    with open(TELEMETRY_CONFIG_SCHEMA, 'r') as f:
+        schema = json.load(f)
+    try:
+        jsonschema.validate(instance=telemetry_config, schema=schema)
+    except jsonschema.ValidationError as e:
         error_msg = (
-            f"Required field(s) {missing_fields} not found in configuration "
-            f"file at {TELEMETRY_CONFIG}: {config_path}."
+            f"The telemetry configuration file {config_path} specified by {TELEMETRY_CONFIG} "
+            f"does not follow the required schema: {e.message}"
         )
         write_error_log(archive_path, job_file_path, error_msg)
         return None
@@ -272,7 +274,7 @@ def record_telemetry(run_info: dict[str, Any],
     # and whether the model was run
     if not (
         config.get("telemetry", {}).get("enable", True)
-        and TELEMETRY_CONFIG in os.environ
+        and os.environ.get(TELEMETRY_CONFIG) not in (None, "")
         and "payu_model_run_status" in run_info
     ):
         return
@@ -288,6 +290,8 @@ def record_telemetry(run_info: dict[str, Any],
 
     # Add hostname to the run info fields
     run_info["hostname"] = external_config[CONFIG_FIELDS["HOSTNAME"]]
+    # Add environment version to the run info fields
+    run_info["env_version"] = os.environ.get(TELEMETRY_ENV_VERSION)
 
     # Using threading to run the one post request in the background
     thread = threading.Thread(
