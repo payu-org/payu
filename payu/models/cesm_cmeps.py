@@ -97,7 +97,7 @@ class CesmCmeps(Model):
         ]
 
         self.input_dir = 'INPUT'
-        self.extra_config_dir = 'masks_lists' #directory with any optional config files
+        self.extra_config_dir = 'tables_lists' #directory with any optional config files
 
         self.realms = ["ocn", "ice", "wav", "atm", "rof", "cpl"]
         self.runconfig = None # nuopc.runconfig. Can't read this yet as paths haven't necessarily been set
