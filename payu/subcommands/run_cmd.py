@@ -198,7 +198,7 @@ def runscript():
         print('nruns: {0} nruns_per_submit: {1} subrun: {2}'
               ''.format(expt.n_runs, n_runs_per_submit, subrun))
         # Set job filepath for the payu run
-        expt.set_job_file(type='run')
+        expt.set_job_file()
         try:
             expt.setup()
             expt.run()

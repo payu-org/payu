@@ -9,6 +9,7 @@ import warnings
 from datetime import datetime
 import json
 import logging
+from itertools import zip_longest
 
 from payu.schedulers import Scheduler
 from payu.telemetry import (
@@ -144,7 +145,22 @@ def build_job_info(
     This reads files for the specified run number, all runs,
     or the latest run.
 
-    # TODO: Extend with collate, sync when their job files are implemented
+    Expected output format:
+    {
+        "experiment_uuid": "uuid-string",
+        "runs": {
+            "3(run_number)": {
+                "run": [
+                    {...} //previous run jobs
+                    {"job_id": "12345", ...}
+                ],
+                "collate": [
+                    {...} //previous collate jobs
+                    {"job_id": "12346", ...}
+                ]
+            }
+        }
+    }
     """
     job_files = get_job_file_list(archive_path, run_number, all_runs)
     if not job_files:
@@ -183,8 +199,11 @@ def build_job_info(
         run_num = data["payu_current_run"]
         runs.setdefault(run_num, {"run": []})["run"].append(run_info)
 
+        # Search for collate job files for the same run
         collate_dir = archive_path / "payu_jobs" / str(run_num) / "collate"
         if collate_dir.exists():
+            runs[run_num]["collate"] = []
+            # Sort collate job file by modified time (earliest -> latest)
             collate_files = sorted(list(collate_dir.glob("*.json")), key=lambda f: f.stat().st_mtime)
 
             if collate_files:
@@ -206,7 +225,7 @@ def build_job_info(
                     "stderr_file": str(stderr) if stderr else None,
                     "job_file": str(collate_file),
                 }
-                run_info["collate_info"] = collate_info
+                runs[run_num]["collate"].append(collate_info)
 
     # Sort runs by run number
     status_data["runs"] = dict(
@@ -342,7 +361,8 @@ def display_job_info(data: dict[str, Any]) -> None:
         return
 
     for run_number, jobs in runs.items():
-        for run_info in jobs["run"]:
+        # Keep looping until the longest block (run/collate) is exhausted
+        for run_info, collate_info in zip_longest(jobs["run"], jobs.get("collate", [])):
             print("=" * line_width)
             print(f"Run: {run_number}")
             print("-" * line_width)
@@ -363,18 +383,17 @@ def display_job_info(data: dict[str, Any]) -> None:
             print_line("Exit Status", "exit_status", run_info, is_status=True)
             print_line("Model Exit Code", "model_exit_status", run_info, is_status=True)
 
-            # Display payu run log and job file paths
+            # Display run log and job file paths
             display_log_job_files(run_info)
 
-            # display the collate job information
-            collate_info = run_info.get("collate_info")
+            # Display collate job information
             if collate_info:
                 print(f"  {'-' * 12} Collate Info {'-' * 12}")
                 print_line("Job ID", "job_id", collate_info)
                 print_line("Stage", "stage", collate_info)
                 print_line("Exit Status", "exit_status", collate_info, is_status=True)
 
-                # Display payu collate log and job file paths
+                # Display collate log and job file paths
                 display_log_job_files(collate_info)
 
     print("=" * line_width)
