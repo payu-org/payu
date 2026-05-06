@@ -512,8 +512,8 @@ def test_build_job_info_collate(tmp_path, archive_jobs):
     )
 
     # Build expected info with collate info included
-    expected_info = expected_archive_job_info(2)
-    expected_info["collate_info"] = {
+    expected_run_info = expected_archive_job_info(2)
+    expected_collate_info = {
         "job_id": f"{job_id}.gadi-pbs",
         "stage": "exited",
         "exit_status": 0,
@@ -525,7 +525,8 @@ def test_build_job_info_collate(tmp_path, archive_jobs):
     # Remove job file from check as it contains tmp_path
     remove_job_file_paths(latest_data)
 
-    assert latest_data['runs'][2]['run'][0] == expected_info
+    assert latest_data['runs'][2]['run'][0] == expected_run_info
+    assert latest_data['runs'][2]['collate'][0] == expected_collate_info
 
 def test_status_cmd_no_metadata(tmp_path):
     """Test error raised when metadata is not setup - rather than
