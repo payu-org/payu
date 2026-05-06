@@ -250,7 +250,7 @@ def test__setup_checks_io(ncpu, pio_numiotasks, pio_stride, pio_root, pio_typena
 
         model._setup_checks()
 
-    # teardown_cmeps_config()
+    teardown_cmeps_config()
 
 
 @pytest.mark.parametrize("ncpu, pio_numiotasks, pio_stride, pio_root, pio_typename", [
