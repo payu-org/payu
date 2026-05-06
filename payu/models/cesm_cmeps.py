@@ -96,6 +96,9 @@ class CesmCmeps(Model):
             NUOPC_RUNSEQ
         ]
 
+        self.input_dir = 'INPUT'
+        self.extra_config_dir = 'tables_lists' #directory with any optional config files
+
         self.realms = ["ocn", "ice", "wav", "atm", "rof", "cpl"]
         self.runconfig = None # nuopc.runconfig. Can't read this yet as paths haven't necessarily been set
         self.components = {} # To be read from nuopc.runconfig
@@ -132,8 +135,8 @@ class CesmCmeps(Model):
 
         super().set_model_pathnames()
 
-        self.work_input_path = os.path.join(self.work_path, 'INPUT')
-        
+        self.work_input_path = os.path.join(self.work_path, self.input_dir)
+
         # MOM restarts are dealt with via pointer files (see below). Use work_restart_path
         # for additional restarts (e.g. generic tracer flux restarts)
         self.get_runconfig(self.control_path)
@@ -144,6 +147,8 @@ class CesmCmeps(Model):
 
     def setup(self):
         super().setup()
+
+        self._setup_extra_config_files()
 
         # Read components from nuopc.runconfig
         self.get_components()
@@ -194,6 +199,14 @@ class CesmCmeps(Model):
             else:
                 # TODO: copied this from other models. Surely we want to exit here or something
                 print('payu: error: Unable to find mod_def.ww3 file in input directory')
+
+    def  _setup_extra_config_files(self):
+        # Special handling to also copy an extra folder for optional input files
+        # e.g. mask_table, channel_list etc
+        src = os.path.join(self.control_path, self.extra_config_dir)
+        if os.path.exists(src):
+            dest = os.path.join(self.work_path, self.extra_config_dir)
+            shutil.copytree(src, dest, symlinks=True)
 
     def _setup_checks(self):
         # check pelayout fits within requested cpucount

@@ -351,6 +351,45 @@ def test__setup_checks_bad_io(pio_numiotasks, pio_stride):
 
     teardown_cmeps_config()
 
+# test copy extra config files directory is copied
+@pytest.mark.filterwarnings("error")
+def test__setup_extra_config_files():
+
+    cmeps_config(1)
+
+    with cd(ctrldir):
+        os.makedirs('tables_lists')
+
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+
+        model._setup_extra_config_files()
+
+        assert os.path.isdir(os.path.join(model.work_path,model.extra_config_dir))
+
+        shutil.rmtree('tables_lists')
+        shutil.rmtree(os.path.join(model.work_path,model.extra_config_dir))
+
+    teardown_cmeps_config()
+
+# test extra config files directory isn't required
+@pytest.mark.filterwarnings("error")
+def test__setup_extra_config_files_not_required():
+
+    cmeps_config(1)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        model._setup_extra_config_files()
+
+        assert os.path.isdir(os.path.join(model.work_path,model.extra_config_dir)) is False
+
+    teardown_cmeps_config()
 
 # test restart datetime pruning
 
