@@ -91,11 +91,6 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path):
     # Initialise experiment to determine archive path and run number (which is needed to write job file)
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab)
-    if init_run is None:
-        # Get the latest run number from the restart/output folder numbering
-        # and set it as the run number to write job file
-        expt.set_counters(keep_run_number=True)
-        init_run = expt.counter
 
     # Submit the collation job and write queue job file
     cli.submit_job('payu-collate', pbs_config, pbs_vars, expt=expt, current_run = init_run, type='collate')

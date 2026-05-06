@@ -2,7 +2,10 @@ import json
 import pytest
 from freezegun import freeze_time
 import cftime
-from unittest.mock import MagicMock
+import shutil
+from unittest.mock import Mock, MagicMock
+
+from test.common import cd, tmpdir, labdir, write_config, ctrldir_basename, ctrldir
 
 from payu.status import (
     find_file_match,
@@ -13,6 +16,7 @@ from payu.status import (
     display_job_info
 )
 
+from payu.laboratory import Laboratory
 from payu.experiment import Experiment
 from payu.subcommands.status_cmd import runcmd
 from payu.git_utils import PayuGitWarning
@@ -836,3 +840,36 @@ def test_build_job_info_error_get_cur_expt_time(tmp_path, running_job):
     del expected_info["cur_expt_time"]
 
     assert data == {'runs': {3: {'run': [expected_info]}}}
+
+
+def test_get_job_file(tmp_path):
+    """Test the expt.get_job_file function returns the correct path"""
+    tmpdir.mkdir(parents=True, exist_ok=True)
+    labdir.mkdir(parents=True, exist_ok=True)
+    ctrldir.mkdir(parents=True, exist_ok=True)
+
+    # Write a minimal config file
+    config = {
+            'laboratory': 'lab',
+            'jobname': 'testrun',
+            'model': 'mom6',
+            'exe': 'test.exe',
+            'experiment': ctrldir_basename,
+            'metadata': {
+                'enable': False
+            }
+    }
+    write_config(config)
+
+    # Set up a mock experiment
+    with cd(ctrldir):
+        lab = Laboratory(lab_path=str(labdir))
+        expt = Experiment(lab, reproduce=False)
+    expt.archive_path = tmpdir / "archive" 
+    expt.counter = 3
+    expt.scheduler.get_job_id = Mock(return_value="12345")
+
+    assert expt.get_job_file() == expt.archive_path / "payu_jobs" / "3" / "run" / "12345.json"
+    assert expt.get_job_file(type='collate') == expt.archive_path / "payu_jobs" / "3" / "collate" / "12345.json"
+
+    shutil.rmtree(tmpdir)

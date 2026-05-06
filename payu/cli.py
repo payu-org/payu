@@ -208,6 +208,13 @@ def submit_job(script, config, vars=None, expt=None, current_run=None, type=None
     job_id = result.split()[-1]
 
     if expt is not None:
+
+        if current_run is None:
+            # Get the latest run number from the restart/output folder numbering
+            # and set it as the run number to write job file
+            expt.set_counters(keep_run_number=True)
+            current_run = expt.counter
+            
         write_queued_job_file(
             archive_path=Path(expt.archive_path),
             job_id=job_id,

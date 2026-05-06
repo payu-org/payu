@@ -65,11 +65,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
     # Initialise experiment to determine archive path and run number (which is needed to write job file)
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab)
-    if init_run is None:
-        # Get the latest run number from the restart/output folder numbering
-        # and use it as the run number to write job file
-        expt.set_counters(keep_run_number=True)
-        init_run = expt.counter
+
     # Submit PBS job with expt = None so no job file is written
     cli.submit_job('payu-profile', pbs_config, pbs_vars)
 
