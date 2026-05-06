@@ -319,7 +319,7 @@ def fms_collate(model):
         sys.exit(-1)
 
     # Get md5 hash for collated files and write collate mapping into job file
-    mapping_collate_dict = mapping_log(model, mnc_tiles, uncollate_hashes_dict)
+    mapping_collate_dict = mapping_log(model, uncollate_hashes_dict)
     return mapping_collate_dict
 
 class Fms(Model):
