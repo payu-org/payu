@@ -298,14 +298,21 @@ To monitor the status of running and finished payu run jobs, run::
 
    payu status
 
-To keep updated with the latest status, use `watch`::
+To keep updated with payu job status, use ``watch``::
 
-   watch -n {refresh_interval} payu status
+   watch -n {refresh_interval_in_seconds} payu status
 
 e.g., to refresh every 30 seconds::
 
    watch -n 30 payu status
 
+Alternatively, you can use a simple loop::
+
+   while true; do payu status; sleep {refresh_interval_in_seconds}; done
+
+This keeps a history of payu status in the terminal and is helpful to track changes.
+Please note that ``payu status``` reads information from job files rather than calling ``qstat`` each time it runs.
+This allows it to be refreshed frequently with minimal impact on the scheduler.
 By default, this displays information about the latest run number.
 This includes:
 
@@ -329,8 +336,12 @@ This includes:
 
    payu status --update
 
-* Current model time for running experiments or finished model time for completed experiments,
-  e.g., 1953-10-23T04:00:00. This feature is implemented in models: 
+  Please use ``--update`` with caution, as it calls ``qstat`` each time it runs and 
+  may be considered attacks in quick succession. We recommend a minimal refresh interval of 60 seconds.
+
+
+* Current model time for running experiments or finished model time for completed experiments (e.g., 1953-10-23T04:00:00). 
+  This feature is implemented in models: 
    * ACCESS-OM2
    * ACCESS-OM3
    * ACCESS-ESM1.5
