@@ -212,7 +212,7 @@ def test_get_avail_collate_flags_runtimeerror(mock_run):
     assert isinstance(excinfo.value.__cause__, OSError)
 
 
-@patch("payu.models.fms.hashlib")
+@patch("payu.models.fms.hash")
 def test_mapping_log(mock_hash):
     """Test that a mapping collate dictionary is generated correctly"""
     # Set up mock md5 hash values for the test files

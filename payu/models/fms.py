@@ -19,7 +19,7 @@ import fnmatch
 import re
 import warnings
 
-from yamanifest.hashing import _hashlib as hashlib
+from yamanifest.hashing import hash
 
 from payu.models.model import Model
 from payu import envmod
@@ -97,7 +97,7 @@ def get_uncollate_hashes(mnc_tiles, prior_restart_path):
     for nc_fname, tiles in mnc_tiles[prior_restart_path].items():
         # calculate md5 hashes of all tiles in restart collation
         uncollate_hashes[nc_fname] = [
-            hashlib(os.path.join(prior_restart_path, tile), hashfn='md5') for tile in tiles
+            hash(os.path.join(prior_restart_path, tile), hashfn='md5') for tile in tiles
         ]
 
     return uncollate_hashes
@@ -124,7 +124,7 @@ def mapping_log(model, uncollate_hashes_dict):
     for nc_fname, tile_hashes in uncollate_hashes_dict.items():
         # calculate md5 hash of the final collated file
         nc_path = os.path.join(model.prior_restart_path, nc_fname)
-        collate_hash = hashlib(nc_path, hashfn='md5')
+        collate_hash = hash(nc_path, hashfn='md5')
 
         # match the collated file hash with the list of uncollated tile hashes
         mapping_collate_dict[prior_restart_num][collate_hash] = tile_hashes
