@@ -298,6 +298,14 @@ To monitor the status of running and finished payu run jobs, run::
 
    payu status
 
+To keep updated with the latest status, use `watch`::
+
+   watch -n {refresh_interval} payu status
+
+e.g., to refresh every 30 seconds::
+
+   watch -n 30 payu status
+
 By default, this displays information about the latest run number.
 This includes:
 
@@ -315,6 +323,19 @@ This includes:
    * ``model-run`` - Model is running
 
    * ``archive`` - Model run has finished, and payu is archiving the output
+
+* Total queue time for running or completed jobs. 
+  To update the current queue time for a queuing job, use::
+
+   payu status --update
+
+* Current model time for running experiments or finished model time for completed experiments.
+  This feature is implemented in models: 
+   * ACCESS-OM2
+   * ACCESS-OM3
+   * ACCESS-ESM1.5
+   * ACCESS-ESM1.6
+   * MOM6
 
 * Exit status of the payu run (if available). This is set at the end of a payu
   run so may not reflect the exit status of the scheduler job, e.g., if
