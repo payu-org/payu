@@ -329,8 +329,8 @@ This includes:
 
    payu status --update
 
-* Current model time for running experiments or finished model time for completed experiments.
-  This feature is implemented in models: 
+* Current model time for running experiments or finished model time for completed experiments,
+  e.g., 1953-10-23T04:00:00. This feature is implemented in models: 
    * ACCESS-OM2
    * ACCESS-OM3
    * ACCESS-ESM1.5
