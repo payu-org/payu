@@ -97,7 +97,7 @@ class CesmCmeps(Model):
         ]
 
         self.input_dir = 'INPUT'
-        self.extra_config_dir = 'tables_lists' #directory with any optional config files
+        self.extra_config_dir = 'tables_lists' # directory with any optional config files
 
         self.realms = ["ocn", "ice", "wav", "atm", "rof", "cpl"]
         self.runconfig = None # nuopc.runconfig. Can't read this yet as paths haven't necessarily been set
@@ -200,7 +200,7 @@ class CesmCmeps(Model):
                 # TODO: copied this from other models. Surely we want to exit here or something
                 print('payu: error: Unable to find mod_def.ww3 file in input directory')
 
-    def  _setup_extra_config_files(self):
+    def _setup_extra_config_files(self):
         # Special handling to also copy an extra folder for optional input files
         # e.g. mask_table, channel_list etc
         src = os.path.join(self.control_path, self.extra_config_dir)

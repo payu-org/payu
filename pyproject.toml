@@ -74,7 +74,6 @@ include = ["payu*"]
 namespaces = false
 
 [tool.pytest.ini_options]
-addopts = "--cov=payu"
 testpaths = ["test/"]
 
 [tool.versioneer]
