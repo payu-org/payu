@@ -50,7 +50,8 @@ def teardown_module(module):
         print(e)
 
 @pytest.fixture
-def cmeps_config(request):
+def cmeps_model(request):
+    # Minimal test model setup
     # Create a config.yaml and nuopc.runconfig file for the provided number of cpus
 
     config = copy.deepcopy(config_orig)
@@ -62,28 +63,40 @@ def cmeps_config(request):
     with open(os.path.join(ctrldir, 'nuopc.runconfig'), "w") as f:
         f.close()
 
-    yield
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+    yield model, expt
 
     os.remove(config_path)
 
 
 @pytest.fixture()
-def cmeps_config_opt_dir(cmeps_config):
-    # Create a table_lists dir as well as normal cmeps_config
+def cmeps_model_opt_dir(cmeps_model):
+    # Create a table_lists dir as well as normal cmeps_model
+    model, expt = cmeps_model
 
     with cd(ctrldir):
         os.makedirs('tables_lists')
 
-    yield
+    yield cmeps_model
 
     with cd(ctrldir):
         shutil.rmtree('tables_lists')
 
+    try:
+        # delete the extra config dir from this modules work directory
+        shutil.rmtree(os.path.join(model.work_path,model.extra_config_dir))
+    except:
+        pass
 
 @pytest.fixture
-def cmeps_config_rest_dir(request, cmeps_config):
-    # Create restart directory with rpointer.cpl file as well as normal cmeps_config
+def cmeps_model_rest_dir(request, cmeps_model):
+    # Create archive/restart directory with rpointer.cpl file as well as normal cmeps_model
     restart_path = make_expt_archive_dir(type='restart')
+    print(restart_path)
 
     rpath = os.path.join(restart_path, "rpointer.cpl")
     with open(rpath, "w") as rpointer_file:
@@ -91,10 +104,26 @@ def cmeps_config_rest_dir(request, cmeps_config):
             f"access-om3.cpl.r.{request.param}.nc"
         )
 
-    yield
+    yield cmeps_model
 
     remove_expt_archive_dirs(type='restart')
 
+@pytest.fixture
+def cmeps_model_log(request, cmeps_model):
+    #Create a work directory with a med.log file as well as the normal cmeps_model
+
+    model, expt = cmeps_model
+
+    log_path = os.path.join(model.work_path, "log", "med.log")
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
+    # write param as contents of the file
+    with open(log_path, "w") as f:
+            f.write(request.param) 
+
+    yield cmeps_model
+
+    os.remove(log_path)
 
 def _isolate_create_workdir(model, case):
     # isolate each case
@@ -164,7 +193,7 @@ class MockRunConfig:
         return self.conf[section][variable]
 
 
-@pytest.mark.parametrize("cmeps_config, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe", [
+@pytest.mark.parametrize("cmeps_model, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe", [
                          (1, 1, 1, 1, 0),  # min
                          (4, 4, 1, 1, 0),  # min tasks
                          (4, 2, 2, 1, 0),  # min tasks * threads
@@ -176,9 +205,9 @@ class MockRunConfig:
                          (13, 2, 3, 2, 1),  # odd ncpu
                          (100000, 50000, 1, 2, 0),  # max cpu
                          (100000, 1, 1, 1, 99999),  # max cpu
-                         ], indirect=['cmeps_config'])
+                         ], indirect=['cmeps_model'])
 @pytest.mark.filterwarnings("error")
-def test__setup_checks_npes(cmeps_config, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe):
+def test__setup_checks_npes(cmeps_model, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe):
 
     test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
     test_runconf["PELAYOUT_attributes"].update({
@@ -187,20 +216,16 @@ def test__setup_checks_npes(cmeps_config, moc_ntasks, moc_nthreads, moc_pestride
         "moc_pestride": moc_pestride,
         "moc_rootpe": moc_rootpe
         })
+    model, expt = cmeps_model
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    model.realms = ["moc"]
 
-        model.realms = ["moc"]
+    model.runconfig = MockRunConfig(test_runconf)
 
-        model.runconfig = MockRunConfig(test_runconf)
-
-        model._setup_checks()
+    model._setup_checks()
 
 
-@pytest.mark.parametrize("cmeps_config, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe", [
+@pytest.mark.parametrize("cmeps_model, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe", [
                          (1, 1, 1, 1, 1),  # min
                          (4, 5, 1, 1, 0),  # min tasks
                          (4, 1, 2, 2, 1),  # min tasks * threads
@@ -211,8 +236,8 @@ def test__setup_checks_npes(cmeps_config, moc_ntasks, moc_nthreads, moc_pestride
                          (13, 2, 7, 7, 0),  # odd ncpu
                          (100000, 50001, 1, 2, 0),  # max cpu
                          (100000, 1, 1, 1, 100000),  # max cpu
-                         ], indirect=['cmeps_config'])
-def test__setup_checks_too_many_pes(cmeps_config, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe):
+                         ], indirect=['cmeps_model'])
+def test__setup_checks_too_many_pes(cmeps_model, moc_ntasks, moc_nthreads, moc_pestride, moc_rootpe):
 
     test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
     test_runconf["PELAYOUT_attributes"].update({
@@ -221,30 +246,26 @@ def test__setup_checks_too_many_pes(cmeps_config, moc_ntasks, moc_nthreads, moc_
         "moc_pestride": moc_pestride,
         "moc_rootpe": moc_rootpe
     })
+    model, expt = cmeps_model
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    model.realms = ["moc"]
 
-        model.realms = ["moc"]
+    model.runconfig = MockRunConfig(test_runconf)
 
-        model.runconfig = MockRunConfig(test_runconf)
-
-        with pytest.raises(ValueError):
-            model._setup_checks()
+    with pytest.raises(ValueError):
+        model._setup_checks()
 
 
-@pytest.mark.parametrize("cmeps_config, moc_ntasks, pio_numiotasks, pio_stride, pio_root, pio_typename", [
+@pytest.mark.parametrize("cmeps_model, moc_ntasks, pio_numiotasks, pio_stride, pio_root, pio_typename", [
                          (1, 1,  1, 1, 0, "netcdf"),  # min
                          (2, 2, 1, 1, 1, "netcdf"),  # max root
                          (2, 2, 2, 1, 0, "netcdf4p"),  # min tasks + rootpe
                          (2, 2, 1, 1, 1, "netcdf4p"),  # max rootpe
                          (5, 5, 3, 2, 0, "netcdf4p"),
                          (100000, 100000, 50001, 1, 2, "netcdf4p"),  # odd ncpu
-                         ], indirect=['cmeps_config'])
+                         ], indirect=['cmeps_model'])
 @pytest.mark.filterwarnings("error")
-def test__setup_checks_io(cmeps_config, moc_ntasks, pio_numiotasks, pio_stride, pio_root, pio_typename):
+def test__setup_checks_io(cmeps_model, moc_ntasks, pio_numiotasks, pio_stride, pio_root, pio_typename):
 
     test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
     test_runconf["PELAYOUT_attributes"].update({
@@ -257,27 +278,23 @@ def test__setup_checks_io(cmeps_config, moc_ntasks, pio_numiotasks, pio_stride, 
         pio_typename=pio_typename,
     ))
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    model, expt = cmeps_model
 
-        model.realms = ["moc"]
+    model.realms = ["moc"]
+    model.runconfig = MockRunConfig(test_runconf)
 
-        model.runconfig = MockRunConfig(test_runconf)
-
-        model._setup_checks()
+    model._setup_checks()
 
 
-@pytest.mark.parametrize("cmeps_config, moc_ntasks, pio_numiotasks, pio_stride, pio_root, pio_typename", [
+@pytest.mark.parametrize("cmeps_model, moc_ntasks, pio_numiotasks, pio_stride, pio_root, pio_typename", [
                          (1, 1, 1, 1, 0, "netcdf4c"),
                          (2, 2, 1, 1, 2, "netcdf"),  # root too big
                          (2, 2, 3, 1, 0, "netcdf4p"),  # too manu tasks
                          (2, 2, 2, 2, 0, "netcdf4p"),  # stride too big
                          (5, 5, 2, 2, 3, "netcdf4p"),  # stride too big
                          (100000, 100000, 50000, 2, 2, "netcdf4p"),  # odd ncpu
-                         ], indirect=['cmeps_config'])
-def test__setup_checks_bad_io(cmeps_config, pio_numiotasks, pio_stride, pio_root, pio_typename):
+                         ], indirect=['cmeps_model'])
+def test__setup_checks_bad_io(cmeps_model, pio_numiotasks, pio_stride, pio_root, pio_typename):
 
     test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
     test_runconf["PELAYOUT_attributes"].update({
@@ -290,25 +307,21 @@ def test__setup_checks_bad_io(cmeps_config, pio_numiotasks, pio_stride, pio_root
         pio_typename=pio_typename,
     ))
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    model, expt = cmeps_model
 
-        model.realms = ["moc"]
+    model.realms = ["moc"]
+    model.runconfig = MockRunConfig(test_runconf)
 
-        model.runconfig = MockRunConfig(test_runconf)
+    with pytest.raises(ValueError):
+        model._setup_checks()
 
-        with pytest.raises(ValueError):
-            model._setup_checks()
-
-@pytest.mark.parametrize("cmeps_config",[1], indirect=['cmeps_config'])
+@pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
 @pytest.mark.parametrize("pio_typename, pio_async_interface", [
                          ("netcdf4p", ".true."),
                          ("pnetcdf", ".true."),
                          ("netcdf", ".true."),
                          ])
-def test__setup_checks_pio_async(cmeps_config, pio_typename, pio_async_interface):
+def test__setup_checks_pio_async(cmeps_model, pio_typename, pio_async_interface):
 
     test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
     test_runconf["MOC_modelio"].update(dict(
@@ -316,26 +329,23 @@ def test__setup_checks_pio_async(cmeps_config, pio_typename, pio_async_interface
         pio_typename=pio_typename,
     ))
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    model, expt = cmeps_model
 
-        model.realms = ["moc"]
+    model.realms = ["moc"]
 
-        model.runconfig = MockRunConfig(test_runconf)
+    model.runconfig = MockRunConfig(test_runconf)
 
-        with pytest.warns(
-            Warning, match="does not do consistency checks for asynchronous pio"
-        ):
-            model._setup_checks()
+    with pytest.warns(
+        Warning, match="does not do consistency checks for asynchronous pio"
+    ):
+        model._setup_checks()
 
-@pytest.mark.parametrize("cmeps_config",[1], indirect=['cmeps_config'])
+@pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
 @pytest.mark.parametrize("pio_numiotasks, pio_stride", [
                          (1, -99),
                          (-99, 1),
                          ])
-def test__setup_checks_bad_io(cmeps_config, pio_numiotasks, pio_stride):
+def test__setup_checks_bad_io(cmeps_model, pio_numiotasks, pio_stride):
 
     test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
     test_runconf["MOC_modelio"].update(dict(
@@ -343,56 +353,45 @@ def test__setup_checks_bad_io(cmeps_config, pio_numiotasks, pio_stride):
         pio_stride=pio_stride,
     ))
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    model, expt = cmeps_model
 
-        model.realms = ["moc"]
+    model.realms = ["moc"]
 
-        model.runconfig = MockRunConfig(test_runconf)
+    model.runconfig = MockRunConfig(test_runconf)
 
-        with pytest.warns(
-            Warning, match="using model default"
-        ):
-            model._setup_checks()
+    with pytest.warns(
+        Warning, match="using model default"
+    ):
+        model._setup_checks()
 
 
 # test copy extra config files directory is copied
 @pytest.mark.filterwarnings("error")
-@pytest.mark.parametrize("cmeps_config",[1], indirect=['cmeps_config'])
-def test__setup_extra_config_files(cmeps_config_opt_dir):
+@pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
+def test__setup_extra_config_files(cmeps_model_opt_dir):
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    model, expt = cmeps_model_opt_dir
 
-        model._setup_extra_config_files()
+    model._setup_extra_config_files()
 
-        assert os.path.isdir(os.path.join(model.work_path,model.extra_config_dir))
-
-    shutil.rmtree(os.path.join(model.work_path,model.extra_config_dir))
+    assert os.path.isdir(os.path.join(model.work_path,model.extra_config_dir))
 
 # test extra config files directory isn't required
 @pytest.mark.filterwarnings("error")
-@pytest.mark.parametrize("cmeps_config",[1], indirect=['cmeps_config'])
-def test__setup_extra_config_files_not_required(cmeps_config):
+@pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
+def test__setup_extra_config_files_not_required(cmeps_model):
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    model, expt = cmeps_model
 
-        model._setup_extra_config_files()
+    model._setup_extra_config_files()
 
-        assert os.path.isdir(os.path.join(model.work_path,model.extra_config_dir)) is False
+    assert os.path.isdir(os.path.join(model.work_path,model.extra_config_dir)) is False
 
 
 # test restart datetime pruning
-@pytest.mark.parametrize("cmeps_config",[1], indirect=['cmeps_config'])
+@pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
 @pytest.mark.parametrize(
-    "cmeps_config_rest_dir, calendar, cmeps_calendar, expected_cftime",
+    "cmeps_model_rest_dir, calendar, cmeps_calendar, expected_cftime",
     [
         (
             "0001-01-01-00000",
@@ -412,9 +411,9 @@ def test__setup_extra_config_files_not_required(cmeps_config):
             "NO_LEAP",
             cftime.datetime(1900, 2, 1, calendar="noleap")
         ),
-    ], indirect=['cmeps_config_rest_dir'])
+    ], indirect=['cmeps_model_rest_dir'])
 @pytest.mark.filterwarnings("error")
-def test_get_restart_datetime(cmeps_config_rest_dir, calendar, cmeps_calendar, expected_cftime):
+def test_get_restart_datetime(cmeps_model_rest_dir, calendar, cmeps_calendar, expected_cftime):
 
     test_runconf = {
         "CLOCK_attributes": {
@@ -422,23 +421,19 @@ def test_get_restart_datetime(cmeps_config_rest_dir, calendar, cmeps_calendar, e
         }
     }
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
+    model, expt = cmeps_model_rest_dir
 
-        model = expt.model
-        model.get_runconfig = lambda a : (True)         # mock reading runconf from file
-        model.runconfig = MockRunConfig(test_runconf)
-
-        print(model.runconfig.get("CLOCK_attributes","calendar"))
+    model = expt.model
+    model.get_runconfig = lambda a : (True)         # mock reading runconf from file
+    model.runconfig = MockRunConfig(test_runconf)
 
     restart_path = list_expt_archive_dirs()[0]
     parsed_run_dt = expt.model.get_restart_datetime(restart_path)
     assert parsed_run_dt == expected_cftime
 
-@pytest.mark.parametrize("cmeps_config",[1], indirect=['cmeps_config'])
+@pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
 @pytest.mark.parametrize(
-    "cmeps_config_rest_dir, calendar, cmeps_calendar, expected_cftime",
+    "cmeps_model_rest_dir, calendar, cmeps_calendar, expected_cftime",
     [
         (
             "1900-02-01-00000",
@@ -446,8 +441,8 @@ def test_get_restart_datetime(cmeps_config_rest_dir, calendar, cmeps_calendar, e
             "JULIAN",
             cftime.datetime(1900, 2, 1, calendar="julian")
         ),
-    ], indirect=['cmeps_config_rest_dir'])
-def test_get_restart_datetime_badcal(cmeps_config_rest_dir, calendar, cmeps_calendar, expected_cftime):
+    ], indirect=['cmeps_model_rest_dir'])
+def test_get_restart_datetime_badcal(cmeps_model_rest_dir, calendar, cmeps_calendar, expected_cftime):
 
     test_runconf = {
         "CLOCK_attributes": {
@@ -455,15 +450,10 @@ def test_get_restart_datetime_badcal(cmeps_config_rest_dir, calendar, cmeps_cale
         }
     }
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
+    model, expt = cmeps_model_rest_dir
 
-        model = expt.model
-        model.get_runconfig = lambda a : (True)         # mock reading runconf from file
-        model.runconfig = MockRunConfig(test_runconf)
-
-        print(model.runconfig.get("CLOCK_attributes","calendar"))
+    model.get_runconfig = lambda a : (True)         # mock reading runconf from file
+    model.runconfig = MockRunConfig(test_runconf)
 
     restart_path = list_expt_archive_dirs()[0]
     with pytest.raises(
@@ -471,202 +461,170 @@ def test_get_restart_datetime_badcal(cmeps_config_rest_dir, calendar, cmeps_cale
         ):
         expt.model.get_restart_datetime(restart_path)
 
-@pytest.mark.parametrize("cmeps_config",[1], indirect=['cmeps_config'])
-def test_collect_restart_files_mom_no_split(cmeps_config):
+@pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
+def test_collect_restart_files_mom_no_split(cmeps_model):
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    model, expt = cmeps_model
 
-        _isolate_create_workdir(model, "correct_mom_no_split")
-        pointers = {
-            "rpointer.cpl": "access-om3.cpl.r.1900-01-01-00000.nc",
-            "rpointer.ice": "access-om3.cice.r.1900-01-01-00000.nc",
-            "rpointer.ocn": (
-                "access-om3.mom6.r.1900-01-01-00000.nc\n"
-                "access-om3.mom6.r.1900-01-01-00000_1.nc\n"
-                "access-om3.mom6.r.1900-01-01-00000_2.nc\n"
-            ),
-            "rpointer.rof": "access-om3.drof.r.1900-01-01-00000.nc",
-            "rpointer.atm": "access-om3.datm.r.1900-01-01-00000.nc",
-        }
+    pointers = {
+        "rpointer.cpl": "access-om3.cpl.r.1900-01-01-00000.nc",
+        "rpointer.ice": "access-om3.cice.r.1900-01-01-00000.nc",
+        "rpointer.ocn": (
+            "access-om3.mom6.r.1900-01-01-00000.nc\n"
+            "access-om3.mom6.r.1900-01-01-00000_1.nc\n"
+            "access-om3.mom6.r.1900-01-01-00000_2.nc\n"
+        ),
+        "rpointer.rof": "access-om3.drof.r.1900-01-01-00000.nc",
+        "rpointer.atm": "access-om3.datm.r.1900-01-01-00000.nc",
+    }
 
-        expected_present = [
-            "access-om3.cpl.r.1900-01-01-00000.nc",
-            "access-om3.cice.r.1900-01-01-00000.nc",
-            "access-om3.mom6.r.1900-01-01-00000.nc",
-            "access-om3.mom6.r.1900-01-01-00000_1.nc",
-            "access-om3.mom6.r.1900-01-01-00000_2.nc",
-            "access-om3.drof.r.1900-01-01-00000.nc",
-            "access-om3.datm.r.1900-01-01-00000.nc",
-        ]
+    expected_present = [
+        "access-om3.cpl.r.1900-01-01-00000.nc",
+        "access-om3.cice.r.1900-01-01-00000.nc",
+        "access-om3.mom6.r.1900-01-01-00000.nc",
+        "access-om3.mom6.r.1900-01-01-00000_1.nc",
+        "access-om3.mom6.r.1900-01-01-00000_2.nc",
+        "access-om3.drof.r.1900-01-01-00000.nc",
+        "access-om3.datm.r.1900-01-01-00000.nc",
+    ]
 
-        pointer_files = _write_pointer_files(model.work_path, pointers)
+    pointer_files = _write_pointer_files(model.work_path, pointers)
 
-        _create_files(model.work_path, expected_present)
+    _create_files(model.work_path, expected_present)
 
-        res = model._collect_restart_files(pointer_files)
-        assert {os.path.basename(f) for f in res} == set(expected_present)
+    res = model._collect_restart_files(pointer_files)
+    assert {os.path.basename(f) for f in res} == set(expected_present)
 
-@pytest.mark.parametrize("cmeps_config",[1], indirect=['cmeps_config'])
-def test_collect_restart_files_mom_split(cmeps_config):
+@pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
+def test_collect_restart_files_mom_split(cmeps_model):
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    model, expt = cmeps_model
 
-        _isolate_create_workdir(model, "correct_mom_with_split")
-        pointers = {
-            "rpointer.cpl": "access-om3.cpl.r.1900-01-01-00000.nc",
-            "rpointer.ice": "access-om3.cice.r.1900-01-01-00000.nc",
-            "rpointer.ocn": (
-                "access-om3.mom6.r.1900-01-01-00000.nc\n"
-                "access-om3.mom6.r.1900-01-01-00000_1.nc\n"
-                "access-om3.mom6.r.1900-01-01-00000_2.nc\n"
-            ),
-            "rpointer.rof": "access-om3.drof.r.1900-01-01-00000.nc",
-            "rpointer.atm": "access-om3.datm.r.1900-01-01-00000.nc",
-        }
+    _isolate_create_workdir(model, "correct_mom_with_split")
 
-        # single file component
-        single_files = [
-            "access-om3.cpl.r.1900-01-01-00000.nc",
-            "access-om3.cice.r.1900-01-01-00000.nc",
-            "access-om3.drof.r.1900-01-01-00000.nc",
-            "access-om3.datm.r.1900-01-01-00000.nc",
-        ]
-        _create_files(model.work_path, single_files)
+    pointers = {
+        "rpointer.cpl": "access-om3.cpl.r.1900-01-01-00000.nc",
+        "rpointer.ice": "access-om3.cice.r.1900-01-01-00000.nc",
+        "rpointer.ocn": (
+            "access-om3.mom6.r.1900-01-01-00000.nc\n"
+            "access-om3.mom6.r.1900-01-01-00000_1.nc\n"
+            "access-om3.mom6.r.1900-01-01-00000_2.nc\n"
+        ),
+        "rpointer.rof": "access-om3.drof.r.1900-01-01-00000.nc",
+        "rpointer.atm": "access-om3.datm.r.1900-01-01-00000.nc",
+    }
 
-        # MOM6 split files
-        mom_bases = [
-            "access-om3.mom6.r.1900-01-01-00000.nc",
-            "access-om3.mom6.r.1900-01-01-00000_1.nc",
-            "access-om3.mom6.r.1900-01-01-00000_2.nc",
-        ]
-        num_splits = 3
-        _create_split_files(model.work_path, mom_bases, splits=range(num_splits))
+    # single file component
+    single_files = [
+        "access-om3.cpl.r.1900-01-01-00000.nc",
+        "access-om3.cice.r.1900-01-01-00000.nc",
+        "access-om3.drof.r.1900-01-01-00000.nc",
+        "access-om3.datm.r.1900-01-01-00000.nc",
+    ]
+    _create_files(model.work_path, single_files)
 
-        expected_present = single_files + [
-            f"{x}.{i:04d}" for x in mom_bases for i in range(num_splits)
-        ]
+    # MOM6 split files
+    mom_bases = [
+        "access-om3.mom6.r.1900-01-01-00000.nc",
+        "access-om3.mom6.r.1900-01-01-00000_1.nc",
+        "access-om3.mom6.r.1900-01-01-00000_2.nc",
+    ]
+    num_splits = 3
+    _create_split_files(model.work_path, mom_bases, splits=range(num_splits))
 
-        pointer_files = _write_pointer_files(model.work_path, pointers)
+    expected_present = single_files + [
+        f"{x}.{i:04d}" for x in mom_bases for i in range(num_splits)
+    ]
 
-        res = model._collect_restart_files(pointer_files)
-        assert {os.path.basename(f) for f in res} == set(expected_present)
+    pointer_files = _write_pointer_files(model.work_path, pointers)
 
-@pytest.mark.parametrize("cmeps_config",[1], indirect=['cmeps_config'])
-def test_collect_restart_files_incorrect_parallel(cmeps_config):
+    res = model._collect_restart_files(pointer_files)
+    assert {os.path.basename(f) for f in res} == set(expected_present)
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+@pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
+def test_collect_restart_files_incorrect_parallel(cmeps_model):
 
-        _isolate_create_workdir(model, "incorrect_parallel")
-        pointers = {
-            "rpointer.cpl": "access-om3.cpl.r.1900-01-01-00000.nc",
-            "rpointer.ice": "access-om3.cice.r.1900-01-01-00000.nc",
-            "rpointer.ocn": (
-                "access-om3.mom6.r.1900-01-01-00000.nc\n"
-                "access-om3.mom6.r.1900-01-01-00000_1.nc\n"
-                "access-om3.mom6.r.1900-01-01-00000_2.nc\n"
-            ),
-            "rpointer.rof": "access-om3.drof.r.1900-01-01-00000.nc",
-            "rpointer.atm": "access-om3.datm.r.1900-01-01-00000.nc",
-        }
-        pointer_files = _write_pointer_files(model.work_path, pointers)
+    model, expt = cmeps_model
+    _isolate_create_workdir(model, "incorrect_parallel")
 
-        # only coupler restart exists and others are missing
-        expected_present = ["access-om3.cpl.r.1900-01-01-00000.nc",]
-        _create_files(model.work_path, expected_present)
+    pointers = {
+        "rpointer.cpl": "access-om3.cpl.r.1900-01-01-00000.nc",
+        "rpointer.ice": "access-om3.cice.r.1900-01-01-00000.nc",
+        "rpointer.ocn": (
+            "access-om3.mom6.r.1900-01-01-00000.nc\n"
+            "access-om3.mom6.r.1900-01-01-00000_1.nc\n"
+            "access-om3.mom6.r.1900-01-01-00000_2.nc\n"
+        ),
+        "rpointer.rof": "access-om3.drof.r.1900-01-01-00000.nc",
+        "rpointer.atm": "access-om3.datm.r.1900-01-01-00000.nc",
+    }
+    pointer_files = _write_pointer_files(model.work_path, pointers)
 
-        with pytest.raises(FileNotFoundError) as e:
-            model._collect_restart_files(pointer_files)
+    # only coupler restart exists and others are missing
+    expected_present = ["access-om3.cpl.r.1900-01-01-00000.nc",]
+    _create_files(model.work_path, expected_present)
 
-        # Check a representative missing file appears in the message
-        assert "access-om3.cice.r.1900-01-01-00000.nc" in str(e.value)
-        assert "rpointer.ice not found." in str(e.value)
-        assert restart_error_msg in str(e.value)
+    with pytest.raises(FileNotFoundError) as e:
+        model._collect_restart_files(pointer_files)
+
+    # Check a representative missing file appears in the message
+    assert "access-om3.cice.r.1900-01-01-00000.nc" in str(e.value)
+    assert "rpointer.ice not found." in str(e.value)
+    assert restart_error_msg in str(e.value)
 
     os.remove(os.path.join(model.work_path, expected_present[0]))
 
-@pytest.mark.parametrize("cmeps_config",[1], indirect=['cmeps_config'])
-def test_collect_restart_files_nonexist_rpointer(cmeps_config):
+@pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
+def test_collect_restart_files_nonexist_rpointer(cmeps_model):
     """ Test if error is raised when rpointer file does not exist. """
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    model, expt = cmeps_model
 
-        pointer_files = [
-            os.path.join(model.work_path, "test_rpointer.cpl"),
-            os.path.join(model.work_path, "test_rpointer.ice"),
-        ]
-        for file in pointer_files:
-            assert not os.path.exists(file)
+    pointer_files = [
+        os.path.join(model.work_path, "test_rpointer.cpl"),
+        os.path.join(model.work_path, "test_rpointer.ice"),
+    ]
+    for file in pointer_files:
+        assert not os.path.exists(file)
 
-        with pytest.raises(FileNotFoundError) as e:
-            model._collect_restart_files(pointer_files)
+    with pytest.raises(FileNotFoundError) as e:
+        model._collect_restart_files(pointer_files)
 
-        # Check a representative missing file appears in the message
-        assert restart_error_msg in str(e.value)
-        assert "Restart pointer file not found at the end of payu run" in str(e.value)
+    # Check a representative missing file appears in the message
+    assert restart_error_msg in str(e.value)
+    assert "Restart pointer file not found at the end of payu run" in str(e.value)
 
-@pytest.mark.parametrize("cmeps_config",[1], indirect=['cmeps_config'])
-def test_get_cur_expt_time(cmeps_config):
+@pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
+@pytest.mark.parametrize("cmeps_model_log", [" memory_write: model date = 1900-01-02T00:00:00 \n"], indirect = ['cmeps_model_log'])
+def test_get_cur_expt_time(cmeps_model_log):
     """ Test if get_cur_expt_time correctly parses the model date from the log file. """
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    model, expt = cmeps_model_log
 
-        log_path = os.path.join(model.work_path, "log", "med.log")
-        os.makedirs(os.path.dirname(log_path), exist_ok=True)
-        with open(log_path, "w") as f:
-            f.write(" memory_write: model date = 1900-01-02T00:00:00 \n")
+    cur_expt_time = model.get_cur_expt_time()
 
-        cur_expt_time = model.get_cur_expt_time()
+    assert cur_expt_time.isoformat() == "1900-01-02T00:00:00"
 
-        assert cur_expt_time.isoformat() == "1900-01-02T00:00:00"
 
-    os.remove(log_path)
-
-@pytest.mark.parametrize("cmeps_config",[1], indirect=['cmeps_config'])
-def test_get_cur_expt_time_no_log(cmeps_config):
+@pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
+def test_get_cur_expt_time_no_log(cmeps_model):
     """ Test if get_cur_expt_time raise an error if log file is missing. """
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    model, expt = cmeps_model
 
-        log_path = os.path.join(model.work_path, "log", "med.log")
+    log_path = os.path.join(model.work_path, "log", "med.log")
 
-        assert not os.path.exists(log_path)
-        with pytest.raises(FileNotFoundError):
-            cur_expt_time = model.get_cur_expt_time()
+    assert not os.path.exists(log_path)
+    with pytest.raises(FileNotFoundError):
+        cur_expt_time = model.get_cur_expt_time()
 
 
-@pytest.mark.parametrize("cmeps_config",[1], indirect=['cmeps_config'])
-def test_get_cur_expt_time_no_date(cmeps_config):
+@pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
+@pytest.mark.parametrize("cmeps_model_log", ["This log file does not contain the model date.\n"], indirect = ['cmeps_model_log'])
+def test_get_cur_expt_time_no_date(cmeps_model_log):
     """ Test if get_cur_expt_time raise error if log file does not contain model date. """
 
-    with cd(ctrldir):
-        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
-        model = expt.models[0]
+    model, expt = cmeps_model_log
 
-        log_path = os.path.join(model.work_path, "log", "med.log")
-        os.makedirs(os.path.dirname(log_path), exist_ok=True)
-        with open(log_path, "w") as f:
-            f.write("This log file does not contain the model date.\n")
-
-        with pytest.raises(ValueError, match="Key string 'memory_write: model date' not found in"):
-            cur_expt_time = model.get_cur_expt_time()
-
-    os.remove(log_path)
+    with pytest.raises(ValueError, match="Key string 'memory_write: model date' not found in"):
+        cur_expt_time = model.get_cur_expt_time()
