@@ -466,6 +466,8 @@ def test_collect_restart_files_mom_no_split(cmeps_model):
 
     model, expt = cmeps_model
 
+    _isolate_create_workdir(model, "correct_mom_no_split")
+
     pointers = {
         "rpointer.cpl": "access-om3.cpl.r.1900-01-01-00000.nc",
         "rpointer.ice": "access-om3.cice.r.1900-01-01-00000.nc",
