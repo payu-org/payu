@@ -298,20 +298,16 @@ To monitor the status of running and finished payu run jobs, run::
 
    payu status
 
-To keep updated with payu job status, use ``watch``::
+To refresh the payu status automatically, use ``watch``::
 
-   watch -n {refresh_interval_in_seconds} payu status
+   watch -n ${refresh_interval_sec} payu status
 
-e.g., to refresh every 30 seconds::
+e.g., ``watch -n 30 payu status`` refreshes every 30 seconds. Alternatively, you can use a simple loop::
 
-   watch -n 30 payu status
-
-Alternatively, you can use a simple loop::
-
-   while true; do payu status; sleep {refresh_interval_in_seconds}; done
+   while true; do payu status; sleep ${refresh_interval_sec}; done
 
 This keeps a history of payu status in the terminal and is helpful to track changes.
-Please note that ``payu status``` reads information from job files rather than calling ``qstat`` each time it runs.
+Please note that ``payu status`` reads information from job files rather than calling ``qstat`` each time it runs.
 This allows it to be refreshed frequently with minimal impact on the scheduler.
 By default, this displays information about the latest run number.
 This includes:
