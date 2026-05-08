@@ -75,20 +75,20 @@ def cmeps_model(request):
 
 @pytest.fixture()
 def cmeps_model_opt_dir(cmeps_model):
-    # Create a table_lists dir as well as normal cmeps_model
+    # Create a ancillary_input_dir dir as well as normal cmeps_model
     model, expt = cmeps_model
 
     with cd(ctrldir):
-        os.makedirs('tables_lists')
+        os.makedirs(model.ancillary_input_dir)
 
     yield cmeps_model
 
     with cd(ctrldir):
-        shutil.rmtree('tables_lists')
+        shutil.rmtree(model.ancillary_input_dir)
 
     try:
         # delete the extra config dir from this modules work directory
-        shutil.rmtree(os.path.join(model.work_path,model.extra_config_dir))
+        shutil.rmtree(os.path.join(model.work_path,model.ancillary_input_dir))
     except:
         pass
 
@@ -368,24 +368,24 @@ def test__setup_checks_bad_io(cmeps_model, pio_numiotasks, pio_stride):
 # test copy extra config files directory is copied
 @pytest.mark.filterwarnings("error")
 @pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
-def test__setup_extra_config_files(cmeps_model_opt_dir):
+def test_ancillary_input_dir(cmeps_model_opt_dir):
 
     model, expt = cmeps_model_opt_dir
 
-    model._setup_extra_config_files()
+    model._setup_ancillary_input_dir()
 
-    assert os.path.isdir(os.path.join(model.work_path,model.extra_config_dir))
+    assert os.path.isdir(os.path.join(model.work_path,model.ancillary_input_dir))
 
 # test extra config files directory isn't required
 @pytest.mark.filterwarnings("error")
 @pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
-def test__setup_extra_config_files_not_required(cmeps_model):
+def test_ancillary_input_dir_not_required(cmeps_model):
 
     model, expt = cmeps_model
 
-    model._setup_extra_config_files()
+    model._setup_ancillary_input_dir()
 
-    assert os.path.isdir(os.path.join(model.work_path,model.extra_config_dir)) is False
+    assert os.path.isdir(os.path.join(model.work_path,model.ancillary_input_dir)) is False
 
 
 # test restart datetime pruning

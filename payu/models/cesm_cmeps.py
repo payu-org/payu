@@ -97,7 +97,7 @@ class CesmCmeps(Model):
         ]
 
         self.input_dir = 'INPUT'
-        self.extra_config_dir = 'tables_lists' # directory with any optional config files
+        self.ancillary_input_dir = 'ancillary_input' # directory with extra input files in text format
 
         self.realms = ["ocn", "ice", "wav", "atm", "rof", "cpl"]
         self.runconfig = None # nuopc.runconfig. Can't read this yet as paths haven't necessarily been set
@@ -148,7 +148,7 @@ class CesmCmeps(Model):
     def setup(self):
         super().setup()
 
-        self._setup_extra_config_files()
+        self._setup_ancillary_input_dir()
 
         # Read components from nuopc.runconfig
         self.get_components()
@@ -200,12 +200,12 @@ class CesmCmeps(Model):
                 # TODO: copied this from other models. Surely we want to exit here or something
                 print('payu: error: Unable to find mod_def.ww3 file in input directory')
 
-    def _setup_extra_config_files(self):
+    def _setup_ancillary_input_dir(self):
         # Special handling to also copy an extra folder for optional input files
         # e.g. mask_table, channel_list etc
-        src = os.path.join(self.control_path, self.extra_config_dir)
+        src = os.path.join(self.control_path, self.ancillary_input_dir)
         if os.path.exists(src):
-            dest = os.path.join(self.work_path, self.extra_config_dir)
+            dest = os.path.join(self.work_path, self.ancillary_input_dir)
             shutil.copytree(src, dest, symlinks=True)
 
     def _setup_checks(self):
