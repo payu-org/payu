@@ -93,7 +93,8 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path):
     expt = Experiment(lab)
 
     # Submit the collation job and write queue job file
-    cli.submit_job('payu-collate', pbs_config, pbs_vars, expt=expt, current_run = init_run, type='collate')
+    cli.submit_job('payu-collate', pbs_config, pbs_vars, expt=expt, 
+                current_run = int(init_run) if init_run else None, type='collate')
 
     
 

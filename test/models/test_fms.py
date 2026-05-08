@@ -219,22 +219,24 @@ def test_mapping_log(mock_hash):
     mock_hash.side_effect = lambda file_path, hashfn: f"md5_{os.path.basename(file_path)}"
 
     # Create a dictionary of uncollated tiles
-    output_dir = str(tmpdir / "output003")
-    restart_dir = str(tmpdir / "restart002")
+    archive_dir = tmpdir / "archive"
+    output_dir =  archive_dir / "output003" / "ocean"
+    restart_dir = archive_dir / "restart002" / "ocean"
     mnc_tiles = {
-        output_dir: {
+        str(output_dir): {
             "ocean_1d.res.nc": ["ocean_1d.res.nc.0000", "ocean_1d.res.nc.0001"]
         },
-        restart_dir: {
+        str(restart_dir): {
             "ocean_2d.res.nc": ["ocean_2d.res.nc.0000", "ocean_2d.res.nc.0001"],
             "ocean_3d.res.nc": ["ocean_3d.res.nc.0000", "ocean_3d.res.nc.0001"],
         }
     }
 
     # Call the mapping_log function
-    uncollate_hashes_dict = get_uncollate_hashes(mnc_tiles, restart_dir)
+    uncollate_hashes_dict = get_uncollate_hashes(mnc_tiles, str(restart_dir))
     mock_model = MagicMock()
-    mock_model.prior_restart_path = restart_dir
+    mock_model.prior_restart_path = str(restart_dir)
+    mock_model.expt.archive_path = str(archive_dir)
     mapping_collate_dict = mapping_log(mock_model, uncollate_hashes_dict)
 
     # Set up the expected mapping dictionary

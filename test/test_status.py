@@ -208,6 +208,55 @@ def failed_job(tmp_path, request):
             }
         )
 
+@pytest.fixture
+def archived_collate_jobs(tmp_path, request):
+    """Fixture to create a collate job files"""
+    if request.param:
+        files = []
+        for i in range(3):
+            files.append(
+                write_job_file(
+                    archive_path=tmp_path / "archive",
+                    job_id=f"test-collate-id-{i}",
+                    run_number=i,
+                    job_data={
+                        "scheduler_job_id": f"test-collate-id-{i}",
+                        "scheduler_type": "pbs",
+                        "metadata": {"uuid": "test-uuid"},
+                        "payu_current_run": i,
+                        "stage": "exited",
+                        "payu_collate_status": 0,
+                        "timings": {
+                            "payu_start_time": f"2025-08-1{i}T12:00:00"
+                        }
+                    },
+                    type="collate"
+                )
+            )
+        return files
+
+@pytest.fixture
+def failed_collate_jobs(tmp_path, request):
+    """Fixture to create a failed collate job file"""
+    if request.param:
+        return write_job_file(
+            archive_path=tmp_path / "archive",
+            job_id="test-collate-id-failed",
+            run_number=2,
+            job_data={
+                "scheduler_job_id": "test-collate-id-failed",
+                "scheduler_type": "pbs",
+                "metadata": {"uuid": "test-uuid"},
+                "payu_current_run": 2,
+                "payu_collate_id": "commit-hash-failed",
+                "stage": "exited",
+                "payu_collate_status": 1,
+                "timings": {
+                    "payu_start_time": "2025-08-12T09:00:00"
+                }
+            },
+            type="collate"
+        )
 
 @pytest.mark.parametrize(
     "archive_jobs,running_job,queued_job,latest_file,all_files",
@@ -358,14 +407,34 @@ def expected_failed_job_info():
         'start_time': '2025-08-13T12:00:00'
     }
 
+def expected_collate_job_info(run_number):
+    return {
+        'job_id': f'test-collate-id-{run_number}',
+        'stage': 'exited',
+        'exit_status': 0,
+        'stderr_file': None,
+        'stdout_file': None,
+        'start_time': f'2025-08-1{run_number}T12:00:00'
+    }
+
+def expected_failed_collate_job_info():
+    return {
+        'job_id': "test-collate-id-failed",
+        'stage': 'exited',
+        'exit_status': 1,
+        'stderr_file': None,
+        'stdout_file': None,
+        'start_time': '2025-08-12T09:00:00'
+    }
+
 
 def remove_job_file_paths(data):
     """Remove job_file paths from the data for comparison."""
     if 'runs' in data:
         for payu_jobs in data['runs'].values():
-            if 'run' in payu_jobs:
-                for run in payu_jobs['run']:
-                    del run['job_file']
+            for job_type in payu_jobs.keys():
+                for job_info in payu_jobs[job_type]:
+                    del job_info['job_file']
 
 
 @pytest.mark.parametrize(
@@ -482,55 +551,64 @@ def test_build_job_info_latest(tmp_path, archive_jobs,
 
     assert latest_data == expected
 
-@pytest.mark.parametrize(
-    "archive_jobs",
-    [(True)],
-    indirect=["archive_jobs"]
-)
-def test_build_job_info_collate(tmp_path, archive_jobs):
-    """ Test collate job info is correctly included in build_job_info."""
-    # Build test collate job file
-    job_id = "test-collate-id-2"
-    job_file = write_job_file(
-        archive_path=tmp_path / "archive",
-        job_id=job_id,
-        run_number=2,
-        job_data={
-            "scheduler_job_id": f"{job_id}.gadi-pbs",
-            "scheduler_type": "pbs",
-            "stage": "exited",
-            "payu_current_run": "2",
-            "payu_collate_status": 0,
-        },
-        type="collate"
-    )
 
+@pytest.mark.parametrize(
+    "archive_jobs, archived_collate_jobs, failed_collate_jobs, expected",
+    [
+        (True, True, True,
+        {
+                'runs': {
+                    0: {'run': [expected_archive_job_info(0)],
+                        'collate': [expected_collate_job_info(0)]},
+                    1: {'run': [expected_archive_job_info(1)],
+                        'collate': [expected_collate_job_info(1)]},
+                    2: {'run': [expected_archive_job_info(2)],
+                        'collate': [expected_failed_collate_job_info(),
+                                    expected_collate_job_info(2)]}
+                }
+            }),
+    ],
+    indirect=["archive_jobs", "archived_collate_jobs", "failed_collate_jobs"]
+)
+def test_build_job_info_collate(tmp_path, archive_jobs, archived_collate_jobs, failed_collate_jobs, expected):
+    """ Test collate job info is correctly included in build_job_info."""
     # Mock expt.get_model_cur_expt_time() in build_job_info
     mock_expt = MagicMock()
     mock_expt.get_model_cur_expt_time.return_value = cftime.datetime(1901, 1, 15, 0, 30, 0)
 
+    # ---- For the latest runs ----
     latest_data = build_job_info(
         control_path=tmp_path / "control",
         archive_path=tmp_path / "archive",
         expt=mock_expt
     )
 
-    # Build expected info with collate info included
-    expected_run_info = expected_archive_job_info(2)
-    expected_collate_info = {
-        "job_id": f"{job_id}.gadi-pbs",
-        "stage": "exited",
-        "exit_status": 0,
-        "stdout_file": None,
-        "stderr_file": None,
-        "job_file": f"{job_file}"
-    }
-
     # Remove job file from check as it contains tmp_path
     remove_job_file_paths(latest_data)
 
-    assert latest_data['runs'][2]['run'][0] == expected_run_info
-    assert latest_data['runs'][2]['collate'][0] == expected_collate_info
+    expected_latest = {
+        # Should only include the last run number
+        'runs': {
+            2: {
+                'run': expected['runs'][2]['run'],
+                # Should only include the lastest colalte job
+                'collate': [expected['runs'][2]['collate'][1]]}
+        }}
+    assert latest_data == expected_latest
+
+    # ---- For all runs ----
+    all_runs = build_job_info(
+        control_path=tmp_path / "control",
+        archive_path=tmp_path / "archive",
+        all_runs=True,
+        expt=mock_expt
+    )
+
+    # Remove job file from check as it contains tmp_path
+    remove_job_file_paths(all_runs)
+
+    assert all_runs == expected
+
 
 def test_status_cmd_no_metadata(tmp_path):
     """Test error raised when metadata is not setup - rather than

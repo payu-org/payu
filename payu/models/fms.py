@@ -24,6 +24,10 @@ from yamanifest.hashing import hash
 from payu.models.model import Model
 from payu import envmod
 from payu.fsops import required_libs
+from payu.manifest import full_hashes
+
+# Only need one hashfn in the list of full_hashes to calculate the collate mapping.
+full_hashes = full_hashes[0]
 
 # There is a limit on the number of command line arguments in a forked
 # MPI process. This applies only to mppnccombine-fast. The limit is higher
@@ -78,7 +82,7 @@ def get_avail_collate_flags(mppnc_path):
 
 
 def get_uncollate_hashes(mnc_tiles, prior_restart_path):
-    """ Map future collated filenames to the MD5 hashes of each uncollated tiles.
+    """ Map future collated filenames to the full hashes of each uncollated tiles.
 
     Args:
         mnc_tiles: A dictionary structured as:
@@ -87,7 +91,7 @@ def get_uncollate_hashes(mnc_tiles, prior_restart_path):
 
     Returns:
         A dictionary structured as:
-        {future_collated_filename_1: [md5_hash_tile_1a, md5_hash_tile_1b, ...],
+        {future_collated_filename_1: [full_hash_tile_1a, full_hash_tile_1b, ...],
         ...}
     """
     if prior_restart_path is None:
@@ -95,9 +99,9 @@ def get_uncollate_hashes(mnc_tiles, prior_restart_path):
     
     uncollate_hashes = {}
     for nc_fname, tiles in mnc_tiles[prior_restart_path].items():
-        # calculate md5 hashes of all tiles in restart collation
+        # calculate full hashes of all tiles in restart collation
         uncollate_hashes[nc_fname] = [
-            hash(os.path.join(prior_restart_path, tile), hashfn='md5') for tile in tiles
+            hash(os.path.join(prior_restart_path, tile), hashfn=full_hashes) for tile in tiles
         ]
 
     return uncollate_hashes
@@ -107,8 +111,8 @@ def mapping_log(model, uncollate_hashes_dict):
     Example mapping_collate_dict structure:
     {   
         "restart001": {
-            "md5_hash_collated_filename_1": ["md5_hash_tile_1a", "md5_hash_tile_1b", ...],
-            "md5_hash_collated_filename_2": ["md5_hash_tile_2a", "md5_hash_tile_2b", ...],
+            "full_hash_collated_filename_1": ["full_hash_tile_1a", "full_hash_tile_1b", ...],
+            "full_hash_collated_filename_2": ["full_hash_tile_2a", "full_hash_tile_2b", ...],
             ...
         }
     }
@@ -116,15 +120,18 @@ def mapping_log(model, uncollate_hashes_dict):
     if model.prior_restart_path is None:
         return None
     else:
-        prior_restart_num = os.path.basename(model.prior_restart_path)
+        # Get the relative path from the archive dir to the prior restart dir
+        # e.g., /restart001/ocean/, use the first part as the restart number
+        rel_path = os.path.relpath(model.prior_restart_path, start=model.expt.archive_path)
+        prior_restart_num = os.path.split(rel_path)[0]
 
     mapping_collate_dict = {}
     mapping_collate_dict[prior_restart_num] = {}
 
     for nc_fname, tile_hashes in uncollate_hashes_dict.items():
-        # calculate md5 hash of the final collated file
+        # calculate full hash of the final collated file
         nc_path = os.path.join(model.prior_restart_path, nc_fname)
-        collate_hash = hash(nc_path, hashfn='md5')
+        collate_hash = hash(nc_path, hashfn=full_hashes)
 
         # match the collated file hash with the list of uncollated tile hashes
         mapping_collate_dict[prior_restart_num][collate_hash] = tile_hashes
@@ -259,7 +266,7 @@ def fms_collate(model):
                           .format(len(mnc_tiles[t_base])))
                     print("Warning: collation will be slow and may fail")
 
-    # generate a dictionary of md5 hashes for uncollated tile files
+    # generate a dictionary of full hashes for uncollated tile files
     uncollate_hashes_dict = get_uncollate_hashes(mnc_tiles, model.prior_restart_path)
 
     cpucount = int(collate_config.get('ncpus',
@@ -319,7 +326,7 @@ def fms_collate(model):
                 print(op.decode(), file=sys.stderr)
         sys.exit(-1)
 
-    # Get md5 hash for collated files and write collate mapping into job file
+    # Get full hash for collated files and write collate mapping into job file
     mapping_collate_dict = mapping_log(model, uncollate_hashes_dict)
     return mapping_collate_dict
 

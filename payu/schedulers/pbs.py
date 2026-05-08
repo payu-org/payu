@@ -458,7 +458,7 @@ def get_job_info_json(
     all jobs.
     If timeout occurs or invalid json, return None
     """
-    cmd = ["qstat", "-f", "-F", "json"]
+    cmd = ["qstat", "-xf", "-F", "json"]
     if job_id:
         cmd.append(job_id)
 
