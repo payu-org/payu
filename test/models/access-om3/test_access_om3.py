@@ -365,6 +365,7 @@ def test__setup_checks_bad_io_warn(cmeps_model, pio_numiotasks, pio_stride):
 
 
 # test ancillary_input directory is copied
+@pytest.mark.filterwarnings("error")
 @pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
 def test_ancillary_input_dir(cmeps_model_opt_dir):
 
