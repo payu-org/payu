@@ -372,7 +372,9 @@ def test_ancillary_input_dir(cmeps_model_opt_dir):
 
     model._setup_ancillary_input_dir()
 
-    assert os.path.isdir(os.path.join(model.work_path,model.ancillary_input_dir))
+    assert ( 
+        os.path.isdir(os.path.join(model.work_path,model.ancillary_input_dir)) 
+    ), "ancillary_input directory not copied into work directory from config directory"
 
 # test extra config files directory isn't required
 @pytest.mark.filterwarnings("error")
@@ -383,7 +385,9 @@ def test_ancillary_input_dir_not_required(cmeps_model):
 
     model._setup_ancillary_input_dir()
 
-    assert os.path.isdir(os.path.join(model.work_path,model.ancillary_input_dir)) is False
+    assert (
+        os.path.isdir(os.path.join(model.work_path,model.ancillary_input_dir)) is False
+    ), "ancillary_input directory exists in work without it existing in config directory"
 
 
 # test restart datetime pruning
