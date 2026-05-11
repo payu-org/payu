@@ -89,14 +89,13 @@ def cmeps_model_opt_dir(cmeps_model):
     try:
         # delete the extra config dir from this modules work directory
         shutil.rmtree(os.path.join(model.work_path,model.ancillary_input_dir))
-    except:
+    except FileNotFoundError:
         pass
 
 @pytest.fixture
 def cmeps_model_rest_dir(request, cmeps_model):
     # Create archive/restart directory with rpointer.cpl file as well as normal cmeps_model
     restart_path = make_expt_archive_dir(type='restart')
-    print(restart_path)
 
     rpath = os.path.join(restart_path, "rpointer.cpl")
     with open(rpath, "w") as rpointer_file:
@@ -119,7 +118,7 @@ def cmeps_model_log(request, cmeps_model):
 
     # write param as contents of the file
     with open(log_path, "w") as f:
-            f.write(request.param) 
+        f.write(request.param) 
 
     yield cmeps_model
 
