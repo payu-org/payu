@@ -293,11 +293,11 @@ def test__setup_checks_io(cmeps_model, moc_ntasks, pio_numiotasks, pio_stride, p
                          (5, 5, 2, 2, 3, "netcdf4p"),  # stride too big
                          (100000, 100000, 50000, 2, 2, "netcdf4p"),  # odd ncpu
                          ], indirect=['cmeps_model'])
-def test__setup_checks_bad_io(cmeps_model, pio_numiotasks, pio_stride, pio_root, pio_typename):
+def test__setup_checks_bad_io_error(cmeps_model, moc_ntasks, pio_numiotasks, pio_stride, pio_root, pio_typename):
 
     test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
     test_runconf["PELAYOUT_attributes"].update({
-        "moc_ntasks": ncpu
+        "moc_ntasks": moc_ntasks
     })
     test_runconf["MOC_modelio"].update(dict(
         pio_numiotasks=pio_numiotasks,
@@ -344,7 +344,7 @@ def test__setup_checks_pio_async(cmeps_model, pio_typename, pio_async_interface)
                          (1, -99),
                          (-99, 1),
                          ])
-def test__setup_checks_bad_io(cmeps_model, pio_numiotasks, pio_stride):
+def test__setup_checks_bad_io_warn(cmeps_model, pio_numiotasks, pio_stride):
 
     test_runconf = copy.deepcopy(MOCK_IO_RUNCONF)
     test_runconf["MOC_modelio"].update(dict(
@@ -364,8 +364,7 @@ def test__setup_checks_bad_io(cmeps_model, pio_numiotasks, pio_stride):
         model._setup_checks()
 
 
-# test copy extra config files directory is copied
-@pytest.mark.filterwarnings("error")
+# test ancillary_input directory is copied
 @pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
 def test_ancillary_input_dir(cmeps_model_opt_dir):
 
