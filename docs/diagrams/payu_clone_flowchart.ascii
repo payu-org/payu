@@ -1,6 +1,6 @@
 -----------------------------------------------------
  This is the flowchart of payu clone interactive mode. 
- Please enter ':q' to return to the Payu Clone Wizard.
+ Please press 'q' to return to the Payu Clone Wizard.
 -----------------------------------------------------
                 +==================+
                 |    payu clone    |
@@ -57,3 +57,7 @@
                     +===============+
                     |   Run clone   |
                     +===============+
+
+-----------------------------------------------------
+ Press 'q' to return to the Payu Clone Wizard.
+-----------------------------------------------------
