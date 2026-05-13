@@ -75,20 +75,20 @@ def cmeps_model(request):
 
 @pytest.fixture()
 def cmeps_model_opt_dir(cmeps_model):
-    # Create a ancillary_input_dir dir as well as normal cmeps_model
+    # Create a auxilary_input_dir dir as well as normal cmeps_model
     model, expt = cmeps_model
 
     with cd(ctrldir):
-        os.makedirs(model.ancillary_input_dir)
+        os.makedirs(model.auxilary_input_dir)
 
     yield cmeps_model
 
     with cd(ctrldir):
-        shutil.rmtree(model.ancillary_input_dir)
+        shutil.rmtree(model.auxilary_input_dir)
 
     try:
         # delete the extra config dir from this modules work directory
-        shutil.rmtree(os.path.join(model.work_path,model.ancillary_input_dir))
+        shutil.rmtree(os.path.join(model.work_path,model.auxilary_input_dir))
     except FileNotFoundError:
         pass
 
@@ -364,31 +364,31 @@ def test__setup_checks_bad_io_warn(cmeps_model, pio_numiotasks, pio_stride):
         model._setup_checks()
 
 
-# test ancillary_input directory is copied
+# test auxilary_input directory is copied
 @pytest.mark.filterwarnings("error")
 @pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
-def test_ancillary_input_dir(cmeps_model_opt_dir):
+def test_auxilary_input_dir(cmeps_model_opt_dir):
 
     model, expt = cmeps_model_opt_dir
 
-    model._setup_ancillary_input_dir()
+    model._setup_auxilary_input_dir()
 
     assert ( 
-        os.path.isdir(os.path.join(model.work_path,model.ancillary_input_dir)) 
-    ), "ancillary_input directory not copied into work directory from config directory"
+        os.path.isdir(os.path.join(model.work_path,model.auxilary_input_dir)) 
+    ), "auxilary_input directory not copied into work directory from config directory"
 
 # test extra config files directory isn't required
 @pytest.mark.filterwarnings("error")
 @pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
-def test_ancillary_input_dir_not_required(cmeps_model):
+def test_auxilary_input_dir_not_required(cmeps_model):
 
     model, expt = cmeps_model
 
-    model._setup_ancillary_input_dir()
+    model._setup_auxilary_input_dir()
 
     assert (
-        os.path.isdir(os.path.join(model.work_path,model.ancillary_input_dir)) is False
-    ), "ancillary_input directory exists in work without it existing in config directory"
+        os.path.isdir(os.path.join(model.work_path,model.auxilary_input_dir)) is False
+    ), "auxilary_input directory exists in work without it existing in config directory"
 
 
 # test restart datetime pruning
