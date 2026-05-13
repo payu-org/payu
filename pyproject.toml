@@ -37,7 +37,8 @@ dependencies = [
     "colorama",
     "filelock",
     "questionary",
-    "prompt_toolkit >=3.0.0"
+    "prompt_toolkit >=3.0.0",
+    "mpi4py",
 ]
 
 [project.optional-dependencies]

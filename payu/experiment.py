@@ -525,7 +525,7 @@ class Experiment(object):
         # Call the macro-model setup
         if len(self.models) > 1:
             self.model.setup()
-
+        
         self.manifest.check_manifests()
 
         # Copy manifests to work directory so they archived on completion
