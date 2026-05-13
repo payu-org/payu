@@ -62,33 +62,17 @@ CONFIG_WITH_RESTART = {
     "restart": str(RESTART_PATH)
 }
 
-
-def setup_module(module):
+@pytest.fixture(autouse=True)
+def setup_module(setup_test_dir, empty_workdir):
     """
     Put any test-wide setup code in here, e.g. creating test files
     """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
-    try:
-        tmpdir.mkdir()
-        labdir.mkdir()
-        ctrldir.mkdir()
-        expt_archive_dir.mkdir(parents=True)
-        make_exe()
-        write_metadata()
-    except Exception as e:
-        print(e)
-
+    expt_archive_dir.mkdir(parents=True)
+    make_exe()
+    write_metadata()
 
 @pytest.fixture
-def config(request):
+def config(request, setup_test_dir):
     """
     Write a specified dictionary to config.yaml.
     Used to allow writing configs with and without
@@ -102,46 +86,8 @@ def config(request):
     os.remove(config_path)
 
 
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
-
-    try:
-        shutil.rmtree(tmpdir)
-        print("removing tmp")
-    except Exception as e:
-        print(e)
-
-
-@pytest.fixture(autouse=True)
-def teardown():
-    # Run test
-    yield
-
-    # Remove any created restart files
-    remove_expt_archive_dirs(type='restart')
-
-
-@pytest.fixture(autouse=True)
-def empty_workdir():
-    """
-    Model setup tests require a clean work directory and symlink from
-    the control directory.
-    """
-    expt_workdir.mkdir(parents=True)
-    # Symlink must exist for setup to use correct locations
-    workdir.symlink_to(expt_workdir)
-
-    yield expt_workdir
-    shutil.rmtree(expt_workdir)
-    workdir.unlink()
-
-
 @pytest.fixture
-def cice_config_files(request):
+def cice_config_files(request, setup_test_dir):
     cice_nml = request.param
 
     with cd(ctrldir):

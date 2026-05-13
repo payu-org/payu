@@ -1,6 +1,5 @@
 import os
 import pytest
-import shutil
 
 from test.common import tmpdir
 from payu.models.cesm_cmeps import Runconfig
@@ -72,10 +71,8 @@ def test_runconfig_set_error(runconfig):
         runconfig.set("ALLCOMP_attributes", "DOES_NOT_EXIST", "value")
 
 
-def test_runconfig_set_write_get(runconfig):
+def test_runconfig_set_write_get(runconfig, setup_test_dir):
     """Test updating the values in a nuopc.runconfig file"""
-
-    tmpdir.mkdir()
 
     assert runconfig.get("CLOCK_attributes", "restart_n") == "1"
 
@@ -86,7 +83,3 @@ def test_runconfig_set_write_get(runconfig):
 
     runconfig_updated = Runconfig(runconfig_path_tmp)
     assert runconfig_updated.get("CLOCK_attributes", "restart_n") == "2"
-
-    os.remove(runconfig_path_tmp)
-
-    shutil.rmtree(tmpdir)
