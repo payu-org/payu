@@ -103,13 +103,6 @@ def test_make_pickup_names():
     assert(make_pickup_names(10) == ['pickup.0000000010.001.001.data',
                                      'pickup.0000000010.001.001.meta'])
 
-# These are integration tests. They have an undesirable dependence on each
-# other. It would be possible to make them independent, but then they'd
-# be reproducing previous "tests", like init. So this design is deliberate
-# but compromised. It means when running an error in one test can cascade
-# and cause other tests to fail.
-#
-# Unfortunate but there you go.
 
 
 def test_init(config):
