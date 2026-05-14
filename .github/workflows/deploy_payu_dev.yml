@@ -1,6 +1,6 @@
 name: Deploy payu dev
 description: |
-  Deploy payu devevelopment containerised environment used by ACCESS-NRI-related workflows.
+  Deploy payu development containerised environment used by ACCESS-NRI-related workflows.
 
 on:
   push:
