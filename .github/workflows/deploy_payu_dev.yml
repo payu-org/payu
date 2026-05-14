@@ -13,12 +13,12 @@ jobs:
         name: Deploy payu dev containerised environment
         runs-on: ubuntu-latest
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.CONTAINERISED_ENVS_INFRA_WORKFLOW_PAT }}
         steps:
-          - name: Deploy payu dev
+          - name: Deploy
             run: |
               gh workflow run \
                 --repo access-nri/containerised-environments-infra \
-                --ref main
+                --ref main \
                 release_dev_env.yml \
                 -f environment=payu
