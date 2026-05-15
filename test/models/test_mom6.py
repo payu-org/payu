@@ -1,6 +1,7 @@
 import os
 import shutil
 from pathlib import Path
+import pytest
 
 import pytest
 import f90nml
@@ -13,33 +14,13 @@ from test.common import write_config, write_metadata
 from test.common import make_random_file, make_inputs, make_exe
 from test.test_git_utils import create_new_repo
 
-verbose = True
 
-
-def setup_module(module):
+@pytest.fixture(autouse=True)
+def setup_module(setup_test_dir, empty_workdir):
+    """Put any test-wide setup code in here, e.g. creating test files.
+    Files created here will be automatically cleaned up by `setup_test_dir` fixture after tests.
     """
-    Put any test-wide setup code in here, e.g. creating test files
-    """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
-    try:
-        tmpdir.mkdir()
-        labdir.mkdir()
-        ctrldir.mkdir()
-        expt_workdir.mkdir(parents=True)
-        make_inputs()
-        make_exe()
-        write_metadata()
-    except Exception as e:
-        print(e)
-
+    write_metadata()
     config = {
             'laboratory': 'lab',
             'jobname': 'testrun',
@@ -51,27 +32,6 @@ def setup_module(module):
             }
     }
     write_config(config)
-
-
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
-
-    try:
-        shutil.rmtree(tmpdir)
-        print('removing tmp')
-    except Exception as e:
-        print(e)
-
-
-@pytest.fixture(autouse=True)
-def teardown():
-    # Run test
-    yield
-
 
 @pytest.mark.parametrize(
     "input_nml, expected_files_added",
@@ -332,7 +292,7 @@ def test_get_cur_expt_time():
 
     # Write a calendar into ocean_solo.res
     ocean_solo_path = os.path.join(expt.work_path, 'INPUT', 'ocean_solo.res')
-    os.makedirs(expt.restart_path, exist_ok=True)
+    os.makedirs(os.path.dirname(ocean_solo_path), exist_ok=True)
     with open(ocean_solo_path, 'w') as f:
         f.write("2\n")  # Use Julian calendar
 
@@ -372,7 +332,7 @@ def test_get_cur_expt_time_missing_files(missing_file):
 
     # Write a calendar into ocean_solo.res
     ocean_solo_path = os.path.join(expt.work_path, 'INPUT', 'ocean_solo.res')
-    os.makedirs(expt.restart_path, exist_ok=True)
+    os.makedirs(os.path.dirname(ocean_solo_path), exist_ok=True)
     with open(ocean_solo_path, 'w') as f:
         f.write("2\n")  # Use Julian calendar
 

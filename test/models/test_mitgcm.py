@@ -25,7 +25,7 @@ from test.common import make_exe, make_inputs, make_restarts, make_all_files
 verbose = True
 
 # From tutorial_barotropic_gyre
-data = {
+data_orig = {
     "parm01": {
         "viscah": 400.0,
         "f0": 0.0001,
@@ -70,51 +70,29 @@ config = copy.deepcopy(config_orig)
 
 config['model'] = 'mitgcm'
 
+@pytest.fixture(autouse=True)
+def setup_module(setup_test_dir, empty_workdir):
+    pass
 
-def make_config_files():
+def make_config_files(data):
     """
     Create files required for test model
     """
 
     f90nml.namelist.Namelist(data).write(ctrldir/'data', force=True)
 
-
-def setup_module(module):
-    """
-    Put any test-wide setup code in here, e.g. creating test files
-    """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
-    try:
-        tmpdir.mkdir()
-        labdir.mkdir()
-        ctrldir.mkdir()
-        make_all_files()
-    except Exception as e:
-        print(e)
-
+@pytest.fixture
+def config(setup_test_dir):
+    """Write a config file into the control directory.
+    This will be automatically cleaned up by `setup_test_dir` fixture after tests."""
+    config = copy.deepcopy(config_orig)
+    config['model'] = 'mitgcm'
     write_config(config)
+    return config
 
-
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
-
-    try:
-        # shutil.rmtree(tmpdir)
-        print('removing tmp')
-    except Exception as e:
-        print(e)
+@pytest.fixture
+def data():
+    return copy.deepcopy(data_orig)
 
 
 def make_pickup_names(istep):
@@ -127,16 +105,9 @@ def test_make_pickup_names():
     assert(make_pickup_names(10) == ['pickup.0000000010.001.001.data',
                                      'pickup.0000000010.001.001.meta'])
 
-# These are integration tests. They have an undesirable dependence on each
-# other. It would be possible to make them independent, but then they'd
-# be reproducing previous "tests", like init. So this design is deliberate
-# but compromised. It means when running an error in one test can cascade
-# and cause other tests to fail.
-#
-# Unfortunate but there you go.
 
 
-def test_init():
+def test_init(config):
 
     # Initialise a payu laboratory
     with cd(ctrldir):
@@ -147,7 +118,7 @@ def test_init():
         assert((labdir / subdir).is_dir())
 
 
-def test_setup():
+def test_setup(config, data):
 
     # Create some input and executable files
     make_inputs()
@@ -156,7 +127,7 @@ def test_setup():
     bindir = labdir / 'bin'
     exe = config['exe']
 
-    make_config_files()
+    make_config_files(data)
 
     # Run setup
     payu_setup(lab_path=str(labdir))
@@ -201,17 +172,21 @@ def test_setup():
     assert(manifests == get_manifests(workdir/'manifests'))
 
 
-def test_setup_restartdir():
+def test_setup_restartdir(config, data):
 
     restartdir = labdir / 'archive' / 'restarts'
 
     # Set a restart directory in config
     config['restart'] = str(restartdir)
     write_config(config)
+    make_config_files(data)
 
     res_fnames = make_pickup_names(10)
 
     make_restarts(res_fnames)
+
+    # Run setup
+    payu_setup(lab_path=str(labdir))
 
     mitgcm_restart = {}
     mitgcm_restart['endtime'] = 12000.
@@ -234,137 +209,204 @@ def test_setup_restartdir():
     assert data_local['parm03']['endtime'] == 24000.
 
 
-def test_setup_change_deltat():
+@pytest.mark.parametrize(
+    "case",
+    [
+        {"deltat": 999,
+        "ntimesteps": 5,
+        "expected": {
+            "nIter0": 0,
+            "deltaT": 999.0,
+            "basetime": 12000.0,
+            "starttime": 12000.0,
+            "endtime": 16995.0,
+            "pickupsuff": "0000000010",},
+        },
+        {"deltat": 999,
+        "ntimesteps": 10,
+        "expected": {},
+        },
+    ],
+)
+def test_setup_change_deltat_no_start_end(config, data, case):
 
-    global data
+    restartdir = labdir / 'archive' / 'restarts'
 
-    # Halve deltat
-    data['parm03']['deltat'] = 600
+    # Set a restart directory in config
+    config['restart'] = str(restartdir)
+    write_config(config)
 
-    make_config_files()
+    # deltaT which is not a divisor. Set ntimesteps instead of
+    # start and end times
+    data['parm03']['deltat'] = case['deltat']
+    data['parm03']['ntimesteps'] = case['ntimesteps']
+
+    make_config_files(data)
+
+    res_fnames = make_pickup_names(10)
+
+    make_restarts(res_fnames)
+
+    # Run setup
+    payu_setup(lab_path=str(labdir))
+
+    mitgcm_restart = {}
+    mitgcm_restart['endtime'] = 12000.
+
+    with (restartdir / 'mitgcm.res.yaml').open('w') as file:
+        file.write(yaml.dump(mitgcm_restart, default_flow_style=False))
+
+    if case['ntimesteps'] == 10:
+        # This should throw an error, as it would overwrite the existing
+        # pickup files in the work directory, as the nIter is the same
+        # matchstr = '.*not integer multiple.*'
+        matchstr = '.*Timestep at end identical to previous pickups.*'
+        with pytest.raises(SystemExit, match=matchstr) as setup_error:
+            payu_setup(lab_path=str(labdir))
+        assert setup_error.type == SystemExit
+        return
 
     payu_setup(lab_path=str(labdir))
 
     data_local = f90nml.read(workdir/'data')
 
-    # Time step has halved, so nIter0 is doubled
-    assert data_local['parm03']['nIter0'] == 20
-    assert data_local['parm03']['nTimeSteps'] == 10
-    assert data_local['parm03']['deltaT'] == 600.
-    assert data_local['parm03']['starttime'] == 12000.
-    assert data_local['parm03']['endtime'] == 18000.
+    assert data_local['parm03']['nIter0'] == case['expected']['nIter0']
+    assert data_local['parm03']['deltaT'] == case['expected']['deltaT']
+    assert data_local['parm03']['basetime'] == case['expected']['basetime']
+    assert data_local['parm03']['starttime'] == case['expected']['starttime']
+    assert data_local['parm03']['endtime'] == case['expected']['endtime']
+    assert data_local['parm03']['pickupsuff'] == case['expected']['pickupsuff']
 
-    # Double deltaT
-    data['parm03']['deltat'] = 2400.
 
-    make_config_files()
+@pytest.mark.parametrize(
+    "case",
+    [
+        {"deltat": 1200,
+        "expected": {"nIter0": 10,
+                    "deltaT": 1200.0,
+                    "starttime": 12000.0,
+                    "endtime": 24000.0,},
+        },
+        {"deltat": 600,
+        "expected": {"nIter0": 20,
+                    "deltaT": 600.0,
+                    "starttime": 12000.0,
+                    "endtime": 24000.0,},
+        },
+        {"deltat": 2400.0, #should raise error
+        "expected": {"nIter0": None,
+                    "deltaT": None,
+                    "starttime": None,
+                    "endtime": None,},
+        },
+    ],
+)
+def test_setup_change_deltat_no_ntimesteps(config, data, case):
+    restartdir = labdir / 'archive' / 'restarts'
 
-    payu_setup(lab_path=str(labdir))
+    # Set a restart directory in config
+    config['restart'] = str(restartdir)
+    write_config(config)
 
-    data_local = f90nml.read(workdir/'data')
-
-    # Time step has halved, so nIter0 is doubled
-    assert data_local['parm03']['nIter0'] == 5
-    assert data_local['parm03']['nTimeSteps'] == 10
-    assert data_local['parm03']['deltaT'] == 2400.
-    assert data_local['parm03']['starttime'] == 12000.
-    assert data_local['parm03']['endtime'] == 36000.
-
-    # Fractional deltaT
-    data['parm03']['deltat'] = 0.001
-    data['parm03']['ntimesteps'] = 12000000
-
-    make_config_files()
-
-    payu_setup(lab_path=str(labdir))
-
-    data_local = f90nml.read(workdir/'data')
-
-    # Time step has halved, so nIter0 is doubled
-    assert data_local['parm03']['nIter0'] == 12000000
-    assert data_local['parm03']['nTimeSteps'] == 12000000
-    assert data_local['parm03']['deltaT'] == 0.001
-    assert data_local['parm03']['starttime'] == 12000.
-    assert data_local['parm03']['endtime'] == 24000.
-
-    # Use start and end time instead of ntimesteps. Normal
-    # deltaT
-    data['parm03']['deltat'] = 1200.
+    data['parm03']['deltat'] = case['deltat']
     del data['parm03']['ntimesteps']
     data['parm03']['starttime'] = 0.
     data['parm03']['endtime'] = 12000.
 
-    make_config_files()
+    make_config_files(data)
+    res_fnames = make_pickup_names(10)
+    make_restarts(res_fnames)
+
+    # Run setup
+    payu_setup(lab_path=str(labdir))
+
+    mitgcm_restart = {}
+    mitgcm_restart['endtime'] = 12000.
+
+    with (restartdir / 'mitgcm.res.yaml').open('w') as file:
+        file.write(yaml.dump(mitgcm_restart, default_flow_style=False))
+
+    if case['deltat'] == 2400.:
+        # This should throw an error, as it would overwrite the existing
+        # pickup files in the work directory, as the nIter is the same
+        matchstr = '.*Timestep at end identical to previous pickups.*'
+        with pytest.raises(SystemExit, match=matchstr) as setup_error:
+            payu_setup(lab_path=str(labdir))
+        assert setup_error.type == SystemExit
+        return
 
     payu_setup(lab_path=str(labdir))
 
     data_local = f90nml.read(workdir/'data')
 
-    # Time step normal so nIter0 is 10, but no ntimesteps,
-    # instead startime and endtime have been altered
-    assert data_local['parm03']['nIter0'] == 10
-    assert data_local['parm03']['deltaT'] == 1200.
-    assert data_local['parm03']['starttime'] == 12000.
-    assert data_local['parm03']['endtime'] == 24000.
+    assert data_local['parm03']['nIter0'] == case['expected']['nIter0']
+    assert data_local['parm03']['deltaT'] == case['expected']['deltaT']
+    assert data_local['parm03']['starttime'] == case['expected']['starttime']
+    assert data_local['parm03']['endtime'] == case['expected']['endtime']
 
-    # Halve deltaT
-    data['parm03']['deltat'] = 600
 
-    make_config_files()
+@pytest.mark.parametrize(
+    "case",
+    [
+        {"deltat": 600,
+        "ntimesteps": 10,
+        "expected": {"nIter0": 20,
+                    "nTimeSteps": 10,
+                    "deltaT": 600.0,
+                    "starttime": 12000.0,
+                    "endtime": 18000.0,},
+        },
+        {"deltat": 2400,
+        "ntimesteps": 10,
+        "expected": {"nIter0": 5,
+                    "nTimeSteps": 10,
+                    "deltaT": 2400.0,
+                    "starttime": 12000.0,
+                    "endtime": 36000.0,},
+        },
+        {"deltat": 0.001,
+        "ntimesteps": 12000000,
+        "expected": {"nIter0": 12000000,
+                    "nTimeSteps": 12000000,
+                    "deltaT": 0.001,
+                    "starttime": 12000.0,
+                    "endtime": 24000.0,},
+        },
+    ],
+)
+def test_setup_change_deltat(config, data, case):
+
+    restartdir = labdir / 'archive' / 'restarts'
+
+    # Set a restart directory in config
+    config['restart'] = str(restartdir)
+    write_config(config)
+
+    # Halve deltat
+    data['parm03']['deltat'] = case['deltat']
+    data['parm03']['ntimesteps'] = case['ntimesteps']
+    make_config_files(data)
+
+    res_fnames = make_pickup_names(10)
+
+    make_restarts(res_fnames)
+
+    # Run setup
+    payu_setup(lab_path=str(labdir))
+
+    mitgcm_restart = {}
+    mitgcm_restart['endtime'] = 12000.
+
+    with (restartdir / 'mitgcm.res.yaml').open('w') as file:
+        file.write(yaml.dump(mitgcm_restart, default_flow_style=False))
 
     payu_setup(lab_path=str(labdir))
 
     data_local = f90nml.read(workdir/'data')
 
     # Time step has halved, so nIter0 is doubled
-    assert data_local['parm03']['nIter0'] == 20
-    assert data_local['parm03']['deltaT'] == 600.
-    assert data_local['parm03']['starttime'] == 12000.
-    assert data_local['parm03']['endtime'] == 24000.
-
-    # Double deltaT
-    data['parm03']['deltat'] = 2400.
-
-    make_config_files()
-
-    # This should throw an error, as it would overwrite the existing
-    # pickup files in the work directory, as the nIter is the same
-    matchstr = '.*Timestep at end identical to previous pickups.*'
-    with pytest.raises(SystemExit, match=matchstr) as setup_error:
-        payu_setup(lab_path=str(labdir))
-    assert setup_error.type == SystemExit
-
-    # deltaT which is not a divisor. Set ntimesteps instead of
-    # start and end times
-    data['parm03']['deltat'] = 999.
-    data['parm03']['ntimesteps'] = 5.
-    del data['parm03']['starttime']
-    del data['parm03']['endtime']
-
-    make_config_files()
-
-    payu_setup(lab_path=str(labdir))
-
-    data_local = f90nml.read(workdir/'data')
-
-    # Time step has halved, so nIter0 is doubled
-    assert data_local['parm03']['nIter0'] == 0
-    assert data_local['parm03']['deltaT'] == 999.
-    assert data_local['parm03']['basetime'] == 12000.
-    assert data_local['parm03']['starttime'] == 12000.
-    assert data_local['parm03']['endtime'] == 16995.
-    assert data_local['parm03']['pickupsuff'] == '0000000010'
-
-    # Make same number of timesteps as previous, which should throw
-    # an error
-    data['parm03']['ntimesteps'] = 10.
-
-    make_config_files()
-
-    # This should throw an error, as it would overwrite the existing
-    # pickup files in the work directory, as the nIter is the same
-    # matchstr = '.*not integer multiple.*'
-    matchstr = '.*Timestep at end identical to previous pickups.*'
-    with pytest.raises(SystemExit, match=matchstr) as setup_error:
-        payu_setup(lab_path=str(labdir))
-    assert setup_error.type == SystemExit
+    assert data_local['parm03']['nIter0'] == case['expected']['nIter0']
+    assert data_local['parm03']['nTimeSteps'] == case['expected']['nTimeSteps']
+    assert data_local['parm03']['deltaT'] == case['expected']['deltaT']
+    assert data_local['parm03']['starttime'] == case['expected']['starttime']
+    assert data_local['parm03']['endtime'] == case['expected']['endtime']

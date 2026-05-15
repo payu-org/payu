@@ -28,60 +28,15 @@ INPUT_ICE_FNAME = "input_ice.nml"
 RESTART_DATE_FNAME = "restart_date.nml"
 SEC_PER_DAY = 24*60*60
 
-
-def setup_module(module):
-    """
-    Put any test-wide setup code in here, e.g. creating test files
-    """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
-    try:
-        tmpdir.mkdir()
-        labdir.mkdir()
-        ctrldir.mkdir()
-        archive_dir.mkdir()
-        make_all_files()
-    except Exception as e:
-        print(e)
-
-
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
-
-    try:
-        shutil.rmtree(tmpdir)
-        print('removing tmp')
-    except Exception as e:
-        print(e)
-
-
 @pytest.fixture(autouse=True)
-def empty_workdir():
+def setup_module(setup_test_dir, empty_workdir):
     """
-    Model setup tests require a clean work directory and symlink from
-    the control directory.
+    Put any test-wide setup code in here, e.g. creating test files.
+    Files created here will be automatically cleaned up by `setup_test_dir` fixture after tests.
     """
-    expt_workdir.mkdir(parents=True)
-    # Symlink must exist for setup to use correct locations
-    workdir.symlink_to(expt_workdir)
+    archive_dir.mkdir()
+    make_all_files()
 
-    yield expt_workdir
-    try:
-        shutil.rmtree(expt_workdir)
-    except FileNotFoundError:
-        pass
-    workdir.unlink()
 
 @pytest.fixture
 def access_1year_config():
@@ -171,7 +126,7 @@ def fake_cice_in(ice_control_directory):
 def restart_dir():
     # Create restart directory for ice timing tests
     restart_path = archive_dir / "restart"
-    restart_path.mkdir()
+    restart_path.mkdir(exist_ok=True)
 
     # Run test
     yield restart_path
@@ -374,14 +329,6 @@ def test_access_cice_1year_runtimes(
 
 
 @pytest.fixture
-def remove_restart_dirs():
-    """Clear any restart directories created during a test"""
-    yield
-    # Teardown
-    remove_expt_archive_dirs(type="restart")
-
-
-@pytest.fixture
 def two_model_config():
     config = copy.deepcopy(config_orig)
     config["model"] = "access"
@@ -395,12 +342,8 @@ def two_model_config():
     # Run test
     yield
 
-    # Teardown
-    os.remove(config_path)
 
-
-def test_access_get_mom_restart_datetime(two_model_config,
-                                         remove_restart_dirs):
+def test_access_get_mom_restart_datetime(two_model_config):
     """
     Check that the restart datetime is read using the
     the mom submodel by default.
@@ -438,11 +381,8 @@ def um_only_config():
     # Run test
     yield
 
-    # Teardown
-    os.remove(config_path)
 
-
-def test_access_get_um_restart_datetime(um_only_config, remove_restart_dirs):
+def test_access_get_um_restart_datetime(um_only_config):
     """
     Check that the restart datetime can be read when only
     the UM submodel is present.

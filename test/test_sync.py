@@ -24,28 +24,15 @@ config.pop('metadata')
 pytestmark = pytest.mark.filterwarnings(
     "ignore::payu.git_utils.PayuGitWarning")
 
-
-def setup_module(module):
+@pytest.fixture(autouse=True)
+def setup_module(setup_test_dir, empty_workdir):
     """
-    Put any test-wide setup code in here, e.g. creating test files
+    Put any test-wide setup code in here, e.g. creating test files.
+    Files created here will be automatically cleaned up by `setup_test_dir` fixture after tests.
     """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
-    try:
-        tmpdir.mkdir()
-        labdir.mkdir()
-        ctrldir.mkdir()
-        make_all_files()
-        write_metadata()
-    except Exception as e:
-        print(e)
+    make_all_files()
+    write_metadata()
+    write_config(config)
 
     # Create 5 restarts and outputs
     for dir_type in ['restart', 'output']:
@@ -53,19 +40,6 @@ def setup_module(module):
             path = make_expt_archive_dir(type=dir_type, index=i)
             make_random_file(os.path.join(path, f'test-{dir_type}00{i}-file'))
 
-
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
-
-    try:
-        shutil.rmtree(tmpdir)
-        print('removing tmp')
-    except Exception as e:
-        print(e)
 
 
 def setup_sync(additional_config, add_envt_vars=None):

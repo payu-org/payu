@@ -14,40 +14,17 @@ from test.common import list_expt_archive_dirs, make_expt_archive_dir, remove_ex
 
 MODEL = 'access-om3'
 
-
-def setup_module(module):
+@pytest.fixture(autouse=True)
+def setup_module(setup_test_dir, empty_workdir):
     """
-    Put any test-wide setup code in here, e.g. creating test files
+    Put any test-wide setup code in here, e.g. creating test files.
+    Files created here will be automatically cleaned up by `setup_test_dir` fixture after tests.
     """
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
-    try:
-        tmpdir.mkdir()
-        labdir.mkdir()
-        ctrldir.mkdir()
-        workdir.mkdir()
-        # archive_dir.mkdir()
-        make_inputs()
-        make_exe()
-    except Exception as e:
-        print(e)
+    config = copy.deepcopy(config_orig)
+    config['model'] = MODEL
+    write_config(config)
 
 
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-
-    try:
-        shutil.rmtree(tmpdir)
-        print('removing tmp')
-    except Exception as e:
-        print(e)
 
 @pytest.fixture
 def cmeps_model(request):
@@ -363,7 +340,6 @@ def test__setup_checks_bad_io_warn(cmeps_model, pio_numiotasks, pio_stride):
     ):
         model._setup_checks()
 
-
 # test auxilary_input directory is copied
 @pytest.mark.filterwarnings("error")
 @pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
@@ -434,6 +410,7 @@ def test_get_restart_datetime(cmeps_model_rest_dir, calendar, cmeps_calendar, ex
     parsed_run_dt = expt.model.get_restart_datetime(restart_path)
     assert parsed_run_dt == expected_cftime
 
+
 @pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
 @pytest.mark.parametrize(
     "cmeps_model_rest_dir, calendar, cmeps_calendar, expected_cftime",
@@ -500,6 +477,7 @@ def test_collect_restart_files_mom_no_split(cmeps_model):
     res = model._collect_restart_files(pointer_files)
     assert {os.path.basename(f) for f in res} == set(expected_present)
 
+
 @pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
 def test_collect_restart_files_mom_split(cmeps_model):
 
@@ -548,7 +526,6 @@ def test_collect_restart_files_mom_split(cmeps_model):
 
 @pytest.mark.parametrize("cmeps_model",[1], indirect=['cmeps_model'])
 def test_collect_restart_files_incorrect_parallel(cmeps_model):
-
     model, expt = cmeps_model
     _isolate_create_workdir(model, "incorrect_parallel")
 
@@ -628,7 +605,7 @@ def test_get_cur_expt_time_no_log(cmeps_model):
 @pytest.mark.parametrize("cmeps_model_log", ["This log file does not contain the model date.\n"], indirect = ['cmeps_model_log'])
 def test_get_cur_expt_time_no_date(cmeps_model_log):
     """ Test if get_cur_expt_time raise error if log file does not contain model date. """
-
+    
     model, expt = cmeps_model_log
 
     with pytest.raises(ValueError, match="Key string 'memory_write: model date' not found in"):

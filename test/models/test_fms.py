@@ -135,36 +135,13 @@ otherwise.
 """
 MPPNC_FLAGS_MOM5 = MPPNC_FLAGS_UPSTREAM + ["-z"]
 
-def rmtmp():
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
-
-def mktmp():
-    tmpdir.mkdir()
-
-
-def setup_module(module):
+@pytest.fixture(autouse=True)
+def setup_module(setup_test_dir, empty_workdir):
     """
     Put any test-wide setup code in here, e.g. creating test files
     """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
+    pass
 
-    rmtmp()
-    mktmp()
-
-
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
-
-    rmtmp()
 
 
 def make_tiles(begin, end, prefix='tile'):
@@ -184,86 +161,36 @@ def make_tiles(begin, end, prefix='tile'):
     return files
 
 
-def rm_tiles():
+@pytest.mark.parametrize("begin, end, prefix", [
+    (9900, 9999, 'tile'),
+    (9900, 10100, 'tile'),
+    (0, 99, 'tile'),
+    (999997, 1000010, 'tile')
+])
+def test_get_uncollated_files(begin, end, prefix):
 
-    for f in tmpdir.iterdir():
-        f.unlink()
-
-
-def test_get_uncollated_files():
-
-    files = make_tiles(9900, 9999)
-
-    mncfiles = get_uncollated_files(tmpdir)
-
-    assert len(mncfiles) == len(files)
-    assert all(a == b for a, b in zip(mncfiles, files))
-
-    files = make_tiles(9900, 10100)
+    files = make_tiles(begin, end, prefix)
 
     mncfiles = get_uncollated_files(tmpdir)
 
     assert len(mncfiles) == len(files)
     assert all(a == b for a, b in zip(mncfiles, files))
 
-    rm_tiles()
+@pytest.mark.parametrize("begin, end, prefix", [
+    (9900, 9999, 'tile.res'),
+    (9900, 10100, 'tile.res'),
+    (0, 99, 'tile.res'),
+    (999997, 1000010, 'tile.res')
+])
+def test_get_uncollated_restart_files(begin, end, prefix):
 
-    files = make_tiles(0, 99)
-
-    mncfiles = get_uncollated_files(tmpdir)
-
-    assert len(mncfiles) == len(files)
-    assert all(a == b for a, b in zip(mncfiles, files))
-
-    rm_tiles()
-
-    # Make sure still sorts once over the six-figure zero-padding
-    files = make_tiles(999997, 1000010)
+    files = make_tiles(begin, end, prefix)
 
     mncfiles = get_uncollated_files(tmpdir)
 
     assert len(mncfiles) == len(files)
     assert all(a == b for a, b in zip(mncfiles, files))
 
-
-def test_get_uncollated_restart_files():
-
-    rm_tiles()
-
-    prefix = "tile.res"
-
-    files = make_tiles(9900, 9999, prefix)
-
-    mncfiles = get_uncollated_files(tmpdir)
-
-    assert len(mncfiles) == len(files)
-    assert all(a == b for a, b in zip(mncfiles, files))
-
-    files = make_tiles(9900, 10100, prefix)
-
-    mncfiles = get_uncollated_files(tmpdir)
-
-    assert len(mncfiles) == len(files)
-    assert all(a == b for a, b in zip(mncfiles, files))
-
-    rm_tiles()
-
-    files = make_tiles(0, 99, prefix)
-
-    mncfiles = get_uncollated_files(tmpdir)
-
-    assert len(mncfiles) == len(files)
-    assert all(a == b for a, b in zip(mncfiles, files))
-
-    rm_tiles()
-
-    # Make sure still sorts once over the six-figure zero-padding
-    files = make_tiles(999997, 1000010, prefix)
-
-    mncfiles = get_uncollated_files(tmpdir)
-
-    assert len(mncfiles) == len(files)
-    assert all(a == b for a, b in zip(mncfiles, files))
     
 
 @pytest.mark.parametrize("help_text, expected_flags", [
