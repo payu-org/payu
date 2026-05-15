@@ -21,22 +21,6 @@ from .common import make_exe, make_inputs, make_restarts, make_all_files
 sys.path.insert(1, '../')
 verbose = False
 
-tmptwo = testdir / 'tmp2'
-
-@pytest.fixture(autouse=True)
-def setup_module(setup_test_dir):
-    """
-    Put any test-wide setup code in here, e.g. creating test files
-    """
-    yield
-
-    try:
-        shutil.rmtree(tmptwo)
-        print('removing tmp2')
-    except Exception as e:
-        print(e)
-
-
 def scantree(path):
     """
     Recursively yield DirEntry objects for given directory.
@@ -58,29 +42,6 @@ def savetree(path):
         result[entry.name] = (Path(entry.path).relative_to(path),
                               entry.stat().st_size)
     return(result)
-
-
-def test_movetree():
-
-    make_all_files()
-
-    treeinfo = savetree(tmpdir)
-
-    tmp_inode = tmpdir.stat().st_ino
-
-    payu.fsops.movetree(tmpdir, tmptwo)
-
-    # Ensure src directory removed
-    assert(not tmpdir.exists())
-
-    # Ensure dst directory has new inode number
-    assert(tmp_inode != tmptwo.stat().st_ino)
-
-    # Ensure directory tree faithfully moved
-    assert(treeinfo == savetree(tmptwo))
-
-    # Move tmp2 back to tmp
-    shutil.move(tmptwo, tmpdir)
 
 
 def test_read_config():

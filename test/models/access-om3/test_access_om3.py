@@ -17,7 +17,8 @@ MODEL = 'access-om3'
 @pytest.fixture(autouse=True)
 def setup_module(setup_test_dir, empty_workdir):
     """
-    Put any test-wide setup code in here, e.g. creating test files
+    Put any test-wide setup code in here, e.g. creating test files.
+    Files created here will be automatically cleaned up by `setup_test_dir` fixture after tests.
     """
     config = copy.deepcopy(config_orig)
     config['model'] = MODEL

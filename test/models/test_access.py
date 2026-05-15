@@ -31,7 +31,8 @@ SEC_PER_DAY = 24*60*60
 @pytest.fixture(autouse=True)
 def setup_module(setup_test_dir, empty_workdir):
     """
-    Put any test-wide setup code in here, e.g. creating test files
+    Put any test-wide setup code in here, e.g. creating test files.
+    Files created here will be automatically cleaned up by `setup_test_dir` fixture after tests.
     """
     archive_dir.mkdir()
     make_all_files()
@@ -125,8 +126,7 @@ def fake_cice_in(ice_control_directory):
 def restart_dir():
     # Create restart directory for ice timing tests
     restart_path = archive_dir / "restart"
-    # restart_path.mkdir()
-    os.makedirs(restart_path, exist_ok=True)
+    restart_path.mkdir(exist_ok=True)
 
     # Run test
     yield restart_path

@@ -83,6 +83,8 @@ def make_config_files(data):
 
 @pytest.fixture
 def config(setup_test_dir):
+    """Write a config file into the control directory.
+    This will be automatically cleaned up by `setup_test_dir` fixture after tests."""
     config = copy.deepcopy(config_orig)
     config['model'] = 'mitgcm'
     write_config(config)
