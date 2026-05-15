@@ -5,7 +5,7 @@
 """
 
 # Standard
-import getpass
+import warnings
 import glob
 import os
 import shutil
@@ -42,6 +42,25 @@ class SourcePath():
         self.path = path
         self.is_log_file = is_log_file
 
+def filter_previous_runs(all_dir, prefix=None):
+    """Given a list of directories of all runs (e.g., ['output001', 'output002']), 
+    filter to only include dir that is less than or equal to current run."""
+    if all_dir == []:
+        return []
+
+    current_run = os.environ.get('PAYU_CURRENT_RUN')
+    if current_run is None:
+        warnings.warn("PAYU_CURRENT_RUN environment variable not set. "
+              "Syncing all runs in archive.")
+        return all_dir
+
+    filter_dir = []
+    for directory in all_dir:
+        suffix = directory.replace(prefix, '') if prefix else directory
+        if int(suffix) <= int(current_run):
+            filter_dir.append(directory)
+
+    return filter_dir
 
 class SyncToRemoteArchive():
     """Class used for archiving experiment outputs to a remote directory"""
@@ -62,8 +81,9 @@ class SyncToRemoteArchive():
     def add_outputs_to_sync(self):
         """Add paths of outputs in archive to sync. The last output is
         protected"""
-        outputs = list_archive_dirs(archive_path=self.expt.archive_path,
+        all_outputs = list_archive_dirs(archive_path=self.expt.archive_path,
                                     dir_type='output')
+        outputs = filter_previous_runs(all_outputs, prefix='output')
         outputs = [os.path.join(self.expt.archive_path, output)
                    for output in outputs]
         if len(outputs) > 0:
@@ -85,8 +105,9 @@ class SyncToRemoteArchive():
             return
 
         # Get sorted list of restarts in archive
-        restarts = list_archive_dirs(archive_path=self.expt.archive_path,
+        all_restarts = list_archive_dirs(archive_path=self.expt.archive_path,
                                      dir_type='restart')
+        restarts = filter_previous_runs(all_restarts, prefix='restart')
         restarts = [os.path.join(self.expt.archive_path, restart)
                     for restart in restarts]
         if restarts == []:

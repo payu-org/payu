@@ -1020,9 +1020,10 @@ class Experiment(object):
         sync_config = self.config.get('sync', {})
         syncing = sync_config.get('enable', False)
         if syncing:
-            cmd = '{python} {payu} sync'.format(
+            cmd = '{python} {payu} sync -i {expt}'.format(
                 python=sys.executable,
-                payu=self.payu_path
+                payu=self.payu_path,
+                expt=self.counter
             )
 
             if self.postscript:
