@@ -14,34 +14,11 @@ import payu.fsops
 import payu.laboratory
 import payu.envmod
 
-from .common import testdir, tmpdir, ctrldir, labdir, workdir, cd
-from .common import make_exe, make_inputs, make_restarts, make_all_files
+from .common import tmpdir, cd
 
 
 sys.path.insert(1, '../')
 verbose = False
-
-def scantree(path):
-    """
-    Recursively yield DirEntry objects for given directory.
-    https://stackoverflow.com/a/33135143/4727812
-    """
-    for entry in os.scandir(path):
-        if entry.is_dir(follow_symlinks=False):
-            yield from scantree(entry.path)
-        else:
-            yield entry
-
-
-def savetree(path):
-    """
-    Save a directory tree to a dict
-    """
-    result = {}
-    for entry in scantree(path):
-        result[entry.name] = (Path(entry.path).relative_to(path),
-                              entry.stat().st_size)
-    return(result)
 
 
 def test_read_config():
