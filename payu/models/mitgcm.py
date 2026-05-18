@@ -21,6 +21,7 @@ import yaml
 
 # Local
 from payu.models.model import Model
+import payu.errors as errors 
 
 
 class Mitgcm(Model):
@@ -81,8 +82,11 @@ class Mitgcm(Model):
             try:
                 # NOTE: Use the most recent, in case of multiple restarts
                 n_iter0 = max([int(f.split('.')[1]) for f in core_restarts])
-            except ValueError:
-                sys.exit("payu: error: no restart files found.")
+            except ValueError as e:
+                raise errors.PayuFileNotFoundError(
+                    'payu: error: no restart files found') from e
+                    
+                # sys.exit("payu: error: no restart files found.")
         else:
             n_iter0 = 0
 
@@ -156,11 +160,15 @@ class Mitgcm(Model):
                 n_iter0 = 0
 
             if n_iter0 + n_timesteps == n_iter0_previous:
-                mesg = ('payu : error: Timestep changed to {dt}. '
-                        'Timestep at end identical to previous pickups: '
-                        '{niter}\nThis would overwrite previous '
-                        'pickups'.format(dt=dt, niter=(n_iter0 + n_timesteps)))
-                sys.exit(mesg)
+                niter = n_iter0 + n_timesteps
+                msg = (
+                    f'''
+                    payu : error: Timestep changed to {dt}. 
+                    Timestep at end identical to previous pickups: {niter}
+                    This would overwrite previous pickups
+                    ''')
+                raise errors.PayuRunError(msg)
+                # sys.exit(mesg)
 
         t_end = t_start + dt * n_timesteps
         pchkpt_freq = t_end - t_start
@@ -174,10 +182,15 @@ class Mitgcm(Model):
         print('  end - start:     {}'.format(pchkpt_freq))
         print('  dt * ntimesteps: {}'.format(dt * n_timesteps))
         if pchkpt_freq != dt * n_timesteps:
-            print('payu : error : time inconsistencies, '
-                  'pchkptfreq ({}) != experiment length ({})'
-                  ''.format(pchkpt_freq, dt * n_timesteps))
-            sys.exit(1)
+            raise errors.PayuRunError(
+                f'''
+                payu: error: time inconsistences, 
+                pchkptfreq ({pchkpt_freq}) != experiment length ({dt * n_timesteps})
+                ''')
+            # print('payu : error : time inconsistencies, '
+            #       'pchkptfreq ({}) != experiment length ({})'
+            #       ''.format(pchkpt_freq, dt * n_timesteps))
+            # sys.exit(1)
 
         data_nml['parm03']['startTime'] = t_start
         data_nml['parm03']['niter0'] = n_iter0
