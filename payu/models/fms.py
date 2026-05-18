@@ -81,33 +81,49 @@ def get_avail_collate_flags(mppnc_path):
     return set(re.findall(r"\B-[A-Za-z0-9]+\b", collate_help.stdout))
 
 
-def get_uncollate_hashes(mnc_tiles, prior_restart_path):
-    """ Map future collated filenames to the full hashes of each uncollated tiles.
-
-    Args:
-        mnc_tiles: A dictionary structured as:
-                   {restart_path: {collated_filename: [list_of_tile_filenames]}}
-        prior_restart_path: The path to the prior restart directory, e.g., /path/to/restart001.
-
-    Returns:
-        A dictionary structured as:
-        {future_collated_filename_1: [full_hash_tile_1a, full_hash_tile_1b, ...],
-        ...}
+def get_restart_uncollated_hashes(mnc_tiles, model):
     """
-    if prior_restart_path is None:
-        return {}
+    Map future collated restart files to the full hashes of each uncollated tile.
     
+    Parameters
+    ----------
+    mnc_tiles: A dictionary structured as:
+               {restart_path: {collated_filename: [list_of_tile_filenames]}}
+    model: The payu model class
+
+    Returns
+    -------
+        A dictionary structured as:
+        {
+            "restartXXX": {
+                "/path/to/restartN/model-component/collated_filename_1": ["full_hash_tile_1a", "full_hash_tile_1b", ...],
+                "/path/to/restartN/model-component/collated_filename_2": ["full_hash_tile_2a", "full_hash_tile_2b", ...],
+                ...
+            },
+        }
+    """
     uncollate_hashes = {}
-    for nc_fname, tiles in mnc_tiles[prior_restart_path].items():
-        # calculate full hashes of all tiles in restart collation
-        uncollate_hashes[nc_fname] = [
-            hash(os.path.join(prior_restart_path, tile), hashfn=full_hashes) for tile in tiles
-        ]
+
+    for path, file_dict in mnc_tiles.items():
+        # Get the relative path from the archive dir to the targeted restart dir
+        # e.g., /restart001/ocean/, then use 'restart001' as base_directory
+        rel_path = os.path.relpath(os.path.realpath(path), start=model.expt.archive_path)
+        base_directory = os.path.split(rel_path)[0]
+
+        # Only consider base_directory that matches the restart directory pattern, e.g., restart001
+        if re.match(r'^restart\d+$', base_directory):
+            uncollate_hashes[base_directory] = {}
+
+            # calculate full hashes of all tiles
+            for nc_fname, tiles in file_dict.items():
+                uncollate_hashes[base_directory][os.path.join(path, nc_fname)] = [
+                    hash(os.path.join(path, tile), hashfn=full_hashes) for tile in tiles
+                ]
 
     return uncollate_hashes
 
-def mapping_log(model, uncollate_hashes_dict):
-    """ Log a dictionary of collate mapping into job file.
+def restart_mapping_log(uncollate_hashes_dict):
+    """ Return a dictionary of collate mapping.
     Example mapping_collate_dict structure:
     {   
         "restart001": {
@@ -117,24 +133,17 @@ def mapping_log(model, uncollate_hashes_dict):
         }
     }
     """
-    if model.prior_restart_path is None:
-        return None
-    else:
-        # Get the relative path from the archive dir to the prior restart dir
-        # e.g., /restart001/ocean/, use the first part as the restart number
-        rel_path = os.path.relpath(model.prior_restart_path, start=model.expt.archive_path)
-        prior_restart_num = os.path.split(rel_path)[0]
-
     mapping_collate_dict = {}
-    mapping_collate_dict[prior_restart_num] = {}
 
-    for nc_fname, tile_hashes in uncollate_hashes_dict.items():
-        # calculate full hash of the final collated file
-        nc_path = os.path.join(model.prior_restart_path, nc_fname)
-        collate_hash = hash(nc_path, hashfn=full_hashes)
+    for restart_dir, uncollate_hashes in uncollate_hashes_dict.items():
+        mapping_collate_dict[restart_dir] = {}
 
-        # match the collated file hash with the list of uncollated tile hashes
-        mapping_collate_dict[prior_restart_num][collate_hash] = tile_hashes
+        for nc_fpath, tile_hashes in uncollate_hashes.items():
+            # calculate full hash of the final collated file
+            collate_hash = hash(nc_fpath, hashfn=full_hashes)
+
+            # match the collated file hash with the list of uncollated tile hashes
+            mapping_collate_dict[restart_dir][collate_hash] = tile_hashes
 
     return mapping_collate_dict
 
@@ -267,7 +276,7 @@ def fms_collate(model):
                     print("Warning: collation will be slow and may fail")
 
     # generate a dictionary of full hashes for uncollated tile files
-    uncollate_hashes_dict = get_uncollate_hashes(mnc_tiles, model.prior_restart_path)
+    uncollate_hashes_dict = get_restart_uncollated_hashes(mnc_tiles, model)
 
     cpucount = int(collate_config.get('ncpus',
                    multiprocessing.cpu_count()))
@@ -327,7 +336,7 @@ def fms_collate(model):
         sys.exit(-1)
 
     # Get full hash for collated files and write collate mapping into job file
-    mapping_collate_dict = mapping_log(model, uncollate_hashes_dict)
+    mapping_collate_dict = restart_mapping_log(uncollate_hashes_dict)
     return mapping_collate_dict
 
 class Fms(Model):
