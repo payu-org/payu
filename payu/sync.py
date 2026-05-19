@@ -12,6 +12,7 @@ import shutil
 import subprocess
 from ruamel.yaml import YAML
 from pathlib import Path
+import time
 
 
 # Local
@@ -54,13 +55,18 @@ def filter_previous_runs(all_dir, prefix=None):
               "Syncing all runs in archive.")
         return all_dir
 
-    filter_dir = []
-    for directory in all_dir:
+    # Sort the dicectories from highest to lowest
+    sorted_dir = sorted(all_dir)[::-1]
+    for i in range(len(sorted_dir)):
+        directory = sorted_dir[i]
         suffix = directory.replace(prefix, '') if prefix else directory
-        if int(suffix) <= int(current_run):
-            filter_dir.append(directory)
 
-    return filter_dir
+        # Only include directories that are less than or equal to the current run
+        if int(suffix) <= int(current_run):
+            return sorted_dir[i:]
+
+    # Return empty list if no directories are <= current run
+    return []
 
 class SyncToRemoteArchive():
     """Class used for archiving experiment outputs to a remote directory"""
