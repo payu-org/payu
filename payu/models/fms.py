@@ -19,9 +19,15 @@ import fnmatch
 import re
 import warnings
 
+from yamanifest.hashing import hash
+
 from payu.models.model import Model
 from payu import envmod
 from payu.fsops import required_libs
+from payu.manifest import full_hashes
+
+# Only need one hashfn in the list of full_hashes to calculate the collate mapping.
+full_hashes = full_hashes[0]
 
 # There is a limit on the number of command line arguments in a forked
 # MPI process. This applies only to mppnccombine-fast. The limit is higher
@@ -75,6 +81,72 @@ def get_avail_collate_flags(mppnc_path):
     return set(re.findall(r"\B-[A-Za-z0-9]+\b", collate_help.stdout))
 
 
+def get_restart_uncollated_hashes(mnc_tiles, model):
+    """
+    Map future collated restart files to the full hashes of each uncollated tile.
+    
+    Parameters
+    ----------
+    mnc_tiles: A dictionary structured as:
+               {restart_path: {collated_filename: [list_of_tile_filenames]}}
+    model: The payu model class
+
+    Returns
+    -------
+        A dictionary structured as:
+        {
+            "restartXXX": {
+                "/path/to/restartN/model-component/collated_filename_1": ["full_hash_tile_1a", "full_hash_tile_1b", ...],
+                "/path/to/restartN/model-component/collated_filename_2": ["full_hash_tile_2a", "full_hash_tile_2b", ...],
+                ...
+            },
+        }
+    """
+    uncollate_hashes = {}
+
+    for path, file_dict in mnc_tiles.items():
+        # Get the relative path from the archive dir to the targeted restart dir
+        # e.g., /restart001/ocean/, then use 'restart001' as base_directory
+        rel_path = os.path.relpath(os.path.realpath(path), start=model.expt.archive_path)
+        base_directory = os.path.split(rel_path)[0]
+
+        # Only consider base_directory that matches the restart directory pattern, e.g., restart001
+        if re.match(r'^restart\d+$', base_directory):
+            uncollate_hashes[base_directory] = {}
+
+            # calculate full hashes of all tiles
+            for nc_fname, tiles in file_dict.items():
+                uncollate_hashes[base_directory][os.path.join(path, nc_fname)] = [
+                    hash(os.path.join(path, tile), hashfn=full_hashes) for tile in tiles
+                ]
+
+    return uncollate_hashes
+
+def restart_mapping_log(uncollate_hashes_dict):
+    """ Return a dictionary of collate mapping.
+    Example mapping_collate_dict structure:
+    {   
+        "restart001": {
+            "full_hash_collated_filename_1": ["full_hash_tile_1a", "full_hash_tile_1b", ...],
+            "full_hash_collated_filename_2": ["full_hash_tile_2a", "full_hash_tile_2b", ...],
+            ...
+        }
+    }
+    """
+    mapping_collate_dict = {}
+
+    for restart_dir, uncollate_hashes in uncollate_hashes_dict.items():
+        mapping_collate_dict[restart_dir] = {}
+
+        for nc_fpath, tile_hashes in uncollate_hashes.items():
+            # calculate full hash of the final collated file
+            collate_hash = hash(nc_fpath, hashfn=full_hashes)
+
+            # match the collated file hash with the list of uncollated tile hashes
+            mapping_collate_dict[restart_dir][collate_hash] = tile_hashes
+
+    return mapping_collate_dict
+
 def fms_collate(model):
     """
     Collate model output using mppnccombine. This is broken out of the Fms class so that it can
@@ -112,7 +184,8 @@ def fms_collate(model):
     else:
         mppnc_path = model.expand_executable_path(mppnc_path)
 
-    assert mppnc_path, 'No mppnccombine program found'
+    if not mppnc_path:
+        raise FileNotFoundError('No mppnccombine program found')
 
     # Check config for collate command line options
     collate_flags = collate_config.get('flags')
@@ -202,6 +275,9 @@ def fms_collate(model):
                           .format(len(mnc_tiles[t_base])))
                     print("Warning: collation will be slow and may fail")
 
+    # generate a dictionary of full hashes for uncollated tile files
+    uncollate_hashes_dict = get_restart_uncollated_hashes(mnc_tiles, model)
+
     cpucount = int(collate_config.get('ncpus',
                    multiprocessing.cpu_count()))
 
@@ -259,6 +335,9 @@ def fms_collate(model):
                 print(op.decode(), file=sys.stderr)
         sys.exit(-1)
 
+    # Get full hash for collated files and write collate mapping into job file
+    mapping_collate_dict = restart_mapping_log(uncollate_hashes_dict)
+    return mapping_collate_dict
 
 class Fms(Model):
 
@@ -289,4 +368,5 @@ class Fms(Model):
         shutil.move(self.work_restart_path, self.restart_path)
 
     def collate(self):
-        fms_collate(self)
+        mapping_collate_dict = fms_collate(self)
+        return mapping_collate_dict

@@ -413,7 +413,8 @@ collate output from run ``K``, type the following::
 This will also collate restart ``K-1`` if ``restart: true`` in the ``collate``
 section of the configuration file.
 
-Alternatively you can directly specify a directory name::
+Alternatively you can directly specify a directory name containing the uncollated files 
+(e.g., ``archive/restart001/ocean``)::
 
   payu collate -d dir_name
 

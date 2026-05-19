@@ -3,13 +3,13 @@ Methods used by the `payu status` command to display the status of
 payu runs by inspecting the job files generated for telemetry,
 scheduler stdout/stderr logs, and querying the scheduler
 """
-
 from pathlib import Path
 from typing import Any, Optional
 import warnings
 from datetime import datetime
 import json
 import logging
+from itertools import zip_longest
 
 from payu.schedulers import Scheduler
 from payu.telemetry import (
@@ -80,7 +80,8 @@ def find_scheduler_logs(
 def get_job_file_list(
             archive_path: Path,
             run_number: Optional[int] = None,
-            all_runs: Optional[bool] = False
+            all_runs: Optional[bool] = False,
+            type: str = "run"
         ) -> list[Path]:
     """
     Generate a list of run job files for the specified run number, all runs,
@@ -94,10 +95,10 @@ def get_job_file_list(
         return []
 
     if run_number is not None:
-        return list(payu_jobs.glob(f"{run_number}/run/*.json"))
+        return list(payu_jobs.glob(f"{run_number}/{type}/*.json"))
 
     if all_runs:
-        return list(payu_jobs.glob("*/run/*.json"))
+        return list(payu_jobs.glob(f"*/{type}/*.json"))
 
     # Latest run
     run_dirs = [
@@ -106,7 +107,7 @@ def get_job_file_list(
     if not run_dirs:
         return []
     latest_run = max(run_dirs, key=lambda d: int(d.name))
-    return list(latest_run.glob("run/*.json"))
+    return list(latest_run.glob(f"{type}/*.json"))
 
 def display_wait_time(qtime, stime) -> Optional[str]:
     """Calculate the difference between the submit queue time and the start time/current time (if job is in queue)"""
@@ -145,44 +146,69 @@ def build_job_info(
     This reads files for the specified run number, all runs,
     or the latest run.
 
-    # TODO: Extend with collate, sync when their job files are implemented
+    Expected output format:
+    {
+        "experiment_uuid": "uuid-string",
+        "runs": {
+            "3(run_number)": {
+                "run": [
+                    {...} //previous run jobs
+                    {"job_id": "12345", ...}
+                ],
+                "collate": [
+                    {...} //previous collate jobs
+                    {"job_id": "12346", ...}
+                ]
+            }
+        }
+    }
     """
-    job_files = get_job_file_list(archive_path, run_number, all_runs)
-    if not job_files:
-        return {}
-
     status_data: dict[str, Any] = {}
     runs: dict[int, dict[str, list]] = {}
+    for job_type in ["run", "collate"]:
+        job_files = get_job_file_list(archive_path, run_number, all_runs, type=job_type)
+        # If no job files found for this type, skip to the next type
+        if not job_files:
+            continue
 
-    for job_file in job_files:
-        data = read_job_file(job_file)
+        for job_file in job_files:
+            data = read_job_file(job_file)
 
-        if "experiment_uuid" in data.get("experiment_metadata", {}):
-            uuid = data["experiment_metadata"]["experiment_uuid"]
-            status_data["experiment_uuid"] = uuid
+            if "experiment_uuid" in data.get("experiment_metadata", {}):
+                uuid = data["experiment_metadata"]["experiment_uuid"]
+                status_data["experiment_uuid"] = uuid
 
-        stdout, stderr = find_scheduler_logs(
-            job_id=data.get("scheduler_job_id"),
-            control_path=control_path,
-            archive_path=archive_path,
-            type=data.get("scheduler_type")
-        )
+            stdout, stderr = find_scheduler_logs(
+                job_id=data.get("scheduler_job_id"),
+                control_path=control_path,
+                archive_path=archive_path,
+                type=data.get("scheduler_type")
+            )
 
-        run_info = {
-            "job_id": data.get("scheduler_job_id"),
-            "run_id": data.get("payu_run_id"),
-            "stage": data.get("stage"),
-            "exit_status": data.get("payu_run_status"),
-            "model_exit_status": data.get("payu_model_run_status"),
-            "model_finish_time": data.get("model_finish_time", None),
-            "stdout_file": str(stdout) if stdout else None,
-            "stderr_file": str(stderr) if stderr else None,
-            "job_file": str(job_file),
-            "start_time": data.get("timings", {}).get("payu_start_time"),
-        }
+            run_info = {
+                "job_id": data.get("scheduler_job_id"),
+                "stage": data.get("stage"),
+                "exit_status": data.get(f"payu_{job_type}_status"),
+                "stdout_file": str(stdout) if stdout else None,
+                "stderr_file": str(stderr) if stderr else None,
+                "job_file": str(job_file),
+                "start_time": data.get("timings", {}).get("payu_start_time"),
+            }
 
-        run_num = data["payu_current_run"]
-        runs.setdefault(run_num, {"run": []})["run"].append(run_info)
+            if job_type == "run":
+                run_info.update({
+                    "run_id": data.get("payu_run_id"),
+                    "model_exit_status": data.get("payu_model_run_status"),
+                    "model_finish_time": data.get("model_finish_time")
+                })
+
+            run_num = data["payu_current_run"]
+            runs.setdefault(run_num, {})
+            runs[run_num].setdefault(job_type, []).append(run_info)
+
+    # If no job file found for any type, return {}
+    if not runs:
+        return {}
 
     # Sort runs by run number
     status_data["runs"] = dict(
@@ -190,18 +216,19 @@ def build_job_info(
     )
     # Sort internal jobs by start time
     for run_num, run_jobs in status_data["runs"].items():
-        run_jobs["run"].sort(key=lambda x: (
-            # Put queued jobs at the end (None start_time)
-            x.get("start_time") is None,
-            # Sort by start time
-            x.get("start_time") or ""
-        ))
+        for job_type in run_jobs.keys():
+            run_jobs[job_type].sort(key=lambda x: (
+                # Put queued jobs at the end (None start_time)
+                x.get("start_time") is None,
+                # Sort by start time
+                x.get("start_time") or ""
+            ))
 
-    if not all_runs:
-        # Use latest run job
-        for run_num, run_jobs in status_data["runs"].items():
-            run_jobs["run"] = [run_jobs["run"][-1]]
+            if not all_runs:
+                # Use latest run/collate job
+                run_jobs[job_type] = [run_jobs[job_type][-1]]
 
+    # Get the current model time for run jobs
     latest_run_num = max(status_data["runs"].keys())
     latest_run_info = status_data["runs"][latest_run_num]["run"][-1]
     if latest_run_info.get("stage") == "model-run":
@@ -242,97 +269,115 @@ def update_all_job_files(
         warnings.warn("Failed to get job information from the scheduler")
         return
 
-    for jobs in status_data.get("runs", {}).values():
-        for data in jobs["run"]:
-            job_id = data.get("job_id")
-            if job_id is None or job_id == "":
-                # No job ID, nothing to update
-                continue
+    # Flatten the dict of status_data to get each job types and each data
+    all_type_and_data = (
+        (job_type, data)
+        for jobs in status_data.get("runs", {}).values()
+        for job_type, data_list in jobs.items()
+        for data in data_list
+    )
 
-            # Get the stage and job file from the file data
-            stage = data["stage"]
-            job_file = Path(data["job_file"])
-            run_status = data.get("exit_status")
+    for job_type, data in all_type_and_data:
+        job_id = data.get("job_id")
+        if job_id is None or job_id == "":
+            # No job ID, nothing to update
+            continue
 
-            # Get job info from the scheduler data
-            job_info = all_jobs.get(job_id)
-            exit_status = job_info.get("Jobs", {}).get(job_id, {}).get("Exit_status") if job_info else None
+        # Get the stage and job file from the file data
+        stage = data["stage"]
+        job_file = Path(data["job_file"])
+        run_status = data.get("exit_status")
+
+        # Get job info from the scheduler data
+        job_info = all_jobs.get(job_id)
+        exit_status = job_info.get("Jobs", {}).get(job_id, {}).get("Exit_status") if job_info else None
+        
+        if job_info and exit_status and stage == "queued":
+            # Job has exited, but is still marked as queued in the job file
+            remove_job_file(file_path=job_file)
+        elif job_info:
+            # Job is found in the scheduler, update the job file with the latest info
+            update_data={
+                    "scheduler_job_info": job_info
+                }
+
+            if exit_status is not None and run_status is None:
+                # Update the job file with the exit status if it has exited
+                update_data[f"payu_{job_type}_status"] = exit_status
+
+            update_job_file(
+                file_path=job_file,
+                data=update_data
+            )
             
-            if job_info and exit_status and stage == "queued":
-                # Job has exited, but is still marked as queued in the job file
+        else:
+            # Job not found in scheduler
+            if stage == "queued":
                 remove_job_file(file_path=job_file)
-            elif job_info:
-                # Job is found in the scheduler, update the job file with the latest info
-                update_data={
-                        "scheduler_job_info": job_info
-                    }
-
-                if exit_status is not None and run_status is None:
-                    # Update the job file with the exit status if it has exited
-                    update_data["payu_run_status"] = exit_status
-
+            elif run_status is None:
+                # Run status isn't set, so job must have exited earlier
                 update_job_file(
                     file_path=job_file,
-                    data=update_data
+                    data={f"payu_{job_type}_status": 1}
                 )
-                
-            else:
-                # Job not found in scheduler
-                if stage == "queued":
-                    remove_job_file(file_path=job_file)
-                elif run_status is None:
-                    # Run status isn't set, so job must have exited earlier
-                    update_job_file(
-                        file_path=job_file,
-                        data={"payu_run_status": 1}
-                    )
-                
-
-
-def print_line(label: str, key: Any, data: dict[str, Any]) -> None:
-    """Print a line with label and value from the data,
-    if it is defined"""
+            
+def print_line(label: str, key: Any, data: dict[str, Any], is_status: bool = False) -> None:
+    """Print a line with label and value from the data, if it is defined. 
+    If is_status is True, print the status string (Success/Failed) as well."""
     value = data.get(key)
     label_width = 18
     if value is not None and value != "":
-        print(f"  {f'{label}:':<{label_width}} {value}")
+        if is_status:
+            status_str = "Success" if value == 0 else "Failed"
+            print(f"  {f'{label}:':<{label_width}} {value} ({status_str})")
+        else:
+            print(f"  {f'{label}:':<{label_width}} {value}")
 
+
+def display_log_job_files(run_info: dict[str, Any]) -> None:
+    """Display the log and job files block inside the payu status output"""
+    print_line("Output Log", "stdout_file", run_info)
+    print_line("Error Log", "stderr_file", run_info)
+    print_line("Job File", "job_file", run_info)
+   
 
 def display_job_info(data: dict[str, Any]) -> None:
     """
     Display the job information in a human-readable way
     """
+    line_width = 40
     runs = data.get("runs", {})
     if not runs:
         print("No run information available.")
         return
 
     for run_number, jobs in runs.items():
-        for run_info in jobs["run"]:
-            print("=" * 40)
-            print(f"Run: {run_number}")
-            print_line("Job ID", "job_id", run_info)
-            print_line("Run ID", "run_id", run_info)
-            print_line("Stage", "stage", run_info)
+        print("=" * line_width)
+        print(f"Run: {run_number}")
 
-            #read out qtime and stime from the job file
-            job_file = run_info.get("job_file")
-            job_id = run_info.get("job_id")
-            all_job_info = read_job_file(Path(job_file))
-            job_info = all_job_info.get("scheduler_job_info", {}).get("Jobs", {}).get(job_id, {})
-            display_wait_time(job_info.get("qtime", None), job_info.get("stime", None))
+        # Loop through the job types (run and collate) for the current run
+        for job_type, job_list in jobs.items():
+            # Display internal job(s) for each type
+            for job_info in job_list:
+                print(f"  {'-' * 13} {job_type.capitalize()} Info {'-' * 13}")
+                print_line("Job ID", "job_id", job_info)
+                print_line("Run ID", "run_id", job_info)
+                print_line("Stage", "stage", job_info)
 
-            print_line("Current Expt Time", "cur_expt_time", run_info)
-            print_line("Model Finish Time", "model_finish_time", run_info)
-            exit_status = run_info.get("exit_status")
-            if exit_status is not None:
-                status_str = "Success" if exit_status == 0 else "Failed"
-                print(f"  Exit Status:       {exit_status} ({status_str})")
-            model_exit = run_info.get("model_exit_status")
-            if model_exit is not None:
-                status_str = "Success" if model_exit == 0 else "Failed"
-                print(f"  Model Exit Code:   {model_exit} ({status_str})")
-            print_line("Output Log", "stdout_file", run_info)
-            print_line("Error Log", "stderr_file", run_info)
-            print_line("Job File", "job_file", run_info)
-    print("=" * 40)
+                # Read out qtime and stime from the job file and display queue time
+                job_file = job_info.get("job_file")
+                job_id = job_info.get("job_id")
+                all_job_info = read_job_file(Path(job_file))
+                qt_info = all_job_info.get("scheduler_job_info", {}).get("Jobs", {}).get(job_id, {})
+                display_wait_time(qt_info.get("qtime", None), qt_info.get("stime", None))
+
+                if job_type == "run":
+                    print_line("Current Expt Time", "cur_expt_time", job_info)
+                    print_line("Model Finish Time", "model_finish_time", job_info)
+                    print_line("Model Exit Code", "model_exit_status", job_info, is_status=True)
+                
+                # Display exit status, run log and job file paths
+                print_line("Exit Status", "exit_status", job_info, is_status=True)
+                display_log_job_files(job_info)
+
+    print("=" * line_width)

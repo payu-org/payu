@@ -458,7 +458,11 @@ def get_job_info_json(
     all jobs.
     If timeout occurs or invalid json, return None
     """
-    cmd = ["qstat", "-f", "-F", "json"]
+    # Ensure pbs module is loaded to get qstat in PATH
+    envmod.setup()
+    envmod.module('load', 'pbs')
+
+    cmd = ["qstat", "-xf", "-F", "json"]
     if job_id:
         cmd.append(job_id)
 

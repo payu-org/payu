@@ -13,7 +13,7 @@ from payu.laboratory import Laboratory
 import payu.subcommands.args as args
 from payu import fsops
 from payu.manifest import Manifest
-from payu.telemetry import write_queued_job_file, record_run
+from payu.telemetry import record_run
 from payu.schedulers.pbs import PBS
 
 title = 'run'
@@ -173,20 +173,9 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
         # Return error code.
         sys.exit(1)
 
-    job_id = cli.submit_job('payu-run', pbs_config, pbs_vars)
-
     current_run = init_run if init_run is not None else expt.counter
 
-    # This could be done as part of submit_job eventually, but for now
-    # it's only used by the run command.
-    write_queued_job_file(
-        archive_path=Path(expt.archive_path),
-        job_id=job_id,
-        type='run',
-        scheduler=expt.scheduler,
-        metadata=expt.metadata,
-        current_run=current_run,
-    )
+    cli.submit_job('payu-run', pbs_config, pbs_vars, expt, current_run, type='run')
 
 
 def runscript():
@@ -209,7 +198,7 @@ def runscript():
         print('nruns: {0} nruns_per_submit: {1} subrun: {2}'
               ''.format(expt.n_runs, n_runs_per_submit, subrun))
         # Set job filepath for the payu run
-        expt.set_job_file(type='run')
+        expt.set_job_file()
         try:
             expt.setup()
             expt.run()
@@ -223,7 +212,7 @@ def runscript():
             record_run(
                 timings=expt.timings,
                 scheduler=expt.scheduler,
-                run_status=run_status,
+                status=run_status,
                 config=expt.config,
                 file_path=expt.job_file,
                 archive_path=Path(expt.archive_path),

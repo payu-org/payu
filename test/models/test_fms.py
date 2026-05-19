@@ -1,17 +1,10 @@
-import copy
 import os
-from pathlib import Path
-import pdb
 import shutil
 from unittest.mock import patch, MagicMock
 
-import f90nml
 import pytest
-import yaml
 
-import payu
-
-from payu.models.fms import get_uncollated_files, get_avail_collate_flags
+from payu.models.fms import get_uncollated_files, get_avail_collate_flags, restart_mapping_log, get_restart_uncollated_hashes
 
 from test.common import tmpdir
 
@@ -217,3 +210,45 @@ def test_get_avail_collate_flags_runtimeerror(mock_run):
     assert "Failed to run" in str(excinfo.value)
     # Ensure error chaining happened
     assert isinstance(excinfo.value.__cause__, OSError)
+
+
+@patch("payu.models.fms.hash")
+def test_restart_mapping_log(mock_hash):
+    """Test that a mapping collate dictionary is generated correctly"""
+    # Set up mock md5 hash values for the test files
+    mock_hash.side_effect = lambda file_path, hashfn: f"md5_{os.path.basename(file_path)}"
+
+    # Create a dictionary of uncollated tiles
+    archive_dir = tmpdir / "archive"
+    output_dir =  archive_dir / "output003" / "ocean"
+    restart_dir = archive_dir / "restart002" / "ocean"
+    mnc_tiles = {
+        str(output_dir): {
+            "ocean_1d.res.nc": ["ocean_1d.res.nc.0000", "ocean_1d.res.nc.0001"]
+        },
+        str(restart_dir): {
+            "ocean_2d.res.nc": ["ocean_2d.res.nc.0000", "ocean_2d.res.nc.0001"],
+            "ocean_3d.res.nc": ["ocean_3d.res.nc.0000", "ocean_3d.res.nc.0001"],
+        }
+    }
+    # set up mock model
+    mock_model = MagicMock()
+    mock_model.expt.archive_path = str(archive_dir)
+
+    # Call the restart_mapping_log function
+    uncollate_hashes_dict = get_restart_uncollated_hashes(mnc_tiles, mock_model)
+    mock_model = MagicMock()
+    mock_model.prior_restart_path = str(restart_dir)
+    mock_model.expt.archive_path = str(archive_dir)
+    mapping_collate_dict = restart_mapping_log(uncollate_hashes_dict)
+
+    # Set up the expected mapping dictionary
+    expected_mapping = {
+        "restart002":{
+            "md5_ocean_2d.res.nc": ["md5_ocean_2d.res.nc.0000", "md5_ocean_2d.res.nc.0001"],
+            "md5_ocean_3d.res.nc": ["md5_ocean_3d.res.nc.0000", "md5_ocean_3d.res.nc.0001"],
+        }
+    }
+    
+    # Confirm only restart collation are recorded in the mapping (but not output collation)
+    assert mapping_collate_dict == expected_mapping
