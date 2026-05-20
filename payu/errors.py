@@ -12,7 +12,7 @@ code or function calls.
 
 class PayuError(Exception):
     '''
-    Base class for all Payu Exceptions. 
+    Base class for all Payu Exceptions caused by user behavior. 
     Any error that inherits from this class - represents an expected failure 
     mode (e.g. bad user input, missing files) rather than a code bug.
     '''
@@ -42,7 +42,7 @@ class PayuRunError(PayuError):
 
 class PayuGitError(PayuError):
     '''
-    Raised when there are Git related issues .
+    Raised when there are Git related issues.
     '''
     exit_code = 5
 
