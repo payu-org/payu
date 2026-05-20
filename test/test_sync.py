@@ -21,18 +21,15 @@ config = copy.deepcopy(config_orig)
 
 # Enable metadata
 config.pop('metadata')
-pytestmark = pytest.mark.filterwarnings(
-    "ignore::payu.git_utils.PayuGitWarning")
 
 @pytest.fixture(autouse=True)
-def setup_module(setup_test_dir, empty_workdir):
+def setup_module(setup_test_dir):
     """
     Put any test-wide setup code in here, e.g. creating test files.
     Files created here will be automatically cleaned up by `setup_test_dir` fixture after tests.
     """
     make_all_files()
     write_metadata()
-    write_config(config)
 
     # Create 5 restarts and outputs
     for dir_type in ['restart', 'output']:
@@ -40,11 +37,17 @@ def setup_module(setup_test_dir, empty_workdir):
             path = make_expt_archive_dir(type=dir_type, index=i)
             make_random_file(os.path.join(path, f'test-{dir_type}00{i}-file'))
 
+    yield
 
 
-def setup_sync(additional_config, add_envt_vars=None):
+def setup_sync(additional_config, monkeypatch, add_envt_vars=None):
     """Given additional configuration and envt_vars, return initialised
     class used to build/run rsync commands"""
+
+    # Clean up all environment variables that may affect sync
+    for var in ['PAYU_CURRENT_RUN', 'PAYU_SYNC_IGNORE_LAST', 'PAYU_SYNC_RESTARTS']:
+        monkeypatch.delenv(var, raising=False)
+
     # Set experiment config
     test_config = copy.deepcopy(config)
     test_config.update(additional_config)
@@ -58,7 +61,7 @@ def setup_sync(additional_config, add_envt_vars=None):
     # Set enviroment vars
     if add_envt_vars is not None:
         for var, value in add_envt_vars.items():
-            os.environ[var] = value
+            monkeypatch.setenv(var, value)
 
     return payu.sync.SyncToRemoteArchive(experiment)
 
@@ -83,6 +86,32 @@ def assert_expected_archive_paths(source_paths,
     assert protected_dirs == expected_protected_dirs
 
 
+def test_filter_previous_runs(monkeypatch):
+    """Test filter_previous_runs pick up runs <= the current run."""
+
+    # Set current run to 3
+    monkeypatch.setenv("PAYU_CURRENT_RUN", "3")
+
+    all_dirs = ['output001', 'output002', 'output003', 'output004', 'output005']
+    prefix = 'output'
+    
+    expected = ['output001', 'output002', 'output003']
+    result = payu.sync.filter_previous_runs(all_dirs, prefix=prefix)
+    
+    assert result == expected
+
+
+def test_filter_previous_runs_no_current_run(monkeypatch):
+    """Test filter_previous_runs returns all dirs when PAYU_CURRENT_RUN is not set."""
+    
+    monkeypatch.delenv("PAYU_CURRENT_RUN", raising=False)
+
+    all_dirs = ['output001', 'output002', 'output003', 'output004', 'output005']
+    prefix = 'output'
+
+    assert payu.sync.filter_previous_runs(all_dirs, prefix=prefix) == all_dirs
+
+
 @pytest.mark.parametrize(
     "envt_vars, expected_outputs, expected_protected_outputs",
     [
@@ -95,9 +124,9 @@ def assert_expected_archive_paths(source_paths,
             ['output000', 'output001', 'output002', 'output003'], []
         ),
     ])
-def test_add_outputs_to_sync(envt_vars, expected_outputs,
+def test_add_outputs_to_sync(monkeypatch, envt_vars, expected_outputs,
                              expected_protected_outputs):
-    sync = setup_sync(additional_config={}, add_envt_vars=envt_vars)
+    sync = setup_sync(additional_config={}, monkeypatch=monkeypatch, add_envt_vars=envt_vars)
 
     # Test function
     sync.add_outputs_to_sync()
@@ -106,10 +135,6 @@ def test_add_outputs_to_sync(envt_vars, expected_outputs,
     assert_expected_archive_paths(sync.source_paths,
                                   expected_outputs,
                                   expected_protected_outputs)
-
-    # Tidy up test - Remove any added enviroment variables
-    for envt_var in envt_vars.keys():
-        del os.environ[envt_var]
 
 
 @pytest.mark.parametrize(
@@ -148,9 +173,9 @@ def test_add_outputs_to_sync(envt_vars, expected_outputs,
             ['restart003', 'restart004']
         ),
     ])
-def test_restarts_to_sync(add_config, envt_vars,
+def test_restarts_to_sync(monkeypatch,add_config, envt_vars,
                           expected_restarts, expected_protected_restarts):
-    sync = setup_sync(add_config, envt_vars)
+    sync = setup_sync(add_config, monkeypatch, envt_vars)
 
     # Test function
     sync.add_restarts_to_sync()
@@ -159,10 +184,6 @@ def test_restarts_to_sync(add_config, envt_vars,
     assert_expected_archive_paths(sync.source_paths,
                                   expected_restarts,
                                   expected_protected_restarts)
-
-    # Tidy up test - Remove any added enviroment variables
-    for envt_var in envt_vars.keys():
-        del os.environ[envt_var]
 
 
 @pytest.mark.parametrize(
@@ -190,20 +211,21 @@ def test_restarts_to_sync(add_config, envt_vars,
     ]
 )
 
-def test_set_destination_path(config_sync_path, expected_sync_dest):
+def test_set_destination_path(monkeypatch, config_sync_path, expected_sync_dest):
     """Test setting destination path with different combinations of
     base_path, path, url and user"""
     additional_config = config_sync_path
-    sync = setup_sync(additional_config=additional_config)
+    sync = setup_sync(additional_config=additional_config, monkeypatch=monkeypatch)
     sync.expt.name = "expt_name"
 
     # Test destination_path
     sync.set_destination_path()
     assert sync.destination_path == expected_sync_dest
 
-def test_set_destination_path_value_error():
+
+def test_set_destination_path_value_error(monkeypatch):
     """Test value error raised when path is not set"""
-    sync = setup_sync(additional_config={})
+    sync = setup_sync(additional_config={}, monkeypatch=monkeypatch)
     with pytest.raises(ValueError, match="payu: error: Sync path is not defined."):
         sync.set_destination_path()
 
@@ -227,8 +249,7 @@ def test_set_destination_path_value_error():
             tmpdir / "diff_sync_dir" / "metadata.yaml")
     ]
 )
-
-def test_check_uuid(existing_metadata, path_for_sync, path_for_metadata):
+def test_check_uuid(monkeypatch, existing_metadata, path_for_sync, path_for_metadata):
     """Test check_uuid pass when UUIDs match, no UUID and no metadata.yaml"""
     # First, make sure the sync dir and metadata.yaml path exist
     path_for_sync.mkdir(parents=True, exist_ok=True)
@@ -242,13 +263,13 @@ def test_check_uuid(existing_metadata, path_for_sync, path_for_metadata):
             "path": str(path_for_sync),
         }
     }
-    sync = setup_sync(additional_config=additional_config)
+    sync = setup_sync(additional_config=additional_config, monkeypatch=monkeypatch)
 
     # Test destination_path
     sync.set_destination_path()
     assert sync.destination_path == str(path_for_sync)
 
-def test_check_uuid_value_error():
+def test_check_uuid_value_error(monkeypatch):
     """Test check_uuid raises ValueError when UUIDs do not match"""
     # First, set up a metadata.yaml with `different-UUID` in the destination sync path
     sync_dir = tmpdir / "sync_dir"
@@ -263,7 +284,7 @@ def test_check_uuid_value_error():
             "path": str(sync_dir),
         }
     }
-    sync = setup_sync(additional_config=additional_config)
+    sync = setup_sync(additional_config=additional_config, monkeypatch=monkeypatch)
 
     # Test check_uuid raises ValueError
     with pytest.raises(ValueError, match="payu: error: Mismatched experiment UUIDs in sync destination."):
@@ -318,15 +339,15 @@ def test_check_uuid_value_error():
             }, ""
         )
     ])
-def test_set_excludes_flags(add_config, expected_excludes):
-    sync = setup_sync(additional_config=add_config)
+def test_set_excludes_flags(monkeypatch, add_config, expected_excludes):
+    sync = setup_sync(additional_config=add_config, monkeypatch=monkeypatch)
 
     # Test setting excludes
     sync.set_excludes_flags()
     assert sync.excludes == expected_excludes
 
 
-def test_sync():
+def test_sync(monkeypatch):
     # Add some logs
     pbs_logs_path = os.path.join(expt_archive_dir, 'pbs_logs')
     os.makedirs(pbs_logs_path)
@@ -359,7 +380,7 @@ def test_sync():
             "runlog": False
         }
     }
-    sync = setup_sync(additional_config)
+    sync = setup_sync(additional_config, monkeypatch, add_envt_vars={'PAYU_CURRENT_RUN': '4'})
 
     # Function to test
     sync.run()
@@ -392,13 +413,14 @@ def test_sync():
 
     # Test sync with remove synced files locally flag
     additional_config['sync']['remove_local_files'] = True
-    sync = setup_sync(additional_config)
+    sync = setup_sync(additional_config, monkeypatch)
     sync.run()
 
     # Check synced files are removed from local archive
     # Except for the protected paths (last output in this case)
     for output in ['output000', 'output001', 'output002', 'output003']:
-        file_path = os.path.join(expt_archive_dir, dir, f'test-{output}-file')
+        file_path = os.path.join(expt_archive_dir, output, f'test-{output}-file')
+        print(f"Checking {file_path} is removed")
         assert not os.path.exists(file_path)
 
     last_output_path = os.path.join(expt_archive_dir, 'output004')
@@ -407,7 +429,7 @@ def test_sync():
 
     # Test sync with remove synced dirs flag as well
     additional_config['sync']['remove_local_dirs'] = True
-    sync = setup_sync(additional_config)
+    sync = setup_sync(additional_config, monkeypatch)
     sync.run()
 
     # Assert synced output dirs removed (except for the last output)

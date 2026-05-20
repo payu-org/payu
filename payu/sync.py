@@ -63,7 +63,7 @@ def filter_previous_runs(all_dir, prefix=None):
 
         # Only include directories that are less than or equal to the current run
         if int(suffix) <= int(current_run):
-            return sorted_dir[i:]
+            return sorted_dir[i:][::-1]
 
     # Return empty list if no directories are <= current run
     return []
@@ -247,7 +247,7 @@ class SyncToRemoteArchive():
     def run_cmd(self, source_path):
         """Given an source path, build and run rsync command"""
         cmd = self.build_cmd(source_path)
-        print(cmd)
+        print(f"Running command: {cmd}")
         try:
             subprocess.check_call(cmd, shell=True)
         except subprocess.CalledProcessError as e:
