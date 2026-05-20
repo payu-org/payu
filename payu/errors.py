@@ -43,13 +43,19 @@ class PayuRunError(PayuError):
 class PayuGitError(PayuError):
     '''
     Raised when there are Git related issues.
+
+    Ex. failed 'git clone', or file permission issues
+    with the Git repository.
     '''
     exit_code = 5
 
 
 class PayuBranchError(PayuError):
     '''
-    Custom exception for payu branch operations
+    Custom exception for payu branch operations.
+
+    Ex. when checking out to non-existent branches,
+    or if there is an error while fetching branches.
     '''
     exit_code = 6
  
