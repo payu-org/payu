@@ -26,7 +26,7 @@ import warnings
 import pwd
 
 # Extensions
-import yaml
+from ruamel.yaml import YAML
 from packaging import version
 
 # Local
@@ -715,8 +715,10 @@ class Experiment(object):
             os.environ['PAYU_RUN_ID'] = str(self.run_id)
 
         # Dump out environment
+        yaml = YAML()
+        yaml.default_flow_style = False
         with open(self.env_fname, 'w') as file:
-            file.write(yaml.dump(dict(os.environ), default_flow_style=False))
+            yaml.dump(dict(os.environ), file)
 
         # Update run info file
         telemetry.update_run_job_file(

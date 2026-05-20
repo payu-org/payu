@@ -23,7 +23,8 @@ import stat
 import warnings
 
 # Extensions
-import yaml
+from ruamel.yaml import YAML
+from ruamel.yaml.constructor import DuplicateKeyError
 
 DEFAULT_CONFIG_FNAME = 'config.yaml'
 
@@ -36,6 +37,11 @@ EXTENSION_TO_INTERPRETER = {'.py': sys.executable,
                             '.sh': '/bin/bash',
                             '.csh': '/bin/tcsh'}
 
+duplicate_key_warning = """
+    ---------------------------
+    Duplicate key found in config file.
+    Payu will keep the first value for this key.
+    --------------------------- """
 
 def movetree(src, dst, symlinks=False):
     """
@@ -56,26 +62,6 @@ def movetree(src, dst, symlinks=False):
     shutil.rmtree(src)
 
 
-class DuplicateKeyWarnLoader(yaml.SafeLoader):
-    def construct_mapping(self, node, deep=False):
-        """Add warning for duplicate keys in yaml file, as currently
-        PyYAML overwrites duplicate keys even though in YAML, keys
-        are meant to be unique
-        """
-        mapping = {}
-        for key_node, value_node in node.value:
-            key = self.construct_object(key_node, deep=deep)
-            value = self.construct_object(value_node, deep=deep)
-            if key in mapping:
-                warnings.warn(
-                    "Duplicate key found in config.yaml: "
-                    f"key '{key}' with value '{value}'. "
-                    f"This overwrites the original value: '{mapping[key]}'"
-                )
-            mapping[key] = value
-
-        return super().construct_mapping(node, deep)
-
 
 def read_config(config_fname=None):
     """Parse input configuration file and return a config dict."""
@@ -85,7 +71,22 @@ def read_config(config_fname=None):
 
     try:
         with open(config_fname, 'r') as config_file:
-            config = yaml.load(config_file, Loader=DuplicateKeyWarnLoader)
+
+            try:
+                # Attempt to load config with duplicate key checking first
+                yaml = YAML(typ='safe')
+                yaml.allow_duplicate_keys = False
+                config = yaml.load(config_file)
+
+            except DuplicateKeyError as e:
+                # Warn the user about duplicated keys,
+                # Second attempt to load config with duplicated key allowed.
+                warnings.warn("Details: " + str(e) + duplicate_key_warning, UserWarning)
+                yaml = YAML(typ='safe')
+                config_file.seek(0)
+                yaml.allow_duplicate_keys = True
+                config = yaml.load(config_file)
+                
 
         # NOTE: A YAML file with no content returns `None`
         if config is None:

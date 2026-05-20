@@ -14,7 +14,9 @@ import shutil
 
 # Extensions
 import f90nml
-import yaml
+from ruamel.yaml import YAML
+yaml = YAML()
+yaml.default_flow_style = False
 
 # Local
 from payu.models.model import Model
@@ -113,7 +115,7 @@ class Cable(Model):
         self.cable_nml = f90nml.read(self.cable_nml_path)
         if self.prior_restart_path:
             with open(self.restart_calendar_path, 'r') as restart_file:
-                self.restart_info = yaml.safe_load(restart_file)
+                self.restart_info = yaml.load(restart_file)
         else:
             self.restart_info = {'year': self.cable_nml['cable']['ncciy']}
 
@@ -130,7 +132,7 @@ class Cable(Model):
         forcing_year_config_path = os.path.join(self.work_path, self.forcing_year_config)
         if os.path.exists(forcing_year_config_path):
             with open(forcing_year_config_path, 'r') as file:
-                conf = yaml.safe_load(file)
+                conf = yaml.load(file)
                 forcing_year_config = conf if conf else {}
             for var in self.met_forcing_vars:
                 path = _get_forcing_path(
@@ -152,7 +154,7 @@ class Cable(Model):
         with open(os.path.join(self.restart_path,
                   self.restart_calendar_file), 'w') as restart_file:
             restart = {'year': self.restart_info['year'] + 1}
-            restart_file.write(yaml.dump(restart, default_flow_style=False))
+            yaml.dump(restart, restart_file)
 
         super(Cable, self).archive()
 
