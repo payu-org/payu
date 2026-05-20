@@ -1,0 +1,8 @@
+{
+    "version": "1.0.0",
+    "telemetry_url": "{{ env['PAYU_TELEMETRY_URL'] }}",
+    "telemetry_proxy_url": "{{ env['PAYU_TELEMETRY_PROXY_URL'] }}",
+    "telemetry_token": "{{ env['PAYU_TELEMETRY_TOKEN'] }}",
+    "telemetry_service_name": "payu",
+    "hostname": "{{ env['PAYU_TELEMETRY_HOSTNAME'] }}"
+}
