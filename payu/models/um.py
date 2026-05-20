@@ -18,7 +18,9 @@ import string
 
 # Extensions
 import f90nml
-import yaml
+from ruamel.yaml import YAML
+yaml = YAML()
+yaml.default_flow_style = False
 
 # Local
 from payu.fsops import make_symlink
@@ -86,8 +88,7 @@ class UnifiedModel(Model):
         # Save model time to restart next run
         with open(os.path.join(self.restart_path,
                   self.restart_calendar_file), 'w') as restart_file:
-            restart_file.write(yaml.dump({'end_date': end_date},
-                               default_flow_style=False))
+            yaml.dump({'end_date': end_date}, restart_file)
 
         end_date = date_to_um_dump_date(end_date)
 
@@ -131,7 +132,7 @@ class UnifiedModel(Model):
         # Set up environment variables needed to run UM.
         um_env_path = os.path.join(self.control_path, 'um_env.yaml')
         with open(um_env_path, 'r') as um_env_yaml:
-            um_env_vars = yaml.safe_load(um_env_yaml)
+            um_env_vars = yaml.load(um_env_yaml)
 
 
         # Stage the UM restart file.
@@ -219,7 +220,7 @@ class UnifiedModel(Model):
             )
 
         with open(restart_calendar_path, 'r') as calendar_file:
-            date_info = yaml.safe_load(calendar_file)
+            date_info = yaml.load(calendar_file)
 
         restart_date = date_info['end_date']
         if not isinstance(restart_date, datetime.date):

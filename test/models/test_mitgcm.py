@@ -6,7 +6,9 @@ import shutil
 
 import f90nml
 import pytest
-import yaml
+from ruamel.yaml import YAML
+yaml = YAML()
+yaml.default_flow_style = False
 
 import payu
 
@@ -192,7 +194,7 @@ def test_setup_restartdir(config, data):
     mitgcm_restart['endtime'] = 12000.
 
     with (restartdir / 'mitgcm.res.yaml').open('w') as file:
-        file.write(yaml.dump(mitgcm_restart, default_flow_style=False))
+        yaml.dump(mitgcm_restart, file)
 
     manifests = get_manifests(ctrldir/'manifests')
     payu_setup(lab_path=str(labdir))
@@ -254,7 +256,7 @@ def test_setup_change_deltat_no_start_end(config, data, case):
     mitgcm_restart['endtime'] = 12000.
 
     with (restartdir / 'mitgcm.res.yaml').open('w') as file:
-        file.write(yaml.dump(mitgcm_restart, default_flow_style=False))
+        yaml.dump(mitgcm_restart, file)
 
     if case['ntimesteps'] == 10:
         # This should throw an error, as it would overwrite the existing
@@ -324,7 +326,7 @@ def test_setup_change_deltat_no_ntimesteps(config, data, case):
     mitgcm_restart['endtime'] = 12000.
 
     with (restartdir / 'mitgcm.res.yaml').open('w') as file:
-        file.write(yaml.dump(mitgcm_restart, default_flow_style=False))
+        yaml.dump(mitgcm_restart, file)
 
     if case['deltat'] == 2400.:
         # This should throw an error, as it would overwrite the existing
@@ -398,7 +400,7 @@ def test_setup_change_deltat(config, data, case):
     mitgcm_restart['endtime'] = 12000.
 
     with (restartdir / 'mitgcm.res.yaml').open('w') as file:
-        file.write(yaml.dump(mitgcm_restart, default_flow_style=False))
+        yaml.dump(mitgcm_restart, file)
 
     payu_setup(lab_path=str(labdir))
 
