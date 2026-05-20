@@ -9,10 +9,11 @@ from ruamel.yaml import YAML
 from unittest.mock import patch, MagicMock
 
 from payu.branch import add_restart_to_config, check_restart, switch_symlink
-from payu.branch import checkout_branch, clone, list_branches, PayuBranchError
+from payu.branch import checkout_branch, clone, list_branches
 from payu.metadata import MetadataWarning
 from payu.fsops import read_config
 from payu.subcommands import clone_cmd
+import payu.errors as errors
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -676,7 +677,7 @@ def test_clone_startpoint_with_no_new_branch_error():
     # Run Clone
     cloned_repo_path = tmpdir / "clonedRepo"
     with cd(tmpdir):
-        with pytest.raises(PayuBranchError, match=expected_msg):
+        with pytest.raises(errors.PayuBranchError, match=expected_msg):
             clone(
                 repository=str(source_repo_path),
                 directory=cloned_repo_path,
