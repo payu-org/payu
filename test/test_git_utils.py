@@ -6,6 +6,7 @@ import pytest
 
 from payu.git_utils import get_git_repository, GitRepository, check_git_parent
 from payu.git_utils import PayuBranchError, PayuGitWarning
+from payu import errors
 
 from test.common import tmpdir
 
@@ -186,7 +187,7 @@ def test_git_checkout_new_branch_existing():
 
     # Test checkout branch with existing branch
     repo = GitRepository(repo_path)
-    with pytest.raises(PayuBranchError):
+    with pytest.raises(errors.PayuBranchError):
         repo.checkout_branch(str(existing_branch),
                              new_branch=True)
 
@@ -198,7 +199,7 @@ def test_git_checkout_non_existent_branch():
 
     # Test checkout branch with non-existent branch
     repo = GitRepository(repo_path)
-    with pytest.raises(PayuBranchError):
+    with pytest.raises(errors.PayuBranchError):
         repo.checkout_branch("Gibberish")
 
 
@@ -216,7 +217,7 @@ def test_git_checkout_staged_changes():
 
     # Test checkout raises error with staged changes
     repo.repo.index.add([file_path])
-    with pytest.raises(PayuBranchError):
+    with pytest.raises(errors.PayuBranchError):
         repo.checkout_branch(new_branch=True, branch_name="NewBranch2")
 
 
