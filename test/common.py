@@ -5,7 +5,9 @@ from pathlib import Path
 import re
 import shutil
 
-import yaml
+from ruamel.yaml import YAML
+yaml = YAML()
+yaml.default_flow_style = False
 
 # Namespace clash if import setup_cmd.runcmd as setup. For
 # consistency use payu_ prefix for all commands
@@ -94,7 +96,7 @@ def get_manifests(mfdir):
     for mf in ['exe', 'input', 'restart']:
         mfpath = Path(mfdir)/"{}.yaml".format(mf)
         with mfpath.open() as fh:
-            manifests[mfpath.name] = list(yaml.safe_load_all(fh))[1]
+            manifests[mfpath.name] = list(yaml.load_all(fh))[1]
     return manifests
 
 
@@ -138,8 +140,7 @@ def payu_setup(model_type=None,
 
 def write_config(config, path=config_path):
     with path.open('w') as file:
-        file.write(yaml.dump(config, default_flow_style=False,
-                   sort_keys=False))
+        yaml.dump(config, file)
 
 
 def make_exe(exe_name=None):
@@ -220,7 +221,7 @@ def remove_expt_archive_dirs(type='restart'):
 
 def write_metadata(metadata=metadata, path=metadata_path):
     with path.open('w') as file:
-        file.write(yaml.dump(metadata, default_flow_style=False))
+        yaml.dump(metadata, file)
 
 
 def make_all_files():

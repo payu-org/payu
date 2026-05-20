@@ -5,7 +5,9 @@ import shutil
 import pytest
 import datetime
 import cftime
-import yaml
+from ruamel.yaml import YAML
+yaml = YAML()
+yaml.default_flow_style = False
 
 import payu
 
@@ -68,8 +70,7 @@ def make_atmosphere_restart_dir(date,
                                      date.hour,
                                      date.minute,
                                      date.second)
-        um_cal_file.write(yaml.dump({'end_date': date_out},
-                                    default_flow_style=False))
+        yaml.dump({'end_date': date_out}, um_cal_file)
 
 
 @pytest.mark.parametrize(
