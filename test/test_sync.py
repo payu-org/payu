@@ -92,7 +92,7 @@ def test_filter_previous_runs(monkeypatch):
     # Set current run to 3
     monkeypatch.setenv("PAYU_CURRENT_RUN", "999")
 
-    all_dirs = ['output1001', 'output997', 'output999', 'output1002', 'output998']
+    all_dirs = ['output997', 'output998', 'output999', 'output1001', 'output1002']
     prefix = 'output'
     
     expected = ['output997', 'output998', 'output999']
@@ -106,7 +106,7 @@ def test_filter_previous_runs_no_current_run(monkeypatch):
     
     monkeypatch.delenv("PAYU_CURRENT_RUN", raising=False)
 
-    all_dirs = ['output1001', 'output997', 'output999', 'output1002', 'output998']
+    all_dirs = ['output997', 'output998', 'output999', 'output1001', 'output1002']
     prefix = 'output'
 
     result = payu.sync.filter_previous_runs(all_dirs, prefix=prefix)

@@ -16,7 +16,7 @@ import time
 
 
 # Local
-from payu.fsops import list_archive_dirs
+from payu.fsops import list_sorted_archive_dirs
 from payu.metadata import METADATA_FILENAME, UUID_FIELD
 
 DEST_NOT_CONFIGURED_MSG ="""
@@ -55,15 +55,12 @@ def filter_previous_runs(all_dir, prefix):
               "Syncing all runs in archive.")
         return all_dir
 
-    # Sort the dicectories from lowest to highest based on the suffix number
-    sorted_dir = sorted(all_dir, key=lambda d: int(d.removeprefix(prefix)))
-
-    for i in range(len(sorted_dir)-1, -1, -1):
-        suffix = sorted_dir[i].removeprefix(prefix)
+    for i in range(len(all_dir)-1, -1, -1):
+        suffix = all_dir[i].removeprefix(prefix)
 
         # Only include suffix that is less than or equal to the current run
         if int(suffix) <= int(current_run):
-            return sorted_dir[0:i+1]
+            return all_dir[0:i+1]
 
     # Return empty list if no directories are <= current run
     return []
@@ -87,7 +84,7 @@ class SyncToRemoteArchive():
     def add_outputs_to_sync(self):
         """Add paths of outputs in archive to sync. The last output is
         protected"""
-        all_outputs = list_archive_dirs(archive_path=self.expt.archive_path,
+        all_outputs = list_sorted_archive_dirs(archive_path=self.expt.archive_path,
                                     dir_type='output')
         outputs = filter_previous_runs(all_outputs, prefix='output')
         outputs = [os.path.join(self.expt.archive_path, output)
@@ -111,7 +108,7 @@ class SyncToRemoteArchive():
             return
 
         # Get sorted list of restarts in archive
-        all_restarts = list_archive_dirs(archive_path=self.expt.archive_path,
+        all_restarts = list_sorted_archive_dirs(archive_path=self.expt.archive_path,
                                      dir_type='restart')
         restarts = filter_previous_runs(all_restarts, prefix='restart')
         restarts = [os.path.join(self.expt.archive_path, restart)

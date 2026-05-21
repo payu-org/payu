@@ -32,7 +32,7 @@ from packaging import version
 # Local
 from payu import envmod
 from payu.fsops import make_symlink, read_config, movetree
-from payu.fsops import list_archive_dirs
+from payu.fsops import list_sorted_archive_dirs
 from payu.fsops import run_script_command
 from payu.fsops import needs_subprocess_shell
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
@@ -258,7 +258,7 @@ class Experiment(object):
         """Given a output directory type (output or restart),
         return the maximum index of output directories found"""
         try:
-            output_dirs = list_archive_dirs(archive_path=self.archive_path,
+            output_dirs = list_sorted_archive_dirs(archive_path=self.archive_path,
                                             dir_type=output_type)
         except FileNotFoundError:
             # Archive path does not exist yet
@@ -1157,7 +1157,7 @@ class Experiment(object):
             return []
 
         # Sorted list of restart directories in archive
-        restarts = list_archive_dirs(archive_path=self.archive_path,
+        restarts = list_sorted_archive_dirs(archive_path=self.archive_path,
                                      dir_type='restart')
         restart_indices = {}
         for restart in restarts:

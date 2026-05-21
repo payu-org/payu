@@ -6,10 +6,10 @@ from unittest.mock import patch
 from pathlib import Path
 
 # import payu packages
-from payu.fsops import atomic_write_file, movetree, list_archive_dirs
+from payu.fsops import atomic_write_file, movetree, list_sorted_archive_dirs
 
 # import some common variables for testing
-from .common import tmpdir, testdir, archive_dir, make_all_files
+from .common import tmpdir, testdir, labdir, archive_dir, make_all_files
 
 def scantree(path):
     """
@@ -131,19 +131,36 @@ def test_atomic_write_file_disrupt_dump(monkeypatch):
         content_after_error = json.load(f)
     assert content_after_error == content
 
-def test_list_archive_dirs(setup_test_dir):
-    """Test that list_archive_dirs returns expected directories."""
+
+def test_list_sorted_archive_dirs(setup_test_dir):
+    """Test that list_sorted_archive_dirs correctly lists and sorts directory names."""
+    # Create archive directories - mix of valid/invalid names
+    archive_dirs = [
+        'output000', 'output1001', 'output023', 'output404',
+        'output', 'Output001', 'output44', # not valid output dir
+        'Restart', 'restart2', 'restart', 'restart55', # not valid restart dir
+        'restart102932', 'restart021', 'restart009', 'restart606'
+    ]
+
     os.makedirs(archive_dir, exist_ok=True)
+    for dir in archive_dirs:
+        (archive_dir / dir).mkdir(parents=True)
 
-    # Create some directories and files in the archive directory
-    for n in [1001, 997, 999, 1002, 998, 1000]:
-        (archive_dir / f"output{n}").mkdir()
-        (archive_dir / f"restart{n}").mkdir()
+    # Add some files
+    (archive_dir / 'restart005').touch()
+    (archive_dir / 'output005').touch()
 
-    # Create a file that match the prefix but is not a directory
-    (archive_dir / f"output{n}.txt").touch()
+    # Add a restart symlink
+    archive_dir2 = labdir / 'archive2'
+    source_path = archive_dir2 / 'restart999'
+    source_path.mkdir(parents=True)
+    (archive_dir / 'restart23042').symlink_to(source_path)
 
-    result = list_archive_dirs(archive_dir, "output")
+    # Test list output dirs and with string archive path
+    outputs = list_sorted_archive_dirs(str(archive_dir), dir_type="output")
+    assert outputs == ['output000', 'output023', 'output404', 'output1001']
 
-    # Check that only directories with the prefix are returned and sorted correctly
-    assert result == [f"output{n}" for n in range(997, 1003)]
+    # Test list restarts
+    restarts = list_sorted_archive_dirs(archive_dir, dir_type="restart")
+    assert restarts == ['restart009', 'restart021', 'restart606',
+                        'restart23042', 'restart102932']
