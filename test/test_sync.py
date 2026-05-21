@@ -87,8 +87,10 @@ def assert_expected_archive_paths(source_paths,
 
 
 def test_filter_previous_runs(monkeypatch):
-    """Test filter_previous_runs pick up runs <= the current run."""
-
+    """
+    Test filter_previous_runs pick up runs <= the current run.
+    filter_previous_runs expects to have sorted directories from lowest to highest as inputs.
+    """
     # Set current run to 3
     monkeypatch.setenv("PAYU_CURRENT_RUN", "999")
 
