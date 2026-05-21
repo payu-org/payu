@@ -239,7 +239,7 @@ def required_libs(bin_path):
     return parse_ldd_output(ldd_out)
 
 
-def list_archive_dirs(archive_path: Union[Path, str],
+def list_sorted_archive_dirs(archive_path: Union[Path, str],
                       dir_type: str = "output") -> List[str]:
     """Return a sorted list of restart or output directories in archive"""
     naming_pattern = re.compile(fr"^{dir_type}[0-9][0-9][0-9]+$")
@@ -253,7 +253,7 @@ def list_archive_dirs(archive_path: Union[Path, str],
         if real_path.is_dir() and naming_pattern.match(path.name):
             dirs.append(path.name)
 
-    dirs.sort(key=lambda d: int(d.lstrip(dir_type)))
+    dirs.sort(key=lambda d: int(d.removeprefix(dir_type)))
     return dirs
 
 
