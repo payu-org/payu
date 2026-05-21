@@ -253,7 +253,7 @@ def list_archive_dirs(archive_path: Union[Path, str],
         if real_path.is_dir() and naming_pattern.match(path.name):
             dirs.append(path.name)
 
-    dirs.sort(key=lambda d: int(d.lstrip(dir_type)))
+    dirs.sort(key=lambda d: int(d.removeprefix(dir_type)))
     return dirs
 
 

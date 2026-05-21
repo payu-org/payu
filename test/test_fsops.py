@@ -6,10 +6,10 @@ from unittest.mock import patch
 from pathlib import Path
 
 # import payu packages
-from payu.fsops import atomic_write_file, movetree
+from payu.fsops import atomic_write_file, movetree, list_archive_dirs
 
 # import some common variables for testing
-from .common import tmpdir, testdir, make_all_files
+from .common import tmpdir, testdir, archive_dir, make_all_files
 
 def scantree(path):
     """
@@ -131,3 +131,19 @@ def test_atomic_write_file_disrupt_dump(monkeypatch):
         content_after_error = json.load(f)
     assert content_after_error == content
 
+def test_list_archive_dirs(setup_test_dir):
+    """Test that list_archive_dirs returns expected directories."""
+    os.makedirs(archive_dir, exist_ok=True)
+
+    # Create some directories and files in the archive directory
+    for n in [1001, 997, 999, 1002, 998, 1000]:
+        (archive_dir / f"output{n}").mkdir()
+        (archive_dir / f"restart{n}").mkdir()
+
+    # Create a file that match the prefix but is not a directory
+    (archive_dir / f"output{n}.txt").touch()
+
+    result = list_archive_dirs(archive_dir, "output")
+
+    # Check that only directories with the prefix are returned and sorted correctly
+    assert result == [f"output{n}" for n in range(997, 1003)]

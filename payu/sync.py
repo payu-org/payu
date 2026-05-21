@@ -43,7 +43,7 @@ class SourcePath():
         self.path = path
         self.is_log_file = is_log_file
 
-def filter_previous_runs(all_dir, prefix=None):
+def filter_previous_runs(all_dir, prefix):
     """Given a list of directories of all runs (e.g., ['output001', 'output002']), 
     filter to only include dir that is less than or equal to current run."""
     if all_dir == []:
@@ -55,15 +55,15 @@ def filter_previous_runs(all_dir, prefix=None):
               "Syncing all runs in archive.")
         return all_dir
 
-    # Sort the dicectories from highest to lowest
-    sorted_dir = sorted(all_dir)[::-1]
-    for i in range(len(sorted_dir)):
-        directory = sorted_dir[i]
-        suffix = directory.replace(prefix, '') if prefix else directory
+    # Sort the dicectories from lowest to highest based on the suffix number
+    sorted_dir = sorted(all_dir, key=lambda d: int(d.removeprefix(prefix)))
 
-        # Only include directories that are less than or equal to the current run
+    for i in range(len(sorted_dir)-1, -1, -1):
+        suffix = sorted_dir[i].removeprefix(prefix)
+
+        # Only include suffix that is less than or equal to the current run
         if int(suffix) <= int(current_run):
-            return sorted_dir[i:][::-1]
+            return sorted_dir[0:i+1]
 
     # Return empty list if no directories are <= current run
     return []

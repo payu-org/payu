@@ -90,12 +90,12 @@ def test_filter_previous_runs(monkeypatch):
     """Test filter_previous_runs pick up runs <= the current run."""
 
     # Set current run to 3
-    monkeypatch.setenv("PAYU_CURRENT_RUN", "3")
+    monkeypatch.setenv("PAYU_CURRENT_RUN", "999")
 
-    all_dirs = ['output001', 'output002', 'output003', 'output004', 'output005']
+    all_dirs = ['output1001', 'output997', 'output999', 'output1002', 'output998']
     prefix = 'output'
     
-    expected = ['output001', 'output002', 'output003']
+    expected = ['output997', 'output998', 'output999']
     result = payu.sync.filter_previous_runs(all_dirs, prefix=prefix)
     
     assert result == expected
@@ -106,10 +106,11 @@ def test_filter_previous_runs_no_current_run(monkeypatch):
     
     monkeypatch.delenv("PAYU_CURRENT_RUN", raising=False)
 
-    all_dirs = ['output001', 'output002', 'output003', 'output004', 'output005']
+    all_dirs = ['output1001', 'output997', 'output999', 'output1002', 'output998']
     prefix = 'output'
 
-    assert payu.sync.filter_previous_runs(all_dirs, prefix=prefix) == all_dirs
+    result = payu.sync.filter_previous_runs(all_dirs, prefix=prefix)
+    assert result == all_dirs
 
 
 @pytest.mark.parametrize(
