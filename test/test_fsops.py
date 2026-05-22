@@ -1,13 +1,63 @@
 import json
 import pytest
 import os
+import shutil
 from unittest.mock import patch
+from pathlib import Path
 
 # import payu packages
-from payu.fsops import atomic_write_file
+from payu.fsops import atomic_write_file, movetree
 
 # import some common variables for testing
-from .common import tmpdir
+from .common import tmpdir, testdir, make_all_files
+
+def scantree(path):
+    """
+    Recursively yield DirEntry objects for given directory.
+    https://stackoverflow.com/a/33135143/4727812
+    """
+    for entry in os.scandir(path):
+        if entry.is_dir(follow_symlinks=False):
+            yield from scantree(entry.path)
+        else:
+            yield entry
+
+def savetree(path):
+    """
+    Save a directory tree to a dict
+    """
+    result = {}
+    for entry in scantree(path):
+        result[entry.name] = (Path(entry.path).relative_to(path),
+                              entry.stat().st_size)
+    return(result)
+
+def test_movetree():
+    tmptwo = testdir / 'tmp2'
+    try:
+        shutil.rmtree(tmptwo)
+    except FileNotFoundError:
+        pass
+
+    make_all_files()
+
+    treeinfo = savetree(tmpdir)
+
+    tmp_inode = tmpdir.stat().st_ino
+
+    movetree(tmpdir, tmptwo)
+
+    # Ensure src directory removed
+    assert(not tmpdir.exists())
+
+    # Ensure dst directory has new inode number
+    assert(tmp_inode != tmptwo.stat().st_ino)
+
+    # Ensure directory tree faithfully moved
+    assert(treeinfo == savetree(tmptwo))
+
+    # Move tmp2 back to tmp
+    shutil.move(tmptwo, tmpdir)
 
 def test_atomic_write_file_new_content():
     """Test that atomic_write_file write expected content into designated file
@@ -80,3 +130,4 @@ def test_atomic_write_file_disrupt_dump(monkeypatch):
     with open(orig_file, 'r') as f:
         content_after_error = json.load(f)
     assert content_after_error == content
+

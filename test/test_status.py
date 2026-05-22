@@ -2,7 +2,10 @@ import json
 import pytest
 from freezegun import freeze_time
 import cftime
-from unittest.mock import MagicMock
+import shutil
+from unittest.mock import Mock, MagicMock
+
+from test.common import cd, tmpdir, labdir, write_config, ctrldir_basename, ctrldir
 
 from payu.status import (
     find_file_match,
@@ -13,6 +16,7 @@ from payu.status import (
     display_job_info
 )
 
+from payu.laboratory import Laboratory
 from payu.experiment import Experiment
 from payu.subcommands.status_cmd import runcmd
 from payu.git_utils import PayuGitWarning
@@ -101,10 +105,10 @@ def test_find_scheduler_logs_pbs(tmp_path, scheduler, jobid, base_dir,
     assert path2 == stderr_path
 
 
-def write_job_file(archive_path, job_id, run_number, job_data):
+def write_job_file(archive_path, job_id, run_number, job_data, type="run"):
     """Helper function to write job data to a file"""
     job_file = (
-        archive_path / "payu_jobs" / str(run_number) / "run" / f"{job_id}.json"
+        archive_path / "payu_jobs" / str(run_number) / type / f"{job_id}.json"
     )
     job_file.parent.mkdir(parents=True, exist_ok=True)
     with open(job_file, 'w') as f:
@@ -204,6 +208,55 @@ def failed_job(tmp_path, request):
             }
         )
 
+@pytest.fixture
+def archived_collate_jobs(tmp_path, request):
+    """Fixture to create a collate job files"""
+    if request.param:
+        files = []
+        for i in range(3):
+            files.append(
+                write_job_file(
+                    archive_path=tmp_path / "archive",
+                    job_id=f"test-collate-id-{i}",
+                    run_number=i,
+                    job_data={
+                        "scheduler_job_id": f"test-collate-id-{i}",
+                        "scheduler_type": "pbs",
+                        "metadata": {"uuid": "test-uuid"},
+                        "payu_current_run": i,
+                        "stage": "exited",
+                        "payu_collate_status": 0,
+                        "timings": {
+                            "payu_start_time": f"2025-08-1{i}T12:00:00"
+                        }
+                    },
+                    type="collate"
+                )
+            )
+        return files
+
+@pytest.fixture
+def failed_collate_jobs(tmp_path, request):
+    """Fixture to create a failed collate job file"""
+    if request.param:
+        return write_job_file(
+            archive_path=tmp_path / "archive",
+            job_id="test-collate-id-failed",
+            run_number=2,
+            job_data={
+                "scheduler_job_id": "test-collate-id-failed",
+                "scheduler_type": "pbs",
+                "metadata": {"uuid": "test-uuid"},
+                "payu_current_run": 2,
+                "payu_collate_id": "commit-hash-failed",
+                "stage": "exited",
+                "payu_collate_status": 1,
+                "timings": {
+                    "payu_start_time": "2025-08-12T09:00:00"
+                }
+            },
+            type="collate"
+        )
 
 @pytest.mark.parametrize(
     "archive_jobs,running_job,queued_job,latest_file,all_files",
@@ -354,14 +407,34 @@ def expected_failed_job_info():
         'start_time': '2025-08-13T12:00:00'
     }
 
+def expected_collate_job_info(run_number):
+    return {
+        'job_id': f'test-collate-id-{run_number}',
+        'stage': 'exited',
+        'exit_status': 0,
+        'stderr_file': None,
+        'stdout_file': None,
+        'start_time': f'2025-08-1{run_number}T12:00:00'
+    }
+
+def expected_failed_collate_job_info():
+    return {
+        'job_id': "test-collate-id-failed",
+        'stage': 'exited',
+        'exit_status': 1,
+        'stderr_file': None,
+        'stdout_file': None,
+        'start_time': '2025-08-12T09:00:00'
+    }
+
 
 def remove_job_file_paths(data):
     """Remove job_file paths from the data for comparison."""
     if 'runs' in data:
         for payu_jobs in data['runs'].values():
-            if 'run' in payu_jobs:
-                for run in payu_jobs['run']:
-                    del run['job_file']
+            for job_type in payu_jobs.keys():
+                for job_info in payu_jobs[job_type]:
+                    del job_info['job_file']
 
 
 @pytest.mark.parametrize(
@@ -477,6 +550,64 @@ def test_build_job_info_latest(tmp_path, archive_jobs,
     remove_job_file_paths(latest_data)
 
     assert latest_data == expected
+
+
+@pytest.mark.parametrize(
+    "archive_jobs, archived_collate_jobs, failed_collate_jobs, expected",
+    [
+        (True, True, True,
+        {
+                'runs': {
+                    0: {'run': [expected_archive_job_info(0)],
+                        'collate': [expected_collate_job_info(0)]},
+                    1: {'run': [expected_archive_job_info(1)],
+                        'collate': [expected_collate_job_info(1)]},
+                    2: {'run': [expected_archive_job_info(2)],
+                        'collate': [expected_failed_collate_job_info(),
+                                    expected_collate_job_info(2)]}
+                }
+            }),
+    ],
+    indirect=["archive_jobs", "archived_collate_jobs", "failed_collate_jobs"]
+)
+def test_build_job_info_collate(tmp_path, archive_jobs, archived_collate_jobs, failed_collate_jobs, expected):
+    """ Test collate job info is correctly included in build_job_info."""
+    # Mock expt.get_model_cur_expt_time() in build_job_info
+    mock_expt = MagicMock()
+    mock_expt.get_model_cur_expt_time.return_value = cftime.datetime(1901, 1, 15, 0, 30, 0)
+
+    # ---- For the latest runs ----
+    latest_data = build_job_info(
+        control_path=tmp_path / "control",
+        archive_path=tmp_path / "archive",
+        expt=mock_expt
+    )
+
+    # Remove job file from check as it contains tmp_path
+    remove_job_file_paths(latest_data)
+
+    expected_latest = {
+        # Should only include the last run number
+        'runs': {
+            2: {
+                'run': expected['runs'][2]['run'],
+                # Should only include the lastest colalte job
+                'collate': [expected['runs'][2]['collate'][1]]}
+        }}
+    assert latest_data == expected_latest
+
+    # ---- For all runs ----
+    all_runs = build_job_info(
+        control_path=tmp_path / "control",
+        archive_path=tmp_path / "archive",
+        all_runs=True,
+        expt=mock_expt
+    )
+
+    # Remove job file from check as it contains tmp_path
+    remove_job_file_paths(all_runs)
+
+    assert all_runs == expected
 
 
 def test_status_cmd_no_metadata(tmp_path):
@@ -787,3 +918,36 @@ def test_build_job_info_error_get_cur_expt_time(tmp_path, running_job):
     del expected_info["cur_expt_time"]
 
     assert data == {'runs': {3: {'run': [expected_info]}}}
+
+
+def test_get_job_file(tmp_path):
+    """Test the expt.get_job_file function returns the correct path"""
+    tmpdir.mkdir(parents=True, exist_ok=True)
+    labdir.mkdir(parents=True, exist_ok=True)
+    ctrldir.mkdir(parents=True, exist_ok=True)
+
+    # Write a minimal config file
+    config = {
+            'laboratory': 'lab',
+            'jobname': 'testrun',
+            'model': 'mom6',
+            'exe': 'test.exe',
+            'experiment': ctrldir_basename,
+            'metadata': {
+                'enable': False
+            }
+    }
+    write_config(config)
+
+    # Set up a mock experiment
+    with cd(ctrldir):
+        lab = Laboratory(lab_path=str(labdir))
+        expt = Experiment(lab, reproduce=False)
+    expt.archive_path = tmpdir / "archive" 
+    expt.counter = 3
+    expt.scheduler.get_job_id = Mock(return_value="12345")
+
+    assert expt.get_job_file() == expt.archive_path / "payu_jobs" / "3" / "run" / "12345.json"
+    assert expt.get_job_file(type='collate') == expt.archive_path / "payu_jobs" / "3" / "collate" / "12345.json"
+
+    shutil.rmtree(tmpdir)

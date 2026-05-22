@@ -19,41 +19,13 @@ verbose = True
 # Global config
 config = copy.deepcopy(config_orig)
 
-
-def setup_module(module):
+@pytest.fixture(autouse=True)
+def setup_module(setup_test_dir, empty_workdir):
     """
-    Put any test-wide setup code in here, e.g. creating test files
+    Put any test-wide setup code in here, e.g. creating test files.
+    Files created here will be automatically cleaned up by `setup_test_dir` fixture after tests.
     """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
-    try:
-        tmpdir.mkdir()
-        labdir.mkdir()
-        ctrldir.mkdir()
-        make_all_files()
-    except Exception as e:
-        print(e)
-
-
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
-
-    try:
-        shutil.rmtree(tmpdir)
-        print('removing tmp')
-    except Exception as e:
-        print(e)
+    make_all_files()
 
 
 @pytest.fixture(autouse=True)

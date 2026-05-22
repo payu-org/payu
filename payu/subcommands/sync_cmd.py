@@ -58,6 +58,7 @@ def runcmd(model_type, config_path, lab_path, dir_path, sync_restarts,
 
     pbs_config['qsub_flags'] = sync_config.get('qsub_flags', '')
 
+    # Submit PBS job with expt = None so no job file is written
     cli.submit_job('payu-sync', pbs_config, pbs_vars)
 
 

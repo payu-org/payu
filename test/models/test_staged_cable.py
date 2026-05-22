@@ -13,29 +13,9 @@ from test.common import make_random_file, make_inputs, make_exe
 
 verbose = True
 
-
-def setup_module(module):
-    """
-    Put any test-wide setup code in here, e.g. creating test files
-    """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
-    try:
-        tmpdir.mkdir()
-        labdir.mkdir()
-        ctrldir.mkdir()
-        expt_workdir.mkdir(parents=True)
-        archive_dir.mkdir()
-    except Exception as e:
-        print(e)
-
+@pytest.fixture(autouse=True)
+def setup_module(setup_test_dir, empty_workdir):
+    archive_dir.mkdir()
     config = {
         'laboratory': 'lab',
         'jobname': 'testrun',
@@ -98,19 +78,6 @@ def setup_module(module):
 
     with open(ctrldir / 'stage_1/cable.nml', 'w') as patch_nml_f:
         f90nml.write(patch_nml, patch_nml_f)
-
-
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
-
-    try:
-        shutil.rmtree(tmpdir)
-    except Exception as e:
-        print(e)
 
 
 def test_staged_cable():

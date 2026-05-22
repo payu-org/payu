@@ -43,43 +43,15 @@ RESTART_NAME = "./RESTART/iced.r"
 ICED_RESTART_NAME = "iced.18510101"
 RESTART_POINTER_NAME = "ice.restart_file"
 
-
-def setup_module(module):
+@pytest.fixture(autouse=True)
+def setup_module(setup_test_dir, empty_workdir):
     """
-    Put any test-wide setup code in here, e.g. creating test files
+    Put any test-wide setup code in here, e.g. creating test files.
+    Files created here will be automatically cleaned up by `setup_test_dir` fixture after tests.
     """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
-    try:
-        tmpdir.mkdir()
-        labdir.mkdir()
-        ctrldir.mkdir()
-        expt_archive_dir.mkdir(parents=True)
-        make_exe()
-        write_metadata()
-    except Exception as e:
-        print(e)
-
-
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
-
-    try:
-        shutil.rmtree(tmpdir)
-        print("removing tmp")
-    except Exception as e:
-        print(e)
+    expt_archive_dir.mkdir(parents=True)
+    make_exe()
+    write_metadata()
 
 
 DEFAULT_CONFIG = {
@@ -119,20 +91,18 @@ def config(request):
 
 
 @pytest.fixture(autouse=True)
-def empty_workdir():
+def empty_workdir(setup_test_dir):
     """
     Model setup tests require a clean work directory and symlink from
     the control directory.
     """
     expt_workdir.mkdir(parents=True)
     # Symlink must exist for setup to use correct locations
+    if workdir.exists():
+        shutil.rmtree(workdir)
     workdir.symlink_to(expt_workdir)
 
     yield expt_workdir
-    try:
-        shutil.rmtree(expt_workdir)
-    except FileNotFoundError:
-        pass
     workdir.unlink()
 
 
@@ -207,15 +177,13 @@ def test_setup(config, cice_nml, cice_history_nml):
 
 
 @pytest.fixture
-def prior_restart_dir():
+def prior_restart_dir(setup_test_dir):
     """Create prior restart directory"""
     restart_path = RESTART_PATH
-    os.mkdir(restart_path)
+    os.makedirs(restart_path, exist_ok=True)
 
     yield restart_path
 
-    # Cleanup
-    shutil.rmtree(restart_path)
 
 
 @pytest.fixture(

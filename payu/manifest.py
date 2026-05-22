@@ -10,7 +10,6 @@
 from __future__ import print_function, absolute_import
 
 # External
-import fnmatch
 import os
 import sys
 import shutil

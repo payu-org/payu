@@ -11,27 +11,12 @@ from test.common import make_inputs, make_exe
 
 MODEL = 'access-om2'
 
-def setup_module(module):
+@pytest.fixture(autouse=True)
+def setup_module(setup_test_dir, empty_workdir):
     """
     Put any test-wide setup code in here, e.g. creating test files
     """
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
-    try:
-        tmpdir.mkdir()
-        labdir.mkdir()
-        ctrldir.mkdir()
-        workdir.mkdir()
-        # archive_dir.mkdir()
-        make_inputs()
-        make_exe()
-    except Exception as e:
-        print(e)
+    pass
 
 
 def setup_config(ncpu):
@@ -42,10 +27,6 @@ def setup_config(ncpu):
     config['ncpus'] = ncpu
 
     write_config(config)
-
-def teardown_config():
-    # Teardown
-    os.remove(config_path)
 
 def test_get_cur_expt_time():
     """ Test if get_cur_expt_time correctly parses the model date from the log file. """
@@ -65,8 +46,6 @@ def test_get_cur_expt_time():
 
         assert cur_expt_time.isoformat() == "1900-01-31T00:00:00"
 
-    teardown_config()
-    os.remove(log_path)
 
 def test_get_cur_expt_time_no_log():
     """ Test if get_cur_expt_time returns None if log file is missing. """
@@ -83,7 +62,6 @@ def test_get_cur_expt_time_no_log():
         with pytest.raises(FileNotFoundError):
             cur_expt_time = model.get_cur_expt_time()
 
-    teardown_config()
 
 def test_get_cur_expt_time_no_date():
     """ Test if get_cur_expt_time raise an error if log file does not contain model date. """
@@ -102,6 +80,3 @@ def test_get_cur_expt_time_no_date():
         with pytest.raises(ValueError, match=f"Key 'cur_exp-datetime' not found in {log_path}"):
             cur_expt_time = model.get_cur_expt_time()
             assert cur_expt_time is None
-
-    teardown_config()
-    os.remove(log_path)

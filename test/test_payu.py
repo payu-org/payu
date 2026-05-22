@@ -14,97 +14,11 @@ import payu.fsops
 import payu.laboratory
 import payu.envmod
 
-from .common import testdir, tmpdir, ctrldir, labdir, workdir, cd
-from .common import make_exe, make_inputs, make_restarts, make_all_files
+from .common import tmpdir, cd
 
 
 sys.path.insert(1, '../')
 verbose = False
-
-tmptwo = testdir / 'tmp2'
-
-
-def setup_module(module):
-    """
-    Put any test-wide setup code in here, e.g. creating test files
-    """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
-    try:
-        tmpdir.mkdir()
-        labdir.mkdir()
-        ctrldir.mkdir()
-    except Exception as e:
-        print(e)
-
-
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
-
-    try:
-        shutil.rmtree(tmpdir)
-        print('removing tmp')
-        shutil.rmtree(tmptwo)
-        print('removing tmp2')
-    except Exception as e:
-        print(e)
-
-
-def scantree(path):
-    """
-    Recursively yield DirEntry objects for given directory.
-    https://stackoverflow.com/a/33135143/4727812
-    """
-    for entry in os.scandir(path):
-        if entry.is_dir(follow_symlinks=False):
-            yield from scantree(entry.path)
-        else:
-            yield entry
-
-
-def savetree(path):
-    """
-    Save a directory tree to a dict
-    """
-    result = {}
-    for entry in scantree(path):
-        result[entry.name] = (Path(entry.path).relative_to(path),
-                              entry.stat().st_size)
-    return(result)
-
-
-def test_movetree():
-
-    make_all_files()
-
-    treeinfo = savetree(tmpdir)
-
-    tmp_inode = tmpdir.stat().st_ino
-
-    payu.fsops.movetree(tmpdir, tmptwo)
-
-    # Ensure src directory removed
-    assert(not tmpdir.exists())
-
-    # Ensure dst directory has new inode number
-    assert(tmp_inode != tmptwo.stat().st_ino)
-
-    # Ensure directory tree faithfully moved
-    assert(treeinfo == savetree(tmptwo))
-
-    # Move tmp2 back to tmp
-    shutil.move(tmptwo, tmpdir)
 
 
 def test_read_config():

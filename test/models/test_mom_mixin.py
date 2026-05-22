@@ -23,46 +23,18 @@ verbose = True
 # Global config
 config = copy.deepcopy(config_orig)
 
-
-def setup_module(module):
+@pytest.fixture(autouse=True)
+def setup_module(setup_test_dir, empty_workdir):
     """
-    Put any test-wide setup code in here, e.g. creating test files
+    Put any test-wide setup code in here, e.g. creating test files.
+    Files created here will be automatically cleaned up by `setup_test_dir` fixture after tests.
     """
-    if verbose:
-        print("setup_module      module:%s" % module.__name__)
-
-    # Should be taken care of by teardown, in case remnants lying around
-    try:
-        shutil.rmtree(tmpdir)
-    except FileNotFoundError:
-        pass
-
-    try:
-        tmpdir.mkdir()
-        labdir.mkdir()
-        ctrldir.mkdir()
-        make_all_files()
-    except Exception as e:
-        print(e)
-
+    # Create all files
+    make_all_files()
     # Write config
     test_config = config
     test_config['model'] = 'mom'
     write_config(test_config)
-
-
-def teardown_module(module):
-    """
-    Put any test-wide teardown code in here, e.g. removing test outputs
-    """
-    if verbose:
-        print("teardown_module   module:%s" % module.__name__)
-
-    try:
-        shutil.rmtree(tmpdir)
-        print('removing tmp')
-    except Exception as e:
-        print(e)
 
 
 @pytest.fixture(autouse=True)
@@ -158,6 +130,8 @@ def convert_date_string_to_array(dt_string):
         cftime.datetime(9999, 12, 30, calendar="360_day")
     ])
 def test_mom_get_restart_datetime(run_dt):
+    config['model'] = 'mom'
+    write_config(config)
     # Create 1 mom restart directory
     start_dt = cftime.datetime(1900, 1, 1, calendar=run_dt.calendar)
     make_ocean_restart_dir(start_dt, run_dt)
@@ -188,6 +162,8 @@ def test_mom_bad_get_restart_datetime(run_dt, expected_error):
     """
     Test that get_restart_datetime fails when reading invalid dates.
     """
+    config['model'] = 'mom'
+    write_config(config)
     # Create 1 mom restart directory
     start_dt = DateTuple(1900, 1, 1, 0, 0, 0, run_dt.calendar)
     make_ocean_restart_dir(start_dt, run_dt)
