@@ -539,6 +539,83 @@ repository, run::
       payu branch --verbose # Display local branches metadata 
       payu branch --remote # Display remote branches UUIDs
 
+Control directory and branch naming guidance
+--------------------------------------------
+
+As described above, when using branches the experiment name is generated from the 
+*control directory*, the branch name and the unique experiment UUID.
+
+It can be useful to think of the *control directory* name as the top level of a 
+`namespace_` in which the branch name must be unique only for that control directory 
+git repository [#fbranch]_.
+
+So the *control directory* should have a name that when added to the branch name makes
+sense and provides a sensible grouping for all the branches.
+
+Cloning a simple experiment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When cloning the simple MOM5 bowl1 example from the payu repository 
+
+https://github.com/payu-org/bowl1.git
+
+depending on personal preference it might make sense to keep the repository name 
+(``bowl1``) for the control directory name, or as it is a MOM5 experiment, modify 
+it to reflect this, e.g. ``mom5_bowl1``.
+
+Then example branch names for experiments to explore the effect of changing the 
+diffusivity could be: ``control``, ``diff_double``, ``diff_halve``
+
+would give three branches in the ``mom5_bowl1`` control directory
+with experiment names like:
+
+* ``mom5_bowl1-control-c3de94ac``
+* ``mom5_bowl1-diff_double-daed6c85``
+* ``mom5-bowl1-diff_halve-1dba6dac``
+
+Naming schemes will depend a lot on the use case. For example using the same ``bowl1`` 
+repository as a base, if the intention is to create a suite of related idealised MOM5 
+experiments then it might make sense to name the cloned repository ``mom5_idealised`` 
+and the branches ``bowl1``, ``single_column``, ``dome`` and ``double_gyre``.
+
+* ``mom5_idealised-bowl1-82664df5``
+* ``mom5_idealised-single_column-8035e206``
+* ``mom5_idealised-dome-9f3c7e0a``
+* ``mom5_idealised-double_gyre-bafb77b6``
+
+In the second use-case, ``bowl1`` is the branch name, whereas in the first case it
+was part of the control directory name. There is no rigid rules, it depends on
+the specific use case.
+
+
+Cloning an ACCESS-NRI configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For example, when cloning a configuration such as the ACCESS-NRI released ACCESS-OM3 
+25km global Ocean Sea-Ice configuration (``release-MC_25km_jra_ryf``): 
+
+https://github.com/ACCESS-NRI/access-om3-configs/tree/release-MC_25km_jra_ryf
+
+it doesn't make sense to retain the repository name (``access-om3-configs``) as the 
+control directory name. That repo is named for it's function, which is to curate and
+release *all* ACCESS-OM3 configurations.
+
+Similarly the branch that is being cloned (``release-MC_25km_jra_ryf``) is named
+to make it unique in the repo which collects and curates *all* ACCESS-OM3 configurations.
+In this case a modified version of the branch name is a better *control directory* name:
+ ``access-om3-MC_25km_jra_ryf`` to indicate this is a set of ACCESS-OM3 25km global 
+ Ocean Sea-Ice simulations.
+
+Example branch names for a set of experiments exploring modifying mixing parameters
+could be: ``control``, ``mix_plus``, ``mix_minus``.
+
+This would give three branches in the ``access-om3-MC_25km_jra_ryf`` control directory
+with experiment names like:
+
+* ``access-om3-MC_25km_jra_ryf-control-505191d6``
+* ``access-om3-MC_25km_jra_ryf-mix_plus-137f7f2e``
+* ``access-om3-MC_25km_jra_ryf-mix_minus-216c9431``
+
 Common flags
 ===============
 
@@ -575,3 +652,11 @@ The output includes:
 
 This will be helpful in debugging environment issues or providing necessary details 
 when reporting an issue.
+
+.. rubric:: Footnotes
+
+.. [#fbranch] The branch name must be unique for any repository it will be pushed to. 
+If the intention is to push multiple control repositories to a single repo this must 
+be taken into account to avoid branch naming conflicts.
+
+.. _namespace: https://en.wikipedia.org/wiki/Namespace
