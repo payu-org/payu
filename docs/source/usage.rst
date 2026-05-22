@@ -546,11 +546,13 @@ As described above, when using branches the experiment name is generated from th
 *control directory*, the branch name and the unique experiment UUID.
 
 It can be useful to think of the *control directory* name as the top level of a 
-`namespace_` in which the branch name must be unique only for that control directory 
+namespace_ in which the branch name must be unique only for that control directory 
 git repository [#fbranch]_.
 
 So the *control directory* should have a name that when added to the branch name makes
 sense and provides a sensible grouping for all the branches.
+
+.. _namespace: https://en.wikipedia.org/wiki/Namespace
 
 Cloning a simple experiment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -659,4 +661,3 @@ when reporting an issue.
 If the intention is to push multiple control repositories to a single repo this must 
 be taken into account to avoid branch naming conflicts.
 
-.. _namespace: https://en.wikipedia.org/wiki/Namespace
