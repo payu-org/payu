@@ -17,7 +17,9 @@ import subprocess as sp
 
 # Extensions
 import f90nml
-import yaml
+from ruamel.yaml import YAML
+yaml = YAML()
+yaml.default_flow_style = False
 
 # Local
 from payu.models.model import Model
@@ -131,7 +133,7 @@ class Mitgcm(Model):
             # Look for a restart file from a previous run
             if os.path.exists(restart_calendar_path):
                 with open(restart_calendar_path, 'r') as restart_file:
-                    restart_info = yaml.safe_load(restart_file)
+                    restart_info = yaml.load(restart_file)
                 t_start = float(restart_info['endtime'])
             else:
                 # Use same logic as MITgcm and assume
@@ -231,7 +233,7 @@ class Mitgcm(Model):
         with open(os.path.join(self.restart_path,
                   self.restart_calendar_file), 'w') as restart_file:
             restart = {'endtime': data_nml['parm03']['endTime']}
-            restart_file.write(yaml.dump(restart, default_flow_style=False))
+            yaml.dump(restart, restart_file)
 
         # Remove symbolic links to input or pickup files:
         for f in os.listdir(self.work_path):

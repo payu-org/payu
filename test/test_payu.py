@@ -15,6 +15,7 @@ import payu.laboratory
 import payu.envmod
 
 from .common import tmpdir, cd
+from payu.fsops import duplicate_key_warning
 
 
 sys.path.insert(1, '../')
@@ -327,12 +328,7 @@ def test_needs_shell(command, expected):
 
 
 def test_read_config_yaml_duplicate_key(setup_test_dir):
-    """The PyYAML library is used for reading config.yaml, but use ruamel yaml
-    is used in when modifying config.yaml as part of payu checkout
-    (ruamel is used to preserve comments and multi-line strings).
-    This led to bug #441, where pyyaml allowed duplicate keys but
-    ruamel.library raises an error
-    """
+    """ Test that a warning is raised when a duplicate key is found """
     # Create a yaml file with a duplicate key
     config_content = """
 pbs_flags: value1
@@ -343,10 +339,9 @@ pbs_flags: value2
         file.write(config_content)
 
     # Test read config passes without an error but a warning is raised
-    warn_msg = "Duplicate key found in config.yaml: key 'pbs_flags' with "
-    warn_msg += "value 'value2'. This overwrites the original value: 'value1'"
-    with pytest.warns(UserWarning, match=warn_msg):
-        payu.fsops.read_config(config_path)
+    with pytest.warns(UserWarning, match=duplicate_key_warning):
+        config = payu.fsops.read_config(config_path)
+        assert config['pbs_flags'] == 'value1'  # Check that the first value is used
 
     restart_path = tmpdir / "restarts"
 
