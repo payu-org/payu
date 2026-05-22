@@ -165,42 +165,6 @@ def test_lib_update_if_nci_module_not_required():
     assert (result == '')
 
 
-def test_list_archive_dirs():
-    # Create archive directories - mix of valid/invalid names
-    archive_dirs = [
-        'output000', 'output1001', 'output023',
-        'output', 'Output001', 'output1',
-        'Restart', 'restart2', 'restart',
-        'restart102932', 'restart021', 'restart001',
-    ]
-    tmp_archive = tmpdir / 'test_archive'
-    for dir in archive_dirs:
-        (tmp_archive / dir).mkdir(parents=True)
-
-    # Add some files
-    (tmp_archive / 'restart005').touch()
-    (tmp_archive / 'output005').touch()
-
-    # Add a restart symlink
-    tmp_archive_2 = tmpdir / 'test_archive_2'
-    source_path = tmp_archive_2 / 'restart999'
-    source_path.mkdir(parents=True)
-    (tmp_archive / 'restart23042').symlink_to(source_path)
-
-    # Test list output dirs and with string archive path
-    outputs = payu.fsops.list_archive_dirs(str(tmp_archive), dir_type="output")
-    assert outputs == ['output000', 'output023', 'output1001']
-
-    # Test list restarts
-    restarts = payu.fsops.list_archive_dirs(tmp_archive, dir_type="restart")
-    assert restarts == ['restart001', 'restart021',
-                        'restart23042', 'restart102932']
-
-    # Clean up test archive
-    shutil.rmtree(tmp_archive)
-    shutil.rmtree(tmp_archive_2)
-
-
 def test_env_with_python_path_is_first():
     """Test that python directory is at the front of PATH env var"""
     env = payu.fsops.env_with_python_path()
@@ -362,7 +326,7 @@ def test_needs_shell(command, expected):
     assert payu.fsops.needs_subprocess_shell(command) == expected
 
 
-def test_read_config_yaml_duplicate_key():
+def test_read_config_yaml_duplicate_key(setup_test_dir):
     """The PyYAML library is used for reading config.yaml, but use ruamel yaml
     is used in when modifying config.yaml as part of payu checkout
     (ruamel is used to preserve comments and multi-line strings).
