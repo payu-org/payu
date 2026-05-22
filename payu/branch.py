@@ -17,7 +17,7 @@ import sys
 from ruamel.yaml import YAML, CommentedMap, constructor
 import git
 
-from payu.fsops import read_config, DEFAULT_CONFIG_FNAME, list_archive_dirs
+from payu.fsops import read_config, DEFAULT_CONFIG_FNAME, list_sorted_archive_dirs
 from payu.laboratory import Laboratory
 from payu.metadata import Metadata, UUID_FIELD, METADATA_FILENAME
 from payu.git_utils import GitRepository, git_clone, PayuBranchError
@@ -85,7 +85,7 @@ def check_restart(restart_path: Path,
 
     # Check for pre-existing restarts in archive
     if archive_path and archive_path.exists():
-        if len(list_archive_dirs(archive_path, dir_type="restart")) > 0:
+        if len(list_sorted_archive_dirs(archive_path, dir_type="restart")) > 0:
             warnings.warn((
                 f"Pre-existing restarts found in archive: {archive_path}."
                 f"Skipping adding 'restart: {restart_path}' to config file"))
