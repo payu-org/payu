@@ -597,23 +597,26 @@ the use case.
 Cloning an ACCESS-NRI configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For example, when cloning a configuration such as the ACCESS-NRI released ACCESS-OM3 
-25km global Ocean Sea-Ice configuration (``release-MC_25km_jra_ryf``): 
+As another example, when cloning a configuration such as ACCESS-OM3 25km global 
+Ocean Sea-Ice configuration (``release-MC_25km_jra_ryf``): 
 
 https://github.com/ACCESS-NRI/access-om3-configs/tree/release-MC_25km_jra_ryf
 
-it doesn't make sense to retain the repository name (``access-om3-configs``) as the 
-control directory name. That repo is named for it's function, which is to curate and
-release *all* ACCESS-OM3 configurations.
+the default repository name would be ``access-om3-configs``. It does not make
+sense to use this as the control directory name. The repository is named for 
+it's function, which is to curate and release *all* ACCESS-OM3 configurations.
 
-Similarly the branch that is being cloned (``release-MC_25km_jra_ryf``) is named
+Similarly the branch that would being cloned (``release-MC_25km_jra_ryf``) is named
 to make it unique in the repo which collects and curates *all* ACCESS-OM3 configurations.
-In this case a modified version of the branch name is a better *control directory* name:
- ``access-om3-MC_25km_jra_ryf`` to indicate this is a set of ACCESS-OM3 25km global 
- Ocean Sea-Ice simulations.
+In this case a modified version of the branch name is a better *control directory* 
+name: ``access-om3-MC_25km_jra_ryf`` to indicate this is a set of ACCESS-OM3 25km global 
+Ocean Sea-Ice simulations using JRA55 repeat-year forcing.
 
-Example branch names for a set of experiments exploring modifying mixing parameters
-could be: ``control``, ``mix_plus``, ``mix_minus``.
+As an example use case, consider a set of experiments to explore the effect of
+modifying mixing parameters, requiring a control experiment, an experiment where
+an amount of subtracted from the mixing parameter, and another where the same
+amount is added. Example branch names for a such a set of experiments could 
+be: ``control``, ``mix_plus``, ``mix_minus``.
 
 This would give three branches in the ``access-om3-MC_25km_jra_ryf`` control directory
 with experiment names like:
