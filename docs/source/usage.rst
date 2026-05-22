@@ -561,24 +561,28 @@ When cloning the simple MOM5 bowl1 example from the payu repository
 
 https://github.com/payu-org/bowl1.git
 
-depending on personal preference it might make sense to keep the repository name 
-(``bowl1``) for the control directory name, or as it is a MOM5 experiment, modify 
-it to reflect this, e.g. ``mom5_bowl1``.
+it would be fine to use the repository name (``bowl1``) as the control directory 
+name, but in this case, as it is a MOM5 experiment, the *control directory* will be
+``mom5_bowl1``.
 
-Then example branch names for experiments to explore the effect of changing the 
-diffusivity could be: ``control``, ``diff_double``, ``diff_halve``
+As an example use case consider a group of related experiments to explore the effect 
+of changing the diffusivity, which require a control experiment and two other experiments
+where the diffusivity is halved compared to the control, and another doubled. Then 
+then branch names could be: ``control``, ``diff_double``, ``diff_halve``.
 
-would give three branches in the ``mom5_bowl1`` control directory
-with experiment names like:
+These three branches in the ``mom5_bowl1`` control directory would result in experiment 
+names like:
 
 * ``mom5_bowl1-control-c3de94ac``
 * ``mom5_bowl1-diff_double-daed6c85``
 * ``mom5-bowl1-diff_halve-1dba6dac``
 
 Naming schemes will depend a lot on the use case. For example using the same ``bowl1`` 
-repository as a base, if the intention is to create a suite of related idealised MOM5 
+repository as a base, if the intention is to create a group of related idealised MOM5 
 experiments then it might make sense to name the cloned repository ``mom5_idealised`` 
 and the branches ``bowl1``, ``single_column``, ``dome`` and ``double_gyre``.
+
+These four brances would result in experiment names like:
 
 * ``mom5_idealised-bowl1-82664df5``
 * ``mom5_idealised-single_column-8035e206``
@@ -586,8 +590,8 @@ and the branches ``bowl1``, ``single_column``, ``dome`` and ``double_gyre``.
 * ``mom5_idealised-double_gyre-bafb77b6``
 
 In the second use-case, ``bowl1`` is the branch name, whereas in the first case it
-was part of the control directory name. There is no rigid rules, it depends on
-the specific use case.
+was part of the control directory name. There are no rigid rules, it depends on
+the use case.
 
 
 Cloning an ACCESS-NRI configuration
