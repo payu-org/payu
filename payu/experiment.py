@@ -485,7 +485,7 @@ class Experiment(object):
 
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
-            raise errors.PayuError(f'payu: error: output path already exists:\
+            raise errors.PayuRunError(f'payu: error: output path already exists:\
                  {self.output_path}')
             # sys.exit('payu: error: Output path already exists: '
             #          '{path}.'.format(path=self.output_path))
