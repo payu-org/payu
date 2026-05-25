@@ -32,10 +32,7 @@ class OpenSpeedShop(Profiler):
                 oss_hwc = oss.get('hwc')
                 if not oss_hwc:
                     raise errors.PayuError(
-                        '''
-                        payu: error: This OSS command required hardware 
-                        counters.
-                        ''')
+                        'payu: error: This OSS command required hardware counters.')
                     # print('payu: error: This OSS command requires hardware '
                     #       'counters.')
                     # sys.exit(1)

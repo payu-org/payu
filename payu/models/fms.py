@@ -332,13 +332,9 @@ def fms_collate(model):
             if rc is not None:
                 error_msg = op.decode()
                 raise errors.PayuRunError(
-                    f'''
-                    payu: error: Thread {p} crashed with error code 
-                    {rc}
-
-                    Error message: 
-                    {error_msg}
-                    '''
+                    f'payu: error: Thread {p} crashed with error code '
+                    f'{rc}\n'
+                    f'Error message: {error_msg}'
                 )
 
                 # print('payu: error: Thread {p} crashed with error code '

@@ -139,10 +139,8 @@ class Runlog(object):
 
         if not os.path.isfile(ssh_key_path):
             raise errors.PayuGitError(
-                f'''
-                payu: error: GitHub SSH Key {ssh_key_path} not found.
-                payu: error: Run `payu ghsetup` to generate a new key.
-                ''')
+                f'payu: error: GitHub SSH Key {ssh_key_path} not found.'
+                'payu: error: Run `payu ghsetup` to generate a new key.')
 
             # print('payu: error: Github SSH key {key} not found.'
             #       ''.format(key=ssh_key_path))
@@ -249,13 +247,11 @@ class Runlog(object):
             subprocess.check_call(shlex.split(cmd), cwd=self.expt.control_path)
         elif git_remotes[remote_name] != remote_url:
             raise errors.PayuGitError(
-                f'''
-                payu: error: Existing remote URL does not match 
-                the proposed URL.
+                'payu: error: Existing remote URL does not match '
+                'the proposed URL.\n\n'
                 
-                payu: error: To delete the old remote, type 
-                `git remote rm {remote_name}`
-                ''')
+                'payu: error: To delete the old remote, \n'
+                f'type `git remote rm {remote_name}`')
 
             # print('payu: error: Existing remote URL does not match '
             #       'the proposed URL.')
