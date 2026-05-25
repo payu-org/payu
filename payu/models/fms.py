@@ -329,11 +329,26 @@ def fms_collate(model):
     if any(rc is not None for rc in codes):
         for p, rc, op in zip(count(), codes, outputs):
             if rc is not None:
+<<<<<<< HEAD
                 print('payu: error: Thread {p} crashed with error code '
                       '{rc}.'.format(p=p, rc=rc), file=sys.stderr)
                 print(' Error message:', file=sys.stderr)
                 print(op.decode(), file=sys.stderr)
         sys.exit(-1)
+=======
+                error_msg = op.decode()
+                raise errors.PayuRunError(
+                    f'payu: error: Thread {p} crashed with error code '
+                    f'{rc}\n'
+                    f'Error message: {error_msg}'
+                )
+
+                # print('payu: error: Thread {p} crashed with error code '
+                #       '{rc}.'.format(p=p, rc=rc), file=sys.stderr)
+                # print(' Error message:', file=sys.stderr)
+                # print(op.decode(), file=sys.stderr)
+        # sys.exit(-1)
+>>>>>>> f844ed7 (Fixed fstrings as per Q suggestions)
 
     # Get full hash for collated files and write collate mapping into job file
     mapping_collate_dict = restart_mapping_log(uncollate_hashes_dict)
