@@ -41,24 +41,26 @@ def get_git_repository(repo_path: Union[Path, str],
         repo = git.Repo(repo_path)
         return repo
     except git.exc.InvalidGitRepositoryError:
-        if initialise:
-            repo = git.Repo.init(repo_path)
-            print(f"Initialised new git repository at: {repo_path}")
-            return repo
-
-        warnings.warn(
-            f"Path is not a valid git repository: {repo_path}",
-            PayuGitWarning
-        )
-
         parent_repo = check_git_parent(repo_path)
         if parent_repo:
             warnings.warn(
                 f"Payu expects to run from repository root to ensure metadata tracking.\n"
                 f"Current situation leads to an InvalidGitRepositoryError.\n"
-                f"Suggest fix:\n    cd {parent_repo.working_tree_dir}\n    and run your command again.",
+                f"Suggest fix:\n"
+                f"    Move the control directory to the a separate directory with its own git repository\n",
                 PayuGitWarning
             )
+        else:
+            if initialise:
+                repo = git.Repo.init(repo_path)
+                print(f"Initialised new git repository at: {repo_path}")
+                return repo
+
+            warnings.warn(
+                f"Path is not a valid git repository: {repo_path}",
+                PayuGitWarning
+            )
+
 
         if catch_error:
             return None

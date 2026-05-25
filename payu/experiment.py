@@ -10,10 +10,8 @@ from __future__ import print_function
 
 # Standard Library
 import datetime
-import errno
 from functools import wraps
 import os
-import re
 import resource
 import sys
 import shlex
@@ -474,6 +472,12 @@ class Experiment(object):
         # Check version
         self.check_payu_version()
 
+        # Error out if runlog is enabled and running from subdirectory of git root repository
+        if self.runlog.enabled and get_git_repository(self.control_path, catch_error=True) is None:
+            raise ValueError(
+                "payu: error: Runlog is enabled, but current directory is not a git repository.\n"
+            )
+
         # Setup the payu run job file
         telemetry.setup_run_job_file(
             file_path=self.job_file,
@@ -565,12 +569,6 @@ class Experiment(object):
 
     @timeit("payu_run_duration_seconds")
     def run(self, *user_flags):
-        # Error out if runlog is enables and running from subdirectory of git root repository
-        if self.runlog.enabled and get_git_repository(self.control_path, catch_error=True) is None:
-            raise PayuGitWarning(
-                "payu: error: Runlog is enabled, but current directory is not a git repository.\n"
-            )
-
         self.load_modules()
 
         f_out = open(self.stdout_fname, 'w')

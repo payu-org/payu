@@ -186,6 +186,8 @@ def checkout_branch(branch_name: str,
 
     # Checkout branch
     repo = GitRepository(control_path, catch_error=True)
+    if repo.repo is None:
+        raise PayuBranchError("payu: error: Invalid repository, could not checkout branch.")
     repo.checkout_branch(branch_name, is_new_branch, start_point)
 
     # Check config file exists on checked out branch

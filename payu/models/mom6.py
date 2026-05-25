@@ -10,7 +10,7 @@
 
 # Standard library
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 import cftime
 from collections import deque
 
@@ -64,7 +64,10 @@ def mom6_save_docs_files(model):
 
     if model.expt.runlog.enabled: #if runlog true, default to true
         # commit new files to the control dir
-        repo = GitRepository(repo_path = model.control_path, catch_error = True)
+        repo = GitRepository(repo_path = model.control_path, catch_error=True)
+        if repo.repo is None:
+            warn("Failed to commit MOM6 run-time configuration to the control directory.")
+            return
 
         paths_to_commit = []
         for pattern in MOM6_DOCS:
