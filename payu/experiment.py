@@ -44,6 +44,7 @@ from payu.calendar import parse_date_offset
 from payu.sync import SyncToRemoteArchive
 from payu.metadata import Metadata
 import payu.telemetry as telemetry
+from payu.git_utils import get_git_repository, PayuGitWarning
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -564,6 +565,12 @@ class Experiment(object):
 
     @timeit("payu_run_duration_seconds")
     def run(self, *user_flags):
+        # Error out if runlog is enables and running from subdirectory of git root repository
+        if self.runlog.enabled and get_git_repository(self.control_path, catch_error=True) is None:
+            raise PayuGitWarning(
+                "payu: error: Runlog is enabled, but current directory is not a git repository.\n"
+            )
+
         self.load_modules()
 
         f_out = open(self.stdout_fname, 'w')

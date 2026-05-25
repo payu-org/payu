@@ -13,12 +13,14 @@ import shlex
 import subprocess
 import sys
 import warnings
+import git
 
 # Third party
 import requests
 
 # Local
 from payu.fsops import DEFAULT_CONFIG_FNAME
+from payu.git_utils import GitRepository, get_git_repository
 
 
 # Compatibility
@@ -71,47 +73,31 @@ class Runlog(object):
             self.manifest.append(mf.path)
 
     def commit(self):
-        f_null = open(os.devnull, 'w')
+        """Commit the runlog changes to the git repository."""
+        # Check if a repository exists, otherwise initialise one.
+        git_repo = GitRepository(self.expt.control_path, catch_error=True)
+        if git_repo.repo is None:
+            git_repo.repo = get_git_repository(self.expt.control_path, initialise=True)
 
-        # Check if a repository exists
-        if commit_hash(self.expt.control_path) is None:
-            cmd = 'git init'
-            print(cmd)
-            subprocess.check_call(shlex.split(cmd), stdout=f_null,
-                                  cwd=self.expt.control_path)
-
-        # Add configuration files
-        for fname in self.manifest:
-            if os.path.isfile(fname):
-                cmd = 'git add {0}'.format(fname)
-                print(cmd)
-                subprocess.check_call(shlex.split(cmd), stdout=f_null,
-                                      cwd=self.expt.control_path)
-
+        # Create commit message with timestamp and file to add to the commit
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         commit_msg = '{0}: Run {1}'.format(timestamp, self.expt.counter)
 
-        cmd = 'git commit -am "{0}"'.format(commit_msg)
-        print(cmd)
+        paths_to_add = [f for f in self.manifest if os.path.isfile(f)]
+
+        # Commit the runlog changes
         try:
-            subprocess.check_call(shlex.split(cmd), stdout=f_null,
-                                  stderr=f_null, cwd=self.expt.control_path)
-        except subprocess.CalledProcessError:
-            # Attempt commit without signing commits
-            cmd = f'git commit --no-gpg-sign -am "{commit_msg}"'
-            print(cmd)
+            git_repo.commit(commit_msg, paths_to_add)
+        except git.exc.GitCommandError as e:
             try:
-                subprocess.check_call(shlex.split(cmd),
-                                      stdout=f_null,
-                                      cwd=self.expt.control_path)
-                warnings.warn("Runlog commit was commited without git signing")
-            except subprocess.CalledProcessError:
-                warnings.warn("Error occured when attempting to commit runlog")
+                git_repo.repo.git.add(paths_to_add)
+                git_repo.repo.git.commit(m=commit_msg, no_gpg_sign=True)
+                warnings.warn("Runlog commit without gpg signing.")
+            except git.exc.GitCommandError as e:
+                print(f"payu: error: Failed to commit runlog changes to git repository: {e}.")
 
         # Save the commit hash
-        self.expt.run_id = commit_hash(self.expt.control_path)
-
-        f_null.close()
+        self.expt.run_id = git_repo.repo.head.object.hexsha
 
     def push(self):
         """Push the changes to the remote repository.
@@ -142,9 +128,15 @@ class Runlog(object):
             print('payu: error: Run `payu ghsetup` to generate a new key.')
             sys.exit(-1)
 
-        cmd = ('ssh-agent bash -c "ssh-add {key}; git push --all payu"'
-               ''.format(key=ssh_key_path))
-        subprocess.check_call(shlex.split(cmd), cwd=self.expt.control_path)
+        ssh_cmd = f'ssh -i {ssh_key_path}'
+        git_repo = GitRepository(self.expt.control_path, catch_error=True)
+        with git_repo.git.custom_environment(GIT_SSH_COMMAND=ssh_cmd):
+            try:
+                remote = git_repo.repo.remotes.payu
+                remote.push(all=True)
+            except Exception as e:
+                print(f"payu: error: Failed to push runlog changes to remote repository: {e}.")
+
 
     def github_setup(self):
         """Set up authentication keys and API tokens."""
@@ -225,21 +217,16 @@ class Runlog(object):
             assert repo_gen.status_code == 201
 
         # 3. Check if remote is set
-        git_remote_out = subprocess.check_output(shlex.split('git remote -v'),
-                                                 cwd=self.expt.control_path)
-
-        git_remotes = dict([(r.split()[0], r.split()[1])
-                            for r in git_remote_out.split('\n') if r])
-
         remote_name = self.config.get('remote', 'payu')
-        remote_url = os.path.join('ssh://git@github.com', repo_target,
-                                  self.expt.name + '.git')
+        remote_url = os.path.join('ssh://git@github.com', repo_target, self.expt.name + '.git')
 
-        if remote_name not in git_remotes:
-            cmd = ('git remote add {name} {url}'
-                   ''.format(name=remote_name, url=remote_url))
-            subprocess.check_call(shlex.split(cmd), cwd=self.expt.control_path)
-        elif git_remotes[remote_name] != remote_url:
+        git_repo = GitRepository(self.expt.control_path, catch_error=True)
+        git_remote = {r.name: r.url for r in git_repo.repo.remotes} if git_repo else {}
+
+        if remote_name not in git_remote:
+            git_repo.repo.create_remote(remote_name, remote_url)
+
+        elif git_remote[remote_name] != remote_url:
             print('payu: error: Existing remote URL does not match '
                   'the proposed URL.')
             print('payu: error: To delete the old remote, type '
@@ -285,29 +272,3 @@ class Runlog(object):
 
         github_auth = (github_username, github_password)
         return github_auth
-
-
-# Some git utility functions
-
-def commit_hash(dir='.'):
-    """
-    Return commit hash for HEAD of checked out branch of the
-    specified directory.
-    """
-
-    cmd = ['git', 'rev-parse', 'HEAD']
-
-    try:
-        with open(os.devnull, 'w') as devnull:
-            revision_hash = subprocess.check_output(
-                cmd,
-                cwd=dir,
-                stderr=devnull
-            )
-        if sys.version_info.major > 2:
-            revision_hash = revision_hash.decode('ascii')
-
-        return revision_hash.strip()
-
-    except subprocess.CalledProcessError:
-        return None

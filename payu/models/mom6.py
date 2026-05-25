@@ -64,7 +64,7 @@ def mom6_save_docs_files(model):
 
     if model.expt.runlog.enabled: #if runlog true, default to true
         # commit new files to the control dir
-        repo = GitRepository(repo_path = model.control_path)
+        repo = GitRepository(repo_path = model.control_path, catch_error = True)
 
         paths_to_commit = []
         for pattern in MOM6_DOCS:
