@@ -76,7 +76,7 @@ def parse():
 
     except Exception as e:
         # CRASH EXIT for unexpected bugs (ValueError, TypeError etc.)
-        print('payu: An unexpected internal error occurred!', file=sys.stderr)
+        print('payu: error: An unexpected internal error occurred!', file=sys.stderr)
         logging.exception(str(e)) # Always show stacktrace for unknown bugs
         sys.exit(1)
 
