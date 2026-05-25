@@ -26,13 +26,13 @@ import warnings
 import pwd
 
 # Extensions
-import yaml
+from ruamel.yaml import YAML
 from packaging import version
 
 # Local
 from payu import envmod
 from payu.fsops import make_symlink, read_config, movetree
-from payu.fsops import list_archive_dirs
+from payu.fsops import list_sorted_archive_dirs
 from payu.fsops import run_script_command
 from payu.fsops import needs_subprocess_shell
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
@@ -259,7 +259,7 @@ class Experiment(object):
         """Given a output directory type (output or restart),
         return the maximum index of output directories found"""
         try:
-            output_dirs = list_archive_dirs(archive_path=self.archive_path,
+            output_dirs = list_sorted_archive_dirs(archive_path=self.archive_path,
                                             dir_type=output_type)
         except FileNotFoundError:
             # Archive path does not exist yet
@@ -724,8 +724,10 @@ class Experiment(object):
             os.environ['PAYU_RUN_ID'] = str(self.run_id)
 
         # Dump out environment
+        yaml = YAML()
+        yaml.default_flow_style = False
         with open(self.env_fname, 'w') as file:
-            file.write(yaml.dump(dict(os.environ), default_flow_style=False))
+            yaml.dump(dict(os.environ), file)
 
         # Update run info file
         telemetry.update_run_job_file(
@@ -1033,9 +1035,10 @@ class Experiment(object):
         sync_config = self.config.get('sync', {})
         syncing = sync_config.get('enable', False)
         if syncing:
-            cmd = '{python} {payu} sync'.format(
+            cmd = '{python} {payu} sync -i {expt}'.format(
                 python=sys.executable,
-                payu=self.payu_path
+                payu=self.payu_path,
+                expt=self.counter
             )
 
             if self.postscript:
@@ -1169,7 +1172,7 @@ class Experiment(object):
             return []
 
         # Sorted list of restart directories in archive
-        restarts = list_archive_dirs(archive_path=self.archive_path,
+        restarts = list_sorted_archive_dirs(archive_path=self.archive_path,
                                      dir_type='restart')
         restart_indices = {}
         for restart in restarts:

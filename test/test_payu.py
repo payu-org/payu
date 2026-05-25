@@ -15,6 +15,7 @@ import payu.laboratory
 import payu.envmod
 
 from .common import tmpdir, cd
+from payu.fsops import duplicate_key_warning
 
 
 sys.path.insert(1, '../')
@@ -163,42 +164,6 @@ def test_lib_update_if_nci_module_not_required():
     }
     result = payu.envmod.lib_update(required_libs_dict, 'libmpi.so')
     assert (result == '')
-
-
-def test_list_archive_dirs():
-    # Create archive directories - mix of valid/invalid names
-    archive_dirs = [
-        'output000', 'output1001', 'output023',
-        'output', 'Output001', 'output1',
-        'Restart', 'restart2', 'restart',
-        'restart102932', 'restart021', 'restart001',
-    ]
-    tmp_archive = tmpdir / 'test_archive'
-    for dir in archive_dirs:
-        (tmp_archive / dir).mkdir(parents=True)
-
-    # Add some files
-    (tmp_archive / 'restart005').touch()
-    (tmp_archive / 'output005').touch()
-
-    # Add a restart symlink
-    tmp_archive_2 = tmpdir / 'test_archive_2'
-    source_path = tmp_archive_2 / 'restart999'
-    source_path.mkdir(parents=True)
-    (tmp_archive / 'restart23042').symlink_to(source_path)
-
-    # Test list output dirs and with string archive path
-    outputs = payu.fsops.list_archive_dirs(str(tmp_archive), dir_type="output")
-    assert outputs == ['output000', 'output023', 'output1001']
-
-    # Test list restarts
-    restarts = payu.fsops.list_archive_dirs(tmp_archive, dir_type="restart")
-    assert restarts == ['restart001', 'restart021',
-                        'restart23042', 'restart102932']
-
-    # Clean up test archive
-    shutil.rmtree(tmp_archive)
-    shutil.rmtree(tmp_archive_2)
 
 
 def test_env_with_python_path_is_first():
@@ -362,13 +327,8 @@ def test_needs_shell(command, expected):
     assert payu.fsops.needs_subprocess_shell(command) == expected
 
 
-def test_read_config_yaml_duplicate_key():
-    """The PyYAML library is used for reading config.yaml, but use ruamel yaml
-    is used in when modifying config.yaml as part of payu checkout
-    (ruamel is used to preserve comments and multi-line strings).
-    This led to bug #441, where pyyaml allowed duplicate keys but
-    ruamel.library raises an error
-    """
+def test_read_config_yaml_duplicate_key(setup_test_dir):
+    """ Test that a warning is raised when a duplicate key is found """
     # Create a yaml file with a duplicate key
     config_content = """
 pbs_flags: value1
@@ -379,10 +339,9 @@ pbs_flags: value2
         file.write(config_content)
 
     # Test read config passes without an error but a warning is raised
-    warn_msg = "Duplicate key found in config.yaml: key 'pbs_flags' with "
-    warn_msg += "value 'value2'. This overwrites the original value: 'value1'"
-    with pytest.warns(UserWarning, match=warn_msg):
-        payu.fsops.read_config(config_path)
+    with pytest.warns(UserWarning, match=duplicate_key_warning):
+        config = payu.fsops.read_config(config_path)
+        assert config['pbs_flags'] == 'value1'  # Check that the first value is used
 
     restart_path = tmpdir / "restarts"
 

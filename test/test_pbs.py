@@ -10,7 +10,6 @@ from unittest.mock import patch
 
 import pdb
 import pytest
-import yaml
 
 import payu
 

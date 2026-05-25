@@ -14,7 +14,8 @@ import itertools
 
 # Extensions
 import f90nml
-import yaml
+from ruamel.yaml import YAML
+yaml = YAML()
 
 # Local
 from payu.models.model import Model
@@ -70,7 +71,7 @@ class StagedCable(Model):
 
         # Read the stage_config.yaml file
         with open('stage_config.yaml', 'r') as stage_conf_f:
-            self.stage_config = yaml.safe_load(stage_conf_f)
+            self.stage_config = yaml.load(stage_conf_f)
 
         # On the first run, we need to read the 'stage_config.yaml' file.
         cable_stages = self._prepare_configuration()
@@ -85,7 +86,7 @@ class StagedCable(Model):
     def _read_configuration_log(self):
         """Read the existing configuration log."""
         with open('configuration_log.yaml') as conf_log_file:
-            self.configuration_log = yaml.safe_load(conf_log_file)
+            self.configuration_log = yaml.load(conf_log_file)
 
     def _prepare_configuration(self):
         """Prepare the stages in the CABLE configuration."""

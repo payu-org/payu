@@ -4,7 +4,6 @@ from pathlib import Path
 import pdb
 import pytest
 import shutil
-import yaml
 
 import payu
 import payu.models.test
