@@ -899,7 +899,7 @@ class Experiment(object):
 
         # Double-check that the run path does not exist
         if os.path.exists(self.output_path):
-            raise errors.PayuError('payu: error: output path already exists')
+            raise errors.PayuRunError('payu: error: output path already exists')
             # sys.exit('payu: error: Output path already exists.')
 
         movetree(self.work_path, self.output_path)
