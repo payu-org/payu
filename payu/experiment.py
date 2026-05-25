@@ -497,7 +497,7 @@ class Experiment(object):
                       '      Sweeping as --force option is True.')
                 self.sweep()
             else:
-                raise errors.PayuError(
+                raise errors.PayuRunError(
                     f'''
                     payu: error: work path already exists: {self.work_path}.
                              payu sweep and then payu run
