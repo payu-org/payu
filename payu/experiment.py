@@ -498,10 +498,9 @@ class Experiment(object):
                 self.sweep()
             else:
                 raise errors.PayuRunError(
-                    f'''
-                    payu: error: work path already exists: {self.work_path}.
-                             payu sweep and then payu run
-                    ''')
+                    f'payu: error: work path already exists: {self.work_path}.\n'
+                    '         payu sweep and then payu run'
+                    )
             
                 # sys.exit('payu: error: work path already exists: {path}.\n'
                 #          '             payu sweep and then payu run'
