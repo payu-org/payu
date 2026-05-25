@@ -65,18 +65,14 @@ def parse():
     run_cmd(**args)
 
     except errors.PayuError as e:
-        # CLEAN EXIT for expected errors
-        if stacktrace:
-            # Shows the full stacktrace
-            logging.exception(str(e), exc_info=True)
-        else:
-            print(f'payu: error: {e}', file=sys.stderr)
+        # Logs a clean message, and attaches stacktrace 'only' if requested.
+        logging.error(e, exc_info=stacktrace)
         sys.exit(1)
 
     except Exception as e:
         # CRASH EXIT for unexpected bugs (ValueError, TypeError etc.)
         print('payu: error: An unexpected internal error occurred!', file=sys.stderr)
-        logging.exception(str(e)) # Always show stacktrace for unknown bugs
+        logging.exception(e) # Always show stacktrace for unknown bugs
         sys.exit(1)
 
 
