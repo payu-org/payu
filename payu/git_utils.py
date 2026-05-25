@@ -84,13 +84,9 @@ class GitRepository:
         if self.repo:
             if self.repo.head.is_detached:
                 raise errors.PayuGitError(
-                    '''
-                    Repo is in detached HEAD state.
-                    Before running again checkout a branch using 
-
-                        payu checkout <branch>
-
-                    ''')
+                    'Repo is in detached HEAD state.'
+                    'Before running again checkout a branch using '
+                    '    payu checkout <branch>')
                 # sys.exit("\nRepo is in a detached HEAD state.\n"
                 #          "Before running again checkout a branch using\n\n"
                 #          "    payu checkout <branch>\n\n")
@@ -202,9 +198,9 @@ class GitRepository:
         # First check for staged changes
         if self.repo.is_dirty(index=True, working_tree=False):
             raise errors.PayuBranchError(
-                "There are staged git changes. Please stash or commit them "
-                "before running the checkout command again.\n"
-                "To see what files are staged, run: git status"
+                'There are staged git changes. Please stash or commit them '
+                'before running the checkout command again.\n'
+                'To see what files are staged, run: git status'
             )
 
         # Existing branches

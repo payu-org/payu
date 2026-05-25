@@ -319,7 +319,7 @@ def clone(repository: str,
     if control_path.exists():
         raise errors.PayuBranchError(
             f"Directory path `{control_path}` already exists. "
-            "Clone to a different path, or cd into the existing directory " +
+            "Clone to a different path, or cd into the existing directory "
             "and use `payu checkout` if it is the same git repository"
         )
 
