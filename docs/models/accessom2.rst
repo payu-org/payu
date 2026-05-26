@@ -1,111 +1,206 @@
-.. _ACCESS-OM2_model_driver:
+How OM2 driver is set up in payu (User-focused)
+===============================================
 
-============
-ACCESS-OM2 model driver overview
-============
+Overview
+--------
 
-This section describes the ACCESS-OM2 model driver for Payu, 
-which provides the necessary customisations to run experiments.
+This document describes the structure and workflow of ACCESS-OM2 
+model drivers in Payu, focusing on user-facing behaviour 
+rather than implementation details.
 
-Class setup
-===========================
+The ACCESS-OM2 modelling system can be viewed as a three-level hierarchy: 
+a base model class providing shared infrastructure, 
+two sub-models (MOM5 and CICE5) implementing individual physical components, 
+and the coupled ACCESS-OM2 model that orchestrates each component into 
+a complete configuration.
 
-To define a new model driver, a class is created as follows::
+.. _base_model:
 
-    from payu.models.model import Model
+Base Model Class
+-----------------
 
-    class AccessOm2(Model):
+The base model class provides a common interface and shared functionality 
+for all specific models in payu. 
+It initialises model attributes including model name, configurations, control flags, 
+file paths, etc.
 
-This class inherits from the base ``Model`` class, and can override default configuration and path settings.
+While setting up, the base model class:
+
+- creates the work directory and subdirectories, including input, restart and output directories,  
+- copies the configuration files from the control directory into work directory,
+- makes symlinks to the executable, input, and restart files in the work directory,  
+- updates the tracking manifests.  
+
+At the archive stage, the base model class removes all symlinks created, 
+empty files and directories from the work directory.
+
+The directory structure is organised as:
+
+::
+
+    Control/                     # Control directory
+    |---- archive/               # A symlink to archived model output and restarts
+                                 # (usually linked to /scratch/${PROJECT}/${USER}/${Model}/${archive}/)
+    |---- manifests/             # Model manifests directory
+    |---- configuration files    # configuration files
+    |---- metadata.yaml          # a metadata file
+    |---- work/                  # Temporary working directory when model is running and before archive
+
+In the archive directory, experiments are organised as:
+
+::
+
+    archive/
+    |---- metadata.yaml
+    |---- output00N/      # Output directories storing output and manifests of each run
+    |---- restart00N/     # Directory storing restart files
+    |---- payu_jobs/      # Directory storing job files of each run
+            |---- 0         # Sub-directory named after run number
 
 
-Methods
-===========================
+.. _mom5:
 
-Initialisation
----------------------
+MOM5: Modular Ocean Model Version 5
+------------------------------------
 
-The ``__init__`` method initialises the model driver and defines
-model-specific attributes such as the model type and configuration files::
+MOM5 driver is built based on the base model class in payu. 
+It inherits from both `fms` (:ref:`fsm`) and `mixin` (:ref:`mixin`), adding extra features.
 
-    super(AccessOm2, self).__init__(expt, name, config)
-    self.model_type = 'access-om2'
-    self.config_files = ['accessom2.nml', 'namcouple']
+Configurations
+~~~~~~~~~~~~~~
+
+MOM5 requires configuration files: ``data_table``, ``diag_table``, ``field_table``, and ``input.nml``.
+
+Optional configuration files are ``blob_diag_table``, ``mask_table``, and ``ocean_mask_table``.
+
+Runtime Workflow
+~~~~~~~~~~~~~~~~
+
+MOM5 sets up the runtime by reading the ``ocean_solo_nml`` section in ``input.nml``. 
+The runtime can be set in units of years, months, days, and seconds.
+
+The time step is configured through ``dt_ocean`` in the ``ocean_solo_nml`` section of ``input.nml``.
+
+.. _cice5:
+
+CICE5: Sea-Ice Model Version 5 
+------------------------------
+
+CICE5 is a sea-ice model that inherits from the base CICE class 
+and provides more detailed restart datetime configuration.
+
+Configuration files
+~~~~~~~~~~~~~~~~~~~
+
+CICE5 requires configuration files: ``cice_in.nml``, ``input_ice.nml``, ``input_ice_gfdl.nml``, ``input_ice_monin.nml``.
+
+Runtime Workflow
+~~~~~~~~~~~~~~~~
+
+The time step is set as ``dt`` (in seconds) in the ``setup_nml`` section of ``cice_in.nml``.
+The number of time steps for the current run (``npt``) can also be configured in the same section.
+
+The CICE base class tracks total runtime using ``dt``, ``npt``, and ``istep0`` 
+(total timestep from the initial experiment) in the ``setup_nml`` section of ``cice_in.nml`` from the restart directory.
+
+For CICE5, this runtime calculation is overridden with a non-implement pass, 
+since runtime is now stored directly in NetCDF restart files instead of namelists.
 
 
-Setup
----------------------
+ACCESS-OM2: Coupled Ocean–Sea Ice Model Version 2
+--------------------------------------------------
 
-The ``setup`` method is only called when ACCESS-OM2 is used as a submodule (not a top-level model):
+ACCESS-OM2 is a coupled ocean–sea ice model consisting of MOM5 ocean model (see :ref:`mom5`), 
+CICE5 sea ice model (see :ref:`cice5`), and a file-based atmosphere (YATM). 
+All submodels are coupled through OASIS3-MCT v2.0.
+It is built based on ACCESS-OM and AusCOM models originally developed by CSIRO (see 
+`ACCESS-OM2 GitHub repository <https://github.com/ACCESS-NRI/ACCESS-OM2>`_ for more details).
+In payu, the ACCESS-OM2 model driver is built on the base model class (see :ref:`base_model`).
+ 
 
-    super(AccessOm2, self).setup()
+Configuration files
+~~~~~~~~~~~~~~~~~~~
+
+ACCESS-OM2 requires ``accessom2.nml`` and ``namcouple`` to configure.
+
+Runtime workflow
+~~~~~~~~~~~~~~~~
+
+ACCESS-OM2 delegates runtime configuration to each sub-model (MOM5 and CICE5) independently.
+
+Override compared to base model class
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ACCESS-OM2 overrides the standard work directory structure:
+
+- work input path: ``${work_path}/INPUT``
+- work restart path: ``${work_path}/RESTART``
+
+During archiving, ACCESS-OM2 handles coupling by copying the ``o2i.nc`` file 
+from the MOM5 work directory into the CICE5 restart directory.
+
+Note: ACCESS-OM2 only performs setup and archive steps when used as a sub-model (not as a top-level model).
 
 
-Specify path names
----------------------
+Other related model classes
+---------------------------
 
-Before applying the ACCESS-OM2 customisations, we need to run the standard implementation of ``set_model_pathnames()``::
+
+.. _fms:
+
+Flexible Modelling System (FMS)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+FMS is a framework that provides a common infrastructure for building 
+climate models in payu.
+It inherits from the base model class (see :ref:`base_model`) and 
+provides FMS-specific functionality for setup, archive and collation.
+FMS is used for MOM5 and MOM6 ocean model drivers in payu.
+
+Directory Structure
+^^^^^^^^^^^^^^^^^^^
+
+The directory structure of an FMS model is organised as:
+
+::
     
-    super(AccessOm2, self).set_model_pathnames()
+    work/                        # Work directory
+    |---- INPUT/               # Input data directory
+    |---- RESTART/             # Model restart directory
 
-Then we can override some path names for ACCESS-OM2, including:
+Archive Handling
+^^^^^^^^^^^^^^^^
 
-- ``work_path``: path to the working directory for the model.
-    
-- ``control_path``: path to the control directory for the model.
-
-- ``work_input_path``: path to the input directory within the working directory.
-
-- ``work_restart_path``: path to the restart directory within the working directory.
-
-Similarly, input and output paths can also be customised after calling the base methods, if needed::
-
-    super(AccessOm2, self).set_input_paths()
-    super(AccessOm2, self).set_model_output_paths()
-
-In ACCESS-OM2, the following paths are customised:
-
-- ``output_path``: path to output directory, e.g., ``self.expt.output_path``.
-
-- ``restart_path``: path to restart directory, e.g., ``self.expt.restart_path``.
-
-- ``prior_output_path``: path to the prior output directory, e.g., ``self.expt.prior_output_path``.
-
-- ``prior_restart_path``: path to the prior restart directory, e.g., ``self.expt.prior_restart_path``.
+During the archive stage, the FMS model driver remove the ``work/INPUT`` directory,
+and move restart files from ``work/RESTART`` directory into the ``archive/restart`` directory.
 
 
-Archive
----------------------
+Collation Handling
+^^^^^^^^^^^^^^^^^^
 
-The ``archive`` method aims to move the model output and restart files from working directory to archive directory
-after a successful run. This method is only called when ACCESS-OM2 is running as a submodule. 
+During the collation stage, the FMS model driver uses ``mppnccombine`` tools
+to combine distributed restart files into a single NetCDF file.
+A mapping between the full hashes of distributed tiles and the collated file is 
+stored in the collate job file as ``collate_mapping``.
 
-When ACCESS-OM2 is a top-level model, the ``archive`` method instead locate ``cice5`` and ``mom`` submodels.
-Then it copies the ocean-to-ice coupling file (``o2i.nc``) from the ``mom`` working directory into
-the ``cice5`` restart directory.
+.. _mixin:
+
+MomMixin
+~~~~~~~~
+
+MomMixin is a mixin class that adds specific functionality for 
+MOM5 and MOM6 model drivers in payu.
+It provideds common methods for handling calendar and datetime extraction from restart files.
+
+MomMixin reads the calendar type from the first line of ``ocean_solo.res`` file.
+The calendar type is mapped to the following calendars:
+
+- ``1``: ``360_day`` — 12 months of exactly 30 days each,
+- ``2``: ``julian`` — Julian calendar with leap years every 4 years,
+- ``3``: ``proleptic_gregorian`` — Gregorian calendar extended backward,
+  in time, with leap years every 4 years except for years divisible by
+  100 but not by 400
+- ``4``: ``noleap`` — 365-day calendar with no leap years,
 
 
-Collate
----------------------
-
-The ``collate`` method is intended to collate the model restart tiles in the archive directory.
-In ACCESS-OM2 top-level models, this is not implemented so a ``pass`` is used to skip this step.
-
-
-Get restart datetime
----------------------
-
-The ``get_restart_datetime`` method extracts the restart timestamp from
-restart files and returns a ``cftime.datetime`` object.
-In ACCESS-OM2, this is based on the MOM ocean model only::
-
-    self.get_restart_datetime_using_submodel(restart_path, ['mom'])
-
-
-Get current experiment datetime
----------------------
-
-``get_cur_expt_time`` is useful when monitoring the current experiment time via ``payu status``. 
-In ACCESS-OM2, it reads the latest ``cur_exp-datetime`` entry from the
-``work/atmosphere/log/matmxx.pe00000.log``, 
-and returns it as a ``cftime.datetime`` object using the format of ``%Y-%m-%dT%H:%M:%S``.
+MomMixin also extracts the restart datetime from the ``ocean_solo.res`` file, 
+which is used for tracking runtime and configuring the next run.
