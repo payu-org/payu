@@ -542,15 +542,15 @@ repository, run::
 Control directory and branch naming guidance
 --------------------------------------------
 
-As described above, when using branches the experiment name is generated from the 
+As described above, when using branches, the experiment name is generated from the combination of
 *control directory*, the branch name and the unique experiment UUID.
 
 It can be useful to think of the *control directory* name as the top level of a 
 namespace_ in which the branch name must be unique only for that control directory 
 git repository [#fbranch]_.
 
-So the *control directory* should have a name that when added to the branch name makes
-sense and provides a sensible grouping for all the branches.
+The *control directory* therefore should have a name that, when combined with the branch name, is
+meaningful and provides a sensible grouping for all the branches.
 
 .. _namespace: https://en.wikipedia.org/wiki/Namespace
 
@@ -562,25 +562,25 @@ When cloning the simple MOM5 bowl1 example from the payu repository
 https://github.com/payu-org/bowl1.git
 
 it would be fine to use the repository name (``bowl1``) as the control directory 
-name, but in this case, as it is a MOM5 experiment, the *control directory* will be
+name, but in this case, as it is a MOM5 experiment, the *control directory* is expected to be
 ``mom5_bowl1``.
 
-As an example use case consider a group of related experiments to explore the effect 
-of changing the diffusivity, which require a control experiment and two other experiments
-where the diffusivity is halved compared to the control, and another doubled. Then 
-then branch names could be: ``control``, ``diff_double``, ``diff_halve``.
+As an example use case, consider a group of related experiments to explore the effect 
+of changing the diffusivity. This requires a control experiment, one experiment where the 
+diffusivity is halved compared to the control, and another experiment with doubled diffusivity. 
+In this case, suitable branch names could be: ``control``, ``diff_halve``, ``diff_double``.
 
 These three branches in the ``mom5_bowl1`` control directory would result in experiment 
 names like:
 
 * ``mom5_bowl1-control-c3de94ac``
 * ``mom5_bowl1-diff_double-daed6c85``
-* ``mom5-bowl1-diff_halve-1dba6dac``
+* ``mom5_bowl1-diff_halve-1dba6dac``
 
-Naming schemes will depend a lot on the use case. For example using the same ``bowl1`` 
+Naming schemes will depend a lot on the use case. For example, using the same ``bowl1`` 
 repository as a base, if the intention is to create a group of related idealised MOM5 
-experiments then it might make sense to name the cloned repository ``mom5_idealised`` 
-and the branches ``bowl1``, ``single_column``, ``dome`` and ``double_gyre``.
+experiments, it might make sense to name the cloned repository ``mom5_idealised``, 
+with branches such as ``bowl1``, ``single_column``, ``dome`` and ``double_gyre``.
 
 These four brances would result in experiment names like:
 
@@ -589,7 +589,7 @@ These four brances would result in experiment names like:
 * ``mom5_idealised-dome-9f3c7e0a``
 * ``mom5_idealised-double_gyre-bafb77b6``
 
-In the second use-case, ``bowl1`` is the branch name, whereas in the first case it
+In the second use case, ``bowl1`` is the branch name, whereas in the first case it
 was part of the control directory name. There are no rigid rules, it depends on
 the use case.
 
@@ -602,19 +602,19 @@ Ocean Sea-Ice configuration (``release-MC_25km_jra_ryf``):
 
 https://github.com/ACCESS-NRI/access-om3-configs/tree/release-MC_25km_jra_ryf
 
-the default repository name would be ``access-om3-configs``. It does not make
-sense to use this as the control directory name. The repository is named for 
-it's function, which is to curate and release *all* ACCESS-OM3 configurations.
+The default repository name would be ``access-om3-configs``. It is not recommended
+to directly use this as the control directory name, since the default repository name is to 
+curate and release *all* ACCESS-OM3 configurations.
 
-Similarly the branch that would being cloned (``release-MC_25km_jra_ryf``) is named
+Similarly, the branch that would be cloned (``release-MC_25km_jra_ryf``) is named
 to make it unique in the repo which collects and curates *all* ACCESS-OM3 configurations.
-In this case a modified version of the branch name is a better *control directory* 
-name: ``access-om3-MC_25km_jra_ryf`` to indicate this is a set of ACCESS-OM3 25km global 
+In this case, a modified version of the branch name is a better *control directory* 
+name, e.g., ``access-om3-MC_25km_jra_ryf``, indicating that this is a set of ACCESS-OM3 25km global 
 Ocean Sea-Ice simulations using JRA55 repeat-year forcing.
 
 As an example use case, consider a set of experiments to explore the effect of
-modifying mixing parameters, requiring a control experiment, an experiment where
-an amount of subtracted from the mixing parameter, and another where the same
+modifying mixing parameters. This might require a control experiment, an experiment where
+an amount is subtracted from the mixing parameter, and another where the same
 amount is added. Example branch names for a such a set of experiments could 
 be: ``control``, ``mix_plus``, ``mix_minus``.
 
