@@ -665,6 +665,6 @@ when reporting an issue.
 .. rubric:: Footnotes
 
 .. [#fbranch] The branch name must be unique for any repository it will be pushed to. 
-If the intention is to push multiple control repositories to a single repo this must 
-be taken into account to avoid branch naming conflicts.
+   If the intention is to push multiple control repositories to a single repo this must 
+   be taken into account to avoid branch naming conflicts.
 
