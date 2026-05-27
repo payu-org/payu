@@ -33,11 +33,10 @@ from payu.telemetry import write_queued_job_file
 # Default configuration
 DEFAULT_CONFIG = 'config.yaml'
 
-# Pass the warning through the logger
-logging.captureWarnings(True)
-
 def parse():
     """Parse the command line inputs and execute the subcommand."""
+    # Pass the warning through the logger
+    logging.captureWarnings(True)
     setup_logger()
     parser = generate_parser(is_interactive = True)
 
