@@ -562,8 +562,8 @@ When cloning the simple MOM5 bowl1 example from the payu repository
 https://github.com/payu-org/bowl1.git
 
 it would be fine to use the repository name (``bowl1``) as the control directory 
-name, but in this case, as it is a MOM5 experiment, the *control directory* is given the more accurate name
-``mom5_bowl1``.
+name, but in this case, as it is a MOM5 experiment, the *control directory* is given 
+the more accurate name ``mom5_bowl1``.
 
 As an example use case, consider a group of related experiments to explore the effect 
 of changing the diffusivity. This requires a control experiment, one experiment where the 
@@ -577,12 +577,12 @@ names like:
 * ``mom5_bowl1-diff_double-daed6c85``
 * ``mom5_bowl1-diff_halve-1dba6dac``
 
-Naming schemes will depend a lot on the use case. For example, using the same ``bowl1`` 
-repository as a base, if the intention is to create a group of related idealised MOM5 
-experiments, it might make sense to name the cloned repository ``mom5_idealised``, 
-with branches such as ``bowl1``, ``single_column``, ``dome`` and ``double_gyre``.
-
-These four branches would result in experiment names like:
+Naming schemes will depend a lot on the use case. For example if the goal is
+to create a set of related experiments to explore a number of unrelated 
+idealised configurations, it could be convenient to have a single respository 
+named ``mom5_idealised``.  The branches could then correspond to well known 
+idealised configurations: ``bowl1``, ``single_column``, ``dome`` and ``double_gyre``.  
+Running experiments from these four branches would result in experiment names like:
 
 * ``mom5_idealised-bowl1-82664df5``
 * ``mom5_idealised-single_column-8035e206``
