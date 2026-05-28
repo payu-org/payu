@@ -562,7 +562,7 @@ When cloning the simple MOM5 bowl1 example from the payu repository
 https://github.com/payu-org/bowl1.git
 
 it would be fine to use the repository name (``bowl1``) as the control directory 
-name, but in this case, as it is a MOM5 experiment, the *control directory* is expected to be
+name, but in this case, as it is a MOM5 experiment, the *control directory* is given the more accurate name
 ``mom5_bowl1``.
 
 As an example use case, consider a group of related experiments to explore the effect 
@@ -582,7 +582,7 @@ repository as a base, if the intention is to create a group of related idealised
 experiments, it might make sense to name the cloned repository ``mom5_idealised``, 
 with branches such as ``bowl1``, ``single_column``, ``dome`` and ``double_gyre``.
 
-These four brances would result in experiment names like:
+These four branches would result in experiment names like:
 
 * ``mom5_idealised-bowl1-82664df5``
 * ``mom5_idealised-single_column-8035e206``
