@@ -394,8 +394,6 @@ class PBS(Scheduler):
         if pbs_join not in ('oe', 'eo', 'n'):
             raise errors.PayuRunError(
                 'payu: error: unknown qsub IO stream join setting.')
-            # print('payu: error: unknown qsub IO stream join setting.')
-            # sys.exit(-1)
         else:
             pbs_flags.append('-j {join}'.format(join=pbs_join))
 
@@ -598,8 +596,6 @@ def pbs_env_init():
     except IOError as ec:
         raise errors.PayuFileNotFoundError(
             f'Unable to find PBS_CONF_FILE ... {pbs_conf_fpath}') from ec
-        # print('Unable to find PBS_CONF_FILE ... ' + pbs_conf_fpath)
-        # sys.exit(1)
 
 
 def encode_mount(mount):

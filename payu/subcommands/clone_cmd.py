@@ -200,8 +200,6 @@ def fetch_branches(url):
         return branches
     except subprocess.CalledProcessError as e:
         raise errors.PayuBranchError(f'Error fetching branches: {e}') from e
-        # print(f"Error fetching branches: {e}")
-        # sys.exit(1)
 
 def fetch_tags(url):
     """Fetch all tags from the remote repository."""
@@ -217,8 +215,6 @@ def fetch_tags(url):
         return tags
     except subprocess.CalledProcessError as e:
         raise errors.PayuBranchError(f'Error fetching branches: {e}') from e
-        # print(f"Error fetching tags: {e}")
-        # sys.exit(1)
 
 def show_flowchart():
     """Show the flowchart for the clone process."""

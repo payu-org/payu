@@ -128,17 +128,8 @@ class PayuManifest(YaManifest):
             raise errors.PayuRunError(
                 f'payu: error: Run cannot reproduce: manifest {self.path} is not correct.\n'
                 'Manifest path: stored hash != calculated hash\n'
-                f'{diff_text}')
-
-            # sys.stderr.write(
-            #     f'Run cannot reproduce: manifest {self.path} is not correct\n'
-            # )
-            # print(f"Manifest path: stored hash != calculated hash")
-            # for row in differences:
-            #     print(row)
-
-            # sys.exit(1)
-
+                f'{diff_text}\n')
+                
 
     def add_filepath(self, filepath, fullpath, hashes, copy=False):
         """

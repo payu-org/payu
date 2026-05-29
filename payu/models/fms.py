@@ -337,12 +337,6 @@ def fms_collate(model):
                     f'Error message: {error_msg}'
                 )
 
-                # print('payu: error: Thread {p} crashed with error code '
-                #       '{rc}.'.format(p=p, rc=rc), file=sys.stderr)
-                # print(' Error message:', file=sys.stderr)
-                # print(op.decode(), file=sys.stderr)
-        # sys.exit(-1)
-
     # Get full hash for collated files and write collate mapping into job file
     mapping_collate_dict = restart_mapping_log(uncollate_hashes_dict)
     return mapping_collate_dict

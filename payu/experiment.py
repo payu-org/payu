@@ -487,8 +487,6 @@ class Experiment(object):
         if os.path.exists(self.output_path):
             raise errors.PayuRunError(f'payu: error: output path already exists:\
                  {self.output_path}')
-            # sys.exit('payu: error: Output path already exists: '
-            #          '{path}.'.format(path=self.output_path))
 
         # Confirm that no work path already exists
         if os.path.exists(self.work_path):
@@ -499,13 +497,8 @@ class Experiment(object):
             else:
                 raise errors.PayuRunError(
                     f'payu: error: work path already exists: {self.work_path}.\n'
-                    '         payu sweep and then payu run'
-                    )
+                    '             payu sweep and then payu run')
             
-                # sys.exit('payu: error: work path already exists: {path}.\n'
-                #          '             payu sweep and then payu run'
-                #          .format(path=self.work_path))
-
         os.makedirs(self.work_path, exist_ok=True)
 
         os.makedirs(self.archive_path, exist_ok=True)
@@ -781,8 +774,6 @@ class Experiment(object):
 
             # Terminate payu
             raise errors.PayuRunError(f'payu: exited with error code {rc}; aborting.')
-            # sys.exit('payu: Model exited with error code {0}; aborting.'
-            #          ''.format(rc))
 
         # Decrement run counter on successful run
         stop_file_path = os.path.join(self.control_path, 'stop_run')
@@ -878,7 +869,6 @@ class Experiment(object):
         if not os.path.exists(self.work_sym_path):
             raise errors.PayuFileNotFoundError('payu: error: \
                 No work directory to archive.')
-            # sys.exit('payu: error: No work directory to archive.')
 
         os.makedirs(self.archive_path, exist_ok=True)
         make_symlink(self.archive_path, self.archive_sym_path)
@@ -899,7 +889,6 @@ class Experiment(object):
         # Double-check that the run path does not exist
         if os.path.exists(self.output_path):
             raise errors.PayuRunError('payu: error: output path already exists')
-            # sys.exit('payu: error: Output path already exists.')
 
         movetree(self.work_path, self.output_path)
 

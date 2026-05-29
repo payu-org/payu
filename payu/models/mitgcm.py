@@ -88,7 +88,6 @@ class Mitgcm(Model):
                 raise errors.PayuFileNotFoundError(
                     'payu: error: no restart files found') from e
                     
-                # sys.exit("payu: error: no restart files found.")
         else:
             n_iter0 = 0
 
@@ -168,7 +167,6 @@ class Mitgcm(Model):
                     f'Timestep at end identical to previous pickups: {niter}'
                     'This would overwrite previous pickups')
                 raise errors.PayuRunError(msg)
-                # sys.exit(mesg)
 
         t_end = t_start + dt * n_timesteps
         pchkpt_freq = t_end - t_start
@@ -185,10 +183,6 @@ class Mitgcm(Model):
             raise errors.PayuRunError(
                 'payu: error: time inconsistences, '
                 f'pchkptfreq ({pchkpt_freq}) != experiment length ({dt * n_timesteps})')
-            # print('payu : error : time inconsistencies, '
-            #       'pchkptfreq ({}) != experiment length ({})'
-            #       ''.format(pchkpt_freq, dt * n_timesteps))
-            # sys.exit(1)
 
         data_nml['parm03']['startTime'] = t_start
         data_nml['parm03']['niter0'] = n_iter0

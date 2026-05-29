@@ -84,12 +84,9 @@ class GitRepository:
         if self.repo:
             if self.repo.head.is_detached:
                 raise errors.PayuGitError(
-                    '\nRepo is in detached HEAD state. \n'
+                    '\nRepo is in detached HEAD state.\n'
                     'Before running again checkout a branch using \n\n'
                     '    payu checkout <branch>\n\n')
-                # sys.exit("\nRepo is in a detached HEAD state.\n"
-                #          "Before running again checkout a branch using\n\n"
-                #          "    payu checkout <branch>\n\n")
             else:
                 return self.repo.active_branch
         else:

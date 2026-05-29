@@ -102,13 +102,6 @@ class Cice(Model):
                         f'payu: error: Grid file path in {self.ice_nml_fname} '
                         f'({path}) does not match input path '
                         f'({input_path})')
-                    # print('payu: error: Grid file path in {nmlfile} '
-                    #       '({path}) does not match input path '
-                    #       '({inputpath})'.format(
-                    #         nmlfile=self.ice_nml_fname,
-                    #         path=path,
-                    #         inputpath=input_path))
-                    # sys.exit(1)
 
         # Check for consistency in input paths due to cice having the same
         # information in multiple locations
@@ -119,13 +112,6 @@ class Cice(Model):
                 'payu: error: '
                 f'kmt file path in {self.ice_nml_fname} ({path}) does not match '
                 f'input path ({input_path})')
-            # print('payu: error: '
-            #       'kmt file path in {nmlfile} ({path}) does not match '
-            #       'input path ({inputpath})'.format(
-            #         nmlfile=self.ice_nml_fname,
-            #         path=path,
-            #         inputpath=input_path))
-            # sys.exit(1)
 
         if not os.path.isabs(input_path):
             input_path = os.path.join(self.work_path, input_path)
@@ -242,10 +228,6 @@ class Cice(Model):
                 raise errors.PayuFileNotFoundError(
                     f'payu: error: Cannot find prior namelist {self.ice_nml_fname}'
                 )
-
-                # print('payu: error: Cannot find prior namelist {nml}'.format(
-                #     nml=self.ice_nml_fname))
-                # sys.exit(errno.ENOENT)
 
             prior_setup_nml = f90nml.read(prior_nml_path)['setup_nml']
 
