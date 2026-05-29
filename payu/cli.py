@@ -63,7 +63,7 @@ def parse():
             lambda message, category, filename, lineno, line=None: f"{message}"
         )
     try:
-        run_cmd(**args)
+        run_cmd(**args) 
 
     except errors.PayuError as e:
         # Logs a clean message, and attaches stacktrace 'only' if requested.
