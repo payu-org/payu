@@ -3,6 +3,7 @@ import shlex
 import sys
 from unittest.mock import patch
 import warnings
+import logging
 
 import payu
 import payu.cli
@@ -15,6 +16,7 @@ from .common import write_config
 from .common import make_exe, make_inputs, make_restarts, make_all_files
 
 verbose = True
+ORIGINAL_WARNING = warnings.formatwarning
 
 def test_parse_no_args(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["payu"])
@@ -31,6 +33,7 @@ def parse_args(parser, cmd):
     args = vars(parser.parse_args(arguments[1:]))
     run_cmd = args.pop("run_cmd")
     stacktrace = args.pop("stacktrace")
+    log_level = args.pop("log_level")
     return run_cmd, args
 
 def test_parse(parser):
@@ -365,43 +368,80 @@ def test_parse_clone(parser):
     assert args.pop('repository') == 'test_repo'
     assert args.pop('local_directory') == 'local_dir'
 
-def mock_warn(**kwargs):
+
+@pytest.mark.parametrize(
+    "stacktrace_flag, stacktrace_env, expected_stacktrace", 
+    [   
+        # Running `payu-cmd`` with no stacktrace flag
+        (False, None, False),
+
+        # Running `payu cmd` to submit PBS job with no stacktrace flag
+        (False, False, False),
+
+        # Running `payu-cmd`` with --stacktrace flag
+        (True, None, True),
+        (True, False, True),
+
+        # Running `payu cmd` to submit PBS job with --stacktrace flag passed through environment variable
+        (False, True, True),
+    ]
+)
+def test_set_stacktrace_runscript(stacktrace_flag, stacktrace_env, expected_stacktrace, monkeypatch):
+    """Test that set_stacktrace_runscript configure the stacktrace settings for the runscript."""
+    monkeypatch.setattr(warnings, "formatwarning", ORIGINAL_WARNING)
+    if stacktrace_env is None:
+        monkeypatch.delenv("PAYU_STACKTRACE", raising=False)
+    else:
+        monkeypatch.setenv("PAYU_STACKTRACE", stacktrace_env)
+
+    with pytest.warns(UserWarning) as caught:
+        payu.cli.set_stacktrace_runscript(stacktrace_flag)
         warnings.warn("Test Warning")
 
-def test_parse_setup_stacktrace_off(monkeypatch):
-    """Test that warning message does not include stack trace information
-    when --stacktrace is not flagged."""
-    monkeypatch.setattr(warnings, "formatwarning", warnings.formatwarning)
-    monkeypatch.setattr(sys, "argv", ["payu", "setup"])
-    monkeypatch.setattr("payu.subcommands.setup_cmd.runcmd", mock_warn)
-    with pytest.warns(UserWarning) as caught:
-        payu.cli.parse()
-
     w = caught[0]
     formatted = warnings.formatwarning(
         w.message, w.category, w.filename, w.lineno, w.line
     )
-    assert formatted == "Test Warning"
+
+    if expected_stacktrace:
+        assert "Test Warning" in formatted
+        assert "UserWarning" in formatted
+        assert str(w.filename) in formatted
+        assert str(w.lineno) in formatted
+    else:
+        assert formatted == "Test Warning"
+
+
+@pytest.mark.parametrize(
+    "log_level_arg, log_level_env, expected_log_level",
+    [
+        # Running `payu-cmd` with no log level flag 
+        ('INFO', None, 'INFO'),
+
+        # Running `payu cmd` with no log level flag 
+        ('INFO', 'INFO', 'INFO'),
+
+        # Running `payu-cmd` with --log-level=DEBUG flag
+        ('DEBUG', None, 'DEBUG'),
+
+        # Running `payu cmd` with --log-level=DEBUG flag passed through environment variable
+        ('INFO', 'DEBUG', 'DEBUG'),
+
+        # Confirm that CLI > Environment variable for log level
+        ('DEBUG', 'INFO', 'DEBUG'),
+    ]
+)
+def test_set_logger_runscript(log_level_arg, log_level_env, expected_log_level, monkeypatch):
+    """Test that set_logger_runscript configure the logging settings for the runscript."""
+    if log_level_env is None:
+        monkeypatch.delenv("PAYU_LOG_LEVEL", raising=False)
+    else:
+        monkeypatch.setenv("PAYU_LOG_LEVEL", log_level_env)
+    payu.cli.set_logger_runscript(log_level_arg)
+    logger = payu.cli.logging.getLogger()
+    print(logger.level)
+    assert logging.getLevelName(logger.level) == expected_log_level
      
-
-def test_parse_setup_stacktrace_on(monkeypatch):
-    """Test that warning message includes stack trace information
-    when --stacktrace is flagged."""
-    monkeypatch.setattr(warnings, "formatwarning", warnings.formatwarning)
-    monkeypatch.setattr(sys, "argv", ["payu", "setup", "--stacktrace"])
-    monkeypatch.setattr("payu.subcommands.setup_cmd.runcmd", mock_warn)
-    with pytest.warns(UserWarning) as caught:
-        payu.cli.parse()
-
-    w = caught[0]
-    formatted = warnings.formatwarning(
-        w.message, w.category, w.filename, w.lineno, w.line
-    )
-    
-    assert "Test Warning" in formatted
-    assert "UserWarning" in formatted
-    assert str(w.filename) in formatted
-    assert str(w.lineno) in formatted
 
 def test_parse_arg_count(capsys, monkeypatch):
     """Test that the parser correctly excludes --stacktrace when counting arguments."""

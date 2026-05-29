@@ -21,7 +21,7 @@ parameters = {'description': 'Run the model experiment'}
 
 arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory, args.reproduce, args.force,
-             args.force_prune_restarts]
+             args.force_prune_restarts, args.stacktrace, args.log_level]
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +184,10 @@ def runscript():
         parser.add_argument(*arg['flags'], **arg['parameters'])
 
     run_args = parser.parse_args()
+
+    # Configure logging and stacktrace settings based on arguments
+    cli.set_logger_runscript(vars(run_args).get('log_level'))
+    cli.set_stacktrace_runscript(vars(run_args).get('stacktrace'))
 
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)

@@ -5,6 +5,7 @@ from pathlib import Path
 import warnings
 import json
 
+from payu import cli
 from payu.fsops import read_config
 from payu.metadata import MetadataWarning, Metadata
 from payu.laboratory import Laboratory

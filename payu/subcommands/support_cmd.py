@@ -5,18 +5,18 @@ import os
 import sys
 import subprocess
 import platform
-import warnings
 
 # Local
 import payu
 from payu import cli
+import payu.subcommands.args as args
 
 warning_msg = "Unable to get machine information using platform module."
 
 title = 'support'
 parameters = {'description': 'generate report of system information for debugging and support requests'}
 
-arguments = []
+arguments = [args.stacktrace]
 
 def get_machine_info():
     """Get machine information using platform module."""
@@ -43,7 +43,10 @@ def print_support(label, value):
             print(f"  {' ':<{label_width}} {item}")
 
 
-def runcmd():
+def runcmd(stacktrace=None):
+    # Configure stacktrace settings based on arguments
+    cli.set_stacktrace_runscript(stacktrace)
+
     print("=" * 40)
     # Get payu version and path
     payu_version = payu.__version__

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from payu.branch import checkout_branch
 import payu.subcommands.args as args
+from payu import cli
 
 title = 'checkout'
 parameters = {
@@ -32,7 +33,7 @@ parameters = {
 
 arguments = [args.model, args.config, args.laboratory, args.new_branch,
              args.branch_name, args.start_point, args.restart_path,
-             args.keep_uuid, args.parent_experiment]
+             args.keep_uuid, args.parent_experiment, args.stacktrace]
 
 
 def transform_strings_to_path(path_str=None):
@@ -41,11 +42,15 @@ def transform_strings_to_path(path_str=None):
 
 def runcmd(model_type, config_path, lab_path, new_branch,
            branch_name, start_point,
-           restart_path, keep_uuid, parent_experiment):
+           restart_path, keep_uuid, parent_experiment,
+           stacktrace=None):
     """Execute the command."""
     config_path = transform_strings_to_path(config_path)
     lab_path = transform_strings_to_path(lab_path)
     restart_path = transform_strings_to_path(restart_path)
+
+    # Configure logging and stacktrace settings based on arguments
+    cli.set_stacktrace_runscript(stacktrace)
 
     checkout_branch(is_new_branch=new_branch,
                     branch_name=branch_name,

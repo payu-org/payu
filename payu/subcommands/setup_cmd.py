@@ -3,6 +3,7 @@
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
+from payu import cli
 
 title = 'setup'
 parameters = {'description': 'Setup model work directory for run'}
@@ -13,7 +14,8 @@ arguments = [
     args.laboratory,
     args.reproduce,
     args.force,
-    args.metadata_off
+    args.metadata_off,
+    args.stacktrace,
 ]
 
 

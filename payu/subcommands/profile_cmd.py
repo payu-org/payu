@@ -3,6 +3,7 @@
 # Standard Library
 import argparse
 import os
+import warnings
 
 # Local
 from payu import cli
@@ -73,6 +74,11 @@ def runscript():
         parser.add_argument(*arg['flags'], **arg['parameters'])
 
     run_args = parser.parse_args()
+
+    # Configure logging and stacktrace settings based on arguments
+    cli.set_logger_runscript(vars(run_args).get('log_level'))
+    cli.set_stacktrace_runscript(vars(run_args).get('stacktrace'))
+    warnings.warn("`payu profile` is deprecated and will be removed in a future release.")
 
     pbs_vars = cli.set_env_vars(init_run=run_args.init_run,
                                 n_runs=run_args.n_runs)
