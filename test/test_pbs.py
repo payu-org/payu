@@ -358,8 +358,8 @@ def test_find_mounts():
 
     assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
 
-
-def test_run():
+@patch("payu.schedulers.pbs.check_user_in_group", return_value=True)
+def test_run(mock_check_user_in_group):
 
     # Use new mechanism to return a scheduler
     sched_name = config.get('scheduler', 'pbs')
@@ -460,6 +460,7 @@ def test_run():
 
 @patch("payu.schedulers.pbs.pbs_env_init", return_value=True)
 @patch("payu.schedulers.pbs.check_exe_path", side_effect=lambda x, y: y)
+@patch("payu.schedulers.pbs.check_user_in_group", return_value=True)
 @pytest.mark.parametrize(
     "env_exists,file_exists,file_exe,expected_cmd",
     [
@@ -474,7 +475,7 @@ def test_run():
     ],
 )
 def test_submit_launcher_script_setting(
-    mock_pbs_env_init, mock_check_exe_path,
+    mock_pbs_env_init, mock_check_exe_path, mock_check_user_in_group,
     env_exists, file_exists, file_exe, expected_cmd, tmp_path, monkeypatch
 ):
     config = {
@@ -546,3 +547,27 @@ def test_get_all_job_info(monkeypatch):
     monkeypatch.setattr(pbs, "get_job_info_json", lambda: fake_qstat)
     result = PBS().get_all_job_info()
     assert result == expected
+
+@patch('os.getgroups')
+@patch('grp.getgrgid')
+def test_check_user_in_group(mock_getgrgid, mock_getgroups):
+    """Test that check_user_in_group correctly identifies group membership."""
+    mock_getgroups.return_value = [1000, 1001, 1002]
+
+    # Create a mock for grp.getgrgid that returns {'gr_name': 'group{gid}'}
+    mock_getgrgid.side_effect = lambda gid: type('grp_struct', (object,), {'gr_name': f'group{gid}'})
+
+    assert pbs.check_user_in_group('group1000') == True
+    assert pbs.check_user_in_group('group1001') == True
+    assert pbs.check_user_in_group('group1002') == True
+    assert pbs.check_user_in_group('group9999') == False
+
+@patch('os.getgroups')
+@patch('grp.getgrgid')
+def test_check_user_in_group_error(mock_getgrgid, mock_getgroups):
+    """ Test that check_user_in_group handles errors from grp.getgrgid."""
+    mock_getgroups.return_value = [1000, 1001, 1002]
+    mock_getgrgid.side_effect = KeyError("Groupid not found")
+
+    with pytest.raises(RuntimeError, match=r"Error checking group membership for current user: 'Groupid not found'"):
+        pbs.check_user_in_group('group1000')

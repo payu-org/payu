@@ -14,6 +14,7 @@ import subprocess
 from typing import Any, Dict, Optional
 import warnings
 from collections import Counter
+import grp
 
 import json
 from tenacity import retry, stop_after_delay
@@ -112,6 +113,17 @@ def _run_pbsnodes_json(timeout: int) -> Dict[str, Any]:
             f"Failed to decode JSON output from pbsnodes command: {' '.join(cmd)}"
             f"\n Output: {error_msg}"
         ) from e
+
+
+def check_user_in_group(group_name: str) -> bool:
+    """Check if the current user is in a specific group."""
+    try:
+        # get what groups the current user is in
+        user_groups = [grp.getgrgid(gid).gr_name for gid in os.getgroups()]
+        return group_name in user_groups
+    except Exception as e:
+        # If the group doesn't exist, return False
+        raise RuntimeError(f"Error checking group membership for current user: {e}")
 
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
@@ -277,7 +289,10 @@ class PBS(Scheduler):
         pbs_flags.append('-q {queue}'.format(queue=pbs_queue))
 
         pbs_project = pbs_config.get('project', os.environ['PROJECT'])
-        pbs_flags.append('-P {project}'.format(project=pbs_project))
+        if check_user_in_group(pbs_project):
+            pbs_flags.append('-P {project}'.format(project=pbs_project))
+        else:
+            raise RuntimeError(f"payu: error: User is not in project group '{pbs_project}' specified in config")
 
         pbs_resources = ['walltime', 'ncpus', 'mem', 'jobfs']
 
