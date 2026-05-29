@@ -143,6 +143,9 @@ class Metadata:
 
     def new_experiment_name(self) -> str:
         """Generate a new experiment name"""
+        # Get expt prefix from config
+        expt_name_prefix = self.config.get("experiment_name_prefix", None)
+
         if self.branch is None:
             self.branch = self.repo.get_branch_name()
 
@@ -153,7 +156,12 @@ class Metadata:
         truncated_uuid = self.uuid[:TRUNCATED_UUID_LENGTH]
         suffix += f'-{truncated_uuid}'
 
-        return self.control_path.name + suffix
+        # If experiment name prefix is configured and not empty, expt name is prefix-branch-UUID
+        if expt_name_prefix:
+            return expt_name_prefix + suffix
+        # Otherwise, expt name is ctrl_dir_name-branch-UUID
+        else:
+            return self.control_path.name + suffix
 
     def set_experiment_name(self,
                             is_new_experiment: bool = False,

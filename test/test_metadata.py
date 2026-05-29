@@ -348,6 +348,33 @@ def test_new_experiment_name(branch, expected_name):
     assert experiment == expected_name
 
 
+@pytest.mark.parametrize(
+    "expt_name_prefix, branch, expected_name",
+    [
+        (None, "branch", "ctrl-branch-cb793e91"),
+        ("", "branch", "ctrl-branch-cb793e91"),
+        ("imprefix", None, "imprefix-cb793e91"),
+        ("hiprefix", "branch", "hiprefix-branch-cb793e91"),
+        ("ohprefix", "master", "ohprefix-cb793e91"),
+    ]
+)
+def test_new_experiment_name_with_prefix(expt_name_prefix, branch, expected_name):
+    """ Test experiment name is prefix with branch and UUID suffix"""
+    # Setup config
+    test_config = config.copy()
+    test_config['experiment_name_prefix'] = expt_name_prefix
+    write_config(test_config)
+    with cd(ctrldir):
+        metadata = Metadata(archive_dir)
+
+    metadata.uuid = "cb793e91-6168-4ed2-a70c-f6f9ccf1659b"
+
+    with patch('payu.metadata.GitRepository.get_branch_name') as mock_branch:
+        mock_branch.return_value = branch
+        experiment = metadata.new_experiment_name()
+
+    assert experiment == expected_name
+
 def test_metadata_enable_false():
     # Set metadata to false in config file
     test_config = copy.deepcopy(config)
