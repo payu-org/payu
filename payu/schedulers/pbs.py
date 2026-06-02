@@ -115,12 +115,11 @@ def _run_pbsnodes_json(timeout: int) -> Dict[str, Any]:
         ) from e
 
 
-def check_user_in_group(group_name: str) -> bool:
-    """Check if the current user is in a specific group."""
+def get_user_groups() -> list:
+    """Get the list of all groups the current user is in."""
     try:
         # get what groups the current user is in
-        user_groups = [grp.getgrgid(gid).gr_name for gid in os.getgroups()]
-        return group_name in user_groups
+        return [grp.getgrgid(gid).gr_name for gid in os.getgroups()]
     except Exception as e:
         # If the group doesn't exist, return False
         raise RuntimeError(f"Error checking group membership for current user: {e}")
@@ -289,10 +288,11 @@ class PBS(Scheduler):
         pbs_flags.append('-q {queue}'.format(queue=pbs_queue))
 
         pbs_project = pbs_config.get('project', os.environ['PROJECT'])
-        if check_user_in_group(pbs_project):
+        user_groups = get_user_groups()
+        if pbs_project in user_groups:
             pbs_flags.append('-P {project}'.format(project=pbs_project))
         else:
-            raise RuntimeError(f"payu: error: User is not in project group '{pbs_project}' specified in config")
+            raise RuntimeError(f"payu: error: User is not a member of the project '{pbs_project}' specified in config:project.\n")
 
         pbs_resources = ['walltime', 'ncpus', 'mem', 'jobfs']
 
@@ -381,6 +381,15 @@ class PBS(Scheduler):
 
             # Add the container launcher script path to storage flags
             storages.update(find_mounts(launcher_script, mounts))
+
+        # Check if user has access to all storages paths, and raise error if not
+        denied_storages = []
+        for storage in storages:
+            mount, project = storage.split(os.path.sep)
+            if project not in user_groups:
+                denied_storages.append(storage)
+        if len(denied_storages) > 0:
+            raise RuntimeError(f"payu: error: User is not a member of the following storage projects: {', '.join(denied_storages)}.\n")
 
         # Add storage flags. Note that these are sorted to get predictable
         # behaviour for testing
