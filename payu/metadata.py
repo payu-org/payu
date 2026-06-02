@@ -143,9 +143,6 @@ class Metadata:
 
     def new_experiment_name(self) -> str:
         """Generate a new experiment name"""
-        # Get expt prefix from config
-        expt_name_prefix = self.config.get("experiment_name_prefix", None)
-
         if self.branch is None:
             self.branch = self.repo.get_branch_name()
 
@@ -157,8 +154,8 @@ class Metadata:
         suffix += f'-{truncated_uuid}'
 
         # If experiment name prefix is configured and not empty, expt name is prefix-branch-UUID
-        if expt_name_prefix:
-            return expt_name_prefix + suffix
+        if self.expt_name_prefix and self.expt_name_prefix.strip():
+            return self.expt_name_prefix + suffix
         # Otherwise, expt name is ctrl_dir_name-branch-UUID
         else:
             return self.control_path.name + suffix
@@ -170,7 +167,14 @@ class Metadata:
         sub-directories in the Laboratory"""
         # Experiment name configuration - this overrides experiment name
         self.experiment_name = self.config.get("experiment", None)
-        if self.experiment_name is not None:
+        self.expt_name_prefix = self.config.get("experiment_prefix", None)
+
+        if self.experiment_name is not None and self.experiment_name.strip():
+            # Check if experiment prefix is also configured and warn that it will be ignored
+            if self.expt_name_prefix and self.expt_name_prefix.strip():
+                warnings.warn("Both experiment name and prefix are configured in config.yaml.\n"
+                            "Only the experiment name will be used, while the experiment prefix is ignored.",
+                            UserWarning)
             print(f"Experiment name is configured in config.yaml: ",
                   self.experiment_name)
             return

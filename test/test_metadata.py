@@ -340,6 +340,7 @@ def test_new_experiment_name(branch, expected_name):
         metadata = Metadata(archive_dir)
 
     metadata.uuid = "cb793e91-6168-4ed2-a70c-f6f9ccf1659b"
+    metadata.expt_name_prefix = None
 
     with patch('payu.metadata.GitRepository.get_branch_name') as mock_branch:
         mock_branch.return_value = branch
@@ -352,7 +353,7 @@ def test_new_experiment_name(branch, expected_name):
     "expt_name_prefix, branch, expected_name",
     [
         (None, "branch", "ctrl-branch-cb793e91"),
-        ("", "branch", "ctrl-branch-cb793e91"),
+        (" ", "branch", "ctrl-branch-cb793e91"),
         ("imprefix", None, "imprefix-cb793e91"),
         ("hiprefix", "branch", "hiprefix-branch-cb793e91"),
         ("ohprefix", "master", "ohprefix-cb793e91"),
@@ -362,7 +363,7 @@ def test_new_experiment_name_with_prefix(expt_name_prefix, branch, expected_name
     """ Test experiment name is prefix with branch and UUID suffix"""
     # Setup config
     test_config = config.copy()
-    test_config['experiment_name_prefix'] = expt_name_prefix
+    test_config['experiment_prefix'] = expt_name_prefix
     write_config(test_config)
     with cd(ctrldir):
         metadata = Metadata(archive_dir)
@@ -371,9 +372,29 @@ def test_new_experiment_name_with_prefix(expt_name_prefix, branch, expected_name
 
     with patch('payu.metadata.GitRepository.get_branch_name') as mock_branch:
         mock_branch.return_value = branch
+        metadata.expt_name_prefix = metadata.config.get("experiment_prefix", None)
         experiment = metadata.new_experiment_name()
 
     assert experiment == expected_name
+
+
+def test_experiment_name_with_prefix_and_experiment():
+    """Test when both experiment name and prefix are set, a warning is raised and
+    new_experiment_name() is not called, experiment name is used directly."""
+    # Setup config
+    test_config = config.copy()
+    test_config['experiment_prefix'] = "IAMprefix"
+    test_config['experiment'] = "IAMexpt"
+    write_config(test_config)
+    with cd(ctrldir):
+        metadata = Metadata(archive_dir)
+
+    with patch.object(metadata, 'new_experiment_name') as mock_new_experiment_name:
+        with pytest.warns(UserWarning, match="Both experiment name and prefix are configured in config.yaml.\n"):
+            metadata.set_experiment_name()
+
+        mock_new_experiment_name.assert_not_called()
+
 
 def test_metadata_enable_false():
     # Set metadata to false in config file
