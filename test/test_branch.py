@@ -9,7 +9,7 @@ from ruamel.yaml import YAML
 from unittest.mock import patch, MagicMock
 
 from payu.branch import add_restart_to_config, check_restart, switch_symlink
-from payu.branch import checkout_branch, clone, list_branches, PayuBranchError, SET_PARENT_TO_CURRENT_STRING
+from payu.branch import checkout_branch, clone, list_branches, PayuBranchError, DEFAULT_PARENT_STRING
 from payu.metadata import MetadataWarning, UUID_FIELD
 from payu.fsops import read_config
 from payu.subcommands import clone_cmd
@@ -485,6 +485,8 @@ def test_checkout_branch_with_restart_path(mock_uuid):
     # Setup repo
     repo = setup_control_repository()
 
+    branch_name1 = "Branch1"
+
     # Mock uuid1 value
     uuid1 = "df050eaf-c8bb-4b10-9998-e0202a1eabd2"
     mock_uuid.return_value = uuid1
@@ -492,20 +494,22 @@ def test_checkout_branch_with_restart_path(mock_uuid):
     with cd(ctrldir):
         # Test checkout with restart path with no metadata
         checkout_branch(is_new_branch=True,
-                        branch_name="Branch1",
+                        branch_name=branch_name1,
                         lab_path=labdir,
                         restart_path=restart_path)
 
     # Check metadata
-    experiment1_name = f"{ctrldir_basename}-Branch1-df050eaf"
+    experiment1_name = f"{ctrldir_basename}-{branch_name1}-{uuid1[0:8]}"
     check_branch_metadata(repo,
-                          expected_current_branch='Branch1',
+                          expected_current_branch=branch_name1,
                           expected_uuid=uuid1,
                           expected_experiment=experiment1_name)
 
     # Create restart directory in Branch1 archive
     restart_path = archive_dir / experiment1_name / 'restart0123'
     restart_path.mkdir()
+
+    branch_name2 = "Branch2"
 
     # Mock uuid2 value
     uuid2 = "9cc04c9b-f13d-4f1d-8a35-87146a4381ef"
@@ -514,65 +518,90 @@ def test_checkout_branch_with_restart_path(mock_uuid):
     with cd(ctrldir):
         # Test checkout with restart path with metadata
         checkout_branch(is_new_branch=True,
-                        branch_name="Branch2",
+                        branch_name=branch_name2,
                         lab_path=labdir,
                         restart_path=restart_path)
 
     # Check metadta - Check parent experiment is experment 1 UUID
-    experiment2_name = f"{ctrldir_basename}-Branch2-9cc04c9b"
+    experiment2_name = f"{ctrldir_basename}-{branch_name2}-{uuid2[0:8]}"
     check_branch_metadata(repo,
-                          expected_current_branch='Branch2',
+                          expected_current_branch=branch_name2,
                           expected_uuid=uuid2,
                           expected_experiment=experiment2_name,
                           expected_parent_uuid=uuid1)
 
 
-@patch("payu.branch.get_branch_metadata")
+@pytest.mark.parametrize("branch_metadata_with_uuid",
+                        [   
+                            # Case when there is experiment UUID in metadata
+                            (True),
+                            # Case when there is no experiment UUID in metadata
+                            (False)
+                        ] )
 @patch("uuid.uuid4")
-def test_checkout_branch_with_parent_experiment(mock_uuid, mock_get_branch_metadata):
+def test_checkout_branch_with_parent_experiment(mock_uuid, branch_metadata_with_uuid, monkeypatch):
+    """Test checkout branch with parent experiment set to DEFAULT_PARENT_STRING ("PARENT") 
+    which should set parent experiment to start point's experiment UUID."""
     # Setup repo
     repo = setup_control_repository()
 
-    # Mock uuid1 value
+    # Mock uuid1 and uuid2 values
     uuid1 = "df050eaf-c8bb-4b10-9998-e0202a1eabd2"
-    mock_uuid.return_value = uuid1
-
-    with cd(ctrldir):
-        # Test checkout with no metadata
-        checkout_branch(is_new_branch=True,
-                        branch_name="Branch1",
-                        lab_path=labdir)
-
-    # Check metadata
-    experiment1_name = f"{ctrldir_basename}-Branch1-df050eaf"
-    check_branch_metadata(repo,
-                          expected_current_branch='Branch1',
-                          expected_uuid=uuid1,
-                          expected_experiment=experiment1_name)
-
-    # Mock uuid2 value
     uuid2 = "9cc04c9b-f13d-4f1d-8a35-87146a4381ef"
-    mock_uuid.return_value = uuid2
+    branch_names = ["Branch1", "Branch2", "Branch3"]
 
-    # Mock the get_branch_metadata to return metadata with experiment UUID
-    mock_get_branch_metadata.return_value = {
-        UUID_FIELD: uuid1
-    }
+    # Set up branch1 and branch2 and their metadata
+    for branch_name, uuid in [(branch_names[0], uuid1), (branch_names[1], uuid2)]:
+        mock_uuid.return_value = uuid
+        with cd(ctrldir):
+            # Test checkout with no metadata
+            checkout_branch(is_new_branch=True,
+                            branch_name=branch_name,
+                            lab_path=labdir)
 
-    with cd(ctrldir):
-        # Test checkout with parent_experiment set to SET_PARENT_TO_CURRENT_STRING ("CURRENT")
-        checkout_branch(is_new_branch=True,
-                        branch_name="Branch2",
-                        lab_path=labdir,
-                        parent_experiment=SET_PARENT_TO_CURRENT_STRING)
+        # Check metadata
+        experiment_name = f"{ctrldir_basename}-{branch_name}-{uuid[0:8]}"
+        check_branch_metadata(repo,
+                            expected_current_branch=branch_name,
+                            expected_uuid=uuid,
+                            expected_experiment=experiment_name)
 
-    # Check metadta - Check parent experiment is experment 1 UUID
-    experiment2_name = f"{ctrldir_basename}-Branch2-9cc04c9b"
-    check_branch_metadata(repo,
-                          expected_current_branch='Branch2',
-                          expected_uuid=uuid2,
-                          expected_experiment=experiment2_name,
-                          expected_parent_uuid=uuid1)
+    # Mock uuid3 value
+    uuid3 = "98c99f06-260e-42cc-a23f-f113fae825e5"
+    mock_uuid.return_value = uuid3
+
+    if branch_metadata_with_uuid:
+        # Test checkout -b Branch3 with parent_experiment set to DEFAULT_PARENT_STRING ("PARENT")
+        # With start_point set to Branch1
+        with cd(ctrldir):
+            checkout_branch(is_new_branch=True,
+                            branch_name=branch_names[2],
+                            lab_path=labdir,
+                            start_point=branch_names[0],
+                            parent_experiment=DEFAULT_PARENT_STRING)
+
+        # Check metadta - Check parent experiment is experment 1 UUID
+        experiment3_name = f"{ctrldir_basename}-{branch_names[2]}-{uuid3[0:8]}"
+        check_branch_metadata(repo,
+                            expected_current_branch=branch_names[2],
+                            expected_uuid=uuid3,
+                            expected_experiment=experiment3_name,
+                            expected_parent_uuid=uuid1)
+        
+    else:
+        # Test checkout -b Branch3 with parent_experiment set to DEFAULT_PARENT_STRING ("PARENT") 
+        # BUT no experiment UUID in metadata in Branch1 (which is the start point)
+        monkeypatch.setattr("payu.branch.get_branch_metadata", lambda branch: {})
+
+        with cd(ctrldir):
+            with pytest.raises(PayuBranchError, 
+                               match="No UUID in metadata file. Cannot set parent experiment to current experiment."):
+                checkout_branch(is_new_branch=True,
+                            branch_name=branch_names[2],
+                            lab_path=labdir,
+                            start_point=branch_names[0],
+                            parent_experiment=DEFAULT_PARENT_STRING)
+
 
 
 @patch("payu.laboratory.Laboratory.initialize")

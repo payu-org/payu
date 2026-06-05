@@ -44,7 +44,7 @@ To checkout an existing branch, run:
     payu checkout BRANCH_NAME
 Where BRANCH_NAME is the name of the branch"""
 
-SET_PARENT_TO_CURRENT_STRING = "CURRENT"
+DEFAULT_PARENT_STRING = "PARENT"
 
 def remove_traceback_hook(kind, message, traceback):
     """Remove traceback for only PayuBranchError"""
@@ -185,14 +185,16 @@ def checkout_branch(branch_name: str,
     if control_path is None:
         control_path = get_control_path(config_path)
     
+    # Checkout branch
     repo = GitRepository(control_path)
-    
-    # If parent_experiment is set to `CURRENT`, set to current branch's experiment UUID
-    if parent_experiment == SET_PARENT_TO_CURRENT_STRING:
-        print("Setting parent experiment to current branch's experiment UUID")
-        # Read experiment UUID from metadata on current branch
-        current_branch = repo.get_branch()
-        metadata = get_branch_metadata(current_branch)
+    repo.checkout_branch(branch_name, is_new_branch, start_point)
+
+     # If parent_experiment is set to DEFAULT_PARENT_STRING, set to start_point's experiment UUID
+    if parent_experiment == DEFAULT_PARENT_STRING:
+        print("Setting parent experiment to start point's experiment UUID")
+        # Read experiment UUID from metadata on start point's branch
+        start_branch = repo.get_branch()
+        metadata = get_branch_metadata(start_branch)
         uuid = metadata.get(UUID_FIELD, None)
         
         if uuid is None:
