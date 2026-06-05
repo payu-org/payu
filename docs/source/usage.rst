@@ -565,7 +565,7 @@ it would be fine to use the repository name (``bowl1``) as the control directory
 name, but in this case, as it is a MOM5 experiment, the *control directory* is given 
 the more accurate name ``mom5_bowl1``.
 
-As an example use case, consider a group of related experiments to explore the effect 
+As an example use case, consider a group of related experiments, run sequentially from a single control directory, to explore the effect 
 of changing the diffusivity. This requires a control experiment, one experiment where the 
 diffusivity is halved compared to the control, and another experiment with doubled diffusivity. 
 In this case, suitable branch names could be: ``control``, ``diff_halve``, ``diff_double``.
@@ -579,7 +579,7 @@ names like:
 
 Naming schemes will depend a lot on the use case. For example if the goal is
 to create a set of related experiments to explore a number of unrelated 
-idealised configurations, it could be convenient to have a single respository 
+idealised configurations, it could be convenient to have a single directory 
 named ``mom5_idealised``.  The branches could then correspond to well known 
 idealised configurations: ``bowl1``, ``single_column``, ``dome`` and ``double_gyre``.  
 Running experiments from these four branches would result in experiment names like:
