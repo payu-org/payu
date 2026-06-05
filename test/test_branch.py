@@ -933,15 +933,11 @@ def test_fetch_branches_tags_invalid_url(monkeypatch, capsys):
                     )
     mock_run = MagicMock(side_effect=error_to_raise)
     monkeypatch.setattr("subprocess.run", mock_run)
-    with pytest.raises(SystemExit):
+    with pytest.raises(errors.PayuBranchError, match="Error fetching branches:"):
         clone_cmd.fetch_branches("https://invalid-url.com")
-    
-    assert "Error fetching branches:" in capsys.readouterr().out
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(errors.PayuBranchError, match="Error fetching tags:"):
         clone_cmd.fetch_tags("https://invalid-url.com")
-        
-    assert "Error fetching tags:" in capsys.readouterr().out
 
 def test_validate_local_directory():
     """ Test validate_local_directory correctly checks and return True when directory not exists or empty"""

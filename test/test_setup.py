@@ -9,6 +9,7 @@ from unittest.mock import patch
 import json
 
 import payu
+import payu.errors as errors
 
 from .common import cd, make_random_file, get_manifests
 from .common import tmpdir, ctrldir, labdir, workdir
@@ -181,10 +182,9 @@ def test_setup():
     assert work_exe.resolve() == bin_exe.resolve()
 
     # Re-run setup - expect an error
-    with pytest.raises(SystemExit,
-                       match="work path already exists") as setup_error:
+    with pytest.raises(errors.PayuRunError,
+                       match="work path already exists"):
         payu_setup(lab_path=str(labdir), sweep=False, force=False)
-    assert setup_error.type == SystemExit
 
     assert workdir.is_symlink and workdir.is_dir()
 

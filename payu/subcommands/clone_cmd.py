@@ -214,7 +214,7 @@ def fetch_tags(url):
         tags = [line.split('\t')[1].replace("refs/tags/", "") for line in result.stdout.splitlines()]
         return tags
     except subprocess.CalledProcessError as e:
-        raise errors.PayuBranchError(f'Error fetching branches: {e}') from e
+        raise errors.PayuBranchError(f'Error fetching tags: {e}') from e
 
 def show_flowchart():
     """Show the flowchart for the clone process."""

@@ -1,8 +1,4 @@
 import copy
-import os
-from pathlib import Path
-import pdb
-import shutil
 
 import f90nml
 import pytest
@@ -10,19 +6,14 @@ from ruamel.yaml import YAML
 yaml = YAML()
 yaml.default_flow_style = False
 
-import payu
+import payu.errors as errors
 
-
-import payu.models.mitgcm as model
-
-import test.common as common
-
-from test.common import cd, make_random_file, get_manifests
-from test.common import tmpdir, ctrldir, labdir, workdir
+from test.common import cd, get_manifests
+from test.common import ctrldir, labdir, workdir
 from test.common import sweep_work, payu_init, payu_setup
 from test.common import config as config_orig
 from test.common import write_config
-from test.common import make_exe, make_inputs, make_restarts, make_all_files
+from test.common import make_exe, make_inputs, make_restarts
 
 verbose = True
 
@@ -263,9 +254,8 @@ def test_setup_change_deltat_no_start_end(config, data, case):
         # pickup files in the work directory, as the nIter is the same
         # matchstr = '.*not integer multiple.*'
         matchstr = '.*Timestep at end identical to previous pickups.*'
-        with pytest.raises(SystemExit, match=matchstr) as setup_error:
+        with pytest.raises(errors.PayuRunError, match=matchstr):
             payu_setup(lab_path=str(labdir))
-        assert setup_error.type == SystemExit
         return
 
     payu_setup(lab_path=str(labdir))
@@ -332,9 +322,8 @@ def test_setup_change_deltat_no_ntimesteps(config, data, case):
         # This should throw an error, as it would overwrite the existing
         # pickup files in the work directory, as the nIter is the same
         matchstr = '.*Timestep at end identical to previous pickups.*'
-        with pytest.raises(SystemExit, match=matchstr) as setup_error:
+        with pytest.raises(errors.PayuRunError, match=matchstr):
             payu_setup(lab_path=str(labdir))
-        assert setup_error.type == SystemExit
         return
 
     payu_setup(lab_path=str(labdir))
