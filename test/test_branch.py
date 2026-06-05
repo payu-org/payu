@@ -9,8 +9,8 @@ from ruamel.yaml import YAML
 from unittest.mock import patch, MagicMock
 
 from payu.branch import add_restart_to_config, check_restart, switch_symlink
-from payu.branch import checkout_branch, clone, list_branches, PayuBranchError
-from payu.metadata import MetadataWarning
+from payu.branch import checkout_branch, clone, list_branches, PayuBranchError, SET_PARENT_TO_CURRENT_STRING
+from payu.metadata import MetadataWarning, UUID_FIELD
 from payu.fsops import read_config
 from payu.subcommands import clone_cmd
 
@@ -517,6 +517,54 @@ def test_checkout_branch_with_restart_path(mock_uuid):
                         branch_name="Branch2",
                         lab_path=labdir,
                         restart_path=restart_path)
+
+    # Check metadta - Check parent experiment is experment 1 UUID
+    experiment2_name = f"{ctrldir_basename}-Branch2-9cc04c9b"
+    check_branch_metadata(repo,
+                          expected_current_branch='Branch2',
+                          expected_uuid=uuid2,
+                          expected_experiment=experiment2_name,
+                          expected_parent_uuid=uuid1)
+
+
+@patch("payu.branch.get_branch_metadata")
+@patch("uuid.uuid4")
+def test_checkout_branch_with_parent_experiment(mock_uuid, mock_get_branch_metadata):
+    # Setup repo
+    repo = setup_control_repository()
+
+    # Mock uuid1 value
+    uuid1 = "df050eaf-c8bb-4b10-9998-e0202a1eabd2"
+    mock_uuid.return_value = uuid1
+
+    with cd(ctrldir):
+        # Test checkout with no metadata
+        checkout_branch(is_new_branch=True,
+                        branch_name="Branch1",
+                        lab_path=labdir)
+
+    # Check metadata
+    experiment1_name = f"{ctrldir_basename}-Branch1-df050eaf"
+    check_branch_metadata(repo,
+                          expected_current_branch='Branch1',
+                          expected_uuid=uuid1,
+                          expected_experiment=experiment1_name)
+
+    # Mock uuid2 value
+    uuid2 = "9cc04c9b-f13d-4f1d-8a35-87146a4381ef"
+    mock_uuid.return_value = uuid2
+
+    # Mock the get_branch_metadata to return metadata with experiment UUID
+    mock_get_branch_metadata.return_value = {
+        UUID_FIELD: uuid1
+    }
+
+    with cd(ctrldir):
+        # Test checkout with parent_experiment set to SET_PARENT_TO_CURRENT_STRING ("CURRENT")
+        checkout_branch(is_new_branch=True,
+                        branch_name="Branch2",
+                        lab_path=labdir,
+                        parent_experiment=SET_PARENT_TO_CURRENT_STRING)
 
     # Check metadta - Check parent experiment is experment 1 UUID
     experiment2_name = f"{ctrldir_basename}-Branch2-9cc04c9b"
