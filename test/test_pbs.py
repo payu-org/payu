@@ -571,3 +571,24 @@ def test_get_user_groups_error(mock_getgrgid, mock_getgroups):
 
     with pytest.raises(RuntimeError, match=r"Error checking group membership for current user: 'Groupid not found'"):
         pbs.get_user_groups()
+
+
+@pytest.mark.parametrize(
+    "storages, user_groups, expected_denied",
+    [
+        ({"fdata/x00", "fdata/y00"}, ['x00', 'y00', 'z00'], []),  # All storages accessible
+        ({"fdata/x00", "fdata/a00"}, ['x00', 'y00', 'z00'], ["fdata/a00"]),  # One storage denied
+        ({"fdata/a00", "fdata/b00"}, ['x00', 'y00', 'z00'], ["fdata/a00", "fdata/b00"]),  # All storages denied
+    ]
+)
+def test_check_storage_access(storages, user_groups, expected_denied):
+    """Test that check_storage_access correctly identifies denied storages."""
+    if len(expected_denied) > 0:
+        with pytest.raises(RuntimeError, match="User is not a member of the following required storage projects") as exc_info:
+            pbs.check_storage_access(storages, user_groups)
+        for denied in expected_denied:
+            assert denied in str(exc_info.value)
+
+    else:
+        # Test with all storages accessible
+        pbs.check_storage_access(storages, user_groups)

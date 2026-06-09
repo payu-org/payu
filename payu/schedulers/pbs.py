@@ -123,6 +123,16 @@ def get_user_groups() -> list:
     except Exception as e:
         # If the group doesn't exist, return False
         raise RuntimeError(f"Error checking group membership for current user: {e}")
+    
+def check_storage_access(storages: set, user_groups: list):
+    """Check if the user has access to all storage paths, and raise error if not."""
+    denied_storages = []
+    for storage in storages:
+        _, project = storage.split(os.path.sep)
+        if project not in user_groups:
+            denied_storages.append(storage)
+    if len(denied_storages) > 0:
+        raise RuntimeError(f"payu: error: User is not a member of the following required storage projects: {', '.join(denied_storages)}.\n")
 
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
@@ -383,13 +393,7 @@ class PBS(Scheduler):
             storages.update(find_mounts(launcher_script, mounts))
 
         # Check if user has access to all storages paths, and raise error if not
-        denied_storages = []
-        for storage in storages:
-            mount, project = storage.split(os.path.sep)
-            if project not in user_groups:
-                denied_storages.append(storage)
-        if len(denied_storages) > 0:
-            raise RuntimeError(f"payu: error: User is not a member of the following storage projects: {', '.join(denied_storages)}.\n")
+        check_storage_access(storages, user_groups)
 
         # Add storage flags. Note that these are sorted to get predictable
         # behaviour for testing
