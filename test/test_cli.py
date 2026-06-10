@@ -1,19 +1,14 @@
+import subprocess
+
 import pytest
 import shlex
 import sys
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 import warnings
 import logging
 
 import payu
 import payu.cli
-
-from .common import cd, make_random_file, get_manifests
-from .common import tmpdir, ctrldir, labdir, workdir
-from .common import sweep_work, payu_init, payu_setup
-from .common import config as config_orig
-from .common import write_config
-from .common import make_exe, make_inputs, make_restarts, make_all_files
 
 verbose = True
 ORIGINAL_WARNING = warnings.formatwarning
@@ -463,3 +458,29 @@ def test__parse_runscript_error():
     """Test that the _parse_runscript raise an error when command is not found."""
     with pytest.raises(ImportError, match="payu: error: Unknown runscript command payu-invalid"):
         payu.cli._parse_runscript("invalid")
+
+        
+def test_submit_job_error_msg():
+    """Test that informative error message is raised when job submission fails."""
+    # Set up a mock scheduler that returns a submission command
+    mock_sched = MagicMock()
+    mock_sched.submit.return_value = "qsub submit_script.sh"
+    mock_sched_type = MagicMock(return_value=mock_sched)
+    mock_index = {'PBS': mock_sched_type}
+
+    # Set up a failing subprocess.run
+    mock_sprun = MagicMock()
+    mock_sprun.side_effect = subprocess.CalledProcessError(
+        returncode=32, 
+        cmd="qsub submit_script.sh", 
+        output=b"Submission failed", 
+        stderr=b"Error details here")
+
+    with patch("payu.cli.scheduler_index", mock_index), \
+         patch("subprocess.run", mock_sprun):
+        with pytest.raises(RuntimeError) as exc_info:
+            payu.cli.submit_job(config={"scheduler": "PBS"}, script="submit_script.sh")
+            assert "Error occurred while submitting job." in str(exc_info.value)
+            assert "Exit code: 32" in str(exc_info.value)
+            assert "STDOUT: Submission failed" in str(exc_info.value)
+            assert "STDERR: Error details here" in str(exc_info.value)

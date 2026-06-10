@@ -38,7 +38,8 @@ class Laboratory(object):
             model_type = config.get('model')
 
         if not model_type:
-            raise ValueError('Cannot determine model type.')
+            raise ValueError("Cannot determine model type.\n"
+                             "Please ensure payu is running from an experiment control directory containing a config file.")
 
         self.model_type = model_type
 
