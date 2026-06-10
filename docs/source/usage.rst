@@ -532,6 +532,16 @@ for example::
 
 Note: This can also be achieved by configuring ``restart`` (see :ref:`config`).
 
+Alternatively, you can base a new experiment on an existing experiment, using the ``--parent-experiment`` or ``-p`` flag, for example::
+
+      payu checkout -b perturb2 perturb1 -p ${PARENT_EXPERIMENT_UUID}
+
+To simplify workflows, you can use ``BASE`` to refer to the current experiment UUID of the source branch::
+
+      payu checkout -b perturb2 perturb1 -p BASE
+
+In this case, payu extracts the current experiment UUID from the metadata of the source branch, and 
+sets it as the parent experiment UUID for the newly created branch.
 To checkout and switch to an existing branch and experiment, omit the ``-b`` flag. 
 For example, the following checks out the ``perturb1`` branch:: 
 

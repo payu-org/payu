@@ -540,7 +540,7 @@ def test_checkout_branch_with_restart_path(mock_uuid):
                         ] )
 @patch("uuid.uuid4")
 def test_checkout_branch_with_parent_experiment(mock_uuid, branch_metadata_with_uuid, monkeypatch):
-    """Test checkout branch with parent experiment set to DEFAULT_PARENT_STRING ("PARENT") 
+    """Test checkout branch with parent experiment set to DEFAULT_PARENT_STRING
     which should set parent experiment to start point's experiment UUID."""
     # Setup repo
     repo = setup_control_repository()
@@ -571,7 +571,7 @@ def test_checkout_branch_with_parent_experiment(mock_uuid, branch_metadata_with_
     mock_uuid.return_value = uuid3
 
     if branch_metadata_with_uuid:
-        # Test checkout -b Branch3 with parent_experiment set to DEFAULT_PARENT_STRING ("PARENT")
+        # Test checkout -b Branch3 with parent_experiment set to DEFAULT_PARENT_STRING
         # With start_point set to Branch1
         with cd(ctrldir):
             checkout_branch(is_new_branch=True,
@@ -589,7 +589,7 @@ def test_checkout_branch_with_parent_experiment(mock_uuid, branch_metadata_with_
                             expected_parent_uuid=uuid1)
         
     else:
-        # Test checkout -b Branch3 with parent_experiment set to DEFAULT_PARENT_STRING ("PARENT") 
+        # Test checkout -b Branch3 with parent_experiment set to DEFAULT_PARENT_STRING
         # BUT no experiment UUID in metadata in Branch1 (which is the start point)
         monkeypatch.setattr("payu.branch.get_branch_metadata", lambda branch: {})
 

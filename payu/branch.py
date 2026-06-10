@@ -44,7 +44,7 @@ To checkout an existing branch, run:
     payu checkout BRANCH_NAME
 Where BRANCH_NAME is the name of the branch"""
 
-DEFAULT_PARENT_STRING = "PARENT"
+DEFAULT_PARENT_STRING = "BASE"
 
 def remove_traceback_hook(kind, message, traceback):
     """Remove traceback for only PayuBranchError"""
