@@ -14,6 +14,7 @@ import subprocess
 from typing import Any, Dict, Optional
 import warnings
 from collections import Counter
+import grp
 
 import json
 from tenacity import retry, stop_after_delay
@@ -112,6 +113,26 @@ def _run_pbsnodes_json(timeout: int) -> Dict[str, Any]:
             f"Failed to decode JSON output from pbsnodes command: {' '.join(cmd)}"
             f"\n Output: {error_msg}"
         ) from e
+
+
+def get_user_groups() -> list:
+    """Get the list of all groups the current user is in."""
+    try:
+        # get what groups the current user is in
+        return [grp.getgrgid(gid).gr_name for gid in os.getgroups()]
+    except Exception as e:
+        # If the group doesn't exist, return False
+        raise RuntimeError(f"Error checking group membership for current user: {e}")
+    
+def check_storage_access(storages: set, user_groups: list):
+    """Check if the user has access to all storage paths, and raise error if not."""
+    denied_storages = []
+    for storage in storages:
+        _, project = storage.split(os.path.sep)
+        if project not in user_groups:
+            denied_storages.append(storage)
+    if len(denied_storages) > 0:
+        raise RuntimeError(f"payu: error: User is not a member of the following required storage projects: {', '.join(denied_storages)}.\n")
 
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
@@ -277,7 +298,11 @@ class PBS(Scheduler):
         pbs_flags.append('-q {queue}'.format(queue=pbs_queue))
 
         pbs_project = pbs_config.get('project', os.environ['PROJECT'])
-        pbs_flags.append('-P {project}'.format(project=pbs_project))
+        user_groups = get_user_groups()
+        if pbs_project in user_groups:
+            pbs_flags.append('-P {project}'.format(project=pbs_project))
+        else:
+            raise RuntimeError(f"payu: error: User is not a member of the project '{pbs_project}' specified in config:project.\n")
 
         pbs_resources = ['walltime', 'ncpus', 'mem', 'jobfs']
 
@@ -366,6 +391,9 @@ class PBS(Scheduler):
 
             # Add the container launcher script path to storage flags
             storages.update(find_mounts(launcher_script, mounts))
+
+        # Check if user has access to all storages paths, and raise error if not
+        check_storage_access(storages, user_groups)
 
         # Add storage flags. Note that these are sorted to get predictable
         # behaviour for testing

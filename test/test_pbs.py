@@ -31,6 +31,8 @@ verbose = True
 
 config = copy.deepcopy(original_config)
 
+test_storage_groups = ['x00', 'xyz999', 'y00', 'c000', 'mm02', 'm000', 'mm01', 'a000', 'tm70', 'aa30']
+
 
 def _fake_pbsnodes_dict(nodes):
     """Build a pbsnodes -F json compatible payload."""
@@ -358,8 +360,8 @@ def test_find_mounts():
 
     assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
 
-
-def test_run():
+@patch("payu.schedulers.pbs.get_user_groups", return_value=test_storage_groups)
+def test_run(mock_get_user_groups):
 
     # Use new mechanism to return a scheduler
     sched_name = config.get('scheduler', 'pbs')
@@ -460,6 +462,7 @@ def test_run():
 
 @patch("payu.schedulers.pbs.pbs_env_init", return_value=True)
 @patch("payu.schedulers.pbs.check_exe_path", side_effect=lambda x, y: y)
+@patch("payu.schedulers.pbs.get_user_groups", return_value=test_storage_groups)
 @pytest.mark.parametrize(
     "env_exists,file_exists,file_exe,expected_cmd",
     [
@@ -474,7 +477,7 @@ def test_run():
     ],
 )
 def test_submit_launcher_script_setting(
-    mock_pbs_env_init, mock_check_exe_path,
+    mock_pbs_env_init, mock_check_exe_path, mock_get_user_groups,
     env_exists, file_exists, file_exe, expected_cmd, tmp_path, monkeypatch
 ):
     config = {
@@ -546,3 +549,46 @@ def test_get_all_job_info(monkeypatch):
     monkeypatch.setattr(pbs, "get_job_info_json", lambda: fake_qstat)
     result = PBS().get_all_job_info()
     assert result == expected
+
+@patch('os.getgroups')
+@patch('grp.getgrgid')
+def test_get_user_groups(mock_getgrgid, mock_getgroups):
+    """Test that get_user_groups returns the correct list of groups."""
+    mock_getgroups.return_value = [1000, 1001, 1002]
+
+    # Create a mock for grp.getgrgid that returns {'gr_name': 'group{gid}'}
+    mock_getgrgid.side_effect = lambda gid: type('grp_struct', (object,), {'gr_name': f'group{gid}'})
+
+    assert pbs.get_user_groups() == ['group1000', 'group1001', 'group1002']
+
+
+@patch('os.getgroups')
+@patch('grp.getgrgid')
+def test_get_user_groups_error(mock_getgrgid, mock_getgroups):
+    """ Test that get_user_groups handles errors from grp.getgrgid."""
+    mock_getgroups.return_value = [1000, 1001, 1002]
+    mock_getgrgid.side_effect = KeyError("Groupid not found")
+
+    with pytest.raises(RuntimeError, match=r"Error checking group membership for current user: 'Groupid not found'"):
+        pbs.get_user_groups()
+
+
+@pytest.mark.parametrize(
+    "storages, user_groups, expected_denied",
+    [
+        ({"fdata/x00", "fdata/y00"}, ['x00', 'y00', 'z00'], []),  # All storages accessible
+        ({"fdata/x00", "fdata/a00"}, ['x00', 'y00', 'z00'], ["fdata/a00"]),  # One storage denied
+        ({"fdata/a00", "fdata/b00"}, ['x00', 'y00', 'z00'], ["fdata/a00", "fdata/b00"]),  # All storages denied
+    ]
+)
+def test_check_storage_access(storages, user_groups, expected_denied):
+    """Test that check_storage_access correctly identifies denied storages."""
+    if len(expected_denied) > 0:
+        with pytest.raises(RuntimeError, match="User is not a member of the following required storage projects") as exc_info:
+            pbs.check_storage_access(storages, user_groups)
+        for denied in expected_denied:
+            assert denied in str(exc_info.value)
+
+    else:
+        # Test with all storages accessible
+        pbs.check_storage_access(storages, user_groups)
