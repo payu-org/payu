@@ -977,6 +977,12 @@ class Experiment(object):
     @timeit("payu_collate_duration_seconds")
     def collate(self):
         """ Run model collation and record the time taken in seconds to run collation"""
+        # Update collate stage to running
+        telemetry.update_job_file(
+            file_path=self.get_job_file(type='collate'),
+            data={"stage": "running"}
+        )
+
         # Setup modules - load user-defined modules
         self.setup_modules()
 

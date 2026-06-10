@@ -213,7 +213,9 @@ def archived_collate_jobs(tmp_path, request):
     """Fixture to create a collate job files"""
     if request.param:
         files = []
-        for i in range(3):
+        # I design the test to have success collate run on run 0 and 2,
+        # And still running collate on run 1.
+        for i in [0, 2]:
             files.append(
                 write_job_file(
                     archive_path=tmp_path / "archive",
@@ -237,7 +239,7 @@ def archived_collate_jobs(tmp_path, request):
 
 @pytest.fixture
 def failed_collate_jobs(tmp_path, request):
-    """Fixture to create a failed collate job file"""
+    """Fixture to create a failed collate job file for run 2"""
     if request.param:
         return write_job_file(
             archive_path=tmp_path / "archive",
@@ -248,11 +250,31 @@ def failed_collate_jobs(tmp_path, request):
                 "scheduler_type": "pbs",
                 "metadata": {"uuid": "test-uuid"},
                 "payu_current_run": 2,
-                "payu_collate_id": "commit-hash-failed",
                 "stage": "exited",
                 "payu_collate_status": 1,
                 "timings": {
                     "payu_start_time": "2025-08-12T09:00:00"
+                }
+            },
+            type="collate"
+        )
+
+@pytest.fixture
+def running_collate_jobs(tmp_path, request):
+    """Fixture to create a running collate job file for run 1"""
+    if request.param:
+        return write_job_file(
+            archive_path=tmp_path / "archive",
+            job_id="test-collate-id-running",
+            run_number=1,
+            job_data={
+                "scheduler_job_id": "test-collate-id-1",
+                "scheduler_type": "pbs",
+                "metadata": {"uuid": "test-uuid"},
+                "payu_current_run": 1,
+                "stage": "running",
+                "timings": {
+                    "payu_start_time": "2025-08-11T09:00:00"
                 }
             },
             type="collate"
@@ -407,6 +429,16 @@ def expected_failed_job_info():
         'start_time': '2025-08-13T12:00:00'
     }
 
+def expected_running_collate_job_info(run_number):
+    return {
+        'job_id': f'test-collate-id-{run_number}',
+        'stage': 'running',
+        'exit_status': None,
+        'stderr_file': None,
+        'stdout_file': None,
+        'start_time': f'2025-08-1{run_number}T09:00:00'
+    }
+
 def expected_collate_job_info(run_number):
     return {
         'job_id': f'test-collate-id-{run_number}',
@@ -553,24 +585,25 @@ def test_build_job_info_latest(tmp_path, archive_jobs,
 
 
 @pytest.mark.parametrize(
-    "archive_jobs, archived_collate_jobs, failed_collate_jobs, expected",
+    "archive_jobs, running_collate_jobs, archived_collate_jobs, failed_collate_jobs, expected",
     [
-        (True, True, True,
+        (True, True, True, True,
         {
                 'runs': {
                     0: {'run': [expected_archive_job_info(0)],
                         'collate': [expected_collate_job_info(0)]},
                     1: {'run': [expected_archive_job_info(1)],
-                        'collate': [expected_collate_job_info(1)]},
+                        'collate': [expected_running_collate_job_info(1)]},
                     2: {'run': [expected_archive_job_info(2)],
                         'collate': [expected_failed_collate_job_info(),
                                     expected_collate_job_info(2)]}
                 }
             }),
     ],
-    indirect=["archive_jobs", "archived_collate_jobs", "failed_collate_jobs"]
+    indirect=["archive_jobs", "running_collate_jobs", "archived_collate_jobs", "failed_collate_jobs"]
 )
-def test_build_job_info_collate(tmp_path, archive_jobs, archived_collate_jobs, failed_collate_jobs, expected):
+def test_build_job_info_collate(tmp_path, archive_jobs, running_collate_jobs, 
+                                archived_collate_jobs, failed_collate_jobs, expected):
     """ Test collate job info is correctly included in build_job_info."""
     # Mock expt.get_model_cur_expt_time() in build_job_info
     mock_expt = MagicMock()
@@ -920,7 +953,7 @@ def test_build_job_info_error_get_cur_expt_time(tmp_path, running_job):
     assert data == {'runs': {3: {'run': [expected_info]}}}
 
 
-def test_get_job_file(tmp_path):
+def test_get_job_file():
     """Test the expt.get_job_file function returns the correct path"""
     tmpdir.mkdir(parents=True, exist_ok=True)
     labdir.mkdir(parents=True, exist_ok=True)
