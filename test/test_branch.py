@@ -271,7 +271,7 @@ def check_branch_metadata(repo,
     assert str(repo.active_branch) == expected_current_branch
 
     # Check last commit message
-    expected_commit_msg = f"Updated metadata. Experiment UUID: {expected_uuid}"
+    expected_commit_msg = f"Updated metadata. Experiment UUID: {expected_uuid}\n"
     assert repo.head.commit.message == expected_commit_msg
 
 

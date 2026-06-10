@@ -154,7 +154,13 @@ class GitRepository:
 
         # Run commit if there's changes
         if changes:
-            self.repo.index.commit(commit_message)
+            try:
+                # try to commit with signing, based on user's global git config
+                self.repo.git.commit(m = commit_message)
+            except git.exc.GitCommandError:
+                self.repo.git.commit("--no-gpg-sign", m = commit_message)
+                warnings.warn("Commit without gpg signing.")
+                
             print(commit_message)
 
     def local_branches_dict(self) -> Dict[str, git.Head]:

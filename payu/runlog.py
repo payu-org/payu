@@ -74,14 +74,10 @@ class Runlog(object):
         try:
             git_repo.commit(commit_msg, paths_to_add)
         except git.exc.GitCommandError as e:
-            try:
-                git_repo.commit(commit_msg, paths_to_add, no_gpg_sign=True)
-                warnings.warn("Runlog commit without gpg signing.")
-            except git.exc.GitCommandError as e:
-                warnings.warn(f"Failed to commit runlog changes to git repository: {e}.")
+            warnings.warn(f"Failed to commit runlog changes to git repository: {e}.")
 
         # Save the commit hash
-        self.expt.run_id = git_repo.repo.head.object.hexsha
+        self.expt.run_id = git_repo.get_hash()
 
     def push(self):
         """Push the changes to the remote repository.
