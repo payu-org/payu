@@ -250,7 +250,6 @@ def failed_collate_jobs(tmp_path, request):
                 "scheduler_type": "pbs",
                 "metadata": {"uuid": "test-uuid"},
                 "payu_current_run": 2,
-                "payu_collate_id": "commit-hash-failed",
                 "stage": "exited",
                 "payu_collate_status": 1,
                 "timings": {
@@ -273,7 +272,6 @@ def running_collate_jobs(tmp_path, request):
                 "scheduler_type": "pbs",
                 "metadata": {"uuid": "test-uuid"},
                 "payu_current_run": 1,
-                "payu_collate_id": "commit-hash-running",
                 "stage": "running",
                 "timings": {
                     "payu_start_time": "2025-08-11T09:00:00"
