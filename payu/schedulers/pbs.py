@@ -279,6 +279,38 @@ class PBS(Scheduler):
 
         return Counter(ncpus).most_common(1)[0][0], Counter(mem).most_common(1)[0][0]
 
+    @classmethod
+    def validate_memory_with_queue_limits(cls, pbs_mem: str, queue: str, n_cpus: int):
+        """
+        Validate the requested memory against the queue limits.
+        ----
+        Parameters:
+        pbs_mem: requested memory string from the config.
+        queue: the queue name
+        n_cpus: the number of CPUs requested.
+        """
+        # Change the unit of memory to GB
+        if pbs_mem.lower().endswith("tb"):
+            req_mem_gb = float(pbs_mem[:-2]) * 1024
+        elif pbs_mem.lower().endswith("gb"):
+            req_mem_gb = float(pbs_mem[:-2])
+        elif pbs_mem.lower().endswith("mb"):
+            req_mem_gb = float(pbs_mem[:-2]) / 1024
+        else:
+            raise ValueError(f"Memory string '{pbs_mem}' has invalid format, must end with TB, GB, or MB.")
+        
+        # Get the node shape for the queue
+        cpu_per_node, mem_per_node = cls.get_queue_node_shape(queue)
+        
+        # Calculate the requested memory per node
+        req_mem_per_node = req_mem_gb / n_cpus * cpu_per_node
+
+        if req_mem_per_node > mem_per_node:
+            raise ValueError(
+                f"You have requested more memory of {pbs_mem} ({req_mem_per_node:.2f} GB per node) "
+                f"than the limit of {mem_per_node:.2f} GB per node for queue '{queue}'."
+            )
+
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
         """Prepare a correct PBS command string"""
 

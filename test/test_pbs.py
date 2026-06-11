@@ -592,3 +592,40 @@ def test_check_storage_access(storages, user_groups, expected_denied):
     else:
         # Test with all storages accessible
         pbs.check_storage_access(storages, user_groups)
+
+
+@pytest.mark.parametrize(
+    "pbs_mem, queue, n_cpus, raise_error",
+    [   
+        ("1TB", "normalsr", 48, True),  # Exceeds max memory for normalsr
+        ("1300GB", "normalsr", 48, True),  # Exceeds max memory for normalsr
+        ("100GB", "normalsr", 48, False),  # Valid memory
+        ("100MB", "normalsr", 48, False),  # Valid memory
+        ("0.1TB", "normalsr", 48, False),  # Valid memory
+    ]
+)
+@patch("payu.schedulers.pbs.PBS.get_queue_node_shape", return_value=(48, 192))
+def test_validate_memory_with_queue_limits(mock_get_queue_node_shape, pbs_mem, queue, n_cpus, raise_error):
+    """Test that an error is raised if the memory request exceeds queue limits."""
+    if raise_error:
+        with pytest.raises(ValueError, match=fr"You have requested more memory of {pbs_mem}"):
+            PBS.validate_memory_with_queue_limits(pbs_mem, queue, n_cpus)
+    else:
+        # Test with valid memory request
+        PBS.validate_memory_with_queue_limits(pbs_mem, queue, n_cpus)
+
+
+@pytest.mark.parametrize(
+    "pbs_mem",
+    [   
+        ("100"),  # Missing unit
+        ("100GBs"),  # Invalid unit
+        ("100 G"),  # Invalid format with space
+        ("100KB"), # Not acceptable unit
+    ]
+)
+@patch("payu.schedulers.pbs.PBS.get_queue_node_shape", return_value=(48, 192))
+def test_validate_memory_with_queue_limits_format(mock_get_queue_node_shape, pbs_mem):
+    """Test that an error is raised if the memory string format is invalid."""
+    with pytest.raises(ValueError, match=fr"Memory string '{pbs_mem}' has invalid format, must end with TB, GB, or MB."):
+        PBS.validate_memory_with_queue_limits(pbs_mem, "normalsr", 48) 
