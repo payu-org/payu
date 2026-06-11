@@ -32,6 +32,9 @@ def create_new_repo(repo_path):
     repo = git.Repo.init(repo_path, initial_branch='main')
     init_file = repo_path / "init.txt"
     add_file_and_commit(repo, init_file)
+    with repo.config_writer() as gitconfig:
+        gitconfig.set_value("user", "name", "TestUser")
+        gitconfig.set_value("user", "email", "test@example.com")
     return repo
 
 

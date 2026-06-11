@@ -56,9 +56,20 @@ def setup_control_repository(path=ctrldir, set_config=True):
     # Initialise a control repo
     repo = git.Repo.init(path)
     repo.index.add("*")
+
+    with repo.config_writer() as gitconfig:
+        gitconfig.set_value("user", "name", "TestUser")
+        gitconfig.set_value("user", "email", "test@example.com")
     # Commit the changes
     repo.index.commit("First commit - initialising repository")
     return repo
+
+@pytest.fixture
+def git_identity_setenv(monkeypatch):
+    monkeypatch.setenv("GIT_AUTHOR_NAME", "TestUser")
+    monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@example.com")
+    monkeypatch.setenv("GIT_COMMITTER_NAME", "TestUser")
+    monkeypatch.setenv("GIT_COMMITTER_EMAIL", "test@example.com")
 
 
 @pytest.mark.parametrize(
@@ -550,7 +561,7 @@ def test_checkout_laboratory_path_error(mock_lab_initialise):
 
 
 @patch("uuid.uuid4")
-def test_clone(mock_uuid):
+def test_clone(mock_uuid, git_identity_setenv):
     # Create a repo to clone
     source_repo_path = tmpdir / "sourceRepo"
     source_repo_path.mkdir()
@@ -612,7 +623,7 @@ def test_clone(mock_uuid):
 @pytest.mark.parametrize(
     "start_point_type", ["commit", "tag"]
 )
-def test_clone_startpoint(start_point_type):
+def test_clone_startpoint(start_point_type, git_identity_setenv):
     # Create a repo to clone
     source_repo_path = tmpdir / "sourceRepo"
     source_repo_path.mkdir()
@@ -688,7 +699,7 @@ def test_clone_startpoint_with_no_new_branch_error():
     assert not cloned_repo_path.exists()
 
 
-def test_clone_with_relative_restart_path():
+def test_clone_with_relative_restart_path(git_identity_setenv):
     """Test clone with a restart path that is relative with respect to
     the directory in which the clone command is run from"""
     # Create a repo to clone

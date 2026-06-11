@@ -109,11 +109,7 @@ class GitRepository:
         """Return the current git commit hash or None if repository path is
           not a git repository"""
         if self.repo:
-            branch = self.repo.get_branch()
-            if branch is not None:
-                return branch.object.hexsha
-            else:
-                return None
+            return self.repo.head.object.hexsha
 
     def get_origin_url(self) -> Optional[str]:
         """Return url of remote origin if it exists"""
