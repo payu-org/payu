@@ -45,26 +45,34 @@ Configuration files
 
 A table of the required and optional configuration files for each submodel is shown below. 
 
-+------------------------+--------------------------------------+----------------------------------+
-| Model                  | Required                             | Optional                         |
-|                        | config files                         | config files                     |
-+========================+======================================+==================================+
-| ACCESS-OM2             | accessom2.nml                        | -                                |
-|                        | namcouple                            |                                  |
-+------------------------+--------------------------------------+----------------------------------+
-| YATM                   | atm.nml,                             | -                                |
-|                        | forcing.json                         |                                  |
-+------------------------+--------------------------------------+----------------------------------+
-| MOM5                   | data_table,                          | blob_diag_table,                 |
-|                        | diag_table,                          | mask_table,                      |
-|                        | field_table,                         | ocean_mask_table                 |
-|                        | input.nml                            |                                  |
-+------------------------+--------------------------------------+----------------------------------+
-| CICE5                  | cice_in.nml,                         | -                                |
-|                        | input_ice.nml,                       |                                  |
-|                        | input_ice_gfdl.nml,                  |                                  |
-|                        | input_ice_monin.nml                  |                                  |
-+------------------------+--------------------------------------+----------------------------------+
+.. list-table:: Model Configuration Files
+   :header-rows: 1
+
+   * - Model
+     - Required config files
+     - Optional config files
+   * - ACCESS-OM2
+     - - accessom2.nml
+       - namcouple
+     - -
+   * - YATM
+     - - atm.nml
+       - forcing.json
+     - -
+   * - MOM5
+     - - data_table
+       - diag_table
+       - field_table
+       - input.nml
+     - - blob_diag_table
+       - mask_table
+       - ocean_mask_table
+   * - CICE5
+     - - cice_in.nml
+       - input_ice.nml
+       - input_ice_gfdl.nml
+       - input_ice_monin.nml
+     - -
 
 Directory structure 
 ^^^^^^^^^^^^^^^^^^^^
@@ -118,13 +126,16 @@ This file captures the forcing current date and experiment current date.
 __FIX_ME__: provide more details about how the coupling configuration file works.
 The input, output and restart file locations are defined as below:
 
-+------------------------+--------------------------------------+
-| File type              | Location                             |
-+========================+======================================+
-| Input files            | ``${WORK}/INPUT/``                   |
-+------------------------+--------------------------------------+
-| Restart files          | ``${WORK}/RESTART/``                 |
-+------------------------+--------------------------------------+
+.. list-table::
+   :header-rows: 1
+
+   * - File type
+     - Location
+   * - Input files
+     - ``${WORK}/INPUT/``
+   * - Restart files
+     - ``${WORK}/RESTART/``
+
 
 
 YATM
@@ -135,11 +146,14 @@ __FIX_ME__: provide more details about how ``forcing.json`` works.
 
 The input, output and restart file locations are defined as below:
 
-+------------------------+--------------------------------------+
-| File type              | Location                             |
-+========================+======================================+
-| Input files            | ``${WORK}/atmosphere/INPUT/``        |
-+------------------------+--------------------------------------+
+.. list-table::
+   :header-rows: 1
+
+   * - File type
+     - Location
+   * - Input files
+     - ``${WORK}/atmosphere/INPUT/``
+
 
 
 MOM5
@@ -147,15 +161,17 @@ MOM5
 
 The input, output and restart file locations are defined as below:
 
-+------------------------+--------------------------------------+
-| File type              | Location                             |
-+========================+======================================+
-| Input files            | ``${WORK}/ocean/INPUT/``             |
-+------------------------+--------------------------------------+
-| Output files           | ``${WORK}/ocean/``                   |
-+------------------------+--------------------------------------+
-| Restart files          | ``${WORK}/ocean/RESTART/``           |
-+------------------------+--------------------------------------+
+.. list-table::
+   :header-rows: 1
+
+   * - File type
+     - Location
+   * - Input files
+     - ``${WORK}/ocean/INPUT/``
+   * - Output files
+     - ``${WORK}/ocean/``
+   * - Restart files
+     - ``${WORK}/ocean/RESTART/``
 
 
 CICE5
@@ -166,16 +182,17 @@ This is because the CICE5 model will modify the restart files during the run,
 and we want to keep the original restart files unchanged for the previous runs. 
 The input, output and restart file locations are defined as below:
 
-+------------------------+--------------------------------------+
-| File type              | Location                             |
-+========================+======================================+
-| Input files            | ``${WORK}/ice/RESTART/``             |
-+------------------------+--------------------------------------+
-| Output files           | ``${WORK}/ice/OUTPUT/``              |
-+------------------------+--------------------------------------+
-| Restart files          | ``${WORK}/ice/RESTART/``             |
-+------------------------+--------------------------------------+
+.. list-table::
+   :header-rows: 1
 
+   * - File type
+     - Location
+   * - Input files
+     - ``${WORK}/ice/RESTART/``
+   * - Output files
+     - ``${WORK}/ice/OUTPUT/``
+   * - Restart files
+     - ``${WORK}/ice/RESTART/``
 
 
 
@@ -192,24 +209,78 @@ Running
 ---------
 
 ACCESS-OM2 requires three executables to run, each for the atmosphere, ocean and sea ice submodels.
+The model driver reads the modules specified in the config file and use them for loading model executables.
+A symlink is created for each executable inside the work directory, 
+pointing to the actual executable file defined in the config file.
+Users can specify the name of executable for each submodel in the config file.
+An example of each executable name is shown below.
 
+.. list-table::
+   :header-rows: 1
 
+   * - Submodel
+     - Executable
+   * - Atmosphere
+     - ``yatm.exe``
+   * - Ocean
+     - ``mom5_access_om``
+   * - Sea ice
+     - ``cice_auscom_360x300_24x1_24p.exe``
 
-- multiple exe and links
+During the model run, the output files of each submodel are stored under different subdirecoties of the work directory.
 
-- model-specific checks
+.. list-table::
+   :header-rows: 1
 
-- where files get saved during the run
+   * - Submodel
+     - File type: Store location during run
+   * - Atmosphere
+     - -
+   * - Ocean
+     - - Output files: ``${WORK}/ocean/``
+       - Restart files: ``${WORK}/ocean/RESTART/``
+   * - Sea ice
+     - - Output files: ``${WORK}/ice/OUTPUT/``
+       - Restart files: ``${WORK}/ice/RESTART/``
 
-- how current model time is tracked
+The current model time is tracked in file ${WORK}/atmosphere/log/matmxx.pe00000.log by key ``cur_exp-datetime``.
 
+__ASK_AIDAN__: I am not sure if there is any model-specific checks.
 
 
 Archive
 -------
 
-- what files get archived and where
+When the model run is completed and archive is set to true, 
+the model driver will move files from the work directory to the archive directory 
+(e.g., /scratch/${PROJECT}/${USER}/archive/${CONTROL-Branch-UUID}).
+Meanwhile, the work directory and symlink are removed.
+The table below shows the source files and their corresponding archive locations.
 
+.. list-table::
+   :header-rows: 1
+
+   * - Submodel
+     - File Source
+     - Archive Location
+   * - Global
+     - - ``${WORK}/accessom2_restart.nml``
+       - ``${WORK}/${submodel}/INPUT/``
+     - - ``${ARCHIVE}/restart00N/accessom2_restart.nml``
+       - Removed
+   * - Atmosphere
+     - - ``${WORK}/atmosphere/``
+     - - ``${ARCHIVE}/output00N/atmosphere/``
+   * - Ocean
+     - - Output files in ``${WORK}/ocean/``
+       - ``${WORK}/ocean/RESTART/``
+     - - ``${ARCHIVE}/output00N/ocean/``
+       - ``${ARCHIVE}/restart00N/ocean/``
+   * - Sea ice
+     - - ``${WORK}/ice/OUTPUT/``
+       - ``${WORK}/ice/RESTART/``
+     - - ``${ARCHIVE}/output00N/ice/``
+       - ``${ARCHIVE}/restart00N/ice/``
 
 ACCESS-OM3
 ============
