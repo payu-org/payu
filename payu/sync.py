@@ -179,7 +179,7 @@ class SyncToRemoteArchive():
                 raise ValueError("payu: error: Mismatched experiment UUIDs in sync destination.")
 
 
-    def set_destination_path(self):
+    def set_destination_path(self, verbose=True):
         """set or create destination path to sync archive to"""
         # Check destination path
         dest_path = self.config.get('path', None)
@@ -192,7 +192,8 @@ class SyncToRemoteArchive():
             # When both path and base_path are not defined
             # flag it as false exists to raise error later
             else:
-                print(DEST_NOT_CONFIGURED_MSG)
+                if verbose:
+                    print(DEST_NOT_CONFIGURED_MSG)
                 raise ValueError("payu: error: Sync path is not defined.")
 
         if not self.remote_syncing:
@@ -207,7 +208,8 @@ class SyncToRemoteArchive():
                 dest_path = f'{self.remote_url}:{dest_path}'
 
         self.destination_path = dest_path
-        print(f"Syncing archive to: {self.destination_path}")
+        if verbose:
+            print(f"Syncing archive to: {self.destination_path}")
         self.check_uuid()
 
     def set_excludes_flags(self):

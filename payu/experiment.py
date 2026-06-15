@@ -469,7 +469,7 @@ class Experiment(object):
             )
 
     @timeit("payu_setup_duration_seconds")
-    def setup(self, force_archive=False):
+    def setup(self):
         # Check version
         self.check_payu_version()
 
@@ -500,9 +500,8 @@ class Experiment(object):
 
         os.makedirs(self.work_path, exist_ok=True)
 
-        if force_archive:
-            os.makedirs(self.archive_path, exist_ok=True)
-            make_symlink(self.archive_path, self.archive_sym_path)
+        os.makedirs(self.archive_path, exist_ok=True)
+        make_symlink(self.archive_path, self.archive_sym_path)
 
         # Archive the payu config
         # TODO: This just copies the existing config.yaml file, but we should

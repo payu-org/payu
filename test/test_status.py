@@ -13,7 +13,9 @@ from payu.status import (
     find_scheduler_logs,
     get_job_file_list,
     build_job_info,
-    display_job_info
+    display_job_info,
+    collect_expt_paths,
+    display_expt_paths,
 )
 
 from payu.laboratory import Laboratory
@@ -984,3 +986,92 @@ def test_get_job_file():
     assert expt.get_job_file(type='collate') == expt.archive_path / "payu_jobs" / "3" / "collate" / "12345.json"
 
     shutil.rmtree(tmpdir)
+
+@pytest.mark.parametrize("sync_path", ["path/to/sync", None])
+def test_collect_expt_paths(tmp_path, sync_path):
+    """Test that collect_expt_paths returns the correct paths"""
+    # Create a temporary lab and config
+    lab_path = tmp_path / "lab"
+    lab_path.mkdir()
+    control_path = tmp_path / "control"
+    control_path.mkdir()
+
+    # Write a minimal config file
+    config = {
+            'model': 'mom6',
+            'experiment': ctrldir_basename,
+            'sync':{
+                'enable': False,    
+                'path': sync_path,
+            }
+    }
+    with open(control_path / "config.yaml", 'w') as f:
+        json.dump(config, f)
+
+    # Create a minimal metadata file
+    metadata_path = control_path / "metadata.yaml"
+    with open(metadata_path, 'w') as f:
+        json.dump({'experiment_uuid': 'test-uuid'}, f)
+
+    # Set up a mock experiment
+    with cd(control_path):
+        lab = Laboratory(lab_path=str(lab_path))
+        expt = Experiment(lab, reproduce=False)
+
+    expt_paths = collect_expt_paths(expt, lab_path)
+    assert expt_paths['experiment_uuid'] == "test-uuid"
+    assert expt_paths['experiment_name'] == ctrldir_basename
+    assert str(expt_paths['control_path']) == str(control_path)
+    assert str(expt_paths['lab_path']) == str(lab_path)
+    assert str(expt_paths['work_path']) == str(expt.work_path)
+    assert str(expt_paths['archive_path']) == str(expt.archive_path)
+    if sync_path:
+        assert str(expt_paths['sync_path']) == str(sync_path)
+    else:
+        assert expt_paths['sync_path'] == "Unconfigured"
+
+    
+def test_collect_expt_paths_no_metadata(tmp_path):
+    """Test that collect_expt_paths raises an error when metadata is not set up"""
+    # Create a temporary lab and config
+    lab_path = tmp_path / "lab"
+    lab_path.mkdir()
+    control_path = tmp_path / "control"
+    control_path.mkdir()
+
+    # Write a minimal config file
+    config = {
+            'model': 'mom6'
+    }
+    with open(control_path / "config.yaml", 'w') as f:
+        json.dump(config, f)
+
+    # Set up a mock experiment
+    with cd(control_path):
+        lab = Laboratory(lab_path=str(lab_path))
+        expt = Experiment(lab, reproduce=False)
+        expt.metadata = None  # Mock a bad metadata
+
+    with pytest.warns(UserWarning, match="Failed to collect experiment paths: 'NoneType' object has no attribute 'uuid'"):
+        expt_paths = collect_expt_paths(expt, lab_path)
+        assert expt_paths == {}
+
+
+def test_display_expt_paths(capsys):
+    """Test that display_expt_paths prints the correct paths"""
+    expt_paths = {
+        'experiment_uuid': "test-uuid",
+        'experiment_name': "test-experiment",
+        'control_path': "/path/to/control",
+        'lab_path': None,
+        'sync_path': "Unconfigured"
+    }
+    display_expt_paths(expt_paths)
+
+    label_width = 18
+    captured = capsys.readouterr().out
+    assert f"{f'Experiment UUID:':<{label_width}} test-uuid" in captured
+    assert f"{f'Experiment Name:':<{label_width}} test-experiment" in captured
+    assert f"{f'Control Directory:':<{label_width}} /path/to/control" in captured
+    assert "Laboratory Path" not in captured
+    assert f"{f'Sync Destination:':<{label_width}} Unconfigured" in captured

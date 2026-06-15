@@ -13,7 +13,9 @@ import payu.subcommands.args as args
 from payu.status import (
     build_job_info,
     display_job_info,
-    update_all_job_files
+    update_all_job_files,
+    collect_expt_paths,
+    display_expt_paths,
 )
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 
@@ -22,11 +24,11 @@ parameters = {'description': 'Display payu run information'}
 
 arguments = [
     args.laboratory, args.config, args.json_output, args.update_jobs,
-    args.all_runs, args.run_number
+    args.all_runs, args.run_number, args.show_expt_paths
 ]
 
 def runcmd(lab_path, config_path, json_output,
-           update_jobs, all_runs, run_number):
+           update_jobs, all_runs, run_number, show_expt_paths):
 
     # Suppress output to os.devnull
     with redirect_stdout(open(os.devnull, 'w')):
@@ -42,6 +44,14 @@ def runcmd(lab_path, config_path, json_output,
 
         archive_path = Path(expt.archive_path)
         control_path = Path(expt.control_path)
+
+    if show_expt_paths:
+        expt_paths = collect_expt_paths(expt, lab_path)
+        if json_output:
+            print(json.dumps(expt_paths, indent=4))
+        else:
+            display_expt_paths(expt_paths)
+        return
 
     run_number = int(run_number) if run_number is not None else None
 

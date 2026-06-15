@@ -17,6 +17,7 @@ from payu.telemetry import (
     update_job_file,
     remove_job_file
 )
+from payu.sync import SyncToRemoteArchive
 
 logger = logging.getLogger(__name__)
 
@@ -321,7 +322,7 @@ def update_all_job_files(
                     data={f"payu_{job_type}_status": 1}
                 )
             
-def print_line(label: str, key: Any, data: dict[str, Any], is_status: bool = False) -> None:
+def print_line(label: str, key: Any, data: dict[str, Any], is_status: bool = False, description: str = "") -> None:
     """Print a line with label and value from the data, if it is defined. 
     If is_status is True, print the status string (Success/Failed) as well."""
     value = data.get(key)
@@ -330,6 +331,8 @@ def print_line(label: str, key: Any, data: dict[str, Any], is_status: bool = Fal
         if is_status:
             status_str = "Success" if value == 0 else "Failed"
             print(f"  {f'{label}:':<{label_width}} {value} ({status_str})")
+        elif description:
+            print(f"  {f'{label}:':<{label_width}} {value}\n  {'':>{label_width}}  ({description})")
         else:
             print(f"  {f'{label}:':<{label_width}} {value}")
 
@@ -380,4 +383,48 @@ def display_job_info(data: dict[str, Any]) -> None:
                 print_line("Exit Status", "exit_status", job_info, is_status=True)
                 display_log_job_files(job_info)
 
+    print("=" * line_width)
+
+
+def collect_expt_paths(expt, lab_path):
+    """Find the experiment paths (control, lab, work, archive, sync) and return them in a dictionary"""
+    expt_paths = {}
+    try:
+        expt_paths = {
+            "experiment_uuid": expt.metadata.uuid,
+            "experiment_name": expt.name,
+            "control_path": expt.control_path,
+            "lab_path": lab_path,
+            "work_path": expt.work_path,
+            "archive_path": expt.archive_path
+        }
+
+        try:
+            syncer = SyncToRemoteArchive(expt)
+            syncer.set_destination_path(verbose=False)
+            sync_path = syncer.destination_path
+            expt_paths["sync_path"] = str(sync_path)
+        except ValueError:
+            expt_paths["sync_path"] = "Unconfigured"
+
+    except Exception as e:
+        warnings.warn(f"Failed to collect experiment paths: {e}")
+    return expt_paths
+
+def display_expt_paths(expt_paths):
+    """Display the experiment paths in a human-readable way"""
+    if not expt_paths:
+        print("No experiment paths available.")
+        return
+
+    line_width = 40
+    print("=" * line_width)
+    print("Experiment Paths:")
+    print_line("Experiment UUID", "experiment_uuid", expt_paths)
+    print_line("Experiment Name", "experiment_name", expt_paths)
+    print_line("Control Directory", "control_path", expt_paths, description = "Where model configuration is stored")
+    print_line("Laboratory Path", "lab_path", expt_paths, description = "Where model's laboratory is stored")
+    print_line("Work Directory", "work_path", expt_paths, description = "Temporary directory for experiment runs")
+    print_line("Archive Directory", "archive_path", expt_paths, description = "Where all experiment outputs are stored")
+    print_line("Sync Destination", "sync_path", expt_paths, description = "Remote directory to sync outputs to")
     print("=" * line_width)

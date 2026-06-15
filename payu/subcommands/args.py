@@ -60,13 +60,13 @@ laboratory = {
     }
 }
 
-
-force_archive = {
-    'flags': ('--archive',),
+# payu directory paths
+show_expt_paths = {
+    'flags': ('--experiment-paths', '--ep'),
     'parameters': {
         'action':   'store_true',
-        'dest':     'force_archive',
-        'help':     'Create archive directory during setup',
+        'dest':     'show_expt_paths',
+        'help':     'Show current experiment uuid and name, along with control, lab, work, archive, and sync paths.'
     }
 }
 

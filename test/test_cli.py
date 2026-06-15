@@ -58,7 +58,6 @@ def test_parse_setup(parser):
     assert args.pop('model_type') is None
     assert args.pop('config_path') is None
     assert args.pop('lab_path') is None
-    assert args.pop('force_archive') is False
     assert args.pop('reproduce') is False
     assert args.pop('force') is False
     assert args.pop('metadata_off') is False
@@ -71,7 +70,6 @@ def test_parse_setup(parser):
                     "--model mom "
                     "--config path/to/config.yaml "
                     "--laboratory path/to/lab "
-                    "--archive "
                     "--force "
                     "--reproduce "
                     "--metadata-off"
@@ -84,7 +82,6 @@ def test_parse_setup(parser):
     assert args.pop('model_type') == 'mom'
     assert args.pop('config_path') == 'path/to/config.yaml'
     assert args.pop('lab_path') == 'path/to/lab'
-    assert args.pop('force_archive') is True
     assert args.pop('reproduce') is True
     assert args.pop('force') is True
     assert args.pop('metadata_off') is True
@@ -107,7 +104,6 @@ def test_parse_setup(parser):
     assert args.pop('model_type') == 'mom'
     assert args.pop('config_path') == 'path/to/config.yaml'
     assert args.pop('lab_path') == 'path/to/lab'
-    assert args.pop('force_archive') is False
     assert args.pop('reproduce') is True
     assert args.pop('force') is True
     assert args.pop('metadata_off') is True
