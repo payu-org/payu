@@ -28,7 +28,7 @@ arguments = [
 ]
 
 def runcmd(lab_path, config_path, json_output,
-           update_jobs, all_runs, run_number, show_expt_paths):
+           update_jobs, all_runs, run_number, show_expt_paths=False):
 
     # Suppress output to os.devnull
     with redirect_stdout(open(os.devnull, 'w')):
