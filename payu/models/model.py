@@ -141,8 +141,7 @@ class Model(object):
                     self.input_paths.append(rel_path)
                 else:
                     raise errors.PayuFileNotFoundError(
-                        f'Input {rel_path} not found;'
-                        'aborting.')
+                        f'Input {rel_path} not found;')
 
     def set_model_output_paths(self):
 
