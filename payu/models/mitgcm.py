@@ -86,7 +86,7 @@ class Mitgcm(Model):
                 n_iter0 = max([int(f.split('.')[1]) for f in core_restarts])
             except ValueError as e:
                 raise errors.PayuFileNotFoundError(
-                    'payu: error: no restart files found') from e
+                    'No restart files found') from e
                     
         else:
             n_iter0 = 0
@@ -181,8 +181,7 @@ class Mitgcm(Model):
         print('  dt * ntimesteps: {}'.format(dt * n_timesteps))
         if pchkpt_freq != dt * n_timesteps:
             raise errors.PayuRunError(
-                'payu: error: time inconsistences, '
-                f'pchkptfreq ({pchkpt_freq}) != experiment length ({dt * n_timesteps})')
+                f'Time inconsistences, pchkptfreq ({pchkpt_freq}) != experiment length ({dt * n_timesteps})')
 
         data_nml['parm03']['startTime'] = t_start
         data_nml['parm03']['niter0'] = n_iter0

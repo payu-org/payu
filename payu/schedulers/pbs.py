@@ -136,7 +136,7 @@ def check_storage_access(storages: set, user_groups: list):
         if project not in user_groups:
             denied_storages.append(storage)
     if len(denied_storages) > 0:
-        raise RuntimeError(f"payu: error: User is not a member of the following required storage projects: {', '.join(denied_storages)}.\n")
+        raise RuntimeError(f"User is not a member of the following required storage projects: {', '.join(denied_storages)}.\n")
 
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
@@ -364,7 +364,7 @@ class PBS(Scheduler):
         if pbs_project in user_groups:
             pbs_flags.append('-P {project}'.format(project=pbs_project))
         else:
-            raise RuntimeError(f"payu: error: User is not a member of the project '{pbs_project}' specified in config:project.\n")
+            raise RuntimeError(f"User is not a member of the project '{pbs_project}' specified in config:project.\n")
 
         pbs_resources = ['walltime', 'ncpus', 'mem', 'jobfs']
 
@@ -393,7 +393,7 @@ class PBS(Scheduler):
         pbs_join = pbs_config.get('join', 'n')
         if pbs_join not in ('oe', 'eo', 'n'):
             raise errors.PayuRunError(
-                'payu: error: unknown qsub IO stream join setting.')
+                'Unknown qsub IO stream join setting.')
         else:
             pbs_flags.append('-j {join}'.format(join=pbs_join))
 

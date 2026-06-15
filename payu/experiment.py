@@ -485,8 +485,7 @@ class Experiment(object):
 
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
-            raise errors.PayuRunError(f'payu: error: output path already exists:\
-                 {self.output_path}')
+            raise errors.PayuRunError(f'output path already exists: {self.output_path}')
 
         # Confirm that no work path already exists
         if os.path.exists(self.work_path):
@@ -496,8 +495,8 @@ class Experiment(object):
                 self.sweep()
             else:
                 raise errors.PayuRunError(
-                    f'payu: error: work path already exists: {self.work_path}.\n'
-                    '             payu sweep and then payu run')
+                    f'work path already exists: {self.work_path}.\n'
+                    '`payu sweep` and then `payu run`')
             
         os.makedirs(self.work_path, exist_ok=True)
 
@@ -867,8 +866,7 @@ class Experiment(object):
         )
         # Check there is a work directory, otherwise bail
         if not os.path.exists(self.work_sym_path):
-            raise errors.PayuFileNotFoundError('payu: error: \
-                No work directory to archive.')
+            raise errors.PayuFileNotFoundError('No work directory to archive.')
 
         os.makedirs(self.archive_path, exist_ok=True)
         make_symlink(self.archive_path, self.archive_sym_path)
@@ -888,7 +886,7 @@ class Experiment(object):
 
         # Double-check that the run path does not exist
         if os.path.exists(self.output_path):
-            raise errors.PayuRunError('payu: error: output path already exists')
+            raise errors.PayuRunError('output path already exists')
 
         movetree(self.work_path, self.output_path)
 
@@ -1224,7 +1222,7 @@ class Experiment(object):
         restart_history = self.config.get('restart_history', None)
         if restart_history is not None:
             if not isinstance(restart_history, int):
-                raise ValueError("payu: error: restart_history is not an "
+                raise ValueError("restart_history is not an "
                                  f"integer value: {restart_history}")
 
             if len(restarts) > 0:

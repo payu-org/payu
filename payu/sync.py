@@ -176,7 +176,7 @@ class SyncToRemoteArchive():
                       f"({self.destination_path}) "
                       f"does not match current experiment UUID. "
                       "Refusing to sync to avoid overwriting existing output.")
-                raise ValueError("payu: error: Mismatched experiment UUIDs in sync destination.")
+                raise ValueError("Mismatched experiment UUIDs in sync destination.")
 
 
     def set_destination_path(self, verbose=True):
@@ -194,7 +194,7 @@ class SyncToRemoteArchive():
             else:
                 if verbose:
                     print(DEST_NOT_CONFIGURED_MSG)
-                raise ValueError("payu: error: Sync path is not defined.")
+                raise ValueError("Sync path is not defined.")
 
         if not self.remote_syncing:
             # Create local destination directory if it does not exist

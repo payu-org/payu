@@ -99,7 +99,7 @@ class Cice(Model):
             else:
                 if path != input_path:
                     raise errors.PayuError(
-                        f'payu: error: Grid file path in {self.ice_nml_fname} '
+                        f'Grid file path in {self.ice_nml_fname} '
                         f'({path}) does not match input path '
                         f'({input_path})')
 
@@ -109,7 +109,6 @@ class Cice(Model):
         path = os.path.normpath(path)
         if path != input_path:
             raise errors.PayuError(
-                'payu: error: '
                 f'kmt file path in {self.ice_nml_fname} ({path}) does not match '
                 f'input path ({input_path})')
 
@@ -226,7 +225,7 @@ class Cice(Model):
             # the start time and must abort the run.
             if not os.path.exists(prior_nml_path):
                 raise errors.PayuFileNotFoundError(
-                    f'payu: error: Cannot find prior namelist {self.ice_nml_fname}'
+                    f'Cannot find prior namelist {self.ice_nml_fname}'
                 )
 
             prior_setup_nml = f90nml.read(prior_nml_path)['setup_nml']
