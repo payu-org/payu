@@ -392,7 +392,7 @@ def test_set_stacktrace_runscript(stacktrace_flag, stacktrace_env, expected_stac
     if stacktrace_env is None:
         monkeypatch.delenv("PAYU_STACKTRACE", raising=False)
     else:
-        monkeypatch.setenv("PAYU_STACKTRACE", stacktrace_env)
+        monkeypatch.setenv("PAYU_STACKTRACE", str(stacktrace_env))
 
     with pytest.warns(UserWarning) as caught:
         payu.cli.set_stacktrace_runscript(stacktrace_flag)
@@ -439,7 +439,6 @@ def test_set_logger_runscript(log_level_arg, log_level_env, expected_log_level, 
         monkeypatch.setenv("PAYU_LOG_LEVEL", log_level_env)
     payu.cli.set_logger_runscript(log_level_arg)
     logger = payu.cli.logging.getLogger()
-    print(logger.level)
     assert logging.getLevelName(logger.level) == expected_log_level
      
 

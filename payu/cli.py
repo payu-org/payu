@@ -199,8 +199,10 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
             payu_env_vars[var] = os.environ[var]
 
     # Pass on stacktrace and log level to PBS as environment variables
-    payu_env_vars['PAYU_STACKTRACE'] = os.environ.get('PAYU_STACKTRACE', 'False')
-    payu_env_vars['PAYU_LOG_LEVEL'] = os.environ.get('PAYU_LOG_LEVEL', 'INFO')
+    if os.environ.get('PAYU_STACKTRACE'):
+        payu_env_vars['PAYU_STACKTRACE'] = os.environ.get('PAYU_STACKTRACE')
+    if os.environ.get('PAYU_LOG_LEVEL'):
+        payu_env_vars['PAYU_LOG_LEVEL'] = os.environ.get('PAYU_LOG_LEVEL')
 
     return payu_env_vars
 
