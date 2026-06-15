@@ -1018,7 +1018,7 @@ def test_collect_expt_paths(tmp_path, sync_path):
         lab = Laboratory(lab_path=str(lab_path))
         expt = Experiment(lab, reproduce=False)
 
-    expt_paths = collect_expt_paths(expt, lab_path)
+    expt_paths = collect_expt_paths(expt)
     assert expt_paths['experiment_uuid'] == "test-uuid"
     assert expt_paths['experiment_name'] == ctrldir_basename
     assert str(expt_paths['control_path']) == str(control_path)
@@ -1053,7 +1053,7 @@ def test_collect_expt_paths_no_metadata(tmp_path):
         expt.metadata = None  # Mock a bad metadata
 
     with pytest.warns(UserWarning, match="Failed to collect experiment paths: 'NoneType' object has no attribute 'uuid'"):
-        expt_paths = collect_expt_paths(expt, lab_path)
+        expt_paths = collect_expt_paths(expt)
         assert expt_paths == {}
 
 
