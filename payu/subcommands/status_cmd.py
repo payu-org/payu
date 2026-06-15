@@ -46,7 +46,7 @@ def runcmd(lab_path, config_path, json_output,
         control_path = Path(expt.control_path)
 
     if show_expt_paths:
-        expt_paths = collect_expt_paths(expt, lab_path)
+        expt_paths = collect_expt_paths(expt)
         if json_output:
             print(json.dumps(expt_paths, indent=4))
         else:

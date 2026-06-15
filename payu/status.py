@@ -386,7 +386,7 @@ def display_job_info(data: dict[str, Any]) -> None:
     print("=" * line_width)
 
 
-def collect_expt_paths(expt, lab_path):
+def collect_expt_paths(expt):
     """Find the experiment paths (control, lab, work, archive, sync) and return them in a dictionary"""
     expt_paths = {}
     try:
@@ -394,7 +394,7 @@ def collect_expt_paths(expt, lab_path):
             "experiment_uuid": expt.metadata.uuid,
             "experiment_name": expt.name,
             "control_path": expt.control_path,
-            "lab_path": lab_path,
+            "lab_path": expt.lab.basepath,
             "work_path": expt.work_path,
             "archive_path": expt.archive_path
         }

@@ -62,7 +62,7 @@ laboratory = {
 
 # payu directory paths
 show_expt_paths = {
-    'flags': ('--experiment-paths', '--ep'),
+    'flags': ('--paths',),
     'parameters': {
         'action':   'store_true',
         'dest':     'show_expt_paths',
