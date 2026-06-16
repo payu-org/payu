@@ -47,17 +47,6 @@ Where BRANCH_NAME is the name of the branch"""
 
 DEFAULT_PARENT_STRING = "BASE"
 
-def remove_traceback_hook(kind, message, traceback):
-    """Remove traceback for only PayuBranchError"""
-    if kind is errors.PayuBranchError:
-        print(f'{kind.__name__}: {message}', file=sys.stderr)
-    else:
-        sys.__excepthook__(kind, message, traceback)
-
-# Override the default exception hook to remove traceback
-sys.excepthook = remove_traceback_hook
-
-
 def check_restart(restart_path: Path,
                   archive_path: Optional[Path] = None) -> Optional[Path]:
     """Checks if restart path exists and whether the archive already
