@@ -10,10 +10,8 @@ from __future__ import print_function
 
 # Standard Library
 import datetime
-import errno
 from functools import wraps
 import os
-import re
 import resource
 import sys
 import shlex
@@ -44,6 +42,7 @@ from payu.calendar import parse_date_offset
 from payu.sync import SyncToRemoteArchive
 from payu.metadata import Metadata
 import payu.telemetry as telemetry
+from payu.git_utils import get_git_repository, PayuGitWarning
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -472,6 +471,12 @@ class Experiment(object):
     def setup(self):
         # Check version
         self.check_payu_version()
+
+        # Error out if runlog is enabled and running from subdirectory of git root repository
+        if self.runlog.enabled and get_git_repository(self.control_path, catch_error=True) is None:
+            raise ValueError(
+                "payu: error: Runlog is enabled, but current directory is not a git repository.\n"
+            )
 
         # Setup the payu run job file
         telemetry.setup_run_job_file(

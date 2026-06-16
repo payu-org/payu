@@ -19,6 +19,17 @@ class PayuBranchError(Exception):
 class PayuGitWarning(Warning):
     """Custom warning class - useful for testing"""
 
+def check_git_parent(directory: Union[Path, str]) -> str:
+    """
+    Check if the current directory is a subdirectory of a git repository
+    Return the parent repository if it exists, 
+    otherwise return False
+    """
+    try:
+        repo = git.Repo(directory, search_parent_directories=True)
+        return repo
+    except git.exc.InvalidGitRepositoryError:
+        return False
 
 def get_git_repository(repo_path: Union[Path, str],
                        initialise: bool = False,
@@ -30,15 +41,27 @@ def get_git_repository(repo_path: Union[Path, str],
         repo = git.Repo(repo_path)
         return repo
     except git.exc.InvalidGitRepositoryError:
-        if initialise:
-            repo = git.Repo.init(repo_path)
-            print(f"Initialised new git repository at: {repo_path}")
-            return repo
+        parent_repo = check_git_parent(repo_path)
+        if parent_repo:
+            warnings.warn(
+                f"Payu expects to run from repository root to ensure metadata tracking.\n"
+                f"Current situation leads to an InvalidGitRepositoryError.\n"
+                f"Suggest fix:\n"
+                f"    Move the control directory to the a separate directory with its own git repository\n",
+                PayuGitWarning
+            )
+        else:
+            if initialise:
+                repo = git.Repo.init(repo_path)
+                print(f"Initialised new git repository at: {repo_path}")
+                return repo
 
-        warnings.warn(
-            f"Path is not a valid git repository: {repo_path}",
-            PayuGitWarning
-        )
+            warnings.warn(
+                f"Path is not a valid git repository: {repo_path}",
+                PayuGitWarning
+            )
+
+
         if catch_error:
             return None
         raise
@@ -86,11 +109,7 @@ class GitRepository:
         """Return the current git commit hash or None if repository path is
           not a git repository"""
         if self.repo:
-            branch = self.repo.get_branch()
-            if branch is not None:
-                return branch.object.hexsha
-            else:
-                return None
+            return self.repo.head.object.hexsha
 
     def get_origin_url(self) -> Optional[str]:
         """Return url of remote origin if it exists"""
@@ -131,7 +150,13 @@ class GitRepository:
 
         # Run commit if there's changes
         if changes:
-            self.repo.index.commit(commit_message)
+            try:
+                # try to commit with signing, based on user's global git config
+                self.repo.git.commit(m = commit_message)
+            except git.exc.GitCommandError:
+                self.repo.git.commit("--no-gpg-sign", m = commit_message)
+                warnings.warn("Commit without gpg signing.")
+                
             print(commit_message)
 
     def local_branches_dict(self) -> Dict[str, git.Head]:

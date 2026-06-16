@@ -428,3 +428,15 @@ def test_null_userscripts():
     config_orig_null['userscripts'] = None
     expt = init_experiment(config_orig_null)
     assert expt.userscripts == {}
+
+
+@patch('payu.git_utils.get_git_repository')
+def test_setup_runlog_enabled_not_git(mock_git_repo):
+    """ Test an error is raised if runlog is enabled but no git repository is found."""
+    mock_git_repo.return_value = None
+
+    config = copy.deepcopy(config_orig)
+    config['runlog'] = True
+
+    with pytest.raises(ValueError, match="Runlog is enabled, but current directory is not a git repository"):
+        run_payu_setup(config=config, create_inputs = True, create_config_files=True)

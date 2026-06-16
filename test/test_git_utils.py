@@ -4,7 +4,7 @@ import subprocess
 import git
 import pytest
 
-from payu.git_utils import get_git_repository, GitRepository
+from payu.git_utils import get_git_repository, GitRepository, check_git_parent
 from payu.git_utils import PayuBranchError, PayuGitWarning
 
 from test.common import tmpdir
@@ -32,6 +32,9 @@ def create_new_repo(repo_path):
     repo = git.Repo.init(repo_path, initial_branch='main')
     init_file = repo_path / "init.txt"
     add_file_and_commit(repo, init_file)
+    with repo.config_writer() as gitconfig:
+        gitconfig.set_value("user", "name", "TestUser")
+        gitconfig.set_value("user", "email", "test@example.com")
     return repo
 
 
@@ -43,14 +46,20 @@ def add_file_and_commit(repo, file_path, commit_no=0):
     return repo
 
 
-def test_get_git_repo_invalid_repo_initialise():
+def test_get_git_repo_invalid_repo_initialise(monkeypatch):
+    # Test when the current directory is not a subdirectory of a git repository
+    monkeypatch.setattr("payu.git_utils.check_git_parent", lambda x: False)
+
     invalid_repo_path = tmpdir / "invalidRepo"
     invalid_repo_path.mkdir()
     repo = get_git_repository(invalid_repo_path, initialise=True)
     assert not repo.bare
 
 
-def test_get_git_repo_invalid_repo_catch_error():
+def test_get_git_repo_invalid_repo_catch_error(monkeypatch):
+    # Test when the current directory is not a subdirectory of a git repository
+    monkeypatch.setattr("payu.git_utils.check_git_parent", lambda x: False)
+
     invalid_path = tmpdir / "invalidRepo"
     invalid_path.mkdir()
     expected_warning_msg = "Path is not a valid git repository: "
@@ -58,6 +67,32 @@ def test_get_git_repo_invalid_repo_catch_error():
     with pytest.warns(PayuGitWarning, match=expected_warning_msg):
         repo = get_git_repository(invalid_path, catch_error=True)
         assert repo is None
+
+def test_get_git_repo_parent_repo(monkeypatch):
+    # Test when the current directory is a subdirectory of a git repository
+    subdir_path = tmpdir / "subdir"
+    subdir_path.mkdir()
+
+    with pytest.warns(PayuGitWarning, match="Payu expects to run from repository root to ensure metadata tracking"):
+        repo = get_git_repository(subdir_path, catch_error=True)
+        assert repo is None
+
+def test_check_git_parent(monkeypatch):
+    """ Test check_git_parent returns parent repository if it exists
+    """
+    # Create a parent repository
+    parent_repo = tmpdir / "parentRepo"
+    parent_repo.mkdir()
+    git.Repo.init(parent_repo)
+
+    # Create a subdirectory within the parent repository
+    subdir_path = parent_repo / "subdir"
+    subdir_path.mkdir()
+
+    # Test that check_git_parent returns the parent repository when called from the subdirectory
+    result = check_git_parent(subdir_path)
+    assert result.working_tree_dir == str(parent_repo)
+
 
 
 def test_get_git_user_info_no_config_set():
