@@ -772,7 +772,7 @@ class Experiment(object):
                 self.run_userscript(error_script, 'error')
 
             # Terminate payu
-            raise errors.PayuRunError(f'payu: exited with error code {rc}; aborting.')
+            raise errors.PayuRunError(f'Model exited with error code {rc}.')
 
         # Decrement run counter on successful run
         stop_file_path = os.path.join(self.control_path, 'stop_run')
