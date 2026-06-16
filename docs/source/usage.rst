@@ -366,6 +366,15 @@ To output JSON-formatted status information, use the ``--json`` flag::
 
    payu status --json
 
+To display the experiment UUID (see :ref:`usage-metadata`), experiment name, 
+and paths to the experiment directories, use the ``--paths`` flag::
+
+   payu status --paths
+
+This also supports JSON output for script usage, for example::
+
+   payu status --paths --json
+
 Cleaning up 
 ===========
 
