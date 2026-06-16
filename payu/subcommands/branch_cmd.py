@@ -6,21 +6,17 @@
 
 from pathlib import Path
 
-from payu import cli
 from payu.branch import list_branches
 import payu.subcommands.args as args
 
 title = 'branch'
 parameters = {'description': ('List git branches and corresponding metadata')}
 
-arguments = [args.config, args.verbose, args.remote, args.stacktrace]
+arguments = [args.config, args.verbose, args.remote]
 
 
-def runcmd(config_path, verbose, remote, stacktrace=None):
-    """Execute the command."""
-    # Configure stacktrace settings based on arguments
-    cli.set_stacktrace_runscript(stacktrace)
-    
+def runcmd(config_path, verbose, remote):
+    """Execute the command."""    
     config_path = Path(config_path) if config_path is not None else None
     list_branches(config_path, verbose, remote)
 

@@ -15,7 +15,6 @@ from prompt_toolkit.completion import PathCompleter
 
 from payu.branch import clone
 import payu.subcommands.args as args
-from payu import cli
 
 accessible_style = questionary.Style([
     # Question
@@ -78,8 +77,7 @@ arguments = [args.model, args.config, args.laboratory,
              args.keep_uuid, args.clone_branch,
              args.repository, args.local_directory,
              args.new_branch_name, args.restart_path,
-             args.parent_experiment, args.clone_start_point,
-             args.stacktrace]
+             args.parent_experiment, args.clone_start_point]
 
 def transform_strings_to_path(path_str=None):
     return Path(path_str) if path_str is not None else None
@@ -87,10 +85,7 @@ def transform_strings_to_path(path_str=None):
 
 def runcmd(model_type, config_path, lab_path, keep_uuid,
            branch, repository, local_directory, new_branch_name, restart_path,
-           parent_experiment, start_point, stacktrace=None):
-    # Configure logging and stacktrace settings based on arguments
-    cli.set_stacktrace_runscript(stacktrace)
-
+           parent_experiment, start_point):
     """Execute the command."""
     if repository is None and local_directory is None:
         term_size = shutil.get_terminal_size((80, 20)) # default to 80x20 if unable to query terminal size

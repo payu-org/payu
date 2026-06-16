@@ -64,13 +64,12 @@ def parse():
     # We pop --stacktrace and --log_level here so they will not be propagated to runcmd() in subcommands
     stacktrace = args.pop('stacktrace', False)
     log_level = args.pop('log_level', 'INFO')
-    setup_logger(log_level)
 
     # Override the STACKTRACE and LOG_LEVEL environment variables if flags are provided
     os.environ['PAYU_STACKTRACE'] = str(stacktrace)
     os.environ['PAYU_LOG_LEVEL'] = str(log_level)
         
-    run_cmd(**args)
+    _execute_command(run_cmd, stacktrace=stacktrace, log_level=log_level, **args)
 
 
 def generate_parser(is_interactive=False):
@@ -270,3 +269,54 @@ def set_stacktrace_runscript(stacktrace=None):
         warnings.formatwarning = (
             lambda message, category, filename, lineno, line=None: f"{message}"
         )
+
+def _execute_command(func, stacktrace=None, log_level=None, **args):
+    """Execute a payu command with error handling and logging.
+    Sets up logging, captures warnings through the logging system,
+    and catches exceptions to provide clean error messages.
+    """
+    set_logger_runscript(log_level)
+    set_stacktrace_runscript(stacktrace)
+
+    # Pass arguments to the command as dictionary
+    func(**args)
+
+# Add wrappers for runscript commands (entry points configured in pyproject.toml)
+def parse_run():
+    _parse_runscript("run")
+
+def parse_collate():
+    _parse_runscript("collate")
+
+def parse_profile():
+    _parse_runscript("profile")
+
+def parse_sync():
+    _parse_runscript("sync")
+
+
+def _parse_runscript(cmd_name):
+    """
+    Parse the command line inputs (e.g., payu run) and pass it onto _execute_command.
+    """
+    # Attempt to import the requested runscript command module
+    try:
+        cmd = importlib.import_module(f'payu.subcommands.{cmd_name}_cmd')
+    except ImportError:
+        raise ImportError(f'payu: error: Unknown runscript command payu-{cmd_name}') 
+    
+    # Construct the subcommand parser
+    parser = argparse.ArgumentParser(**cmd.parameters)
+
+    # Add global flags to each command
+    for arg in [arg_templates.stacktrace, arg_templates.log_level]:
+        parser.add_argument(*arg['flags'], **arg['parameters'])
+
+    for arg in cmd.arguments:
+        parser.add_argument(*arg['flags'], **arg['parameters'])
+
+    args = vars(parser.parse_args())
+    log_level = args.pop('log_level', 'INFO')
+    stacktrace = args.pop('stacktrace', False)
+
+    _execute_command(cmd.runscript, stacktrace=stacktrace, log_level=log_level, **args)

@@ -67,17 +67,9 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
     cli.submit_job('payu-profile', pbs_config, pbs_vars)
 
 
-def runscript():
-
-    parser = argparse.ArgumentParser()
-    for arg in arguments:
-        parser.add_argument(*arg['flags'], **arg['parameters'])
-
-    run_args = parser.parse_args()
-
-    # Configure logging and stacktrace settings based on arguments
-    cli.set_logger_runscript(vars(run_args).get('log_level'))
-    cli.set_stacktrace_runscript(vars(run_args).get('stacktrace'))
+def runscript(**run_args):
+    run_args = argparse.Namespace(**run_args)
+    
     warnings.warn("`payu profile` is deprecated and will be removed in a future release.")
 
     pbs_vars = cli.set_env_vars(init_run=run_args.init_run,

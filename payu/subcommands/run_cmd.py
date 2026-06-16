@@ -21,7 +21,7 @@ parameters = {'description': 'Run the model experiment'}
 
 arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory, args.reproduce, args.force,
-             args.force_prune_restarts, args.stacktrace, args.log_level]
+             args.force_prune_restarts]
 
 logger = logging.getLogger(__name__)
 
@@ -178,16 +178,8 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
     cli.submit_job('payu-run', pbs_config, pbs_vars, expt, current_run, type='run')
 
 
-def runscript():
-    parser = argparse.ArgumentParser()
-    for arg in arguments:
-        parser.add_argument(*arg['flags'], **arg['parameters'])
-
-    run_args = parser.parse_args()
-
-    # Configure logging and stacktrace settings based on arguments
-    cli.set_logger_runscript(vars(run_args).get('log_level'))
-    cli.set_stacktrace_runscript(vars(run_args).get('stacktrace'))
+def runscript(**run_args):
+    run_args = argparse.Namespace(**run_args)
 
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)

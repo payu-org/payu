@@ -15,7 +15,7 @@ title = 'sync'
 parameters = {'description': 'Sync model output to a remote directory'}
 
 arguments = [args.model, args.config, args.initial, args.laboratory, args.dir_path,
-             args.sync_restarts, args.sync_ignore_last, args.stacktrace, args.log_level]
+             args.sync_restarts, args.sync_ignore_last]
 
 
 def runcmd(model_type, config_path, init_run, lab_path, dir_path, sync_restarts,
@@ -63,17 +63,9 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path, sync_restarts,
     cli.submit_job('payu-sync', pbs_config, pbs_vars)
 
 
-def runscript():
-    parser = argparse.ArgumentParser()
-    for arg in arguments:
-        parser.add_argument(*arg['flags'], **arg['parameters'])
-
-    run_args = parser.parse_args()
-
-    # Configure logging and stacktrace settings based on arguments
-    cli.set_logger_runscript(vars(run_args).get('log_level'))
-    cli.set_stacktrace_runscript(vars(run_args).get('stacktrace'))
-
+def runscript(**run_args):
+    run_args = argparse.Namespace(**run_args)
+    
     pbs_vars = cli.set_env_vars(init_run=run_args.init_run,
                                 lab_path=run_args.lab_path,
                                 dir_path=run_args.dir_path,

@@ -3,19 +3,15 @@
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
-from payu import cli
 
 title = 'archive'
 parameters = {'description': 'Archive model output after run'}
 
 arguments = [args.model, args.config, args.laboratory,
-             args.force_prune_restarts, args.stacktrace]
+             args.force_prune_restarts]
 
 
-def runcmd(model_type, config_path, lab_path, force_prune_restarts,
-            stacktrace=None):
-    # Configure stacktrace settings based on arguments
-    cli.set_stacktrace_runscript(stacktrace)
+def runcmd(model_type, config_path, lab_path, force_prune_restarts):
 
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab)
