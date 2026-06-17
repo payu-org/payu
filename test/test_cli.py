@@ -395,8 +395,9 @@ def test_set_stacktrace_runscript(stacktrace_flag, stacktrace_env, expected_stac
         monkeypatch.setenv("PAYU_STACKTRACE", str(stacktrace_env))
 
     with pytest.warns(UserWarning) as caught:
-        payu.cli.set_stacktrace_runscript(stacktrace_flag)
+        return_value = payu.cli.set_stacktrace_runscript(stacktrace_flag)
         warnings.warn("Test Warning")
+        assert return_value == expected_stacktrace
 
     w = caught[0]
     formatted = warnings.formatwarning(

@@ -63,11 +63,14 @@ def parse():
 
     # We pop --stacktrace and --log_level here so they will not be propagated to runcmd() in subcommands
     stacktrace = args.pop('stacktrace', False)
-    log_level = args.pop('log_level', 'INFO')
+    log_level = args.pop('log_level', None)
 
     # Override the STACKTRACE and LOG_LEVEL environment variables if flags are provided
-    os.environ['PAYU_STACKTRACE'] = str(stacktrace)
-    os.environ['PAYU_LOG_LEVEL'] = str(log_level)
+    if log_level:
+        os.environ['PAYU_LOG_LEVEL'] = str(log_level)
+    if stacktrace:
+        os.environ['PAYU_STACKTRACE'] = str(stacktrace)
+    
         
     _execute_command(run_cmd, stacktrace=stacktrace, log_level=log_level, **args)
 
@@ -250,7 +253,7 @@ def set_logger_runscript(log_level=None):
 
     # If log_level is changed from default, update setup_logger
     # Priority: command line argument > environment variable > 'INFO' default
-    if log_level and log_level != 'INFO':
+    if log_level is not None:
         active_level = log_level
     elif log_level_env:
         active_level = str(log_level_env).upper()
@@ -260,15 +263,19 @@ def set_logger_runscript(log_level=None):
     setup_logger(active_level)
 
 def set_stacktrace_runscript(stacktrace=None):
-    """Configure stacktrace settings based on arguments and environment variables."""
+    """
+    Configure stacktrace settings based on arguments and environment variables.
+    Return True if stacktrace is enabled, False otherwise.
+    """
 
     if stacktrace is True or str(os.environ.get('PAYU_STACKTRACE', 'False')).lower() == 'true':
-        pass
+        return True
     else:
         # Force warnings.warn() to omit the source code line in the message
         warnings.formatwarning = (
             lambda message, category, filename, lineno, line=None: f"{message}"
         )
+        return False
 
 def _execute_command(func, stacktrace=None, log_level=None, **args):
     """Execute a payu command with error handling and logging.

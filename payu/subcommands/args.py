@@ -362,7 +362,7 @@ log_level = {
     'parameters': {
         'dest': 'log_level',
         'action': 'store',
-        'default': 'INFO',
+        'default': None,
         'choices': ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
         'help': 'Set the logging level (choices: DEBUG, INFO, WARNING, ERROR, CRITICAL)'
     }
