@@ -5,6 +5,7 @@
 """
 
 # Standard library
+import math
 import os
 from pathlib import Path
 import re
@@ -251,6 +252,37 @@ class PBS(Scheduler):
             )
 
     @staticmethod
+    def mem_string_to_gb(size_str: str):
+        """
+        Convert size string to gigabytes.
+        Input size is expressed as:
+            integer[suffix]
+        where suffix can be one of "b", "kb", "mb", "gb", "tb", "pb",
+        """
+        size_str = size_str.lower()
+        suffixes = {
+            "kb": 1/(1024**2),
+            "mb": 1/1024,
+            "gb": 1,
+            "tb": 1024,
+            "pb": 1024**2,
+            "b": 1/(1024**3),
+        }
+
+        for suffix, multiplier in suffixes.items():
+            if size_str.endswith(suffix):
+                # Remove the suffix and convert to float
+                size_str = size_str[: -len(suffix)]
+                return float(size_str) * multiplier
+
+        # If no suffix is found, assume it's in bytes
+        warnings.warn(
+            f"Memory string '{size_str}' has no unit suffix, assuming bytes.\n "
+            "It is recommended to specify units explicitly (e.g. '100GB')."
+        )
+        return float(size_str)/(1024**3)
+    
+    @staticmethod
     def _mem_convert_kb_to_gb(mem_kb: str) -> int:
         s = str(mem_kb).strip().lower()
         if not s.endswith("kb"):
@@ -289,26 +321,21 @@ class PBS(Scheduler):
         queue: the queue name
         n_cpus: the number of CPUs requested.
         """
-        # Change the unit of memory to GB
-        if pbs_mem.lower().endswith("tb"):
-            req_mem_gb = float(pbs_mem[:-2]) * 1024
-        elif pbs_mem.lower().endswith("gb"):
-            req_mem_gb = float(pbs_mem[:-2])
-        elif pbs_mem.lower().endswith("mb"):
-            req_mem_gb = float(pbs_mem[:-2]) / 1024
-        else:
-            raise ValueError(f"Memory string '{pbs_mem}' has invalid format, must end with TB, GB, or MB.")
+        try:
+            req_mem_gb = cls.mem_string_to_gb(pbs_mem)
+        except ValueError:
+            raise ValueError(f"Memory string '{pbs_mem}' has invalid format, must end with PB, TB, GB, MB, KB, B, or no unit.")
         
         # Get the node shape for the queue
         cpu_per_node, mem_per_node = cls.get_queue_node_shape(queue)
         
-        # Calculate the requested memory per node
-        req_mem_per_node = req_mem_gb / n_cpus * cpu_per_node
+        # Calculate the requested memory per node, node number is rounded up
+        req_mem_per_node = req_mem_gb / math.ceil(n_cpus / cpu_per_node)
 
         if req_mem_per_node > mem_per_node:
             raise ValueError(
-                f"You have requested more memory of {pbs_mem} ({req_mem_per_node:.2f} GB per node) "
-                f"than the limit of {mem_per_node:.2f} GB per node for queue '{queue}'."
+                f"You have requested more memory of {pbs_mem} (i.e., {req_mem_per_node:.2f}GB per node) "
+                f"than the limit of {mem_per_node:.2f}GB per node for queue '{queue}'."
             )
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
