@@ -417,16 +417,16 @@ def test_set_stacktrace_runscript(stacktrace_flag, stacktrace_env, expected_stac
     "log_level_arg, log_level_env, expected_log_level",
     [
         # Running `payu-cmd` with no log level flag 
-        ('INFO', None, 'INFO'),
+        (None, None, 'INFO'),
 
         # Running `payu cmd` with no log level flag 
-        ('INFO', 'INFO', 'INFO'),
+        (None, None, 'INFO'),
 
         # Running `payu-cmd` with --log-level=DEBUG flag
         ('DEBUG', None, 'DEBUG'),
 
         # Running `payu cmd` with --log-level=DEBUG flag passed through environment variable
-        ('INFO', 'DEBUG', 'DEBUG'),
+        (None, 'DEBUG', 'DEBUG'),
 
         # Confirm that CLI > Environment variable for log level
         ('DEBUG', 'INFO', 'DEBUG'),
