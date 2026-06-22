@@ -138,6 +138,12 @@ def test_lab_new():
     lab = payu.laboratory.Laboratory('model')
     sys.stdout = sys.__stdout__
 
+def test_lab_no_model():
+    """Test that lab raises an error if model type cannot be determined"""
+    error_msg = "Cannot determine model type.\nPlease ensure payu is running from an experiment control directory containing a config file."
+    with pytest.raises(ValueError, match=error_msg):
+        payu.laboratory.Laboratory()
+
 
 def test_parse_ldd_output():
     ldd_output_path = os.path.join('test', 'resources', 'sample_ldd_output.txt')

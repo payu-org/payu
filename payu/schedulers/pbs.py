@@ -5,11 +5,12 @@
 """
 
 # Standard library
+import math
 import os
 from pathlib import Path
 import re
 import sys
-import shlex
+from pint import UnitRegistry
 import subprocess
 from typing import Any, Dict, Optional
 import warnings
@@ -29,6 +30,8 @@ from payu.schedulers.scheduler import Scheduler
 PBSNODE_TIMEOUT = 60
 LOCK_TIMEOUT = 5
 LOCK_LIFETIME = 8
+
+ureg = UnitRegistry()
 
 def get_pbsnodes_cache_path() -> Path:
     """Get the path of pbsnodes.json cache file, 
@@ -251,6 +254,37 @@ class PBS(Scheduler):
             )
 
     @staticmethod
+    def mem_string_to_gb(size_str: str):
+        """
+        Convert size string to gigabytes.
+        Input size is expressed as:
+            integer[suffix]
+        where suffix can be one of "b", "kb", "mb", "gb", "tb", "pb",
+        """
+        size_str = size_str.lower()
+        suffixes = {
+            "kb": ureg.kibibyte,
+            "mb": ureg.mebibyte,
+            "gb": ureg.gibibyte,
+            "tb": ureg.tebibyte,
+            "pb": ureg.pebibyte,
+            "b": ureg.byte,
+        }
+
+        for suffix, unit in suffixes.items():
+            if size_str.endswith(suffix):
+                # Remove the suffix and convert to float
+                size_str = size_str[: -len(suffix)]
+                return (float(size_str) * unit).to(ureg.gibibyte).magnitude
+
+        # If no suffix is found, assume it's in bytes
+        warnings.warn(
+            f"Memory string '{size_str}' has no unit suffix, assuming bytes.\n "
+            "It is recommended to specify units explicitly (e.g. '100GB')."
+        )
+        return (float(size_str) * ureg.byte).to(ureg.gibibyte).magnitude
+    
+    @staticmethod
     def _mem_convert_kb_to_gb(mem_kb: str) -> int:
         s = str(mem_kb).strip().lower()
         if not s.endswith("kb"):
@@ -278,6 +312,33 @@ class PBS(Scheduler):
             raise ValueError(f"No nodes matched queue '{queue}' (tag '{tag}')")
 
         return Counter(ncpus).most_common(1)[0][0], Counter(mem).most_common(1)[0][0]
+
+    @classmethod
+    def validate_memory_with_queue_limits(cls, pbs_mem: str, queue: str, n_cpus: int):
+        """
+        Validate the requested memory against the queue limits.
+        ----
+        Parameters:
+        pbs_mem: requested memory string from the config.
+        queue: the queue name
+        n_cpus: the number of CPUs requested.
+        """
+        try:
+            req_mem_gb = cls.mem_string_to_gb(pbs_mem)
+        except ValueError:
+            raise ValueError(f"Memory string '{pbs_mem}' has invalid format, must end with PB, TB, GB, MB, KB, B, or no unit.")
+        
+        # Get the node shape for the queue
+        cpu_per_node, mem_per_node = cls.get_queue_node_shape(queue)
+        
+        # Calculate the requested memory per node, node number is rounded up
+        req_mem_per_node = req_mem_gb / math.ceil(n_cpus / cpu_per_node)
+
+        if req_mem_per_node > mem_per_node:
+            raise ValueError(
+                f"You have requested more memory of {pbs_mem} (i.e., {req_mem_per_node:.2f}GB per node) "
+                f"than the limit of {mem_per_node:.2f}GB per node for queue '{queue}'."
+            )
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
         """Prepare a correct PBS command string"""

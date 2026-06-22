@@ -156,9 +156,17 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
     else:
         raise ValueError("Walltime must be specified in the configuration for scheduler jobs.")
 
-    # Set memory to use the complete node if unspecified
     pbs_mem = pbs_config.get('mem')
-    if not pbs_mem:
+    if pbs_mem:
+        # Validate the memory request
+        if expt.scheduler_name == "pbs":
+            PBS.validate_memory_with_queue_limits(pbs_mem, queue, n_cpus)
+        if expt.scheduler_name == "slurm":
+            # TODO for non-PBS schedulers, such as Sotonix slurm setup on Pawsey
+            pass
+    else:
+        # If memory is not specified,
+        # Get full node memory if requesting more than a node, otherwise scale with CPU request
         if n_cpus > max_cpus_per_node:
             pbs_mem = (n_cpus // max_cpus_per_node) * max_ram_per_node
         else:

@@ -36,7 +36,7 @@ dependencies = [
     "colorama",
     "filelock",
     "questionary",
-    "prompt_toolkit >=3.0.0"
+    "pint",
 ]
 
 [project.optional-dependencies]
