@@ -186,7 +186,9 @@ def checkout_branch(branch_name: str,
         control_path = get_control_path(config_path)
     
     # Checkout branch
-    repo = GitRepository(control_path)
+    repo = GitRepository(control_path, catch_error=True)
+    if repo.repo is None:
+        raise PayuBranchError("payu: error: Invalid repository, could not checkout branch.")
     repo.checkout_branch(branch_name, is_new_branch, start_point)
 
      # If parent_experiment is set to DEFAULT_PARENT_STRING, set to start_point's experiment UUID
@@ -203,12 +205,6 @@ def checkout_branch(branch_name: str,
             )
 
         parent_experiment = uuid
-
-    # Checkout branch
-    repo = GitRepository(control_path, catch_error=True)
-    if repo.repo is None:
-        raise PayuBranchError("payu: error: Invalid repository, could not checkout branch.")
-    repo.checkout_branch(branch_name, is_new_branch, start_point)
 
     # Check config file exists on checked out branch
     config_path = check_config_path(config_path)
