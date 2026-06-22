@@ -6,9 +6,12 @@ from datetime import datetime
 import pytest
 from unittest.mock import patch, Mock
 from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedMap
 import jsonschema
 
 from payu.metadata import Metadata, MetadataWarning, SCHEMA_VERSION, placeholder_text
+from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT
+from payu.metadata import move_one_metadata_field, arrange_metadata
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -525,13 +528,18 @@ def test_update_file_with_template_metadata_values(mock_repo):
             metadata.update_file(set_template_values=True)
 
     # Expect commented template values for non-null fields
-    expected_metadata = f"""experiment_uuid: cb793e91-6168-4ed2-a70c-f6f9ccf1659
-created: '2000-01-01'
+    expected_metadata = f"""# {DO_NOT_EDIT_COMMENT}
+experiment_uuid: cb793e91-6168-4ed2-a70c-f6f9ccf1659
 name: ctrldir-branch-cb793e91
+
+# {CAN_EDIT_COMMENT}
+created: '2000-01-01'
 model: TEST-MODEL
-schema_version: {SCHEMA_VERSION}
+
+# {PLEASE_UPDATE_COMMENT}
 description: {placeholder_text}  # Short description of the experiment (string, < 150 char)
-long_description: {placeholder_text} # Long description of the experiment (string)
+schema_version: {SCHEMA_VERSION}
+long_description: {placeholder_text}  # Long description of the experiment (string)
 # realm: The realm(s) included in the experiment (string)
 """
     assert (ctrldir / 'metadata.yaml').read_text() == expected_metadata
@@ -539,3 +547,90 @@ long_description: {placeholder_text} # Long description of the experiment (strin
     # Test metadata is valid against the schema
     metadata = YAML().load((ctrldir / 'metadata.yaml'))
     jsonschema.validate(instance=metadata, schema=mock_response.json.return_value)
+
+
+@pytest.mark.parametrize(
+    "field_name, insert_index, expected_index, expected_result",
+    [
+        ("field_B", 0, 1, True),
+        ("invalid_field", 1, 1, False), # Non-existent key should not be moved
+        ("field_D", 1, 1, False), # None value field should not be moved
+    ]
+)
+def test_move_one_metadata_field(field_name, insert_index, expected_index, expected_result):
+    """Test that a non-empty field is moved to the correct index and the function returns the correct new index"""
+    metadata = CommentedMap([
+        ("field_A", "value_A"),
+        ("field_B", "value_B"),
+        ("field_C", "value_C"),
+        ("field_D", None),
+    ])
+
+    new_index, result = move_one_metadata_field(metadata, field_name, insert_index)
+    assert new_index == expected_index
+    assert result == expected_result
+    if expected_result:
+        assert metadata == CommentedMap([
+            ("field_B", "value_B"),
+            ("field_A", "value_A"),
+            ("field_C", "value_C"),
+            ("field_D", None),
+        ])
+    else:
+        assert metadata == CommentedMap([
+            ("field_A", "value_A"),
+            ("field_B", "value_B"),
+            ("field_C", "value_C"),
+            ("field_D", None),
+        ])
+
+
+@pytest.mark.parametrize(
+    "metadata, expected_metadata, expected_last_auto_index",
+    [
+        (   
+            # Test fields arranged in correct order: auto don't edit fields + auto may edit fields
+            CommentedMap([
+                ("name", "Control-Branch-UUID"),
+                ("experiment_uuid", "test-uuid"),
+                ("email", "test"),
+                ("created", "2026-01-01"),
+                ("url", "test-url"),
+                ("model", "test-model"),
+            ]),
+            CommentedMap([
+                ("experiment_uuid", "test-uuid"),
+                ("name", "Control-Branch-UUID"),
+                ("email", "test"),
+                ("created", "2026-01-01"),
+                ("url", "test-url"),
+                ("model", "test-model"),
+            ]),
+            6 # expected last_auto_index is 6
+        ),
+        # Test fields with None values are left at the end
+        (
+            CommentedMap([
+                ("email", None),
+                ("created", "2026-01-01"),
+                ("url", None),
+                ("model", "test-model"),
+                ("experiment_uuid", "test-uuid"),
+                ("name", "Control-Branch-UUID"),
+            ]),
+            CommentedMap([
+                ("experiment_uuid", "test-uuid"),
+                ("name", "Control-Branch-UUID"),
+                ("created", "2026-01-01"),
+                ("model", "test-model"),
+                ("email", None),
+                ("url", None),
+            ]),
+            4 # expected last_auto_index is 4 because None fields are not counted
+        ),
+    ]
+)
+def test_arrange_metadata(metadata, expected_metadata, expected_last_auto_index):
+    """Test that arrange_metadata correctly arranges fields and adds comments"""
+
+    assert expected_metadata, expected_last_auto_index == arrange_metadata(metadata)
