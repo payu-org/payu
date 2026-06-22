@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import re
 import sys
-import shlex
+from pint import UnitRegistry
 import subprocess
 from typing import Any, Dict, Optional
 import warnings
@@ -30,6 +30,8 @@ from payu.schedulers.scheduler import Scheduler
 PBSNODE_TIMEOUT = 60
 LOCK_TIMEOUT = 5
 LOCK_LIFETIME = 8
+
+ureg = UnitRegistry()
 
 def get_pbsnodes_cache_path() -> Path:
     """Get the path of pbsnodes.json cache file, 
@@ -261,26 +263,26 @@ class PBS(Scheduler):
         """
         size_str = size_str.lower()
         suffixes = {
-            "kb": 1/(1024**2),
-            "mb": 1/1024,
-            "gb": 1,
-            "tb": 1024,
-            "pb": 1024**2,
-            "b": 1/(1024**3),
+            "kb": ureg.kibibyte,
+            "mb": ureg.mebibyte,
+            "gb": ureg.gibibyte,
+            "tb": ureg.tebibyte,
+            "pb": ureg.pebibyte,
+            "b": ureg.byte,
         }
 
-        for suffix, multiplier in suffixes.items():
+        for suffix, unit in suffixes.items():
             if size_str.endswith(suffix):
                 # Remove the suffix and convert to float
                 size_str = size_str[: -len(suffix)]
-                return float(size_str) * multiplier
+                return (float(size_str) * unit).to(ureg.gibibyte).magnitude
 
         # If no suffix is found, assume it's in bytes
         warnings.warn(
             f"Memory string '{size_str}' has no unit suffix, assuming bytes.\n "
             "It is recommended to specify units explicitly (e.g. '100GB')."
         )
-        return float(size_str)/(1024**3)
+        return (float(size_str) * ureg.byte).to(ureg.gibibyte).magnitude
     
     @staticmethod
     def _mem_convert_kb_to_gb(mem_kb: str) -> int:
