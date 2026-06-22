@@ -3,6 +3,7 @@
 # Standard Library
 import argparse
 import os
+import warnings
 
 # Local
 from payu import cli
@@ -66,13 +67,10 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path):
     cli.submit_job('payu-profile', pbs_config, pbs_vars)
 
 
-def runscript():
-
-    parser = argparse.ArgumentParser()
-    for arg in arguments:
-        parser.add_argument(*arg['flags'], **arg['parameters'])
-
-    run_args = parser.parse_args()
+def runscript(**run_args):
+    run_args = argparse.Namespace(**run_args)
+    
+    warnings.warn("`payu profile` is deprecated and will be removed in a future release.")
 
     pbs_vars = cli.set_env_vars(init_run=run_args.init_run,
                                 n_runs=run_args.n_runs)

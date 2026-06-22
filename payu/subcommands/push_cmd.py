@@ -18,7 +18,7 @@ def runcmd(model_type, config_path, lab_path):
     if expt.runlog.enabled:
         expt.runlog.push()
     else:
-        print('payu: Runlog must be enabled to push repositories.')
+        raise RuntimeError('payu: Runlog must be enabled to push repositories.')
 
 
 runscript = runcmd

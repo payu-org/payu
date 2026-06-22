@@ -3,9 +3,7 @@
 # Standard Library
 import os
 import sys
-import subprocess
 import platform
-import warnings
 
 # Local
 import payu
@@ -44,6 +42,7 @@ def print_support(label, value):
 
 
 def runcmd():
+
     print("=" * 40)
     # Get payu version and path
     payu_version = payu.__version__

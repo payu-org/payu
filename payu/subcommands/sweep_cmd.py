@@ -12,7 +12,7 @@ arguments = [args.model, args.config, args.hard_sweep, args.laboratory,
 
 
 def runcmd(model_type, config_path, hard_sweep, lab_path, metadata_off):
-
+    
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab, metadata_off=metadata_off)
 

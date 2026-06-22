@@ -13,7 +13,7 @@ arguments = [
     args.laboratory,
     args.reproduce,
     args.force,
-    args.metadata_off
+    args.metadata_off,
 ]
 
 

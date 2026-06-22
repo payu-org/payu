@@ -37,13 +37,21 @@ def parse():
     """Parse the command line inputs and execute the subcommand."""
     # Pass the warning through the logger
     logging.captureWarnings(True)
-    setup_logger()
     parser = generate_parser(is_interactive = True)
 
-    # filter out --stacktrace when counting argument numbers
     arg_count = len(sys.argv)
+    # filter out --stacktrace when counting argument numbers
     if '--stacktrace' in sys.argv:
         arg_count = arg_count - 1
+
+    # filter out --log-level {CHOICE} when counting argument numbers
+    if '--log-level' in sys.argv:
+        arg_count = arg_count - 2
+    
+    # filter out --log-level={CHOICE} when counting argument numbers
+    elif any(arg.startswith('--log-level=') for arg in sys.argv):
+        arg_count = arg_count - 1
+
     # Display help if no arguments are provided
     if arg_count == 1:
         parser.print_help()
@@ -53,15 +61,18 @@ def parse():
     args = vars(parser.parse_args())
     run_cmd = args.pop('run_cmd')
 
-    # We pop --stacktrace here so it will not be propagated to runcmd() in subcommands
-    stacktrace = args.pop('stacktrace')
-    if not stacktrace:
-        # Force warnings.warn() to omit the source code line in the message
-        warnings.formatwarning = (
-            lambda message, category, filename, lineno, line=None: f"{message}"
-        )
+    # We pop --stacktrace and --log_level here so they will not be propagated to runcmd() in subcommands
+    stacktrace = args.pop('stacktrace', False)
+    log_level = args.pop('log_level', None)
+
+    # Override the STACKTRACE and LOG_LEVEL environment variables if flags are provided
+    if log_level:
+        os.environ['PAYU_LOG_LEVEL'] = str(log_level)
+    if stacktrace:
+        os.environ['PAYU_STACKTRACE'] = str(stacktrace)
+    
         
-    run_cmd(**args)
+    _execute_command(run_cmd, stacktrace=stacktrace, log_level=log_level, **args)
 
 
 def generate_parser(is_interactive=False):
@@ -88,8 +99,11 @@ def generate_parser(is_interactive=False):
         # Add the stacktrace option to all subcommands for consitent CLI UX.
         # It will be extracted in the parse() and not propagated to subcommand's runcmd()
         cmd_parser.add_argument(*arg_templates.stacktrace['flags'], **arg_templates.stacktrace['parameters'])
+        cmd_parser.add_argument(*arg_templates.log_level['flags'], **arg_templates.log_level['parameters'])
 
         for arg in cmd.arguments:
+            if '--stacktrace' in arg['flags'] or '--log-level' in arg['flags']:
+                continue
             cmd_parser.add_argument(*arg['flags'], **arg['parameters'])
 
         # If in interactive mode, make all required arguments no longer required
@@ -186,6 +200,12 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
         if var in os.environ:
             payu_env_vars[var] = os.environ[var]
 
+    # Pass on stacktrace and log level to PBS as environment variables
+    if os.environ.get('PAYU_STACKTRACE'):
+        payu_env_vars['PAYU_STACKTRACE'] = os.environ.get('PAYU_STACKTRACE')
+    if os.environ.get('PAYU_LOG_LEVEL'):
+        payu_env_vars['PAYU_LOG_LEVEL'] = os.environ.get('PAYU_LOG_LEVEL')
+
     return payu_env_vars
 
 
@@ -225,3 +245,85 @@ def submit_job(script, config, vars=None, expt=None, current_run=None, type=None
 
 
     return job_id
+
+def set_logger_runscript(log_level=None):
+    """Configure logging settings based on arguments and environment variables."""
+    logging.captureWarnings(True)
+    log_level_env = os.environ.get('PAYU_LOG_LEVEL')
+
+    # If log_level is changed from default, update setup_logger
+    # Priority: command line argument > environment variable > 'INFO' default
+    if log_level is not None:
+        active_level = log_level
+    elif log_level_env:
+        active_level = str(log_level_env).upper()
+    else:
+        active_level = 'INFO'
+
+    setup_logger(active_level)
+
+def set_stacktrace_runscript(stacktrace=None):
+    """
+    Configure stacktrace settings based on arguments and environment variables.
+    Return True if stacktrace is enabled, False otherwise.
+    """
+
+    if stacktrace is True or str(os.environ.get('PAYU_STACKTRACE', 'False')).lower() == 'true':
+        return True
+    else:
+        # Force warnings.warn() to omit the source code line in the message
+        warnings.formatwarning = (
+            lambda message, category, filename, lineno, line=None: f"{message}"
+        )
+        return False
+
+def _execute_command(func, stacktrace=None, log_level=None, **args):
+    """Execute a payu command with error handling and logging.
+    Sets up logging, captures warnings through the logging system,
+    and catches exceptions to provide clean error messages.
+    """
+    set_logger_runscript(log_level)
+    set_stacktrace_runscript(stacktrace)
+
+    # Pass arguments to the command as dictionary
+    func(**args)
+
+# Add wrappers for runscript commands (entry points configured in pyproject.toml)
+def parse_run():
+    _parse_runscript("run")
+
+def parse_collate():
+    _parse_runscript("collate")
+
+def parse_profile():
+    _parse_runscript("profile")
+
+def parse_sync():
+    _parse_runscript("sync")
+
+
+def _parse_runscript(cmd_name):
+    """
+    Parse the command line inputs (e.g., payu run) and pass it onto _execute_command.
+    """
+    # Attempt to import the requested runscript command module
+    try:
+        cmd = importlib.import_module(f'payu.subcommands.{cmd_name}_cmd')
+    except ImportError:
+        raise ImportError(f'payu: error: Unknown runscript command payu-{cmd_name}') 
+    
+    # Construct the subcommand parser
+    parser = argparse.ArgumentParser(**cmd.parameters)
+
+    # Add global flags to each command
+    for arg in [arg_templates.stacktrace, arg_templates.log_level]:
+        parser.add_argument(*arg['flags'], **arg['parameters'])
+
+    for arg in cmd.arguments:
+        parser.add_argument(*arg['flags'], **arg['parameters'])
+
+    args = vars(parser.parse_args())
+    log_level = args.pop('log_level', 'INFO')
+    stacktrace = args.pop('stacktrace', False)
+
+    _execute_command(cmd.runscript, stacktrace=stacktrace, log_level=log_level, **args)

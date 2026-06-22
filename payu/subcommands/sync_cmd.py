@@ -63,13 +63,9 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path, sync_restarts,
     cli.submit_job('payu-sync', pbs_config, pbs_vars)
 
 
-def runscript():
-    parser = argparse.ArgumentParser()
-    for arg in arguments:
-        parser.add_argument(*arg['flags'], **arg['parameters'])
-
-    run_args = parser.parse_args()
-
+def runscript(**run_args):
+    run_args = argparse.Namespace(**run_args)
+    
     pbs_vars = cli.set_env_vars(init_run=run_args.init_run,
                                 lab_path=run_args.lab_path,
                                 dir_path=run_args.dir_path,

@@ -22,14 +22,15 @@ class ColoredFormatter(logging.Formatter):
         formatter = logging.Formatter(log_color + self.FORMAT + self.RESET)
         return formatter.format(record)
 
-def setup_logger():
+def setup_logger(log_level='INFO'):
     """Configure the root logger"""
     
     # Color Formatter: Initialize Colorama for cross-platform compatibility and auto-reset
     init(autoreset=True)
     
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    logger.handlers.clear()
+    logger.setLevel(getattr(logging, log_level))
 
     # Create a stream handler and set the custom formatter
     console_handler = logging.StreamHandler()

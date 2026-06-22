@@ -16,7 +16,7 @@ arguments = [args.config, args.verbose, args.remote]
 
 
 def runcmd(config_path, verbose, remote):
-    """Execute the command."""
+    """Execute the command."""    
     config_path = Path(config_path) if config_path is not None else None
     list_branches(config_path, verbose, remote)
 

@@ -354,3 +354,16 @@ stacktrace = {
         'help': 'Display full stack traces of errors and warnings'
     }
 }
+
+# Log level option
+log_level = {
+    # Note the flag name is log-level (dash) but the dest name is log_level (underscore).
+    'flags': ['--log-level'], 
+    'parameters': {
+        'dest': 'log_level',
+        'action': 'store',
+        'default': None,
+        'choices': ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+        'help': 'Set the logging level (choices: DEBUG, INFO, WARNING, ERROR, CRITICAL)'
+    }
+}
