@@ -1,5 +1,6 @@
 import copy
 import os
+from pathlib import Path
 import shutil
 from datetime import datetime
 
@@ -531,9 +532,9 @@ def test_update_file_with_template_metadata_values(mock_repo):
     expected_metadata = f"""
 # {DO_NOT_EDIT_COMMENT}
 experiment_uuid: cb793e91-6168-4ed2-a70c-f6f9ccf1659
-name: ctrldir-branch-cb793e91
 
 # {CAN_EDIT_COMMENT}
+name: ctrldir-branch-cb793e91
 created: '2000-01-01'
 model: TEST-MODEL
 
@@ -606,7 +607,7 @@ def test_arrange_metadata(metadata, expected_metadata, manual_fields):
     # Test headers added for auto-generated fields
     assert "\n" == result.ca.items["experiment_uuid"][1][0].value
     assert f"# {DO_NOT_EDIT_COMMENT}\n" == result.ca.items["experiment_uuid"][1][1].value
-    assert f"# {CAN_EDIT_COMMENT}\n" == result.ca.items["email"][1][1].value
+    assert f"# {CAN_EDIT_COMMENT}\n" == result.ca.items["name"][1][1].value
 
     # Test header added if there are manual fields
     if manual_fields:
@@ -614,18 +615,15 @@ def test_arrange_metadata(metadata, expected_metadata, manual_fields):
 
 
 
-def test_arrange_metadata_preserves_comments():
+def test_arrange_metadata_preserves_comments(tmp_path):
     """Test that arrange_metadata preserves existing comments on manual fields"""
-    metadata = CommentedMap([
-        ("experiment_uuid", "test-uuid"),
-        ("description", "This is for testing."),
-    ])
 
-    comment_text = "This should be a string less than 150 characters."
-    metadata.yaml_set_comment_before_after_key(
-        "description",
-        before=comment_text,
-    )
-
+    metadata = YAML().load(Path(__file__).parent / "resources" / "metadata_example.yaml")
     result = arrange_metadata(metadata)
-    assert f"# {comment_text}\n" == result.ca.items["description"][1][0].value
+    
+    # write result to file
+    result_path = tmp_path / "metadata_result.yaml"
+    YAML().dump(result, result_path)
+
+    expected_metadata_path = Path(__file__).parent / "resources" / "metadata_expected.yaml"
+    assert result_path.read_text() == expected_metadata_path.read_text()
