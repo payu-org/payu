@@ -302,6 +302,11 @@ def update_all_job_files(
         if job_info and exit_status and stage == "queued":
             # Job has exited, but is still marked as queued in the job file
             remove_job_file(file_path=job_file)
+
+        elif job_info and job_info.get("Jobs", {}).get(job_id, {}).get("job_state") == "F":
+            # Job is killed or deleted but still exists in the job file
+            remove_job_file(file_path=job_file)
+
         elif job_info:
             # Job is found in the scheduler, update the job file with the latest info
             update_data={
@@ -316,17 +321,13 @@ def update_all_job_files(
                 file_path=job_file,
                 data=update_data
             )
-            
-        else:
-            # Job not found in scheduler
-            if stage == "queued":
-                remove_job_file(file_path=job_file)
-            elif run_status is None:
-                # Run status isn't set, so job must have exited earlier
-                update_job_file(
-                    file_path=job_file,
-                    data={f"payu_{job_type}_status": 1}
-                )
+                
+        elif run_status is None and stage != "queued":
+            # Run status isn't set, so job must have exited earlier
+            update_job_file(
+                file_path=job_file,
+                data={f"payu_{job_type}_status": 1}
+            )
             
 def print_line(label: str, key: Any, data: dict[str, Any], is_status: bool = False, description: str = "") -> None:
     """Print a line with label and value from the data, if it is defined. 
