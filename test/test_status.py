@@ -1075,3 +1075,41 @@ def test_display_expt_paths(capsys):
     assert f"{f'Control Directory:':<{label_width}} /path/to/control" in captured
     assert "Laboratory Path" not in captured
     assert f"{f'Sync Destination:':<{label_width}} Unconfigured" in captured
+
+
+
+@pytest.mark.parametrize(
+    "archive_jobs", [True], indirect=True
+)
+def test_build_job_info_string_run_number(tmp_path, archive_jobs):
+    """Test that build_job_info ignore the runs with string run numbers ."""
+    job_file = tmp_path / "archive" / "payu_jobs" / "2" / "run" / "test-job-id-2.json"
+    with open(job_file, 'r') as f:
+        job_data = json.load(f)
+
+    # Change one of the payu_current_run values to a string
+    job_data["payu_current_run"] = "2"
+    with open(job_file, 'w') as f:
+        json.dump(job_data, f)
+
+    # Mock expt.get_model_cur_expt_time() in build_job_info
+    mock_expt = MagicMock()
+    mock_expt.get_model_cur_expt_time.return_value = cftime.datetime(1901, 1, 15, 0, 30, 0)
+
+    all_runs = build_job_info(
+        control_path=tmp_path / "control",
+        archive_path=tmp_path / "archive",
+        all_runs=True,
+        expt=mock_expt
+    )
+
+    # Remove job file from check as it contains tmp_path
+    remove_job_file_paths(all_runs)
+
+    expected = {
+                'runs': {
+                    0: {'run': [expected_archive_job_info(0)]},
+                    1: {'run': [expected_archive_job_info(1)]}
+                }
+            }
+    assert all_runs == expected
