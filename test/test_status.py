@@ -8,6 +8,7 @@ from unittest.mock import Mock, MagicMock
 from test.common import cd, tmpdir, labdir, write_config, ctrldir_basename, ctrldir
 
 from payu.status import (
+    _sort_run_jobs,
     find_file_match,
     get_scheduler_log,
     find_scheduler_logs,
@@ -194,10 +195,10 @@ def failed_job(tmp_path, request):
     if request.param:
         return write_job_file(
             archive_path=tmp_path / "archive",
-            job_id="test-job-id-failed",
+            job_id="test-job-id-0failed",
             run_number=3,
             job_data={
-                "scheduler_job_id": "test-job-id-failed",
+                "scheduler_job_id": "test-job-id-0failed",
                 "scheduler_type": "pbs",
                 "metadata": {"uuid": "test-uuid"},
                 "payu_current_run": 3,
@@ -245,10 +246,10 @@ def failed_collate_jobs(tmp_path, request):
     if request.param:
         return write_job_file(
             archive_path=tmp_path / "archive",
-            job_id="test-collate-id-failed",
+            job_id="test-collate-id-0failed",
             run_number=2,
             job_data={
-                "scheduler_job_id": "test-collate-id-failed",
+                "scheduler_job_id": "test-collate-id-0failed",
                 "scheduler_type": "pbs",
                 "metadata": {"uuid": "test-uuid"},
                 "payu_current_run": 2,
@@ -421,7 +422,7 @@ def expected_queued_job_info():
 def expected_failed_job_info():
     return {
         'exit_status': 1,
-        'job_id': 'test-job-id-failed',
+        'job_id': 'test-job-id-0failed',
         'run_id': 'commit-hash-failed',
         'model_exit_status': None,
         'model_finish_time': None,
@@ -453,7 +454,7 @@ def expected_collate_job_info(run_number):
 
 def expected_failed_collate_job_info():
     return {
-        'job_id': "test-collate-id-failed",
+        'job_id': "test-collate-id-0failed",
         'stage': 'exited',
         'exit_status': 1,
         'stderr_file': None,
@@ -1109,7 +1110,27 @@ def test_build_job_info_string_run_number(tmp_path, archive_jobs):
     expected = {
                 'runs': {
                     0: {'run': [expected_archive_job_info(0)]},
-                    1: {'run': [expected_archive_job_info(1)]}
+                    1: {'run': [expected_archive_job_info(1)]},
+                    2: {'run': [expected_archive_job_info(2)]}
                 }
             }
     assert all_runs == expected
+
+
+def test__sort_run_jobs():
+    """Test that _sort_run_jobs correctly sorts jobs by job_id and then start_time."""
+    run_info = [
+        {"job_id": "3", "start_time": "2025-06-03T09:00:00"},
+        {"start_time": "2025-06-06T09:00:00"},
+        {"job_id": "1", "start_time": "2025-06-01T09:00:00"},
+        {"start_time": "2025-06-04T09:00:00"},
+    ]
+
+    _sort_run_jobs(run_info)
+
+    assert run_info == [
+        {"start_time": "2025-06-04T09:00:00"},
+        {"start_time": "2025-06-06T09:00:00"},
+        {"job_id": "1", "start_time": "2025-06-01T09:00:00"},
+        {"job_id": "3", "start_time": "2025-06-03T09:00:00"},
+    ]
