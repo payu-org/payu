@@ -23,8 +23,11 @@ import stat
 import warnings
 
 # Extensions
+from pint import UnitRegistry
 from ruamel.yaml import YAML
 from ruamel.yaml.constructor import DuplicateKeyError
+
+ureg = UnitRegistry()
 
 DEFAULT_CONFIG_FNAME = 'config.yaml'
 
@@ -383,3 +386,18 @@ def _run_script(script_cmd: str, control_path: Path) -> None:
             _run_script(cmd, control_path)
         else:
             raise
+
+
+def get_size(start_path):
+    """Return the total size of all files in the given path, in unit of GB."""
+    total_size = 0
+    for dirpath, _, filenames in os.walk(start_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            # skip if it is symbolic link
+            if not os.path.islink(fp):
+                total_size += os.path.getsize(fp)
+
+    # Convert the total size from bytes to gigabytes
+    total_size_gb = (int(total_size) * ureg.byte).to(ureg.gibibyte).magnitude
+    return f"{total_size_gb}GB"

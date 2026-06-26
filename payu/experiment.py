@@ -33,6 +33,7 @@ from payu.fsops import make_symlink, read_config, movetree
 from payu.fsops import list_sorted_archive_dirs
 from payu.fsops import run_script_command
 from payu.fsops import needs_subprocess_shell
+from payu.fsops import get_size
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 from payu.models import index as model_index
 import payu.profilers
@@ -902,6 +903,9 @@ class Experiment(object):
         os.makedirs(self.archive_path, exist_ok=True)
         make_symlink(self.archive_path, self.archive_sym_path)
 
+        # Calculate the file volume of the work directory and record in telemetry
+        work_dir_volume = get_size(self.work_path)
+
         # Remove work symlink
         if os.path.islink(self.work_sym_path):
             os.remove(self.work_sym_path)
@@ -924,7 +928,8 @@ class Experiment(object):
         # Record model restart datetimes in telemetry
         telemetry.update_run_job_file(
             file_path=self.job_file,
-            model_restart_datetimes=self.get_model_restart_datetimes()
+            model_restart_datetimes=self.get_model_restart_datetimes(),
+            file_volume=work_dir_volume,
         )
 
         # Remove any outdated restart files
