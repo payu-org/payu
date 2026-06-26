@@ -6,7 +6,7 @@ from unittest.mock import patch
 from pathlib import Path
 
 # import payu packages
-from payu.fsops import atomic_write_file, movetree, list_sorted_archive_dirs
+from payu.fsops import atomic_write_file, movetree, list_sorted_archive_dirs, get_size
 
 # import some common variables for testing
 from .common import tmpdir, testdir, labdir, archive_dir, make_all_files
@@ -164,3 +164,37 @@ def test_list_sorted_archive_dirs(setup_test_dir):
     restarts = list_sorted_archive_dirs(archive_dir, dir_type="restart")
     assert restarts == ['restart009', 'restart021', 'restart606',
                         'restart23042', 'restart102932']
+
+def write_file_with_size(file_path, size):
+    """Write a file with the specified size in bytes."""
+    with open(file_path, 'wb') as f:
+        f.write(b'\0' * size)
+        
+def test_get_size(setup_test_dir):
+    """Test that get_size correctly calculates the size of a directory and return it in GB."""
+    test_dir = tmpdir / "test_size_dir"
+    test_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create files with known sizes
+    file_sizes = [100, 200, 300]
+    for size in file_sizes:
+        file_path = test_dir / f"file_{size}.txt"
+        write_file_with_size(file_path, size)
+
+    # Create a subdirectory with additional files
+    sub_dir = test_dir / "subdir"
+    sub_dir.mkdir()
+    for size in file_sizes:
+        file_path = sub_dir / f"subfile_{size}.txt"
+        write_file_with_size(file_path, size)
+
+    # Create a symlink to an external file, should be ignored in size calculation
+    symlink_dir = tmpdir / "test_symlink_dir"
+    symlink_dir.mkdir()
+    symlink_path = symlink_dir / "symlink_size_100.txt"
+    write_file_with_size(symlink_path, 100)
+    (test_dir / "symlink_to_dir").symlink_to(symlink_dir)
+
+    # Assert the calculation gets an expected total size
+    expected_size = sum(file_sizes) * 2 / 1024 **3 # Convert bytes to GB
+    assert get_size(test_dir) == f"{expected_size}GB"
