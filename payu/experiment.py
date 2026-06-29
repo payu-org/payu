@@ -35,7 +35,6 @@ from payu.fsops import run_script_command
 from payu.fsops import needs_subprocess_shell
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 from payu.models import index as model_index
-import payu.profilers
 from payu.runlog import Runlog
 from payu.manifest import Manifest
 from payu.calendar import parse_date_offset
@@ -136,8 +135,6 @@ class Experiment(object):
         # TODO: Move this stuff somewhere else
         userscript_val = self.config.get('userscripts', {})
         self.userscripts = userscript_val if isinstance(userscript_val, dict) else {}
-
-        self.profilers = []
 
         init_script = self.userscripts.get('init')
         if init_script:
@@ -321,9 +318,6 @@ class Experiment(object):
         # Now load model-dependent modules
         for mod in self.modules:
             envmod.module('load', mod)
-
-        for prof in self.profilers:
-            prof.load_modules()
 
         # TODO: Consolidate this profiling stuff
         c_ipm = self.config.get('ipm', False)
@@ -549,19 +543,6 @@ class Experiment(object):
         if setup_script:
             self.run_userscript(setup_script, 'setup')
 
-        # Profiler setup
-        expt_profs = self.config.get('profilers', [])
-        if not isinstance(expt_profs, list):
-            expt_profs = [expt_profs]
-
-        for prof_name in expt_profs:
-            ProfType = payu.profilers.index[prof_name]
-            prof = ProfType(self)
-            self.profilers.append(prof)
-
-            # Testing
-            prof.setup()
-
         # Check restart pruning for valid configuration values and
         # warns user if more restarts than expected would be pruned
         if self.archiving():
@@ -676,10 +657,6 @@ class Experiment(object):
                 os.environ['HPCRUN_EVENT_LIST'] = 'WALLCLOCK@5000'
                 model_prog.append('hpcrun')
 
-            for prof in self.profilers:
-                if prof.runscript:
-                    model_prog.append(prof.runscript)
-
             model_prog.append(model.exec_prefix)
 
             # Use the full path to symlinked exec_name in work as some
@@ -699,9 +676,6 @@ class Experiment(object):
             flags=' '.join(mpi_flags),
             exes=' : '.join(mpi_progs)
         )
-
-        for prof in self.profilers:
-            cmd = prof.wrapper(cmd)
 
         # Expand shell variables inside flags
         if self.expand_shell_vars:
@@ -763,11 +737,6 @@ class Experiment(object):
             fpath = os.path.join(self.work_path, fname)
             if os.path.getsize(fpath) == 0:
                 os.remove(fpath)
-
-        # Clean up any profiling output
-        # TODO: Move after `rc` code check?
-        for prof in self.profilers:
-            prof.postprocess()
 
         # TODO: Need a model-specific cleanup method call here
         # NOTE: This does not appear to catch hanging jobs killed by PBS
