@@ -28,6 +28,7 @@ from ruamel.yaml import YAML
 from packaging import version
 
 # Local
+import payu
 from payu import envmod
 from payu.fsops import make_symlink, read_config, movetree
 from payu.fsops import list_sorted_archive_dirs
