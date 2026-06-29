@@ -133,6 +133,17 @@ def display_wait_time(qtime, stime) -> Optional[str]:
         print(f"  {f'{label}:':<{18}} {wait_time_str}")
     return wait_time_str
 
+def _sort_run_jobs(run_info_one_type):
+    """Sort the run_info by job_id and start_time, if job_id is not available"""
+    run_info_one_type.sort(key=lambda x: (
+        # Sort by increasing job_id, and put these at the end
+        x.get("job_id") or "",
+
+        # Sort by increasing start time if no job_id (e.g., payu-run in login node)
+        x.get("start_time") or "",
+    ))
+
+
 def build_job_info(
             archive_path: Path,
             control_path: Path,
@@ -203,7 +214,7 @@ def build_job_info(
                     "model_finish_time": data.get("model_finish_time")
                 })
 
-            run_num = data["payu_current_run"]
+            run_num = int(data["payu_current_run"])
             runs.setdefault(run_num, {})
             runs[run_num].setdefault(job_type, []).append(run_info)
 
@@ -218,12 +229,7 @@ def build_job_info(
     # Sort internal jobs by start time
     for run_num, run_jobs in status_data["runs"].items():
         for job_type in run_jobs.keys():
-            run_jobs[job_type].sort(key=lambda x: (
-                # Put queued jobs at the end (None start_time)
-                x.get("start_time") is None,
-                # Sort by start time
-                x.get("start_time") or ""
-            ))
+            _sort_run_jobs(run_jobs[job_type])
 
             if not all_runs:
                 # Use latest run/collate job
@@ -291,11 +297,22 @@ def update_all_job_files(
 
         # Get job info from the scheduler data
         job_info = all_jobs.get(job_id)
-        exit_status = job_info.get("Jobs", {}).get(job_id, {}).get("Exit_status") if job_info else None
-        
-        if job_info and exit_status and stage == "queued":
+        if job_info:
+            job_info_dict = job_info.get("Jobs", {}).get(job_id, {})
+            exit_status = job_info_dict.get("Exit_status")
+            job_state = job_info_dict.get("job_state")
+        else:
+            exit_status = None
+            job_state = None
+
+        if exit_status and stage == "queued":
             # Job has exited, but is still marked as queued in the job file
             remove_job_file(file_path=job_file)
+
+        elif job_state == "F" and stage == "queued":
+            # Job is killed or deleted but still exists in the job file
+            remove_job_file(file_path=job_file)
+
         elif job_info:
             # Job is found in the scheduler, update the job file with the latest info
             update_data={
@@ -310,11 +327,12 @@ def update_all_job_files(
                 file_path=job_file,
                 data=update_data
             )
-            
+                
         else:
             # Job not found in scheduler
             if stage == "queued":
                 remove_job_file(file_path=job_file)
+
             elif run_status is None:
                 # Run status isn't set, so job must have exited earlier
                 update_job_file(
