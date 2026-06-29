@@ -388,10 +388,12 @@ def _run_script(script_cmd: str, control_path: Path) -> None:
             raise
 
 
-def get_size(start_path):
+def get_size(work_path):
     """Return the total size of all files in the given path, in unit of GB."""
     total_size = 0
-    for dirpath, _, filenames in os.walk(start_path):
+    for dirpath, dirnames, filenames in os.walk(work_path):
+        # Skip restart directory
+        dirnames[:] = [d for d in dirnames if not d.startswith("RESTART")]
         for f in filenames:
             fp = os.path.join(dirpath, f)
             # skip if it is symbolic link
