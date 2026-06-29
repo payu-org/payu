@@ -1,3 +1,4 @@
+import json
 import os
 import copy
 import shutil
@@ -359,6 +360,14 @@ def test_sync(monkeypatch):
     with open(os.path.join(pbs_logs_path, log_filename), 'w') as f:
         f.write(test_log_content)
 
+    # Add some job files
+    payu_jobs_path = os.path.join(expt_archive_dir, 'payu_jobs')
+    os.makedirs(payu_jobs_path)
+    job_filename = 'test-id.json'
+    job_content = {"job_id": "test-id"}
+    with open(os.path.join(payu_jobs_path, job_filename), 'w') as f:
+        json.dump(job_content, f)
+
     # Add nested directories to output000
     nested_output_dirs = os.path.join('output000', 'submodel', 'test_sub-dir')
     nested_output_path = os.path.join(expt_archive_dir, nested_output_dirs)
@@ -390,7 +399,7 @@ def test_sync(monkeypatch):
 
     expected_dirs_synced = {'output000', 'output001', 'output002',
                             'output003', 'output004',
-                            'pbs_logs', 'metadata.yaml'}
+                            'payu_jobs', 'pbs_logs', 'metadata.yaml'}
 
     # Test output is moved to remote dir
     assert set(os.listdir(remote_archive)) == expected_dirs_synced
@@ -401,6 +410,13 @@ def test_sync(monkeypatch):
 
     with open(remote_log_path, 'r') as f:
         assert test_log_content == f.read()
+
+    # Test payu_jobs are copied
+    remote_job_path = os.path.join(remote_archive, 'payu_jobs', job_filename)
+    assert os.path.exists(remote_job_path)
+
+    with open(remote_job_path, 'r') as f:
+        assert json.load(f) == job_content
 
     # Check nested output dirs are synced
     assert os.path.exists(os.path.join(remote_archive, nested_output_dirs))
@@ -440,3 +456,6 @@ def test_sync(monkeypatch):
     for output in ['output000', 'output001', 'output002', 'output003']:
         assert output not in local_archive_dirs
     assert 'output004' in local_archive_dirs
+
+    # Assert that payu_jobs are not removed since they are protected
+    assert 'payu_jobs' in local_archive_dirs

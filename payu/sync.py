@@ -302,12 +302,18 @@ class SyncToRemoteArchive():
         self.add_outputs_to_sync()
         self.add_restarts_to_sync()
 
-        # Add pbs, error, and payu job logs to paths
-        for log_type in ['error_logs', 'pbs_logs', 'payu_jobs']:
+        # Add pbs and error logs to paths
+        for log_type in ['error_logs', 'pbs_logs']:
             log_path = os.path.join(self.expt.archive_path, log_type)
             if os.path.isdir(log_path):
                 self.source_paths.append(SourcePath(path=log_path,
                                                     is_log_file=True))
+                
+        # Add payu_jobs to protected paths
+        job_file_path = os.path.join(self.expt.archive_path, 'payu_jobs')
+        if os.path.isdir(job_file_path):
+            self.source_paths.append(SourcePath(path=job_file_path,
+                                                protected=True))
 
         # Add metadata path to protected paths, if it exists
         metadata_path = os.path.join(self.expt.archive_path, METADATA_FILENAME)
