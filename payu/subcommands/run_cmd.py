@@ -181,7 +181,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
         # Return error code.
         sys.exit(1)
 
-    current_run = init_run if init_run is not None else expt.counter
+    current_run = int(init_run) if init_run is not None else expt.counter
 
     cli.submit_job('payu-run', pbs_config, pbs_vars, expt, current_run, type='run')
 

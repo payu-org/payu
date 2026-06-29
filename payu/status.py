@@ -133,6 +133,17 @@ def display_wait_time(qtime, stime) -> Optional[str]:
         print(f"  {f'{label}:':<{18}} {wait_time_str}")
     return wait_time_str
 
+def _sort_run_jobs(run_info_one_type):
+    """Sort the run_info by job_id and start_time, if job_id is not available"""
+    run_info_one_type.sort(key=lambda x: (
+        # Sort by increasing job_id, and put these at the end
+        x.get("job_id") or "",
+
+        # Sort by increasing start time if no job_id (e.g., payu-run in login node)
+        x.get("start_time") or "",
+    ))
+
+
 def build_job_info(
             archive_path: Path,
             control_path: Path,
@@ -203,7 +214,7 @@ def build_job_info(
                     "model_finish_time": data.get("model_finish_time")
                 })
 
-            run_num = data["payu_current_run"]
+            run_num = int(data["payu_current_run"])
             runs.setdefault(run_num, {})
             runs[run_num].setdefault(job_type, []).append(run_info)
 
@@ -218,12 +229,7 @@ def build_job_info(
     # Sort internal jobs by start time
     for run_num, run_jobs in status_data["runs"].items():
         for job_type in run_jobs.keys():
-            run_jobs[job_type].sort(key=lambda x: (
-                # Put queued jobs at the end (None start_time)
-                x.get("start_time") is None,
-                # Sort by start time
-                x.get("start_time") or ""
-            ))
+            _sort_run_jobs(run_jobs[job_type])
 
             if not all_runs:
                 # Use latest run/collate job
