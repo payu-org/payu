@@ -11,6 +11,17 @@ from payu.fsops import atomic_write_file, movetree, list_sorted_archive_dirs, ge
 # import some common variables for testing
 from .common import tmpdir, testdir, labdir, archive_dir, make_all_files
 
+@pytest.fixture
+def write_dir_with_size():
+    """A fxiture to write files into designated directory with the specified sizes in bytes."""
+    def _createdir(dir_path, file_sizes):
+        dir_path.mkdir(parents=True, exist_ok=True)
+        for size in file_sizes:
+            file_path = dir_path / f"file_{size}.txt"
+            with open(file_path, 'wb') as f:
+                f.write(b'\0' * size)
+    return _createdir
+
 def scantree(path):
     """
     Recursively yield DirEntry objects for given directory.
@@ -165,34 +176,23 @@ def test_list_sorted_archive_dirs(setup_test_dir):
     assert restarts == ['restart009', 'restart021', 'restart606',
                         'restart23042', 'restart102932']
 
-def write_file_with_size(file_path, size):
-    """Write a file with the specified size in bytes."""
-    with open(file_path, 'wb') as f:
-        f.write(b'\0' * size)
-        
-def test_get_size(setup_test_dir):
-    """Test that get_size correctly calculates the size of a directory and return it in GB."""
-    test_dir = tmpdir / "test_size_dir"
-    test_dir.mkdir(parents=True, exist_ok=True)
 
+@pytest.mark.parametrize("file_sizes", 
+                         [[100, 200, 300]]
+)
+def test_get_size(setup_test_dir, write_dir_with_size, file_sizes):
+    """Test that get_size correctly calculates the size of a directory and return it in GB."""
     # Create files with known sizes
-    file_sizes = [100, 200, 300]
-    for size in file_sizes:
-        file_path = test_dir / f"file_{size}.txt"
-        write_file_with_size(file_path, size)
+    test_dir = tmpdir / "test_size_dir"
+    write_dir_with_size(test_dir, file_sizes)
 
     # Create a subdirectory with additional files
     sub_dir = test_dir / "subdir"
-    sub_dir.mkdir()
-    for size in file_sizes:
-        file_path = sub_dir / f"subfile_{size}.txt"
-        write_file_with_size(file_path, size)
+    write_dir_with_size(sub_dir, file_sizes)
 
     # Create a symlink to an external file, should be ignored in size calculation
     symlink_dir = tmpdir / "test_symlink_dir"
-    symlink_dir.mkdir()
-    symlink_path = symlink_dir / "symlink_size_100.txt"
-    write_file_with_size(symlink_path, 100)
+    write_dir_with_size(symlink_dir, [2000])
     (test_dir / "symlink_to_dir").symlink_to(symlink_dir)
 
     # Assert the calculation gets an expected total size
