@@ -459,3 +459,40 @@ def test_sync(monkeypatch):
 
     # Assert that payu_jobs are not removed since they are protected
     assert 'payu_jobs' in local_archive_dirs
+
+def test_sync_jobs_file_with_excludes(monkeypatch):
+    """Test job files are synced even when excludes are set to exclude *.json files"""
+    # Add some job files
+    payu_jobs_path = os.path.join(expt_archive_dir, 'payu_jobs')
+    os.makedirs(payu_jobs_path)
+    job_filename = 'test-id.json'
+    job_content = {"job_id": "test-id"}
+    with open(os.path.join(payu_jobs_path, job_filename), 'w') as f:
+        json.dump(job_content, f)
+
+    # Add a json file to the output dir that should be excluded
+    output_json_file = os.path.join(expt_archive_dir, 'output000', 'test_output.json')
+    with open(output_json_file, 'w') as f:
+        json.dump({"test": "output"}, f)
+
+    # Remote archive path
+    remote_archive = tmpdir / 'remote'
+
+    additional_config = {
+        "sync": {
+            "path": str(remote_archive),
+            "exclude": ["*.json"]
+        }
+    }
+    sync = setup_sync(additional_config, monkeypatch, add_envt_vars={'PAYU_CURRENT_RUN': '4'})
+
+    # Function to test
+    sync.run()
+
+    # Test json output is not synced due to excludes
+    assert not os.path.exists(os.path.join(remote_archive, 'output000', 'test_output.json'))
+
+    # Test payu_jobs are still copied
+    remote_job_path = os.path.join(remote_archive, 'payu_jobs', job_filename)
+    with open(remote_job_path, 'r') as f:
+        assert json.load(f) == job_content
