@@ -185,10 +185,6 @@ def test_get_size(setup_test_dir):
     sub_dir = test_dir / "subdir"
     write_dir_with_size(sub_dir, file_sizes)
 
-    # Create a RESTART directory with additional files
-    restart_dir = test_dir / "RESTART"
-    write_dir_with_size(restart_dir, [2000])
-
     # Create a symlink to an external file, should be ignored in size calculation
     symlink_dir = tmpdir / "test_symlink_dir"
     write_dir_with_size(symlink_dir, [2000])

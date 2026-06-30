@@ -392,8 +392,6 @@ def get_size(work_path):
     """Return the total size of all files in the given path, in unit of GB."""
     total_size = 0
     for dirpath, dirnames, filenames in os.walk(work_path):
-        # Skip restart directory
-        dirnames[:] = [d for d in dirnames if not d.startswith("RESTART")]
         for f in filenames:
             fp = os.path.join(dirpath, f)
             # skip if it is symbolic link
