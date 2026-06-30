@@ -922,12 +922,6 @@ class Experiment(object):
 
         movetree(self.work_path, self.output_path)
 
-        # Record model restart datetimes in telemetry
-        telemetry.update_run_job_file(
-            file_path=self.job_file,
-            model_restart_datetimes=self.get_model_restart_datetimes(),
-        )
-
         # Remove any outdated restart files
         try:
             restarts_to_prune = self.get_restarts_to_prune(
@@ -957,10 +951,13 @@ class Experiment(object):
         if archive_script:
             self.run_userscript(archive_script, 'archive')
 
-        # Calculate the file volume of the output directory and record in telemetry
+        # Calculate the file volume of the output directory
         work_dir_volume = get_size(self.output_path)
+        
+        # Record model restart datetimes and file volume in telemetry
         telemetry.update_run_job_file(
             file_path=self.job_file,
+            model_restart_datetimes=self.get_model_restart_datetimes(),
             file_volume=work_dir_volume
         )
 
