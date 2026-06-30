@@ -67,14 +67,6 @@ class Mom(MomMixin, Fms):
 
             input_nml.write(input_nml_path, force=True)
 
-        # Construct the land CPU mask
-        if self.expt.config.get('mask_table', False):
-            # NOTE: This function actually creates a mask table using the
-            #       `check_mask` command line tool.  But it is not very usable
-            #       since you need to know the number of masked CPUs to submit
-            #       the job.  It needs a rethink of the submission process.
-            self.create_mask_table(input_nml)
-
         # NOTE: Don't expect this to be here forever...
         # Attempt to set a mask table from the input
         if self.config.get('mask', False):
