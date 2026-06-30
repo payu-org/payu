@@ -232,15 +232,14 @@ class SyncToRemoteArchive():
 
     def build_cmd(self, source_path):
         """Given a source path to sync, return a rsync command"""
-        if source_path.protected:
+        cmd = self.base_rsync_cmd  
+        if not source_path.protected:
             # No local delete option for protected paths
-            cmd = f'{self.base_rsync_cmd} {self.excludes} '
-        elif source_path.is_log_file:
-            cmd = f'{self.base_rsync_cmd} {self.remove_files} '
-        else:
-            cmd = f'{self.base_rsync_cmd} {self.excludes} {self.remove_files} '
+            cmd += f' {self.remove_files}'
+        if not source_path.is_log_file:
+            cmd += f' {self.excludes}'
 
-        cmd += f'{source_path.path} {self.destination_path}'
+        cmd += f' {source_path.path} {self.destination_path}'
         return cmd
 
     def run_cmd(self, source_path):
@@ -302,12 +301,19 @@ class SyncToRemoteArchive():
         self.add_outputs_to_sync()
         self.add_restarts_to_sync()
 
-        # Add pbs, error, and payu job logs to paths
-        for log_type in ['error_logs', 'pbs_logs', 'payu_jobs']:
+        # Add pbs and error logs to paths
+        for log_type in ['error_logs', 'pbs_logs']:
             log_path = os.path.join(self.expt.archive_path, log_type)
             if os.path.isdir(log_path):
                 self.source_paths.append(SourcePath(path=log_path,
                                                     is_log_file=True))
+                
+        # Add payu_jobs to protected paths
+        job_file_path = os.path.join(self.expt.archive_path, 'payu_jobs')
+        if os.path.isdir(job_file_path):
+            self.source_paths.append(SourcePath(path=job_file_path,
+                                                protected=True,
+                                                is_log_file=True))
 
         # Add metadata path to protected paths, if it exists
         metadata_path = os.path.join(self.expt.archive_path, METADATA_FILENAME)
