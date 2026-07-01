@@ -1,0 +1,13 @@
+queued_stages:
+- stage_2
+- stage_3
+- stage_4
+- stage_3
+- stage_3
+- stage_5
+- stage_6
+- stage_6
+- stage_7
+current_stage: ''
+completed_stages:
+- stage_1

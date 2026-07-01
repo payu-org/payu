@@ -5,7 +5,7 @@ import git
 import pytest
 
 from payu.git_utils import get_git_repository, GitRepository, check_git_parent
-from payu.git_utils import PayuBranchError, PayuGitWarning
+from payu.git_utils import PayuGitWarning
 from payu import errors
 
 from test.common import tmpdir
@@ -292,7 +292,7 @@ def test_git_get_branch_detached_head():
 
     assert detached.repo.head.is_detached
 
-    expected_msg = ("\nRepo is in detached HEAD state.\n"
+    expected_msg = ("Repo is in detached HEAD state.\n"
                     "Before running again checkout a branch using \n\n"
                     "    payu checkout <branch>\n\n")
 

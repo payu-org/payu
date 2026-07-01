@@ -205,13 +205,13 @@ class PayuManifest(YaManifest):
                     os.chmod(filepath, perm)
                 else:
                     make_symlink(self.fullpath(filepath), filepath)
-            except Exception:
+            except Exception as e:
                 action = 'copying' if self.copy_file else 'linking'
-                print('payu: error: {action} orig: {orig} '
-                      'local: {local}'.format(action=action,
-                                              orig=self.fullpath(filepath),
-                                              local=filepath))
-                raise
+                raise errors.PayuRuntimeError(
+                    f'Error: {action} original file: {self.fullpath(filepath)} '
+                    f'to work directory: {filepath} \n'
+                    'Error: {e}'
+                ) from e
 
     def copy(self, path):
         """

@@ -190,7 +190,7 @@ def checkout_branch(branch_name: str,
         uuid = metadata.get(UUID_FIELD, None)
         
         if uuid is None:
-            raise PayuBranchError(
+            raise errors.PayuBranchError(
                 "No UUID in metadata file. Cannot set parent experiment to current experiment."
             )
 

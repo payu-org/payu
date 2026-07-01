@@ -9,7 +9,7 @@ from ruamel.yaml import YAML
 from unittest.mock import patch, MagicMock
 
 from payu.branch import add_restart_to_config, check_restart, switch_symlink
-from payu.branch import checkout_branch, clone, list_branches, PayuBranchError, DEFAULT_PARENT_STRING
+from payu.branch import checkout_branch, clone, list_branches, DEFAULT_PARENT_STRING
 from payu.metadata import MetadataWarning, UUID_FIELD
 from payu.fsops import read_config
 from payu.subcommands import clone_cmd
@@ -595,7 +595,7 @@ def test_checkout_branch_with_parent_experiment(mock_uuid, branch_metadata_with_
         monkeypatch.setattr("payu.branch.get_branch_metadata", lambda branch: {})
 
         with cd(ctrldir):
-            with pytest.raises(PayuBranchError, 
+            with pytest.raises(errors.PayuBranchError, 
                                match="No UUID in metadata file. Cannot set parent experiment to current experiment."):
                 checkout_branch(is_new_branch=True,
                             branch_name=branch_names[2],

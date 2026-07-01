@@ -333,8 +333,7 @@ def _parse_runscript(cmd_name):
     try:
         cmd = importlib.import_module(f'payu.subcommands.{cmd_name}_cmd')
     except ImportError:
-        logging.error('Unknown runscript command payu-%s', cmd_name)
-        sys.exit(1)
+        sys.exit(f"Unknown runscript command payu-{cmd_name}")
     
     # Construct the subcommand parser
     parser = argparse.ArgumentParser(**cmd.parameters)

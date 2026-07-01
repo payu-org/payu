@@ -18,6 +18,7 @@ import time
 # Local
 from payu.fsops import list_sorted_archive_dirs
 from payu.metadata import METADATA_FILENAME, UUID_FIELD
+import payu.errors as errors 
 
 DEST_NOT_CONFIGURED_MSG ="""
 There's is no configured `base_path` or `path` to sync output to.
@@ -158,8 +159,9 @@ class SyncToRemoteArchive():
                 # Add extra paths to protected paths - so they can't be deleted
                 self.source_paths.append(SourcePath(path=path, protected=True))
             else:
-                print(f"payu: error: No paths matching {path} found. "
-                      "Failed to sync path to remote archive")
+                warnings.warn(
+                    f"No paths matching {path} found. "
+                    "Failed to sync path to remote archive")
 
     def check_uuid(self):
         """Check if `metadata.yml` exists in the destination path.
@@ -171,12 +173,13 @@ class SyncToRemoteArchive():
             dest_uuid = metadata.get(UUID_FIELD, None)
             # Check if sync archive UUID {dest_uuid} matches 
             # the local payu archive UUID {self.expt.metadata.uuid}
-            if dest_uuid != None and dest_uuid != self.expt.metadata.uuid:
-                print(f"payu: error: UUID of experiment metadata in sync archive "
-                      f"({self.destination_path}) "
-                      f"does not match current experiment UUID. "
-                      "Refusing to sync to avoid overwriting existing output.")
-                raise ValueError("Mismatched experiment UUIDs in sync destination.")
+            if dest_uuid is not None and dest_uuid != self.expt.metadata.uuid:
+                raise errors.PayuRuntimeError(
+                    "Mismatched experiment UUIDs in sync destination. "
+                    f"UUID of experiment metadata in sync archive {self.destination_path}) "
+                    f"does not match current experiment UUID. "
+                    "Refusing to sync to avoid overwriting existing output."
+                    )
 
 
     def set_destination_path(self, verbose=True):
@@ -249,9 +252,11 @@ class SyncToRemoteArchive():
         try:
             subprocess.check_call(cmd, shell=True)
         except subprocess.CalledProcessError as e:
-            print('payu: Error rsyncing archive to remote directory: '
-                  f'Failed running command: {cmd}.')
-            # TODO: Raise or return?
+            warnings.warn(
+                'rsyncing archive to remote directory: '
+                f'Failed running command: {cmd}.\n'
+                f'Error: {e}'
+            )
             return
 
         if not source_path.protected and self.remove_local_dirs:
@@ -268,7 +273,7 @@ class SyncToRemoteArchive():
         if add_git_runlog:
             # Currently runlog is only set up for local remote archive
             if self.remote_syncing:
-                print("payu: error: Syncing the git runlog is not implemented "
+                warnings.warn("Syncing the git runlog is not implemented "
                       "for syncing to a remote machine")
                 return
 
@@ -282,8 +287,10 @@ class SyncToRemoteArchive():
                     cmd = f"git clone --bare {control_path} {runlog_path}"
                     subprocess.check_call(cmd, shell=True)
                 except subprocess.CalledProcessError as e:
-                    print("payu: error: Failed to create a bare repository. ",
-                          f"Error: {e}")
+                    warnings.warn(
+                        "Failed to create a bare repository. "
+                        f"Error: {e}"
+                    )
                     return
             else:
                 # Update bare gitlog repo
@@ -292,8 +299,10 @@ class SyncToRemoteArchive():
                     cmd = f"git push {runlog_path}"
                     subprocess.check_call(cmd, shell=True, cwd=control_path)
                 except subprocess.CalledProcessError as e:
-                    print("payu: error: Failed to push git runlog to bare "
-                          f"repository. Error: {e}")
+                    warnings.warn(
+                        "Failed to push git runlog to bare "
+                        f"repository. Error: {e}"
+                    )
 
     def run(self):
         """Build and run rsync cmds to remote remote archive """

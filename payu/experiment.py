@@ -22,6 +22,7 @@ import time
 from pathlib import Path
 import warnings
 import pwd
+import logging
 
 # Extensions
 from ruamel.yaml import YAML
@@ -44,6 +45,9 @@ from payu.metadata import Metadata
 import payu.telemetry as telemetry
 from payu.git_utils import get_git_repository, PayuGitWarning
 import payu.errors as errors
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -901,8 +905,7 @@ class Experiment(object):
             restarts_to_prune = self.get_restarts_to_prune(
                 force=force_prune_restarts)
         except Exception as e:
-            print(e)
-            print("payu: error: Skipping pruning restarts")
+            logger.error("Skipping pruning restarts due to error: %s", e)
             restarts_to_prune = []
 
         for restart in restarts_to_prune:
@@ -1169,9 +1172,9 @@ class Experiment(object):
             try:
                 date_offset = parse_date_offset(restart_freq)
             except ValueError as e:
-                print('payu: error: Invalid configuration for restart_freq:',
-                      restart_freq)
-                raise
+                raise errors.PayuConfigError(
+                    f'Invalid configuration for restart_freq: {restart_freq}'
+                ) from e
 
             next_dt = None
             for restart in restarts:
@@ -1179,19 +1182,22 @@ class Experiment(object):
                 restart_path = os.path.join(self.archive_path, restart)
                 try:
                     restart_dt = self.model.get_restart_datetime(restart_path)
-                except NotImplementedError:
-                    print('payu: error: Date-based restart pruning is not '
-                          f'implemented for the {self.model.model_type} '
-                          'model. To use integer based restart pruning, '
-                          'set restart_freq to an integer value.')
-                    raise
+                except NotImplementedError as e:
+                    raise errors.PayuConfigError(
+                        'Date-based restart pruning is not '
+                        f'implemented for the {self.model.model_type} '
+                        'model. To use integer based restart pruning, '
+                        'set restart_freq to an integer value.'
+                    ) from e
                 except FileNotFoundError as e:
-                    print(f'payu: warning: Ignoring {restart} from date-based '
-                          f'restart pruning. Error: {e}')
+                    warnings.warn(
+                        f'Ignoring {restart} from date-based '
+                        f'restart pruning. Error: {e}')
                     continue
                 except Exception:
-                    print('payu: error: Error parsing restart directory ',
-                          f'{restart} for a datetime to prune restarts.')
+                    logger.error(
+                        'Error parsing restart directory %s for a datetime to prune restarts.',
+                        restart)
                     raise
 
                 if (next_dt is not None and restart_dt < next_dt):
