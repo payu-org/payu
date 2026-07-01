@@ -55,7 +55,8 @@ def runcmd(model_type, config_path, lab_path, new_branch,
                     lab_path=lab_path,
                     model_type=model_type,
                     keep_uuid=keep_uuid,
-                    parent_experiment=parent_experiment)
+                    parent_experiment=parent_experiment,
+                    new_uuid=True)
 
 
 runscript = runcmd

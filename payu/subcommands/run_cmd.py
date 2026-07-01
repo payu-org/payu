@@ -22,7 +22,7 @@ parameters = {'description': 'Run the model experiment'}
 
 arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory, args.reproduce, args.force,
-             args.force_prune_restarts]
+             args.force_prune_restarts, args.new_uuid]
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,8 @@ def validate_platform_node(platform, queue, get_queue_node_shape):
 
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
-           reproduce=False, force=False, force_prune_restarts=False):
+           reproduce=False, force=False, force_prune_restarts=False,
+            new_uuid=False):
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
     pbs_vars = cli.set_env_vars(init_run=init_run,
@@ -61,7 +62,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
     # Run experiment initialisation to update metadata,
     # and determine the run counter and uuid before job submission
     lab = Laboratory(model_type, config_path, lab_path)
-    expt = Experiment(lab, reproduce=reproduce, force=force)
+    expt = Experiment(lab, reproduce=reproduce, force=force, new_uuid=new_uuid)
 
     # Set the queue
     # NOTE: Maybe force all jobs on the normal queue
@@ -191,7 +192,7 @@ def runscript(**run_args):
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)
 
-    expt = Experiment(lab, reproduce=run_args.reproduce, force=run_args.force)
+    expt = Experiment(lab, reproduce=run_args.reproduce, force=run_args.force, new_uuid=run_args.new_uuid)
 
     n_runs_per_submit = expt.config.get('runspersub', 1)
     subrun = 1

@@ -143,7 +143,8 @@ def checkout_branch(branch_name: str,
                     control_path: Optional[Path] = None,
                     model_type: Optional[str] = None,
                     lab_path: Optional[Path] = None,
-                    parent_experiment: Optional[str] = None) -> None:
+                    parent_experiment: Optional[str] = None,
+                    new_uuid: bool = False) -> None:
     """Checkout branch, setup metadata and add symlinks
 
     Parameters
@@ -215,7 +216,8 @@ def checkout_branch(branch_name: str,
     # Setup Metadata
     is_new_experiment = is_new_experiment or is_new_branch
     metadata.setup(keep_uuid=keep_uuid,
-                   is_new_experiment=is_new_experiment)
+                   is_new_experiment=is_new_experiment,
+                   new_uuid=new_uuid)
 
     # Gets valid prior restart path
     prior_restart_path = None
@@ -345,7 +347,8 @@ def clone(repository: str,
                             model_type=model_type,
                             lab_path=lab_path,
                             parent_experiment=parent_experiment,
-                            start_point=start_point)
+                            start_point=start_point,
+                            new_uuid=True)
         else:
             # Checkout branch
             if branch is None:
