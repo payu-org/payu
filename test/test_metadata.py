@@ -8,7 +8,7 @@ from unittest.mock import patch, Mock
 from ruamel.yaml import YAML
 import jsonschema
 
-from payu.metadata import Metadata, MetadataWarning, SCHEMA_VERSION, placeholder_text
+from payu.metadata import Metadata, MetadataWarning, SCHEMA_VERSION, placeholder_text, no_archive_msg
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -394,6 +394,31 @@ def test_experiment_name_with_prefix_and_experiment():
             metadata.set_experiment_name()
 
         mock_new_experiment_name.assert_not_called()
+
+
+def test_set_experiment_name_archive_not_found():
+    """Test that when no archive found, the user is prompted to confirm before generating a new UUID."""
+    # Setup config
+    write_config(config)
+    with cd(ctrldir):
+        metadata = Metadata(archive_dir)
+        
+    with patch.object(metadata, 'has_archive') as mock_has_archive, \
+        patch.object(metadata, 'new_experiment_name') as mock_new_experiment_name:
+
+        # Simulate no archive found
+        mock_has_archive.return_value = False  
+
+        # Simulate new experiment name generation
+        mock_new_experiment_name.return_value = "mock_experiment_name"
+
+        # Assert error raised when user did not specify to generate a new UUID
+        with pytest.raises(RuntimeError, match=f"{no_archive_msg}"):
+            metadata.set_experiment_name(is_new_experiment=False)
+
+        # Assert that only warning is raised when user specified to generate a new UUID
+        with pytest.warns(MetadataWarning, match="No pre-existing archive found. Generating a new uuid"):
+            metadata.set_experiment_name(is_new_experiment=False, new_uuid=True)
 
 
 def test_metadata_enable_false():
