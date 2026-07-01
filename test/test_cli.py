@@ -59,6 +59,7 @@ def test_parse_setup(parser):
     assert args.pop('reproduce') is False
     assert args.pop('force') is False
     assert args.pop('metadata_off') is False
+    assert args.pop('new_uuid') is False
 
     assert len(args) == 0
 
@@ -70,7 +71,8 @@ def test_parse_setup(parser):
                     "--laboratory path/to/lab "
                     "--force "
                     "--reproduce "
-                    "--metadata-off"
+                    "--metadata-off "
+                    "--new-uuid"
                 )
 
     run_cmd, args = parse_args(parser, long_cmd)
@@ -83,6 +85,7 @@ def test_parse_setup(parser):
     assert args.pop('reproduce') is True
     assert args.pop('force') is True
     assert args.pop('metadata_off') is True
+    assert args.pop('new_uuid') is True
 
     assert len(args) == 0
 
@@ -105,6 +108,7 @@ def test_parse_setup(parser):
     assert args.pop('reproduce') is True
     assert args.pop('force') is True
     assert args.pop('metadata_off') is True
+    assert args.pop('new_uuid') is False
 
     assert len(args) == 0
 
@@ -125,6 +129,7 @@ def test_parse_run(parser):
     assert args.pop('init_run') is None
     assert args.pop('n_runs') is None
     assert args.pop('force_prune_restarts') is False
+    assert args.pop('new_uuid') is False
 
     assert len(args) == 0
 
@@ -138,7 +143,9 @@ def test_parse_run(parser):
             "--initial 99 "
             "--nruns 999 "
             "--reproduce "
-            "--force-prune-restarts")
+            "--force-prune-restarts "
+            "--new-uuid"
+            )
 
     run_cmd, args = parse_args(parser, long_cmd)
 
@@ -152,7 +159,7 @@ def test_parse_run(parser):
     assert args.pop('init_run') == '99'
     assert args.pop('n_runs') == '999'
     assert args.pop('force_prune_restarts') is True
-
+    assert args.pop('new_uuid') is True
     assert len(args) == 0
 
     # Test short options
@@ -179,6 +186,7 @@ def test_parse_run(parser):
     assert args.pop('init_run') == '99'
     assert args.pop('n_runs') == '999'
     assert args.pop('force_prune_restarts') is True
+    assert args.pop('new_uuid') is False
 
     assert len(args) == 0
 
