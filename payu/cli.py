@@ -129,8 +129,7 @@ def get_model_type(model_type, config):
               'name.'.format(model_type))
 
     if model_type not in supported_models:
-        print('payu: error: Unknown model {0}'.format(model_type))
-        sys.exit(-1)
+        raise errors.PayuConfigError(f'Unknown model {model_type}')
 
 
 def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
@@ -334,7 +333,8 @@ def _parse_runscript(cmd_name):
     try:
         cmd = importlib.import_module(f'payu.subcommands.{cmd_name}_cmd')
     except ImportError:
-        raise ImportError(f'payu: error: Unknown runscript command payu-{cmd_name}') 
+        logging.error('Unknown runscript command payu-%s', cmd_name)
+        sys.exit(1)
     
     # Construct the subcommand parser
     parser = argparse.ArgumentParser(**cmd.parameters)

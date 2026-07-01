@@ -177,7 +177,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
     # Check if the work directory exists, then show warning to the user.
     if os.path.exists(expt.work_path) and not expt.force:
-        raise errors.PayuRunError(
+        raise errors.PayuRuntimeError(
             'Work path already exists. Please use `payu sweep` or use `payu run -f`.')
 
     current_run = int(init_run) if init_run is not None else expt.counter

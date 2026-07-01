@@ -392,7 +392,7 @@ class PBS(Scheduler):
 
         pbs_join = pbs_config.get('join', 'n')
         if pbs_join not in ('oe', 'eo', 'n'):
-            raise errors.PayuRunError(
+            raise errors.PayuRuntimeError(
                 'Unknown qsub IO stream join setting.')
         else:
             pbs_flags.append('-j {join}'.format(join=pbs_join))

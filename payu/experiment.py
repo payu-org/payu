@@ -470,8 +470,8 @@ class Experiment(object):
 
         # Error out if runlog is enabled and running from subdirectory of git root repository
         if self.runlog.enabled and get_git_repository(self.control_path, catch_error=True) is None:
-            raise ValueError(
-                "payu: error: Runlog is enabled, but current directory is not a git repository.\n"
+            raise errors.PayuRuntimeError(
+                "Runlog is enabled, but current directory is not a git repository.\n"
             )
 
         # Setup the payu run job file
@@ -485,7 +485,7 @@ class Experiment(object):
 
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
-            raise errors.PayuRunError(f'output path already exists: {self.output_path}')
+            raise errors.PayuRuntimeError(f'output path already exists: {self.output_path}')
 
         # Confirm that no work path already exists
         if os.path.exists(self.work_path):
@@ -494,7 +494,7 @@ class Experiment(object):
                       '      Sweeping as --force option is True.')
                 self.sweep()
             else:
-                raise errors.PayuRunError(
+                raise errors.PayuRuntimeError(
                     f'work path already exists: {self.work_path}.\n'
                     '`payu sweep` and then `payu run`')
             
@@ -772,7 +772,7 @@ class Experiment(object):
                 self.run_userscript(error_script, 'error')
 
             # Terminate payu
-            raise errors.PayuRunError(f'Model exited with error code {rc}.')
+            raise errors.PayuRuntimeError(f'payu: exited with error code {rc}; aborting.')
 
         # Decrement run counter on successful run
         stop_file_path = os.path.join(self.control_path, 'stop_run')
@@ -886,7 +886,7 @@ class Experiment(object):
 
         # Double-check that the run path does not exist
         if os.path.exists(self.output_path):
-            raise errors.PayuRunError('output path already exists')
+            raise errors.PayuRuntimeError('output path already exists')
 
         movetree(self.work_path, self.output_path)
 

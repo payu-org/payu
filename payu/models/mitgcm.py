@@ -166,7 +166,7 @@ class Mitgcm(Model):
                     f'payu : error: Timestep changed to {dt}. '
                     f'Timestep at end identical to previous pickups: {niter}'
                     'This would overwrite previous pickups')
-                raise errors.PayuRunError(msg)
+                raise errors.PayuRuntimeError(msg)
 
         t_end = t_start + dt * n_timesteps
         pchkpt_freq = t_end - t_start
@@ -180,7 +180,7 @@ class Mitgcm(Model):
         print('  end - start:     {}'.format(pchkpt_freq))
         print('  dt * ntimesteps: {}'.format(dt * n_timesteps))
         if pchkpt_freq != dt * n_timesteps:
-            raise errors.PayuRunError(
+            raise errors.PayuRuntimeError(
                 f'Time inconsistences, pchkptfreq ({pchkpt_freq}) != experiment length ({dt * n_timesteps})')
 
         data_nml['parm03']['startTime'] = t_start

@@ -332,7 +332,7 @@ def fms_collate(model):
         for p, rc, op in zip(count(), codes, outputs):
             if rc is not None:
                 error_msg = op.decode()
-                raise errors.PayuRunError(
+                raise errors.PayuRuntimeError(
                     f'Thread {p} crashed with error code '
                     f'{rc}\n'
                     f'Error message: {error_msg}'

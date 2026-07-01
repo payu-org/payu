@@ -254,7 +254,7 @@ def test_setup_change_deltat_no_start_end(config, data, case):
         # pickup files in the work directory, as the nIter is the same
         # matchstr = '.*not integer multiple.*'
         matchstr = '.*Timestep at end identical to previous pickups.*'
-        with pytest.raises(errors.PayuRunError, match=matchstr):
+        with pytest.raises(errors.PayuRuntimeError, match=matchstr):
             payu_setup(lab_path=str(labdir))
         return
 
@@ -322,7 +322,7 @@ def test_setup_change_deltat_no_ntimesteps(config, data, case):
         # This should throw an error, as it would overwrite the existing
         # pickup files in the work directory, as the nIter is the same
         matchstr = '.*Timestep at end identical to previous pickups.*'
-        with pytest.raises(errors.PayuRunError, match=matchstr):
+        with pytest.raises(errors.PayuRuntimeError, match=matchstr):
             payu_setup(lab_path=str(labdir))
         return
 

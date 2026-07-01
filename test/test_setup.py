@@ -182,7 +182,7 @@ def test_setup():
     assert work_exe.resolve() == bin_exe.resolve()
 
     # Re-run setup - expect an error
-    with pytest.raises(errors.PayuRunError,
+    with pytest.raises(errors.PayuRuntimeError,
                        match="work path already exists"):
         payu_setup(lab_path=str(labdir), sweep=False, force=False)
 
