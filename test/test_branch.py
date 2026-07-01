@@ -9,10 +9,11 @@ from ruamel.yaml import YAML
 from unittest.mock import patch, MagicMock
 
 from payu.branch import add_restart_to_config, check_restart, switch_symlink
-from payu.branch import checkout_branch, clone, list_branches, PayuBranchError, DEFAULT_PARENT_STRING
+from payu.branch import checkout_branch, clone, list_branches, DEFAULT_PARENT_STRING
 from payu.metadata import MetadataWarning, UUID_FIELD
 from payu.fsops import read_config
 from payu.subcommands import clone_cmd
+import payu.errors as errors
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -594,7 +595,7 @@ def test_checkout_branch_with_parent_experiment(mock_uuid, branch_metadata_with_
         monkeypatch.setattr("payu.branch.get_branch_metadata", lambda branch: {})
 
         with cd(ctrldir):
-            with pytest.raises(PayuBranchError, 
+            with pytest.raises(errors.PayuBranchError, 
                                match="No UUID in metadata file. Cannot set parent experiment to current experiment."):
                 checkout_branch(is_new_branch=True,
                             branch_name=branch_names[2],
@@ -764,7 +765,7 @@ def test_clone_startpoint_with_no_new_branch_error():
     # Run Clone
     cloned_repo_path = tmpdir / "clonedRepo"
     with cd(tmpdir):
-        with pytest.raises(PayuBranchError, match=expected_msg):
+        with pytest.raises(errors.PayuBranchError, match=expected_msg):
             clone(
                 repository=str(source_repo_path),
                 directory=cloned_repo_path,
@@ -932,15 +933,11 @@ def test_fetch_branches_tags_invalid_url(monkeypatch, capsys):
                     )
     mock_run = MagicMock(side_effect=error_to_raise)
     monkeypatch.setattr("subprocess.run", mock_run)
-    with pytest.raises(SystemExit):
+    with pytest.raises(errors.PayuBranchError, match="Error fetching branches:"):
         clone_cmd.fetch_branches("https://invalid-url.com")
-    
-    assert "Error fetching branches:" in capsys.readouterr().out
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(errors.PayuBranchError, match="Error fetching tags:"):
         clone_cmd.fetch_tags("https://invalid-url.com")
-        
-    assert "Error fetching tags:" in capsys.readouterr().out
 
 def test_validate_local_directory():
     """ Test validate_local_directory correctly checks and return True when directory not exists or empty"""

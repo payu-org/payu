@@ -26,6 +26,7 @@ import payu.envmod as envmod
 from payu.fsops import check_exe_path, atomic_write_file
 from payu.manifest import Manifest
 from payu.schedulers.scheduler import Scheduler
+import payu.errors as errors
 
 PBSNODE_TIMEOUT = 60
 LOCK_TIMEOUT = 5
@@ -135,7 +136,7 @@ def check_storage_access(storages: set, user_groups: list):
         if project not in user_groups:
             denied_storages.append(storage)
     if len(denied_storages) > 0:
-        raise RuntimeError(f"payu: error: User is not a member of the following required storage projects: {', '.join(denied_storages)}.\n")
+        raise RuntimeError(f"User is not a member of the following required storage projects: {', '.join(denied_storages)}.\n")
 
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
@@ -363,7 +364,7 @@ class PBS(Scheduler):
         if pbs_project in user_groups:
             pbs_flags.append('-P {project}'.format(project=pbs_project))
         else:
-            raise RuntimeError(f"payu: error: User is not a member of the project '{pbs_project}' specified in config:project.\n")
+            raise RuntimeError(f"User is not a member of the project '{pbs_project}' specified in config:project.\n")
 
         pbs_resources = ['walltime', 'ncpus', 'mem', 'jobfs']
 
@@ -391,8 +392,8 @@ class PBS(Scheduler):
 
         pbs_join = pbs_config.get('join', 'n')
         if pbs_join not in ('oe', 'eo', 'n'):
-            print('payu: error: unknown qsub IO stream join setting.')
-            sys.exit(-1)
+            raise errors.PayuRuntimeError(
+                'Unknown qsub IO stream join setting.')
         else:
             pbs_flags.append('-j {join}'.format(join=pbs_join))
 
@@ -593,8 +594,8 @@ def pbs_env_init():
                 except ValueError:
                     pass
     except IOError as ec:
-        print('Unable to find PBS_CONF_FILE ... ' + pbs_conf_fpath)
-        sys.exit(1)
+        raise errors.PayuFileNotFoundError(
+            f'Unable to find PBS_CONF_FILE ... {pbs_conf_fpath}') from ec
 
 
 def encode_mount(mount):

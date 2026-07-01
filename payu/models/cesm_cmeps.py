@@ -198,7 +198,7 @@ class CesmCmeps(Model):
                 make_symlink(f_src, f_dst)
             else:
                 # TODO: copied this from other models. Surely we want to exit here or something
-                print('payu: error: Unable to find mod_def.ww3 file in input directory')
+                warn('Unable to find mod_def.ww3 file in input directory')
 
     def _setup_auxiliary_input_dir(self):
         # Special handling to also copy an extra folder for optional input files

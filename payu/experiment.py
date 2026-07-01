@@ -22,6 +22,7 @@ import time
 from pathlib import Path
 import warnings
 import pwd
+import logging
 
 # Extensions
 from ruamel.yaml import YAML
@@ -43,6 +44,10 @@ from payu.sync import SyncToRemoteArchive
 from payu.metadata import Metadata
 import payu.telemetry as telemetry
 from payu.git_utils import get_git_repository, PayuGitWarning
+import payu.errors as errors
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 # Environment module support on vayu
 # TODO: To be removed
@@ -469,8 +474,8 @@ class Experiment(object):
 
         # Error out if runlog is enabled and running from subdirectory of git root repository
         if self.runlog.enabled and get_git_repository(self.control_path, catch_error=True) is None:
-            raise ValueError(
-                "payu: error: Runlog is enabled, but current directory is not a git repository.\n"
+            raise errors.PayuRuntimeError(
+                "Runlog is enabled, but current directory is not a git repository.\n"
             )
 
         # Setup the payu run job file
@@ -484,8 +489,7 @@ class Experiment(object):
 
         # Confirm that no output path already exists
         if os.path.exists(self.output_path):
-            sys.exit('payu: error: Output path already exists: '
-                     '{path}.'.format(path=self.output_path))
+            raise errors.PayuRuntimeError(f'output path already exists: {self.output_path}')
 
         # Confirm that no work path already exists
         if os.path.exists(self.work_path):
@@ -494,10 +498,10 @@ class Experiment(object):
                       '      Sweeping as --force option is True.')
                 self.sweep()
             else:
-                sys.exit('payu: error: work path already exists: {path}.\n'
-                         '             payu sweep and then payu run'
-                         .format(path=self.work_path))
-
+                raise errors.PayuRuntimeError(
+                    f'work path already exists: {self.work_path}.\n'
+                    '`payu sweep` and then `payu run`')
+            
         os.makedirs(self.work_path, exist_ok=True)
 
         os.makedirs(self.archive_path, exist_ok=True)
@@ -772,8 +776,7 @@ class Experiment(object):
                 self.run_userscript(error_script, 'error')
 
             # Terminate payu
-            sys.exit('payu: Model exited with error code {0}; aborting.'
-                     ''.format(rc))
+            raise errors.PayuRuntimeError(f'payu: exited with error code {rc}; aborting.')
 
         # Decrement run counter on successful run
         stop_file_path = os.path.join(self.control_path, 'stop_run')
@@ -867,7 +870,7 @@ class Experiment(object):
         )
         # Check there is a work directory, otherwise bail
         if not os.path.exists(self.work_sym_path):
-            sys.exit('payu: error: No work directory to archive.')
+            raise errors.PayuFileNotFoundError('No work directory to archive.')
 
         os.makedirs(self.archive_path, exist_ok=True)
         make_symlink(self.archive_path, self.archive_sym_path)
@@ -887,7 +890,7 @@ class Experiment(object):
 
         # Double-check that the run path does not exist
         if os.path.exists(self.output_path):
-            sys.exit('payu: error: Output path already exists.')
+            raise errors.PayuRuntimeError('output path already exists')
 
         movetree(self.work_path, self.output_path)
 
@@ -902,8 +905,7 @@ class Experiment(object):
             restarts_to_prune = self.get_restarts_to_prune(
                 force=force_prune_restarts)
         except Exception as e:
-            print(e)
-            print("payu: error: Skipping pruning restarts")
+            logger.error("Skipping pruning restarts due to error: %s", e)
             restarts_to_prune = []
 
         for restart in restarts_to_prune:
@@ -1170,9 +1172,9 @@ class Experiment(object):
             try:
                 date_offset = parse_date_offset(restart_freq)
             except ValueError as e:
-                print('payu: error: Invalid configuration for restart_freq:',
-                      restart_freq)
-                raise
+                raise errors.PayuConfigError(
+                    f'Invalid configuration for restart_freq: {restart_freq}'
+                ) from e
 
             next_dt = None
             for restart in restarts:
@@ -1180,19 +1182,22 @@ class Experiment(object):
                 restart_path = os.path.join(self.archive_path, restart)
                 try:
                     restart_dt = self.model.get_restart_datetime(restart_path)
-                except NotImplementedError:
-                    print('payu: error: Date-based restart pruning is not '
-                          f'implemented for the {self.model.model_type} '
-                          'model. To use integer based restart pruning, '
-                          'set restart_freq to an integer value.')
-                    raise
+                except NotImplementedError as e:
+                    raise errors.PayuConfigError(
+                        'Date-based restart pruning is not '
+                        f'implemented for the {self.model.model_type} '
+                        'model. To use integer based restart pruning, '
+                        'set restart_freq to an integer value.'
+                    ) from e
                 except FileNotFoundError as e:
-                    print(f'payu: warning: Ignoring {restart} from date-based '
-                          f'restart pruning. Error: {e}')
+                    warnings.warn(
+                        f'Ignoring {restart} from date-based '
+                        f'restart pruning. Error: {e}')
                     continue
                 except Exception:
-                    print('payu: error: Error parsing restart directory ',
-                          f'{restart} for a datetime to prune restarts.')
+                    logger.error(
+                        'Error parsing restart directory %s for a datetime to prune restarts.',
+                        restart)
                     raise
 
                 if (next_dt is not None and restart_dt < next_dt):
@@ -1223,7 +1228,7 @@ class Experiment(object):
         restart_history = self.config.get('restart_history', None)
         if restart_history is not None:
             if not isinstance(restart_history, int):
-                raise ValueError("payu: error: restart_history is not an "
+                raise ValueError("restart_history is not an "
                                  f"integer value: {restart_history}")
 
             if len(restarts) > 0:

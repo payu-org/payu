@@ -6,6 +6,7 @@ import shutil
 import pytest
 
 import payu
+import payu.errors as errors
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, expt_archive_dir
@@ -230,7 +231,7 @@ def test_set_destination_path(monkeypatch, config_sync_path, expected_sync_dest)
 def test_set_destination_path_value_error(monkeypatch):
     """Test value error raised when path is not set"""
     sync = setup_sync(additional_config={}, monkeypatch=monkeypatch)
-    with pytest.raises(ValueError, match="payu: error: Sync path is not defined."):
+    with pytest.raises(ValueError, match="Sync path is not defined."):
         sync.set_destination_path()
 
 
@@ -291,7 +292,7 @@ def test_check_uuid_value_error(monkeypatch):
     sync = setup_sync(additional_config=additional_config, monkeypatch=monkeypatch)
 
     # Test check_uuid raises ValueError
-    with pytest.raises(ValueError, match="payu: error: Mismatched experiment UUIDs in sync destination."):
+    with pytest.raises(errors.PayuRuntimeError, match="Mismatched experiment UUIDs in sync destination."):
         sync.set_destination_path()
 
 @pytest.mark.parametrize(

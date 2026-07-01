@@ -456,7 +456,7 @@ def test_parse_arg_count(capsys, monkeypatch):
 
 def test__parse_runscript_error():
     """Test that the _parse_runscript raise an error when command is not found."""
-    with pytest.raises(ImportError, match="payu: error: Unknown runscript command payu-invalid"):
+    with pytest.raises(SystemExit, match="Unknown runscript command payu-invalid"):
         payu.cli._parse_runscript("invalid")
 
         

@@ -15,6 +15,7 @@ import glob
 import os
 import shutil
 import string
+import warnings
 
 # Extensions
 import f90nml
@@ -98,9 +99,11 @@ class UnifiedModel(Model):
         if os.path.exists(restart_dump):
             shutil.copy(restart_dump, f_dst)
         else:
-            print('payu: error: Model has not produced a restart dump file:\n'
-                  '{} does not exist.\n'
-                  'Check DUMPFREQim in namelists'.format(restart_dump))
+            warnings.warn(
+                'Model has not produced a restart dump file:\n'
+                f'{restart_dump} does not exist.\n'
+                'Check DUMPFREQim in namelists'
+            )
 
         # Now remove restart files from work directory so they're not
         # unnecessarily archived to output
