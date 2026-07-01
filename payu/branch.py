@@ -178,7 +178,7 @@ def checkout_branch(branch_name: str,
     # Checkout branch
     repo = GitRepository(control_path, catch_error=True)
     if repo.repo is None:
-        raise PayuBranchError("payu: error: Invalid repository, could not checkout branch.")
+        raise errors.PayuBranchError("Invalid repository, could not checkout branch.")
     repo.checkout_branch(branch_name, is_new_branch, start_point)
 
      # If parent_experiment is set to DEFAULT_PARENT_STRING, set to start_point's experiment UUID
