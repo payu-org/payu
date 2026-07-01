@@ -182,6 +182,17 @@ keep_uuid = {
     }
 }
 
+# Confirm use a new uuid flag
+new_uuid = {
+    'flags': ('--new-uuid',),
+    'parameters': {
+        'action':   'store_true',
+        'default':  False,
+        'dest': 'new_uuid',
+        'help': 'Generate a new experiment uuid'
+    }
+}
+
 # Clone branch
 clone_branch = {
     'flags': ('--branch', '-B'),
