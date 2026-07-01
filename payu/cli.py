@@ -297,10 +297,20 @@ def _execute_command(func, stacktrace=None, log_level=None, **args):
     and catches exceptions to provide clean error messages.
     """
     set_logger_runscript(log_level)
-    set_stacktrace_runscript(stacktrace)
+    stacktrace = set_stacktrace_runscript(stacktrace)
 
-    # Pass arguments to the command as dictionary
-    func(**args)
+    try: 
+        # Pass arguments to the command as dictionary
+        func(**args)
+    except errors.PayuError as e:
+        # Show stacktrace when enabled.
+        logging.exception(e, exc_info=stacktrace)
+        sys.exit(1)
+    except Exception as e:
+        # Always show stacktrace for unknown bugs
+        logging.exception(e)
+        sys.exit(1)
+        
 
 # Add wrappers for runscript commands (entry points configured in pyproject.toml)
 def parse_run():
