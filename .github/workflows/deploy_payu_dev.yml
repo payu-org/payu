@@ -20,5 +20,5 @@ jobs:
               gh workflow run \
                 --repo access-nri/containerised-environments-infra \
                 --ref main \
-                release_dev_env.yml \
+                release_dev_module.yml \
                 -f environment=payu
