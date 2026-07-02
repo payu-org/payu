@@ -1,14 +1,18 @@
 import copy
 import os
+from pathlib import Path
 import shutil
 from datetime import datetime
 
 import pytest
 from unittest.mock import patch, Mock
 from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedMap
 import jsonschema
 
 from payu.metadata import Metadata, MetadataWarning, SCHEMA_VERSION, placeholder_text
+from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT
+from payu.metadata import arrange_metadata
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -525,10 +529,16 @@ def test_update_file_with_template_metadata_values(mock_repo):
             metadata.update_file(set_template_values=True)
 
     # Expect commented template values for non-null fields
-    expected_metadata = f"""experiment_uuid: cb793e91-6168-4ed2-a70c-f6f9ccf1659
-created: '2000-01-01'
+    expected_metadata = f"""
+# {DO_NOT_EDIT_COMMENT}
+experiment_uuid: cb793e91-6168-4ed2-a70c-f6f9ccf1659
+
+# {CAN_EDIT_COMMENT}
 name: ctrldir-branch-cb793e91
+created: '2000-01-01'
 model: TEST-MODEL
+
+# {PLEASE_UPDATE_COMMENT}
 schema_version: {SCHEMA_VERSION}
 description: {placeholder_text}  # Short description of the experiment (string, < 150 char)
 long_description: {placeholder_text} # Long description of the experiment (string)
@@ -539,3 +549,81 @@ long_description: {placeholder_text} # Long description of the experiment (strin
     # Test metadata is valid against the schema
     metadata = YAML().load((ctrldir / 'metadata.yaml'))
     jsonschema.validate(instance=metadata, schema=mock_response.json.return_value)
+
+
+@pytest.mark.parametrize(
+    "metadata, expected_metadata, manual_fields",
+    [
+        (   
+            # Test fields arranged in correct order: auto don't edit fields + auto may edit fields
+            CommentedMap([
+                ("name", "Control-Branch-UUID"),
+                ("experiment_uuid", "test-uuid"),
+                ("email", "test@domain.com"),
+                ("created", "2026-01-01"),
+                ("url", "test-url"),
+                ("model", "test-model"),
+            ]),
+            CommentedMap([
+                ("experiment_uuid", "test-uuid"),
+                ("name", "Control-Branch-UUID"),
+                ("email", "test@domain.com"),
+                ("created", "2026-01-01"),
+                ("url", "test-url"),
+                ("model", "test-model"),
+            ]),
+            False,
+        ),
+        # Test fields with None values are left at the end, and manual fields have a header
+        (
+            CommentedMap([
+                ("email", "test@domain.com"),
+                ("description", None),
+                ("created", "2026-01-01"),
+                ("url", None),
+                ("model", "test-model"),
+                ("experiment_uuid", "test-uuid"),
+                ("name", "Control-Branch-UUID"),
+            ]),
+            CommentedMap([
+                ("experiment_uuid", "test-uuid"),
+                ("name", "Control-Branch-UUID"),
+                ("email", "test@domain.com"),
+                ("created", "2026-01-01"),
+                ("model", "test-model"),
+                ("description", None),
+                ("url", None),
+            ]),
+            True,
+        ),
+    ]
+)
+def test_arrange_metadata(metadata, expected_metadata, manual_fields):
+    """Test that arrange_metadata correctly arranges fields and adds headers"""
+
+    result = arrange_metadata(metadata)
+    assert expected_metadata == result
+
+    # Test headers added for auto-generated fields
+    assert "\n" == result.ca.items["experiment_uuid"][1][0].value
+    assert f"# {DO_NOT_EDIT_COMMENT}\n" == result.ca.items["experiment_uuid"][1][1].value
+    assert f"# {CAN_EDIT_COMMENT}\n" == result.ca.items["name"][1][1].value
+
+    # Test header added if there are manual fields
+    if manual_fields:
+        assert f"# {PLEASE_UPDATE_COMMENT}\n" == result.ca.items["description"][1][1].value
+
+
+
+def test_arrange_metadata_preserves_comments(tmp_path):
+    """Test that arrange_metadata preserves existing comments on manual fields"""
+
+    metadata = YAML().load(Path(__file__).parent / "resources" / "metadata_example.yaml")
+    result = arrange_metadata(metadata)
+    
+    # write result to file
+    result_path = tmp_path / "metadata_result.yaml"
+    YAML().dump(result, result_path)
+
+    expected_metadata_path = Path(__file__).parent / "resources" / "metadata_expected.yaml"
+    assert result_path.read_text() == expected_metadata_path.read_text()
