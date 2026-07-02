@@ -950,15 +950,12 @@ class Experiment(object):
         archive_script = self.userscripts.get('archive')
         if archive_script:
             self.run_userscript(archive_script, 'archive')
-
-        # Calculate the file volume of the output directory
-        work_dir_volume = get_size(self.output_path)
-        
-        # Record model restart datetimes and file volume in telemetry
+    
+        # Record model restart datetimes and output volume in telemetry
         telemetry.update_run_job_file(
             file_path=self.job_file,
             model_restart_datetimes=self.get_model_restart_datetimes(),
-            file_volume=work_dir_volume
+            output_volume=get_size(self.output_path)
         )
 
         collate_config = self.config.get('collate', {})
