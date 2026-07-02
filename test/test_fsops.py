@@ -6,10 +6,21 @@ from unittest.mock import patch
 from pathlib import Path
 
 # import payu packages
-from payu.fsops import atomic_write_file, movetree, list_sorted_archive_dirs
+from payu.fsops import atomic_write_file, movetree, list_sorted_archive_dirs, get_size
 
 # import some common variables for testing
 from .common import tmpdir, testdir, labdir, archive_dir, make_all_files
+
+@pytest.fixture
+def write_dir_with_size():
+    """A fxiture to write files into designated directory with the specified sizes in bytes."""
+    def _createdir(dir_path, file_sizes):
+        dir_path.mkdir(parents=True, exist_ok=True)
+        for size in file_sizes:
+            file_path = dir_path / f"file_{size}.txt"
+            with open(file_path, 'wb') as f:
+                f.write(b'\0' * size)
+    return _createdir
 
 def scantree(path):
     """
@@ -164,3 +175,26 @@ def test_list_sorted_archive_dirs(setup_test_dir):
     restarts = list_sorted_archive_dirs(archive_dir, dir_type="restart")
     assert restarts == ['restart009', 'restart021', 'restart606',
                         'restart23042', 'restart102932']
+
+
+@pytest.mark.parametrize("file_sizes", 
+                         [[100, 200, 300]]
+)
+def test_get_size(setup_test_dir, write_dir_with_size, file_sizes):
+    """Test that get_size correctly calculates the size of a directory and return it in GB."""
+    # Create files with known sizes
+    test_dir = tmpdir / "test_size_dir"
+    write_dir_with_size(test_dir, file_sizes)
+
+    # Create a subdirectory with additional files
+    sub_dir = test_dir / "subdir"
+    write_dir_with_size(sub_dir, file_sizes)
+
+    # Create a symlink to an external file, should be ignored in size calculation
+    symlink_dir = tmpdir / "test_symlink_dir"
+    write_dir_with_size(symlink_dir, [2000])
+    (test_dir / "symlink_to_dir").symlink_to(symlink_dir)
+
+    # Assert the calculation gets an expected total size
+    expected_size = sum(file_sizes) * 2 / 1024 **3 # Convert bytes to GB
+    assert get_size(test_dir) == f"{expected_size}GB"
