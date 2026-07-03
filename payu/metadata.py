@@ -7,6 +7,7 @@ metadata
 :license: Apache License, Version 2.0, see LICENSE for details.
 """
 
+import io
 import requests
 import shutil
 import os
@@ -433,12 +434,14 @@ def generate_uuid() -> str:
 
 def arrange_metadata(metadata) -> CommentedMap:
     """
-    Arrange metadata fields into (1) auto-generated fields, (2) user-editable fields 
-    and (3) attached each section with comments.
+    Arrange metadata fields into (1) auto-generated fields, (2) auto-generated but
+    user-editable fields and (3) remainder entirely user-generated. 
+    Annotate each section with comments.
     Return the sorted metadata
     """
     added_fields = set()
     sorted_metadata = CommentedMap()
+    metadata = remove_existing_header(metadata)
 
     # Iterate through two auto-generated sections
     for header, fields in FIELD_GROUPS.items():
@@ -452,7 +455,9 @@ def arrange_metadata(metadata) -> CommentedMap:
                 added_fields.add(field)
 
                 # Add header comment before the first field in the section
-                first_field = add_header_metadata(first_field, header, field, sorted_metadata)
+                if first_field:
+                    add_header_metadata(header, field, sorted_metadata)
+                    first_field = False
 
     # Add any remaining fields not in the auto-generated sections
     remaining_fields = [f for f in metadata.keys() if f not in added_fields]
@@ -464,7 +469,9 @@ def arrange_metadata(metadata) -> CommentedMap:
         sorted_metadata[field] = metadata[field]
 
         # Add header comment before the first field in the remaining section
-        first_field = add_header_metadata(first_field, PLEASE_UPDATE_COMMENT, field, sorted_metadata)
+        if first_field:
+            add_header_metadata(PLEASE_UPDATE_COMMENT, field, sorted_metadata)
+            first_field = False
 
         # Add field comments if there is any
         if field in metadata.ca.items:
@@ -472,15 +479,33 @@ def arrange_metadata(metadata) -> CommentedMap:
         
     return sorted_metadata
 
-def add_header_metadata(first_field, header, field, metadata):
+def add_header_metadata(header, field, metadata):
     """
     Add header comment before the first field in the metadata
     Return False after adding the header comment to ensure it's only added once.
     """
-    if first_field:
-        metadata.yaml_set_comment_before_after_key(
-            field,
-            before=f"\n{header}"
-        )
+    metadata.yaml_set_comment_before_after_key(
+        field,
+        before=f"\n{header}"
+    )
 
-    return False
+
+def remove_existing_header(metadata):
+    """
+    Remove existing header comments by dumping the metadata to a string and reloading it
+    """
+    # Dump the metadata to a string
+    string_stream = io.StringIO()
+    YAML().dump(metadata, string_stream)
+    yaml_content = string_stream.getvalue()
+
+    # Remove lines that contain the header comments
+    clean_lines = []
+    for line in yaml_content.splitlines():
+        if DO_NOT_EDIT_COMMENT in line or CAN_EDIT_COMMENT in line or PLEASE_UPDATE_COMMENT in line:
+            continue
+        clean_lines.append(line)
+
+    clean_yaml_content = "\n".join(clean_lines)
+    return YAML().load(clean_yaml_content)
+    
