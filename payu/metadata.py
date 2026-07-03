@@ -468,14 +468,14 @@ def arrange_metadata(metadata) -> CommentedMap:
         # Add field value
         sorted_metadata[field] = metadata[field]
 
+        # Add field comments if there is any
+        if field in metadata.ca.items:
+            sorted_metadata.ca.items[field] = metadata.ca.items[field]
+
         # Add header comment before the first field in the remaining section
         if first_field:
             add_header_metadata(PLEASE_UPDATE_COMMENT, field, sorted_metadata)
             first_field = False
-
-        # Add field comments if there is any
-        if field in metadata.ca.items:
-            sorted_metadata.ca.items[field] = metadata.ca.items[field]
         
     return sorted_metadata
 

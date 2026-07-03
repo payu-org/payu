@@ -626,16 +626,21 @@ def test_arrange_metadata(metadata, expected_metadata, manual_fields):
         assert f"# {PLEASE_UPDATE_COMMENT}\n" == result.ca.items["description"][1][1].value
 
 
-
-def test_arrange_metadata_preserves_comments(tmp_path):
+@pytest.mark.parametrize("metadata_input, metadata_expected", 
+    [
+        ("metadata_example.yaml", "metadata_example_arranged.yaml"),
+        ("metadata_unchange.yaml", "metadata_unchange.yaml")
+    ]
+)
+def test_arrange_metadata_preserves_comments(tmp_path, metadata_input, metadata_expected):
     """Test that arrange_metadata preserves existing comments on manual fields"""
 
-    metadata = YAML().load(Path(__file__).parent / "resources" / "metadata_example.yaml")
+    metadata = YAML().load(Path(__file__).parent / "resources" / metadata_input)
     result = arrange_metadata(metadata)
     
     # write result to file
     result_path = tmp_path / "metadata_result.yaml"
     YAML().dump(result, result_path)
 
-    expected_metadata_path = Path(__file__).parent / "resources" / "metadata_expected.yaml"
+    expected_metadata_path = Path(__file__).parent / "resources" / metadata_expected
     assert result_path.read_text() == expected_metadata_path.read_text()
