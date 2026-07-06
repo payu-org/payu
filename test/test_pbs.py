@@ -171,7 +171,7 @@ def test_run_pbsnodes_json_timeout(monkeypatch):
 
     monkeypatch.setattr(pbs.subprocess, "run", fake_run)
 
-    with pytest.raises(RuntimeError, match=r"timed out"):
+    with pytest.raises(errors.PayuRuntimeError, match=r"timed out"):
         pbs._run_pbsnodes_json(timeout=1)
 
 
@@ -570,7 +570,7 @@ def test_get_user_groups_error(mock_getgrgid, mock_getgroups):
     mock_getgroups.return_value = [1000, 1001, 1002]
     mock_getgrgid.side_effect = KeyError("Groupid not found")
 
-    with pytest.raises(RuntimeError, match=r"Error checking group membership for current user: 'Groupid not found'"):
+    with pytest.raises(errors.PayuRuntimeError, match=r"Error checking group membership for current user: 'Groupid not found'"):
         pbs.get_user_groups()
 
 

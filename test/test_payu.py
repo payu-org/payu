@@ -284,7 +284,7 @@ def test_run_userscript_python_script_error(tmp_path):
         f.write('raise ValueError("Test that script exits with error")')
 
     # Test userscript raises an error
-    with pytest.raises(RuntimeError):
+    with pytest.raises(errors.PayuRuntimeError):
         payu.fsops.run_script_command('test_script_error.py',
                                       tmp_path)
 
