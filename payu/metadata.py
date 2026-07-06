@@ -403,7 +403,7 @@ def add_template_metadata_values(metadata: CommentedMap) -> None:
     anchor_description = ""
 
     for key, value in schema.get('properties', {}).items():
-        if key not in metadata:
+        if key not in metadata or metadata[key] is None or metadata[key] == placeholder_text:
             # Add field with commented description of value
             description = value.get('description', None)
             if description is not None:
