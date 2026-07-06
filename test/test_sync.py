@@ -231,7 +231,7 @@ def test_set_destination_path(monkeypatch, config_sync_path, expected_sync_dest)
 def test_set_destination_path_value_error(monkeypatch):
     """Test value error raised when path is not set"""
     sync = setup_sync(additional_config={}, monkeypatch=monkeypatch)
-    with pytest.raises(ValueError, match="Sync path is not defined."):
+    with pytest.raises(errors.PayuConfigError, match="Sync path is not defined."):
         sync.set_destination_path()
 
 

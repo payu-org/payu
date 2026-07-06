@@ -23,6 +23,7 @@ from payu.laboratory import Laboratory
 from payu.experiment import Experiment
 from payu.subcommands.status_cmd import runcmd
 from payu.git_utils import PayuGitWarning
+import payu.errors as errors
 
 def test_find_file_match(tmp_path):
     test_file = tmp_path / "job_name.o146702704"
@@ -661,7 +662,7 @@ def test_status_cmd_no_metadata(tmp_path):
         json.dump({'model': 'test'}, f)
 
     with pytest.warns(PayuGitWarning):
-        with pytest.raises(RuntimeError, match="Metadata is not setup"):
+        with pytest.raises(errors.PayuRuntimeError, match="Metadata is not setup"):
             runcmd(
                 lab_path=str(lab_path),
                 config_path=str(config_path),

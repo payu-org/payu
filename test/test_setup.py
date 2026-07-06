@@ -246,7 +246,7 @@ def test_check_payu_version_fail(current_version, min_version):
                 "payu_minimum_version": min_version
             }
 
-            with pytest.raises(RuntimeError):
+            with pytest.raises(errors.PayuConfigError):
                 expt.check_payu_version()
 
 
@@ -279,7 +279,7 @@ def test_check_payu_version_configured_invalid_version(minimum_version):
                 "payu_minimum_version": minimum_version
             }
 
-            with pytest.raises(ValueError):
+            with pytest.raises(errors.PayuConfigError):
                 expt.check_payu_version()
 
 
@@ -367,7 +367,7 @@ def test_set_prior_restart_with_non_zero_counter_and_restart(tmp_path,
     user_restart.rmdir()
 
     error_msg = rf'No restart directory found at {user_restart}.*'
-    with pytest.raises(ValueError, match=error_msg):
+    with pytest.raises(errors.PayuConfigError, match=error_msg):
         expt = init_experiment(config)
 
 

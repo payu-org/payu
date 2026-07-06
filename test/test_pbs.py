@@ -18,6 +18,7 @@ from payu.laboratory import Laboratory
 from payu.schedulers import pbs
 from payu.schedulers import index as scheduler_index
 from payu.schedulers.pbs import PBS
+import payu.errors as errors
 
 from .common import cd, make_random_file, get_manifests
 from .common import tmpdir, ctrldir, labdir, workdir, payudir, archive_dir
@@ -248,7 +249,7 @@ def test_validate_walltime_with_queue_limits(monkeypatch, walltime, limit, raise
     ncpus = 120
 
     if raise_error:
-        with pytest.raises(ValueError):
+        with pytest.raises(errors.PayuConfigError):
             pbs.PBS.validate_walltime_with_queue_limits(walltime, queue, ncpus)
     else:
         pbs.PBS.validate_walltime_with_queue_limits(walltime, queue, ncpus)
@@ -584,7 +585,7 @@ def test_get_user_groups_error(mock_getgrgid, mock_getgroups):
 def test_check_storage_access(storages, user_groups, expected_denied):
     """Test that check_storage_access correctly identifies denied storages."""
     if len(expected_denied) > 0:
-        with pytest.raises(RuntimeError, match="User is not a member of the following required storage projects") as exc_info:
+        with pytest.raises(errors.PayuRuntimeError, match="User is not a member of the following required storage projects") as exc_info:
             pbs.check_storage_access(storages, user_groups)
         for denied in expected_denied:
             assert denied in str(exc_info.value)
@@ -613,7 +614,7 @@ def test_check_storage_access(storages, user_groups, expected_denied):
 def test_validate_memory_with_queue_limits(mock_get_queue_node_shape, pbs_mem, queue, n_cpus, raise_error):
     """Test that an error is raised if the memory request exceeds queue limits."""
     if raise_error:
-        with pytest.raises(ValueError, match=fr"You have requested more memory of {pbs_mem}"):
+        with pytest.raises(errors.PayuConfigError, match=fr"You have requested more memory of {pbs_mem}"):
             PBS.validate_memory_with_queue_limits(pbs_mem, queue, n_cpus)
     elif pbs_mem == "100000":
         # Test with no unit suffix - should warn and assume bytes

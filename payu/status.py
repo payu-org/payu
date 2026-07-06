@@ -18,6 +18,7 @@ from payu.telemetry import (
     remove_job_file
 )
 from payu.sync import SyncToRemoteArchive
+import payu.errors as errors 
 
 logger = logging.getLogger(__name__)
 
@@ -422,7 +423,7 @@ def collect_expt_paths(expt):
             syncer.set_destination_path(verbose=False)
             sync_path = syncer.destination_path
             expt_paths["sync_path"] = str(sync_path)
-        except ValueError:
+        except (ValueError, errors.PayuConfigError):
             expt_paths["sync_path"] = "Unconfigured"
 
     except Exception as e:

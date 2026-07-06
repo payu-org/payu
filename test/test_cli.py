@@ -9,6 +9,7 @@ import logging
 
 import payu
 import payu.cli
+import payu.errors as errors
 
 verbose = True
 ORIGINAL_WARNING = warnings.formatwarning
@@ -478,7 +479,7 @@ def test_submit_job_error_msg():
 
     with patch("payu.cli.scheduler_index", mock_index), \
          patch("subprocess.run", mock_sprun):
-        with pytest.raises(RuntimeError) as exc_info:
+        with pytest.raises(errors.PayuRuntimeError) as exc_info:
             payu.cli.submit_job(config={"scheduler": "PBS"}, script="submit_script.sh")
             assert "Error occurred while submitting job." in str(exc_info.value)
             assert "Exit code: 32" in str(exc_info.value)
