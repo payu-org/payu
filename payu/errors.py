@@ -35,7 +35,7 @@ class PayuFileNotFoundError(PayuError):
 
 class PayuRuntimeError(PayuError):
     '''
-    Raised when an active model run fails.
+    Raised when a generic runtime error in payu execution occurs. 
     '''
     exit_code = 4
 
