@@ -232,7 +232,7 @@ def submit_job(script, config, vars=None, expt=None, current_run=None, type=None
         if e.stderr:
             error_msg += f"STDERR: {e.stderr}"
 
-        raise RuntimeError(error_msg)
+        raise errors.PayuRuntimeError(error_msg)
 
     # Decode stdout and extract the job ID which is last for both PBS and Slurm
     result = result.stdout.strip()

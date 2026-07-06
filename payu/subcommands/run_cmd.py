@@ -37,11 +37,11 @@ def validate_platform_node(platform, queue, get_queue_node_shape):
     cpu, mem = get_queue_node_shape(queue)
 
     if platform.get("nodesize") != cpu:
-        raise ValueError(
+        raise errors.PayuConfigError(
             f"platform.nodesize must be {cpu} for queue '{queue}' in config.yaml"
         )
     if "nodemem" in platform and platform.get("nodemem") > mem:
-        raise ValueError(
+        raise errors.PayuConfigError(
             f"platform.nodemem {platform.get('nodemem')}GB exceeds queue max {mem}GB for queue '{queue}' in config.yaml"
         )
 
@@ -155,7 +155,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
             # TODO for non-PBS schedulers, such as Sotonix slurm setup on Pawsey
             pass
     else:
-        raise ValueError("Walltime must be specified in the configuration for scheduler jobs.")
+        raise errors.PayuConfigError("Walltime must be specified in the configuration for scheduler jobs.")
 
     pbs_mem = pbs_config.get('mem')
     if pbs_mem:

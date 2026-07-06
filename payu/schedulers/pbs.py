@@ -88,7 +88,7 @@ def read_pbsnode_file() -> Dict[str, Any]:
         with pbsnodes_json_path.open() as f:
             return json.load(f)
     except json.JSONDecodeError as e:
-        raise RuntimeError(
+        raise errors.PayuRuntimeError(
             f"Failed to decode JSON from {pbsnodes_json_path} after timestamp checking."
         ) from e
         
@@ -105,7 +105,7 @@ def _run_pbsnodes_json(timeout: int) -> Dict[str, Any]:
             timeout=timeout,
         )
     except subprocess.TimeoutExpired as e:
-        raise RuntimeError(
+        raise errors.PayuRuntimeError(
             f"Unable to collect pbs node info: command timed out after {timeout} seconds"
         ) from e
 
@@ -113,7 +113,7 @@ def _run_pbsnodes_json(timeout: int) -> Dict[str, Any]:
         return json.loads(pbsnodes_output.stdout)
     except json.JSONDecodeError as e:
         error_msg = (pbsnodes_output.stdout or "")
-        raise RuntimeError(
+        raise errors.PayuRuntimeError(
             f"Failed to decode JSON output from pbsnodes command: {' '.join(cmd)}"
             f"\n Output: {error_msg}"
         ) from e
@@ -126,7 +126,7 @@ def get_user_groups() -> list:
         return [grp.getgrgid(gid).gr_name for gid in os.getgroups()]
     except Exception as e:
         # If the group doesn't exist, return False
-        raise RuntimeError(f"Error checking group membership for current user: {e}")
+        raise errors.PayuRuntimeError(f"Error checking group membership for current user: {e}")
     
 def check_storage_access(storages: set, user_groups: list):
     """Check if the user has access to all storage paths, and raise error if not."""
@@ -248,7 +248,7 @@ class PBS(Scheduler):
         requested_hours = cls.parse_walltime(walltime)
         limit = cls.get_queue_walltime_hours(queue, ncpus)
         if limit is not None and requested_hours > limit:
-            raise ValueError(
+            raise errors.PayuConfigError(
                 f"Requested walltime of {requested_hours} hours exceeds "
                 f"the limit of {limit} hours for queue '{queue}' with "
                 f"{ncpus} CPUs."
@@ -336,7 +336,7 @@ class PBS(Scheduler):
         req_mem_per_node = req_mem_gb / math.ceil(n_cpus / cpu_per_node)
 
         if req_mem_per_node > mem_per_node:
-            raise ValueError(
+            raise errors.PayuConfigError(
                 f"You have requested more memory of {pbs_mem} (i.e., {req_mem_per_node:.2f}GB per node) "
                 f"than the limit of {mem_per_node:.2f}GB per node for queue '{queue}'."
             )

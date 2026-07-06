@@ -408,7 +408,7 @@ class Experiment(object):
         user_restart_dir = self.config.get('restart')
         if (no_restarts or self.repeat_run) and user_restart_dir:
             if not os.path.isdir(user_restart_dir):
-                raise ValueError(
+                raise errors.PayuConfigError(
                     f"No restart directory found at {user_restart_dir}. "
                     "Check 'restart:' field in config.yaml."
                 )
@@ -451,7 +451,7 @@ class Experiment(object):
             # Attempt to parse the version
             parsed_minimum_version = version.parse(minimum_version)
         except version.InvalidVersion:
-            raise ValueError(
+            raise errors.PayuConfigError(
                 "Invalid version in configuration file (config.yaml) for "
                 f"'{minimum_version_fieldname}': {minimum_version}"
             )
@@ -461,7 +461,7 @@ class Experiment(object):
 
         # Compare versions
         if version.parse(current_version) < parsed_minimum_version:
-            raise RuntimeError(
+            raise errors.PayuConfigError(
                 f"Payu version {current_version} does not meet the configured "
                 f"minimum version. A version >= {minimum_version} is "
                 "required to run this configuration."

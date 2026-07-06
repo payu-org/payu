@@ -26,6 +26,9 @@ import warnings
 from ruamel.yaml import YAML
 from ruamel.yaml.constructor import DuplicateKeyError
 
+# Local imports
+import payu.errors as errors
+
 DEFAULT_CONFIG_FNAME = 'config.yaml'
 
 # Lustre target paths for symbolic paths cannot be 60 characters (yes, really)
@@ -288,14 +291,18 @@ def run_script_command(script_cmd: str, control_path: Path) -> None:
 
     Raises
     ------
-    RuntimeError
+    PayuRuntimeError
         If there's was an error running the user-script
     """
     try:
         _run_script(script_cmd, control_path)
     except Exception as e:
-        error_msg = f"User defined script/command failed to run: {script_cmd}"
-        raise RuntimeError(error_msg) from e
+        error_msg = (
+            f"User defined script/command failed to run: {script_cmd}\n"
+            f"Error: {e}"
+        )
+
+        raise errors.PayuRuntimeError(error_msg) from e
 
 
 def needs_subprocess_shell(command: str) -> bool:

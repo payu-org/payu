@@ -11,6 +11,7 @@ from payu.metadata import MetadataWarning, Metadata
 from payu.laboratory import Laboratory
 from payu.experiment import Experiment
 import payu.subcommands.args as args
+import payu.errors as errors
 from payu.status import (
     build_job_info,
     display_job_info,
@@ -38,8 +39,8 @@ def runcmd(lab_path, config_path, json_output,
         warnings.filterwarnings("error", category=MetadataWarning)
         try:
             expt = Experiment(lab, config_path=config_path)
-        except MetadataWarning as e:
-            raise RuntimeError(
+        except MetadataWarning:
+            raise errors.PayuRuntimeError(
                 "Metadata is not setup - can't determine archive path"
             )
 

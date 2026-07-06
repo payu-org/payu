@@ -9,6 +9,7 @@ import os
 import pwd
 
 from payu.fsops import read_config
+import payu.errors as errors
 
 LAB_INITIALIZE_ERROR = """
 The configured laboratory directory may not have write access. Edit/remove one
@@ -38,7 +39,7 @@ class Laboratory(object):
             model_type = config.get('model')
 
         if not model_type:
-            raise ValueError("Cannot determine model type.\n"
+            raise errors.PayuConfigError("Cannot determine model type.\n"
                              "Please ensure payu is running from an experiment control directory containing a config file.")
 
         self.model_type = model_type

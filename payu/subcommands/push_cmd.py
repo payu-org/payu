@@ -3,6 +3,7 @@
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
+import payu.errors as errors
 
 title = 'push'
 parameters = {'description': 'Push configuration to GitHub'}
@@ -18,7 +19,7 @@ def runcmd(model_type, config_path, lab_path):
     if expt.runlog.enabled:
         expt.runlog.push()
     else:
-        raise RuntimeError('payu: Runlog must be enabled to push repositories.')
+        raise errors.PayuRuntimeError('payu: Runlog must be enabled to push repositories.')
 
 
 runscript = runcmd
