@@ -16,6 +16,7 @@ import payu.envmod
 
 from .common import tmpdir, cd
 from payu.fsops import duplicate_key_warning
+import payu.errors as errors
 
 
 sys.path.insert(1, '../')
@@ -141,7 +142,7 @@ def test_lab_new():
 def test_lab_no_model():
     """Test that lab raises an error if model type cannot be determined"""
     error_msg = "Cannot determine model type.\nPlease ensure payu is running from an experiment control directory containing a config file."
-    with pytest.raises(ValueError, match=error_msg):
+    with pytest.raises(errors.PayuConfigError, match=error_msg):
         payu.laboratory.Laboratory()
 
 
@@ -265,13 +266,13 @@ def test_userscript_unknown_extension(tmp_path):
     text_file.touch()
 
     # Test user script raises an error
-    with pytest.raises(RuntimeError):
+    with pytest.raises(errors.PayuRuntimeError):
         payu.fsops.run_script_command(str(text_file), tmp_path)
 
 
 def test_userscript_non_existent_file(tmp_path):
     # Test user script raises an error
-    with pytest.raises(RuntimeError):
+    with pytest.raises(errors.PayuRuntimeError):
         payu.fsops.run_script_command('unknown_userscript.sh',
                                       tmp_path)
 
@@ -283,7 +284,7 @@ def test_run_userscript_python_script_error(tmp_path):
         f.write('raise ValueError("Test that script exits with error")')
 
     # Test userscript raises an error
-    with pytest.raises(RuntimeError):
+    with pytest.raises(errors.PayuRuntimeError):
         payu.fsops.run_script_command('test_script_error.py',
                                       tmp_path)
 
@@ -298,7 +299,7 @@ def test_run_userscript_bash_script_error(tmp_path):
         ])
 
     # Test userscript raises an error
-    with pytest.raises(RuntimeError):
+    with pytest.raises(errors.PayuRuntimeError):
         payu.fsops.run_script_command('test_script_error.sh',
                                       tmp_path)
 

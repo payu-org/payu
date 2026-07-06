@@ -1,12 +1,11 @@
 import copy
-import os
 from pathlib import Path
-import pdb
 import pytest
 import shutil
 
 import payu
 import payu.models.test
+import payu.errors as errors
 
 from .common import cd, make_random_file, get_manifests
 from .common import tmpdir, ctrldir, labdir, workdir
@@ -186,12 +185,9 @@ def test_exe_reproduce():
     make_exe()
 
     # Run setup again, which should raise an error due to changed executable
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
+    with pytest.raises(errors.PayuRuntimeError, match = "Run cannot reproduce: manifest manifests/exe.yaml is not correct"):
         # Run setup with unchanged exe but reproduce exe set to True
         payu_setup(lab_path=str(labdir))
-
-        assert pytest_wrapped_e.type == SystemExit
-        assert pytest_wrapped_e.value.code == 1
 
     # Change reproduce exe back to False
     config['manifest']['reproduce']['exe'] = False
@@ -213,7 +209,7 @@ def test_exe_reproduce():
     write_config(config)
 
     # Run setup again, which should raise an error due to changed executable
-    with pytest.raises(SystemExit):
+    with pytest.raises(errors.PayuRuntimeError, match = "Run cannot reproduce: manifest manifests/exe.yaml is not correct"):
         # Run setup with unchanged exe but reproduce exe set to True
         payu_setup(lab_path=str(labdir))
 
@@ -242,11 +238,8 @@ def test_input_reproduce():
     write_config(config)
 
     # Expect setup to fail
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
+    with pytest.raises(errors.PayuRuntimeError, match = "Run cannot reproduce: manifest manifests/input.yaml is not correct") as pytest_wrapped_e:
         payu_setup(lab_path=str(labdir))
-
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 1
 
     # Assert manifests have not changed
     assert(manifests == get_manifests(ctrldir/'manifests'))
@@ -273,11 +266,8 @@ def test_input_reproduce():
     make_inputs()
 
     # Run setup again, which should raise an error due to changed inputs
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
+    with pytest.raises(errors.PayuRuntimeError, match = "Run cannot reproduce: manifest manifests/input.yaml is not correct"):
         payu_setup(lab_path=str(labdir))
-
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 1
 
     # Change reproduce input back to False
     config['manifest']['reproduce']['input'] = False
@@ -322,11 +312,8 @@ def test_input_reproduce():
     write_config(config)
 
     # Run setup again, which should raise an error due to new input file
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
+    with pytest.raises(errors.PayuRuntimeError, match = "Run cannot reproduce: manifest manifests/input.yaml is not correct") as pytest_wrapped_e:
         payu_setup(lab_path=str(labdir))
-
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 1
 
     # Set reproduce manifests back to False
     config['manifest']['reproduce']['input'] = False
@@ -368,7 +355,7 @@ def test_restart_reproduce():
     make_restarts()
 
     # Run setup again, which should raise an error due to changed restarts
-    with pytest.raises(SystemExit):
+    with pytest.raises(errors.PayuRuntimeError, match = "Run cannot reproduce: manifest manifests/restart.yaml is not correct"):
         payu_setup(lab_path=str(labdir))
 
     # Set reproduce restart to False
@@ -389,7 +376,7 @@ def test_restart_reproduce():
     make_restarts(['restart_005.bin'])
 
     # Run setup again, which should raise an error due to new restart file
-    with pytest.raises(SystemExit):
+    with pytest.raises(errors.PayuRuntimeError, match = "Run cannot reproduce: manifest manifests/restart.yaml is not correct"):
         payu_setup(lab_path=str(labdir))
 
 
@@ -408,7 +395,7 @@ def test_all_reproduce():
 
     # Run setup with reproduce=True, which should raise an error as
     # all files changed
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
+    with pytest.raises(errors.PayuRuntimeError, match = "Run cannot reproduce"):
         # Run setup with unchanged exe but reproduce exe set to True
         payu_setup(lab_path=str(labdir), reproduce=True)
 

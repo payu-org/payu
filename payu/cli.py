@@ -29,6 +29,7 @@ import payu.subcommands
 from payu.logger import setup_logger
 import payu.subcommands.args as arg_templates
 from payu.telemetry import write_queued_job_file
+import payu.errors as errors
 
 # Default configuration
 DEFAULT_CONFIG = 'config.yaml'
@@ -128,8 +129,7 @@ def get_model_type(model_type, config):
               'name.'.format(model_type))
 
     if model_type not in supported_models:
-        print('payu: error: Unknown model {0}'.format(model_type))
-        sys.exit(-1)
+        raise errors.PayuConfigError(f'Unknown model {model_type}')
 
 
 def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
@@ -232,7 +232,7 @@ def submit_job(script, config, vars=None, expt=None, current_run=None, type=None
         if e.stderr:
             error_msg += f"STDERR: {e.stderr}"
 
-        raise RuntimeError(error_msg)
+        raise errors.PayuRuntimeError(error_msg)
 
     # Decode stdout and extract the job ID which is last for both PBS and Slurm
     result = result.stdout.strip()
@@ -296,10 +296,20 @@ def _execute_command(func, stacktrace=None, log_level=None, **args):
     and catches exceptions to provide clean error messages.
     """
     set_logger_runscript(log_level)
-    set_stacktrace_runscript(stacktrace)
+    stacktrace = set_stacktrace_runscript(stacktrace)
 
-    # Pass arguments to the command as dictionary
-    func(**args)
+    try: 
+        # Pass arguments to the command as dictionary
+        func(**args)
+    except errors.PayuError as e:
+        # Show stacktrace when enabled.
+        logging.exception(e, exc_info=stacktrace)
+        sys.exit(1)
+    except Exception as e:
+        # Always show stacktrace for unknown bugs
+        logging.exception(e)
+        sys.exit(1)
+        
 
 # Add wrappers for runscript commands (entry points configured in pyproject.toml)
 def parse_run():
@@ -323,7 +333,7 @@ def _parse_runscript(cmd_name):
     try:
         cmd = importlib.import_module(f'payu.subcommands.{cmd_name}_cmd')
     except ImportError:
-        raise ImportError(f'payu: error: Unknown runscript command payu-{cmd_name}') 
+        sys.exit(f"Unknown runscript command payu-{cmd_name}")
     
     # Construct the subcommand parser
     parser = argparse.ArgumentParser(**cmd.parameters)

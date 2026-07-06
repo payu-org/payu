@@ -15,6 +15,7 @@ from payu import fsops
 from payu.manifest import Manifest
 from payu.telemetry import record_run
 from payu.schedulers.pbs import PBS
+import payu.errors as errors
 
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
@@ -36,11 +37,11 @@ def validate_platform_node(platform, queue, get_queue_node_shape):
     cpu, mem = get_queue_node_shape(queue)
 
     if platform.get("nodesize") != cpu:
-        raise ValueError(
+        raise errors.PayuConfigError(
             f"platform.nodesize must be {cpu} for queue '{queue}' in config.yaml"
         )
     if "nodemem" in platform and platform.get("nodemem") > mem:
-        raise ValueError(
+        raise errors.PayuConfigError(
             f"platform.nodemem {platform.get('nodemem')}GB exceeds queue max {mem}GB for queue '{queue}' in config.yaml"
         )
 
@@ -154,7 +155,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
             # TODO for non-PBS schedulers, such as Sotonix slurm setup on Pawsey
             pass
     else:
-        raise ValueError("Walltime must be specified in the configuration for scheduler jobs.")
+        raise errors.PayuConfigError("Walltime must be specified in the configuration for scheduler jobs.")
 
     pbs_mem = pbs_config.get('mem')
     if pbs_mem:
@@ -176,10 +177,8 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
     # Check if the work directory exists, then show warning to the user.
     if os.path.exists(expt.work_path) and not expt.force:
-        logger.error('Work path already exists. Please use `payu sweep` or use `payu run -f`.')
-
-        # Return error code.
-        sys.exit(1)
+        raise errors.PayuRuntimeError(
+            'Work path already exists. Please use `payu sweep` or use `payu run -f`.')
 
     current_run = int(init_run) if init_run is not None else expt.counter
 

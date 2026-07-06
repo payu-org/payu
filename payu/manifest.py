@@ -20,6 +20,9 @@ from yamanifest.manifest import Manifest as YaManifest
 
 from payu.fsops import make_symlink
 
+# Internal
+import payu.errors as errors
+
 
 # fast_hashes = ['nchash','binhash']
 fast_hashes = ['binhash']
@@ -121,15 +124,12 @@ class PayuManifest(YaManifest):
                     )
 
         if len(differences) != 0:
-            sys.stderr.write(
-                f'Run cannot reproduce: manifest {self.path} is not correct\n'
-            )
-            print(f"Manifest path: stored hash != calculated hash")
-            for row in differences:
-                print(row)
-
-            sys.exit(1)
-
+            diff_text = '\n'.join(str(row) for row in differences)
+            raise errors.PayuRuntimeError(
+                f'Run cannot reproduce: manifest {self.path} is not correct.\n'
+                'Manifest path: stored hash != calculated hash\n'
+                f'{diff_text}\n')
+                
 
     def add_filepath(self, filepath, fullpath, hashes, copy=False):
         """
@@ -205,13 +205,13 @@ class PayuManifest(YaManifest):
                     os.chmod(filepath, perm)
                 else:
                     make_symlink(self.fullpath(filepath), filepath)
-            except Exception:
+            except Exception as e:
                 action = 'copying' if self.copy_file else 'linking'
-                print('payu: error: {action} orig: {orig} '
-                      'local: {local}'.format(action=action,
-                                              orig=self.fullpath(filepath),
-                                              local=filepath))
-                raise
+                raise errors.PayuRuntimeError(
+                    f'Error {action} original file: {self.fullpath(filepath)} '
+                    f'to work directory: {filepath} \n'
+                    'Error: {e}'
+                ) from e
 
     def copy(self, path):
         """

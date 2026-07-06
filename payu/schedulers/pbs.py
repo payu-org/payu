@@ -26,6 +26,7 @@ import payu.envmod as envmod
 from payu.fsops import check_exe_path, atomic_write_file
 from payu.manifest import Manifest
 from payu.schedulers.scheduler import Scheduler
+import payu.errors as errors
 
 PBSNODE_TIMEOUT = 60
 LOCK_TIMEOUT = 5
@@ -87,7 +88,7 @@ def read_pbsnode_file() -> Dict[str, Any]:
         with pbsnodes_json_path.open() as f:
             return json.load(f)
     except json.JSONDecodeError as e:
-        raise RuntimeError(
+        raise errors.PayuRuntimeError(
             f"Failed to decode JSON from {pbsnodes_json_path} after timestamp checking."
         ) from e
         
@@ -104,7 +105,7 @@ def _run_pbsnodes_json(timeout: int) -> Dict[str, Any]:
             timeout=timeout,
         )
     except subprocess.TimeoutExpired as e:
-        raise RuntimeError(
+        raise errors.PayuRuntimeError(
             f"Unable to collect pbs node info: command timed out after {timeout} seconds"
         ) from e
 
@@ -112,7 +113,7 @@ def _run_pbsnodes_json(timeout: int) -> Dict[str, Any]:
         return json.loads(pbsnodes_output.stdout)
     except json.JSONDecodeError as e:
         error_msg = (pbsnodes_output.stdout or "")
-        raise RuntimeError(
+        raise errors.PayuRuntimeError(
             f"Failed to decode JSON output from pbsnodes command: {' '.join(cmd)}"
             f"\n Output: {error_msg}"
         ) from e
@@ -125,7 +126,7 @@ def get_user_groups() -> list:
         return [grp.getgrgid(gid).gr_name for gid in os.getgroups()]
     except Exception as e:
         # If the group doesn't exist, return False
-        raise RuntimeError(f"Error checking group membership for current user: {e}")
+        raise errors.PayuRuntimeError(f"Error checking group membership for current user: {e}")
     
 def check_storage_access(storages: set, user_groups: list):
     """Check if the user has access to all storage paths, and raise error if not."""
@@ -135,7 +136,7 @@ def check_storage_access(storages: set, user_groups: list):
         if project not in user_groups:
             denied_storages.append(storage)
     if len(denied_storages) > 0:
-        raise RuntimeError(f"payu: error: User is not a member of the following required storage projects: {', '.join(denied_storages)}.\n")
+        raise errors.PayuRuntimeError(f"User is not a member of the following required storage projects: {', '.join(denied_storages)}.")
 
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
@@ -247,7 +248,7 @@ class PBS(Scheduler):
         requested_hours = cls.parse_walltime(walltime)
         limit = cls.get_queue_walltime_hours(queue, ncpus)
         if limit is not None and requested_hours > limit:
-            raise ValueError(
+            raise errors.PayuConfigError(
                 f"Requested walltime of {requested_hours} hours exceeds "
                 f"the limit of {limit} hours for queue '{queue}' with "
                 f"{ncpus} CPUs."
@@ -335,7 +336,7 @@ class PBS(Scheduler):
         req_mem_per_node = req_mem_gb / math.ceil(n_cpus / cpu_per_node)
 
         if req_mem_per_node > mem_per_node:
-            raise ValueError(
+            raise errors.PayuConfigError(
                 f"You have requested more memory of {pbs_mem} (i.e., {req_mem_per_node:.2f}GB per node) "
                 f"than the limit of {mem_per_node:.2f}GB per node for queue '{queue}'."
             )
@@ -363,7 +364,7 @@ class PBS(Scheduler):
         if pbs_project in user_groups:
             pbs_flags.append('-P {project}'.format(project=pbs_project))
         else:
-            raise RuntimeError(f"payu: error: User is not a member of the project '{pbs_project}' specified in config:project.\n")
+            raise errors.PayuRuntimeError(f"User is not a member of the project '{pbs_project}' specified in config:project.")
 
         pbs_resources = ['walltime', 'ncpus', 'mem', 'jobfs']
 
@@ -391,8 +392,8 @@ class PBS(Scheduler):
 
         pbs_join = pbs_config.get('join', 'n')
         if pbs_join not in ('oe', 'eo', 'n'):
-            print('payu: error: unknown qsub IO stream join setting.')
-            sys.exit(-1)
+            raise errors.PayuRuntimeError(
+                'Unknown qsub IO stream join setting.')
         else:
             pbs_flags.append('-j {join}'.format(join=pbs_join))
 
@@ -593,8 +594,8 @@ def pbs_env_init():
                 except ValueError:
                     pass
     except IOError as ec:
-        print('Unable to find PBS_CONF_FILE ... ' + pbs_conf_fpath)
-        sys.exit(1)
+        raise errors.PayuFileNotFoundError(
+            f'Unable to find PBS_CONF_FILE ... {pbs_conf_fpath}') from ec
 
 
 def encode_mount(mount):

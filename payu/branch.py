@@ -20,7 +20,8 @@ import git
 from payu.fsops import read_config, DEFAULT_CONFIG_FNAME, list_sorted_archive_dirs
 from payu.laboratory import Laboratory
 from payu.metadata import Metadata, UUID_FIELD, METADATA_FILENAME
-from payu.git_utils import GitRepository, git_clone, PayuBranchError
+from payu.git_utils import GitRepository, git_clone
+import payu.errors as errors
 
 LAB_WRITE_ACCESS_ERROR = """
 Failed to initialise laboratory directories. Skipping creating metadata,
@@ -45,17 +46,6 @@ To checkout an existing branch, run:
 Where BRANCH_NAME is the name of the branch"""
 
 DEFAULT_PARENT_STRING = "BASE"
-
-def remove_traceback_hook(kind, message, traceback):
-    """Remove traceback for only PayuBranchError"""
-    if kind is PayuBranchError:
-        print(f'{kind.__name__}: {message}', file=sys.stderr)
-    else:
-        sys.__excepthook__(kind, message, traceback)
-
-# Override the default exception hook to remove traceback
-sys.excepthook = remove_traceback_hook
-
 
 def check_restart(restart_path: Path,
                   archive_path: Optional[Path] = None) -> Optional[Path]:
@@ -188,7 +178,7 @@ def checkout_branch(branch_name: str,
     # Checkout branch
     repo = GitRepository(control_path, catch_error=True)
     if repo.repo is None:
-        raise PayuBranchError("payu: error: Invalid repository, could not checkout branch.")
+        raise errors.PayuBranchError("Invalid repository, could not checkout branch.")
     repo.checkout_branch(branch_name, is_new_branch, start_point)
 
      # If parent_experiment is set to DEFAULT_PARENT_STRING, set to start_point's experiment UUID
@@ -200,7 +190,7 @@ def checkout_branch(branch_name: str,
         uuid = metadata.get(UUID_FIELD, None)
         
         if uuid is None:
-            raise PayuBranchError(
+            raise errors.PayuBranchError(
                 "No UUID in metadata file. Cannot set parent experiment to current experiment."
             )
 
@@ -316,15 +306,15 @@ def clone(repository: str,
     control_path = directory.resolve()
 
     if control_path.exists():
-        raise PayuBranchError(
+        raise errors.PayuBranchError(
             f"Directory path `{control_path}` already exists. "
-            "Clone to a different path, or cd into the existing directory " +
+            "Clone to a different path, or cd into the existing directory "
             "and use `payu checkout` if it is the same git repository"
         )
 
     # Check -b is set when -s/--start-point is set
     if start_point is not None and new_branch_name is None:
-        raise PayuBranchError(
+        raise errors.PayuBranchError(
             "Starting from a specific commit or tag requires a new branch "
             "name to be specified. Use the --new-branch/-b flag in payu clone "
             "to create a new git branch.\n"
@@ -370,7 +360,7 @@ def clone(repository: str,
                             lab_path=lab_path,
                             is_new_experiment=True,
                             parent_experiment=parent_experiment)
-    except PayuBranchError as e:
+    except errors.PayuBranchError as e:
         # Remove directory if incomplete checkout
         shutil.rmtree(control_path)
         msg = (
@@ -380,7 +370,7 @@ def clone(repository: str,
             f"\n  Checkout error: {e}\n"
             "For more infomation on payu clone, run `payu clone --help`"
         )
-        raise PayuBranchError(msg)
+        raise errors.PayuBranchError(msg)
     finally:
         # Change back to original working directory
         os.chdir(owd)

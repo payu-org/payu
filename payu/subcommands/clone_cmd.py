@@ -15,6 +15,7 @@ from prompt_toolkit.completion import PathCompleter
 
 from payu.branch import clone
 import payu.subcommands.args as args
+import payu.errors as errors
 
 accessible_style = questionary.Style([
     # Question
@@ -198,8 +199,7 @@ def fetch_branches(url):
         branches = [line.split('\t')[1].replace("refs/heads/", "") for line in result.stdout.splitlines()]
         return branches
     except subprocess.CalledProcessError as e:
-        print(f"Error fetching branches: {e}")
-        sys.exit(1)
+        raise errors.PayuBranchError(f'Error fetching branches: {e}') from e
 
 def fetch_tags(url):
     """Fetch all tags from the remote repository."""
@@ -214,8 +214,7 @@ def fetch_tags(url):
         tags = [line.split('\t')[1].replace("refs/tags/", "") for line in result.stdout.splitlines()]
         return tags
     except subprocess.CalledProcessError as e:
-        print(f"Error fetching tags: {e}")
-        sys.exit(1)
+        raise errors.PayuBranchError(f'Error fetching tags: {e}') from e
 
 def show_flowchart():
     """Show the flowchart for the clone process."""

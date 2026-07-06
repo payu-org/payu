@@ -25,9 +25,11 @@ from payu.models.model import Model
 from payu import envmod
 from payu.fsops import required_libs
 from payu.manifest import full_hashes
+import payu.errors as errors
 
 # Only need one hashfn in the list of full_hashes to calculate the collate mapping.
 full_hashes = full_hashes[0]
+
 
 # There is a limit on the number of command line arguments in a forked
 # MPI process. This applies only to mppnccombine-fast. The limit is higher
@@ -329,11 +331,12 @@ def fms_collate(model):
     if any(rc is not None for rc in codes):
         for p, rc, op in zip(count(), codes, outputs):
             if rc is not None:
-                print('payu: error: Thread {p} crashed with error code '
-                      '{rc}.'.format(p=p, rc=rc), file=sys.stderr)
-                print(' Error message:', file=sys.stderr)
-                print(op.decode(), file=sys.stderr)
-        sys.exit(-1)
+                error_msg = op.decode()
+                raise errors.PayuRuntimeError(
+                    f'Thread {p} crashed with error code '
+                    f'{rc}\n'
+                    f'Error message: {error_msg}'
+                )
 
     # Get full hash for collated files and write collate mapping into job file
     mapping_collate_dict = restart_mapping_log(uncollate_hashes_dict)

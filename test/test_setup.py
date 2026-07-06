@@ -9,6 +9,7 @@ from unittest.mock import patch
 import json
 
 import payu
+import payu.errors as errors
 
 from .common import cd, make_random_file, get_manifests
 from .common import tmpdir, ctrldir, labdir, workdir
@@ -107,7 +108,7 @@ def test_setup_configuration_files():
     assert input_nml_symlink.is_symlink()
 
     # Run payu setup
-    run_payu_setup(create_inputs=True)
+    run_payu_setup(create_inputs=True, create_config_files=False)
 
     # Check config files have been copied to work path
     for file in all_config_files + ['config.yaml']:
@@ -181,10 +182,9 @@ def test_setup():
     assert work_exe.resolve() == bin_exe.resolve()
 
     # Re-run setup - expect an error
-    with pytest.raises(SystemExit,
-                       match="work path already exists") as setup_error:
+    with pytest.raises(errors.PayuRuntimeError,
+                       match="work path already exists"):
         payu_setup(lab_path=str(labdir), sweep=False, force=False)
-    assert setup_error.type == SystemExit
 
     assert workdir.is_symlink and workdir.is_dir()
 
@@ -246,7 +246,7 @@ def test_check_payu_version_fail(current_version, min_version):
                 "payu_minimum_version": min_version
             }
 
-            with pytest.raises(RuntimeError):
+            with pytest.raises(errors.PayuConfigError):
                 expt.check_payu_version()
 
 
@@ -279,7 +279,7 @@ def test_check_payu_version_configured_invalid_version(minimum_version):
                 "payu_minimum_version": minimum_version
             }
 
-            with pytest.raises(ValueError):
+            with pytest.raises(errors.PayuConfigError):
                 expt.check_payu_version()
 
 
@@ -367,7 +367,7 @@ def test_set_prior_restart_with_non_zero_counter_and_restart(tmp_path,
     user_restart.rmdir()
 
     error_msg = rf'No restart directory found at {user_restart}.*'
-    with pytest.raises(ValueError, match=error_msg):
+    with pytest.raises(errors.PayuConfigError, match=error_msg):
         expt = init_experiment(config)
 
 
@@ -438,5 +438,5 @@ def test_setup_runlog_enabled_not_git(mock_git_repo):
     config = copy.deepcopy(config_orig)
     config['runlog'] = True
 
-    with pytest.raises(ValueError, match="Runlog is enabled, but current directory is not a git repository"):
+    with pytest.raises(errors.PayuRuntimeError, match="Runlog is enabled, but current directory is not a git repository"):
         run_payu_setup(config=config, create_inputs = True, create_config_files=True)

@@ -10,10 +10,7 @@ from typing import Optional, Union, List, Dict
 
 import git
 import configparser
-
-
-class PayuBranchError(Exception):
-    """Custom exception for payu branch operations"""
+import payu.errors as errors
 
 
 class PayuGitWarning(Warning):
@@ -86,9 +83,10 @@ class GitRepository:
         not a git repository"""
         if self.repo:
             if self.repo.head.is_detached:
-                sys.exit("\nRepo is in a detached HEAD state.\n"
-                         "Before running again checkout a branch using\n\n"
-                         "    payu checkout <branch>\n\n")
+                raise errors.PayuGitError(
+                    'Repo is in detached HEAD state.\n'
+                    'Before running again checkout a branch using \n\n'
+                    '    payu checkout <branch>\n\n')
             else:
                 return self.repo.active_branch
         else:
@@ -196,10 +194,10 @@ class GitRepository:
         """Checkout branch and create branch if specified"""
         # First check for staged changes
         if self.repo.is_dirty(index=True, working_tree=False):
-            raise PayuBranchError(
-                "There are staged git changes. Please stash or commit them "
-                "before running the checkout command again.\n"
-                "To see what files are staged, run: git status"
+            raise errors.PayuBranchError(
+                'There are staged git changes. Please stash or commit them '
+                'before running the checkout command again.\n'
+                'To see what files are staged, run: git status'
             )
 
         # Existing branches
@@ -210,7 +208,7 @@ class GitRepository:
         # Create new branch, if specified
         if new_branch:
             if branch_name in all_branches:
-                raise PayuBranchError(
+                raise errors.PayuBranchError(
                     f"A branch named {branch_name} already exists. "
                     "To checkout this branch, remove the new branch flag '-b' "
                     "from the checkout command."
@@ -231,7 +229,7 @@ class GitRepository:
 
         # Checkout branch
         if branch_name not in all_branches:
-            raise PayuBranchError(
+            raise errors.PayuBranchError(
                 f"There is no existing branch called {branch_name}. "
                 "To create this branch, add the new branch flag '-b' "
                 "to the checkout command."
