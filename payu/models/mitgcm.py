@@ -163,8 +163,8 @@ class Mitgcm(Model):
             if n_iter0 + n_timesteps == n_iter0_previous:
                 niter = n_iter0 + n_timesteps
                 msg = (
-                    f'payu : error: Timestep changed to {dt}. '
-                    f'Timestep at end identical to previous pickups: {niter}'
+                    f'Timestep changed to {dt}. '
+                    f'Timestep at end identical to previous pickups: {niter}\n'
                     'This would overwrite previous pickups')
                 raise errors.PayuRuntimeError(msg)
 

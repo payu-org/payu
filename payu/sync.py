@@ -175,7 +175,7 @@ class SyncToRemoteArchive():
             # the local payu archive UUID {self.expt.metadata.uuid}
             if dest_uuid is not None and dest_uuid != self.expt.metadata.uuid:
                 raise errors.PayuRuntimeError(
-                    "Mismatched experiment UUIDs in sync destination. "
+                    "Mismatched experiment UUIDs in sync destination.\n"
                     f"UUID of experiment metadata in sync archive {self.destination_path}) "
                     f"does not match current experiment UUID. "
                     "Refusing to sync to avoid overwriting existing output."
@@ -197,7 +197,7 @@ class SyncToRemoteArchive():
             else:
                 if verbose:
                     print(DEST_NOT_CONFIGURED_MSG)
-                raise ValueError("Sync path is not defined.")
+                raise errors.PayuConfigError("Sync path is not defined.")
 
         if not self.remote_syncing:
             # Create local destination directory if it does not exist
@@ -253,7 +253,7 @@ class SyncToRemoteArchive():
             subprocess.check_call(cmd, shell=True)
         except subprocess.CalledProcessError as e:
             warnings.warn(
-                'rsyncing archive to remote directory: '
+                'Error rsyncing archive to remote directory.\n '
                 f'Failed running command: {cmd}.\n'
                 f'Error: {e}'
             )

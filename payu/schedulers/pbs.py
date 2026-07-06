@@ -136,7 +136,7 @@ def check_storage_access(storages: set, user_groups: list):
         if project not in user_groups:
             denied_storages.append(storage)
     if len(denied_storages) > 0:
-        raise RuntimeError(f"User is not a member of the following required storage projects: {', '.join(denied_storages)}.\n")
+        raise errors.PayuRuntimeError(f"User is not a member of the following required storage projects: {', '.join(denied_storages)}.")
 
 
 # TODO: This is a stub acting as a minimal port to a Scheduler class.
@@ -364,7 +364,7 @@ class PBS(Scheduler):
         if pbs_project in user_groups:
             pbs_flags.append('-P {project}'.format(project=pbs_project))
         else:
-            raise RuntimeError(f"User is not a member of the project '{pbs_project}' specified in config:project.\n")
+            raise errors.PayuRuntimeError(f"User is not a member of the project '{pbs_project}' specified in config:project.")
 
         pbs_resources = ['walltime', 'ncpus', 'mem', 'jobfs']
 

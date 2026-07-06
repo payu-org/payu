@@ -776,7 +776,7 @@ class Experiment(object):
                 self.run_userscript(error_script, 'error')
 
             # Terminate payu
-            raise errors.PayuRuntimeError(f'payu: exited with error code {rc}; aborting.')
+            raise errors.PayuRuntimeError(f'Model exited with error code {rc}')
 
         # Decrement run counter on successful run
         stop_file_path = os.path.join(self.control_path, 'stop_run')
@@ -905,7 +905,7 @@ class Experiment(object):
             restarts_to_prune = self.get_restarts_to_prune(
                 force=force_prune_restarts)
         except Exception as e:
-            logger.error("Skipping pruning restarts due to error: %s", e)
+            warnings.warn(f"Skipping pruning restarts due to error: {e}")
             restarts_to_prune = []
 
         for restart in restarts_to_prune:
@@ -1228,7 +1228,7 @@ class Experiment(object):
         restart_history = self.config.get('restart_history', None)
         if restart_history is not None:
             if not isinstance(restart_history, int):
-                raise ValueError("restart_history is not an "
+                raise errors.PayuConfigError("restart_history is not an "
                                  f"integer value: {restart_history}")
 
             if len(restarts) > 0:

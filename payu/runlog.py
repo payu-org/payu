@@ -93,4 +93,4 @@ class Runlog(object):
             remote = git_repo.repo.remotes.payu
             remote.push(all=True)
         except Exception as e:
-            print(f"Failed to push runlog changes to remote repository: {e}.")
+            raise errors.PayuRuntimeError(f"Failed to push runlog changes to remote repository: {e}.")

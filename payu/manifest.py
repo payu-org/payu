@@ -208,7 +208,7 @@ class PayuManifest(YaManifest):
             except Exception as e:
                 action = 'copying' if self.copy_file else 'linking'
                 raise errors.PayuRuntimeError(
-                    f'Error: {action} original file: {self.fullpath(filepath)} '
+                    f'Error {action} original file: {self.fullpath(filepath)} '
                     f'to work directory: {filepath} \n'
                     'Error: {e}'
                 ) from e
