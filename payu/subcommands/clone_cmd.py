@@ -175,7 +175,7 @@ def prompts_for_clone(repository, local_directory, dash_length=50):
     cli_command += f" {local_directory}"
     qprint("="*dash_length)
     qprint("Running command:")
-    qprint('`' + cli_command + '`')
+    qprint('    ' + cli_command)
     return {
         'repository': repository,
         'branch': branch,
@@ -316,6 +316,7 @@ def ask_for_local_directory():
     # check if path is empty
     return safe_ask(questionary.text(
         "Please name your local control directory:",
+        instruction="(See 'Control directory and branch naming guidance' in the documentation.)",
         validate=validate_local_directory,
         style=accessible_style,
         qmark = custom_qmark
