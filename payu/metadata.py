@@ -39,6 +39,7 @@ MODEL_FIELD = "model"
 METADATA_FILENAME = "metadata.yaml"
 
 # Metadata Schema
+SCHEMA_FIELD = "schema_version"
 SCHEMA_VERSION = "1-0-3"
 SCHEMA_COMMIT_HASH = "cff183437134592723b09af6620e5cb190abeb22" 
 SCHEMA_URL = f"https://raw.githubusercontent.com/ACCESS-NRI/schema/{SCHEMA_COMMIT_HASH}/au.org.access-nri/model/output/experiment-metadata/{SCHEMA_VERSION}.json"
@@ -54,7 +55,7 @@ PLEASE_UPDATE_COMMENT = "---- User feel free to update. ----"
 FIELD_GROUPS = {
 DO_NOT_EDIT_COMMENT: [UUID_FIELD],
 CAN_EDIT_COMMENT: [NAME_FIELD, CONTACT_FIELD, EMAIL_FIELD, CREATED_FIELD,
-                    GIT_URL_FIELD, MODEL_FIELD, PARENT_UUID_FIELD]
+                    GIT_URL_FIELD, MODEL_FIELD, PARENT_UUID_FIELD, SCHEMA_FIELD],
 }
 
 class MetadataWarning(Warning):
@@ -398,16 +399,19 @@ def get_schema_from_github():
 def add_template_metadata_values(metadata: CommentedMap) -> None:
     """Add in templates for un-set metadata values"""
     schema = get_schema_from_github()
-    comment_line = []
+    new_comments = []
     anchor_key = None
     anchor_description = ""
+
+    # Get existing comments to avoid duplicated schema descriptions
+    original_comments = [line for line in load_metadata_in_lines(metadata) if line.startswith("#")]
 
     for key, value in schema.get('properties', {}).items():
         if key not in metadata or metadata[key] is None or metadata[key] == placeholder_text:
             # Add field with commented description of value
             description = value.get('description', None)
             if description is not None:
-                if key == "schema_version":
+                if key == SCHEMA_FIELD:
                     # Set the schema to 1-0-3
                     metadata[key] = SCHEMA_VERSION
                     anchor_key = key
@@ -419,14 +423,17 @@ def add_template_metadata_values(metadata: CommentedMap) -> None:
                     anchor_key = key
                     anchor_description = description
                 else:
-                    comment_line.append(f"# {key}: {description}")
+                    new_comment = f"# {key}: {description}"
+                    # Add new comment only if it doesn't already exist in the original comments
+                    if new_comment not in original_comments:
+                        new_comments.append(new_comment)
 
     # Add any remaining keys and descriptions as comments at the end of the file,
     # anchored to the last key                
     if not anchor_key:
         anchor_key = next(reversed(metadata), None)
 
-    metadata.yaml_add_eol_comment(anchor_description + "\n" + "\n".join(comment_line), anchor_key)
+    metadata.yaml_add_eol_comment(anchor_description + "\n" + "\n".join(new_comments), anchor_key)
 
 def generate_uuid() -> str:
     """Generate a new uuid"""
@@ -489,19 +496,23 @@ def add_header_metadata(header, field, metadata):
         before=f"\n{header}"
     )
 
+def load_metadata_in_lines(metadata):
+    """
+    Load metadata into a list of lines, preserving comments and formatting.
+    """
+    string_stream = io.StringIO()
+    YAML().dump(metadata, string_stream)
+    yaml_content = string_stream.getvalue()
+    return yaml_content.splitlines()
+
 
 def remove_existing_header(metadata):
     """
     Remove existing header comments by dumping the metadata to a string and reloading it
     """
-    # Dump the metadata to a string
-    string_stream = io.StringIO()
-    YAML().dump(metadata, string_stream)
-    yaml_content = string_stream.getvalue()
-
     # Remove lines that contain the header comments
     clean_lines = []
-    for line in yaml_content.splitlines():
+    for line in load_metadata_in_lines(metadata):
         if DO_NOT_EDIT_COMMENT in line or CAN_EDIT_COMMENT in line or PLEASE_UPDATE_COMMENT in line:
             continue
         clean_lines.append(line)

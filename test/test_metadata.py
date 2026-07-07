@@ -10,9 +10,8 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 import jsonschema
 
-from payu.metadata import Metadata, MetadataWarning, SCHEMA_VERSION, placeholder_text, no_archive_msg
+from payu.metadata import Metadata, MetadataWarning, SCHEMA_FIELD, SCHEMA_VERSION, placeholder_text, no_archive_msg
 import payu.errors as errors
-from payu.metadata import Metadata, MetadataWarning, SCHEMA_VERSION, placeholder_text
 from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT
 from payu.metadata import arrange_metadata
 
@@ -549,9 +548,9 @@ experiment_uuid: cb793e91-6168-4ed2-a70c-f6f9ccf1659
 name: ctrldir-branch-cb793e91
 created: '2000-01-01'
 model: TEST-MODEL
+{SCHEMA_FIELD}: {SCHEMA_VERSION}
 
 # {PLEASE_UPDATE_COMMENT}
-schema_version: {SCHEMA_VERSION}
 description: {placeholder_text}  # Short description of the experiment (string, < 150 char)
 long_description: {placeholder_text} # Long description of the experiment (string)
 # realm: The realm(s) included in the experiment (string)

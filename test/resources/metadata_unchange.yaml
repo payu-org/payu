@@ -9,6 +9,7 @@ email: email
 created: '2026-07-02'
 url: url
 model: MOM6
+schema_version: 1-0-3
 
 # ---- User feel free to update. ----
 description: |-
@@ -24,7 +25,6 @@ keywords:
 - access-esm1.6
 nominal_resolution: 100 km # In line comments should be reserved
 reference: https://doi.org/10.5281/zenodo.17490072
-schema_version: 1-0-3
 realm:
 - atmos
 - land

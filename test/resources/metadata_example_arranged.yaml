@@ -10,9 +10,9 @@ created: '2026-07-02'
 url: url
 model: MOM6
 parent_experiment: 4d052f54-ddc0-4cb6-9fbb-c89054462d72
+schema_version: 1-0-3
 
 # ---- User feel free to update. ----
-schema_version: 1-0-3
 realm:
 - atmos
 - land
@@ -31,8 +31,8 @@ notes: |-
 keywords:
 - global
 - access-esm1.6
-nominal_resolution: 100 km # In line comments should be reserved
-reference: https://doi.org/10.5281/zenodo.17490072
+# nominal_resolution: The nominal resolution(s) of model(s) used in the experiment (string or array of strings), e.g. 10km
+reference: https://doi.org/10.5281/zenodo.17490072 # In line comments should be reserved
 
 # Customised header comment should be reserved
 license: CC-BY-4.0
