@@ -434,7 +434,8 @@ class PBS(Scheduler):
         module_use_paths = pbs_config.get('modules', {}).get('use', [])
         extra_search_paths.extend(module_use_paths)
 
-        remote_sync_directory = pbs_config.get('sync', {}).get('path', None)
+        sync_config = pbs_config.get('sync', {})
+        remote_sync_directory = sync_config.get('path', None) or sync_config.get('base_path', None)
         if remote_sync_directory is not None:
             extra_search_paths.append(remote_sync_directory)
         storages.update(find_mounts(extra_search_paths, mounts))
