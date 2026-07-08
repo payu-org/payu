@@ -9,6 +9,7 @@ from ruamel.yaml import YAML
 import jsonschema
 
 from payu.metadata import Metadata, MetadataWarning, SCHEMA_VERSION, placeholder_text, no_archive_msg
+import payu.errors as errors
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -413,12 +414,9 @@ def test_set_experiment_name_archive_not_found():
         mock_new_experiment_name.return_value = "mock_experiment_name"
 
         # Assert error raised when user did not specify to generate a new UUID
-        with pytest.raises(RuntimeError, match=f"{no_archive_msg}"):
+        with pytest.raises(errors.PayuBranchError, match=f"{no_archive_msg}"):
             metadata.set_experiment_name(is_new_experiment=False)
 
-        # Assert that only warning is raised when user specified to generate a new UUID
-        with pytest.warns(MetadataWarning, match="No pre-existing archive found. Generating a new uuid"):
-            metadata.set_experiment_name(is_new_experiment=False, new_uuid=True)
 
 
 def test_metadata_enable_false():

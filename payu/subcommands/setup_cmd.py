@@ -14,17 +14,17 @@ arguments = [
     args.reproduce,
     args.force,
     args.metadata_off,
-    args.new_uuid,
+    args.is_new_experiment,
 ]
 
 
 def runcmd(model_type, config_path, lab_path,
-           reproduce=False, force=False, metadata_off=False, new_uuid=False):
+           reproduce=False, force=False, metadata_off=False, is_new_experiment=False):
 
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab, reproduce=reproduce, force=force,
                       metadata_off=metadata_off,
-                      new_uuid=new_uuid)
+                      is_new_experiment=is_new_experiment)
 
     expt.setup()
 

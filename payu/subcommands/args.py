@@ -183,13 +183,13 @@ keep_uuid = {
 }
 
 # Confirm use a new uuid flag
-new_uuid = {
+is_new_experiment = {
     'flags': ('--new-uuid',),
     'parameters': {
         'action':   'store_true',
         'default':  False,
-        'dest': 'new_uuid',
-        'help': 'Generate a new experiment uuid'
+        'dest': 'is_new_experiment',
+        'help': 'Generate a new uuid and archive directory for this experiment.'
     }
 }
 
