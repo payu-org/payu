@@ -5,6 +5,7 @@
 """
 
 # Standard library
+import logging
 import math
 import os
 from pathlib import Path
@@ -21,6 +22,7 @@ import json
 from tenacity import retry, stop_after_delay
 from datetime import datetime, timedelta
 from filelock import SoftFileLock, Timeout
+import hpcpy
 
 import payu.envmod as envmod
 from payu.fsops import check_exe_path, atomic_write_file
@@ -33,6 +35,11 @@ LOCK_TIMEOUT = 5
 LOCK_LIFETIME = 8
 
 ureg = UnitRegistry()
+
+# Pass the current log level to HPCpy
+log_level = logging.getLogger().getEffectiveLevel()
+hpcpy.utilities.get_logger().setLevel(log_level)  
+client = hpcpy.client.pbs.PBSClient()
 
 def get_pbsnodes_cache_path() -> Path:
     """Get the path of pbsnodes.json cache file, 
@@ -341,33 +348,26 @@ class PBS(Scheduler):
                 f"than the limit of {mem_per_node:.2f}GB per node for queue '{queue}'."
             )
 
-    def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
+    def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None, dry_run=False):
         """Prepare a correct PBS command string"""
-
-        pbs_env_init()
 
         # Initialisation
         if pbs_vars is None:
             pbs_vars = {}
 
-        # Necessary for testing
         if python_exe is None:
             python_exe = sys.executable
 
         pbs_flags = []
 
-        pbs_queue = pbs_config.get('queue', 'normal')
-        pbs_flags.append('-q {queue}'.format(queue=pbs_queue))
-
         pbs_project = pbs_config.get('project', os.environ['PROJECT'])
+        pbs_flags.append('-P {project}'.format(project=pbs_project))
         user_groups = get_user_groups()
-        if pbs_project in user_groups:
-            pbs_flags.append('-P {project}'.format(project=pbs_project))
-        else:
+        if pbs_project not in user_groups:
             raise errors.PayuRuntimeError(f"User is not a member of the project '{pbs_project}' specified in config:project.")
 
+        # Add PBS resource flags to the qsub command
         pbs_resources = ['walltime', 'ncpus', 'mem', 'jobfs']
-
         for res_key in pbs_resources:
             res_flags = []
             res_val = pbs_config.get(res_key)
@@ -378,12 +378,14 @@ class PBS(Scheduler):
             if res_flags:
                 pbs_flags.append('-l {res}'.format(res=','.join(res_flags)))
 
+        # Add PBS jobname to qsub command
         # TODO: Need to pass lab.config_path somehow...
         pbs_jobname = pbs_config.get('jobname', os.path.basename(os.getcwd()))
         if pbs_jobname:
             # PBSPro has a 15-character jobname limit
             pbs_flags.append('-N {name}'.format(name=pbs_jobname[:15]))
 
+        # Add PBS priority to qsub command
         pbs_priority = pbs_config.get('priority')
         if pbs_priority:
             pbs_flags.append('-p {priority}'.format(priority=pbs_priority))
@@ -397,12 +399,13 @@ class PBS(Scheduler):
         else:
             pbs_flags.append('-j {join}'.format(join=pbs_join))
 
-        # Append environment variables to qsub command
+        # Add environment variables to qsub command
         # TODO: Support full export of environment variables: `qsub -V`
-        pbs_vstring = ','.join('{0}={1}'.format(k, v)
-                               for k, v in pbs_vars.items())
-        pbs_flags.append('-v ' + pbs_vstring)
+        # pbs_vstring = ','.join('{0}={1}'.format(k, v)
+        #                        for k, v in pbs_vars.items())
+        # pbs_flags.append('-v ' + pbs_vstring)
 
+        # Check for storage mounts and add them to the qsub command
         storages = set()
         storage_config = pbs_config.get('storage', {})
         mounts = set(['/scratch', '/g/data'])
@@ -430,10 +433,12 @@ class PBS(Scheduler):
         short_path = pbs_config.get('shortpath', None)
         if short_path is not None:
             extra_search_paths.append(short_path)
-
+    
+        # Check for module use paths in config and add to search paths
         module_use_paths = pbs_config.get('modules', {}).get('use', [])
         extra_search_paths.extend(module_use_paths)
 
+        # Check for sync path in config and add to search paths
         sync_config = pbs_config.get('sync', {})
         remote_sync_directory = sync_config.get('path', None) or sync_config.get('base_path', None)
         if remote_sync_directory is not None:
@@ -458,24 +463,25 @@ class PBS(Scheduler):
         # Check if user has access to all storages paths, and raise error if not
         check_storage_access(storages, user_groups)
 
-        # Add storage flags. Note that these are sorted to get predictable
-        # behaviour for testing
-        pbs_flags_extend = '+'.join(sorted(storages))
-        if pbs_flags_extend:
-            pbs_flags.append("-l storage={}".format(pbs_flags_extend))
-
         # Set up environment modules here for PBS.
         envmod.setup()
         envmod.module('load', 'pbs')
 
-        # Construct job submission command
-        cmd = 'qsub {flags} -- {python} {script}'.format(
-            flags=' '.join(pbs_flags),
-            python=python_exe,
-            script=pbs_script
-        )
+        # Submit with HPCpy PBSClient
+        # TODO: Is there a way to print the command when dry_run is False?
+        job_or_cmd = client.submit(job_script = f"-- {python_exe} {pbs_script}",
+                      directives = pbs_flags,
+                      dry_run = dry_run,
+                      queue = pbs_config.get('queue', 'normal'),
+                      storage = [storage for storage in storages] if storages else None,
+                      variables = pbs_vars,
+                      render=False, # Save the run script from a template
+                      # module_purge = False,
+                      # module_use = module_use_paths,
+                      # module = 'pbs', # how does this know user's required modules?
+                      )
 
-        return cmd
+        return job_or_cmd
 
     def get_job_id(self, short: bool = True) -> Optional[str]:
         """Get PBS job ID
