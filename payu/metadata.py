@@ -44,8 +44,8 @@ SCHEMA_URL = f"https://raw.githubusercontent.com/ACCESS-NRI/schema/{SCHEMA_COMMI
 placeholder_text = "__REPLACE_ME__"
 
 no_archive_msg = """
-Payu will generate a new experiment UUID and create a new archive directory.
-To proceed, please rerun `payu setup` or `payu run or `payu checkout`` with the --new-uuid flag."""
+Payu needs to generate an experiment UUID and create a new archive directory.
+To proceed, please rerun `payu setup` or `payu run or `payu checkout`` with the `--new-uuid` flag."""
 
 class MetadataWarning(Warning):
     pass
@@ -139,12 +139,9 @@ class Metadata:
                                      is_new_experiment=is_new_experiment)
         else:
             # Generate new UUID
-            if self.uuid is None and not is_new_experiment:
-                warnings.warn("No experiment uuid found in metadata. "
-                              "Generating a new uuid", MetadataWarning)
-                self.set_new_uuid(is_new_experiment=True)
-            else:
-                self.set_new_uuid(is_new_experiment=is_new_experiment)
+            # In older version of payu, there is no UUID in archive name, so self.uuid is None but is_new_experiment could be False.
+            # In this case, we still want to pass is_new_experiment = False.
+            self.set_new_uuid(is_new_experiment=is_new_experiment)
             print("Generated new experiment uuid: ", self.uuid)
 
         self.archive_path = self.lab_archive_path / self.experiment_name
@@ -210,7 +207,7 @@ class Metadata:
             self.experiment_name = branch_uuid_experiment_name
         else:
             # No archive exists and user did not specify a new UUID
-            raise errors.PayuBranchError(f"Current archive path is not found: {self.lab_archive_path}."
+            raise errors.PayuRuntimeError(f"No archive matching current branch found in: {self.lab_archive_path}."
                                          f"{no_archive_msg}"
                                )
             
