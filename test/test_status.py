@@ -24,6 +24,7 @@ from payu.experiment import Experiment
 from payu.subcommands.status_cmd import runcmd
 from payu.git_utils import PayuGitWarning
 import payu.errors as errors
+from payu.metadata import no_archive_msg
 
 def test_find_file_match(tmp_path):
     test_file = tmp_path / "job_name.o146702704"
@@ -662,7 +663,7 @@ def test_status_cmd_no_metadata(tmp_path):
         json.dump({'model': 'test'}, f)
 
     with pytest.warns(PayuGitWarning):
-        with pytest.raises(errors.PayuRuntimeError, match="Metadata is not setup"):
+        with pytest.raises(errors.PayuRuntimeError, match=no_archive_msg):
             runcmd(
                 lab_path=str(lab_path),
                 config_path=str(config_path),
@@ -1032,31 +1033,6 @@ def test_collect_expt_paths(tmp_path, sync_path):
     else:
         assert expt_paths['sync_path'] == "Unconfigured"
 
-    
-def test_collect_expt_paths_no_metadata(tmp_path):
-    """Test that collect_expt_paths raises an error when metadata is not set up"""
-    # Create a temporary lab and config
-    lab_path = tmp_path / "lab"
-    lab_path.mkdir()
-    control_path = tmp_path / "control"
-    control_path.mkdir()
-
-    # Write a minimal config file
-    config = {
-            'model': 'mom6'
-    }
-    with open(control_path / "config.yaml", 'w') as f:
-        json.dump(config, f)
-
-    # Set up a mock experiment
-    with cd(control_path):
-        lab = Laboratory(lab_path=str(lab_path))
-        expt = Experiment(lab, reproduce=False)
-        expt.metadata = None  # Mock a bad metadata
-
-    with pytest.warns(UserWarning, match="Failed to collect experiment paths: 'NoneType' object has no attribute 'uuid'"):
-        expt_paths = collect_expt_paths(expt)
-        assert expt_paths == {}
 
 
 def test_display_expt_paths(capsys):

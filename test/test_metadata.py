@@ -8,7 +8,8 @@ from unittest.mock import patch, Mock
 from ruamel.yaml import YAML
 import jsonschema
 
-from payu.metadata import Metadata, MetadataWarning, SCHEMA_VERSION, placeholder_text
+from payu.metadata import Metadata, MetadataWarning, SCHEMA_VERSION, placeholder_text, no_archive_msg
+import payu.errors as errors
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -179,55 +180,49 @@ def test_update_file(mock_repo, uuid, experiment_name,
 
 @pytest.mark.parametrize(
     "uuid_exists, keep_uuid, is_new_experiment, "
-    "branch_uuid_archive_exists, legacy_archive_exists, catch_warning,"
+    "branch_uuid_archive_exists, legacy_archive_exists,"
     "expected_uuid, expected_name",
     [
         # Keep UUID on new experiment - UUID Exists - no archives exist
         (
-            True, True, True, False, False, False,
+            True, True, True, False, False,
             "3d18b3b6-dd19-49a9-8d9e-c7fa8582f136", "ctrl-mock_branch-3d18b3b6"
         ),
         # Keep UUID on new experiment - UUID Exists - legacy archive exists
         (
-            True, True, True, False, True, False,
+            True, True, True, False, True,
             "3d18b3b6-dd19-49a9-8d9e-c7fa8582f136", "ctrl-mock_branch-3d18b3b6"
         ),
         # Keep UUID on not new experiment - UUID Exists -legacy archive exists
         (
-            True, True, False, False, True, False,
+            True, True, False, False, True,
             "3d18b3b6-dd19-49a9-8d9e-c7fa8582f136", "ctrl"
         ),
         # Keep UUID on not new experiment - No UUID - no archives exist
         (
-            False, True, True, False, False, False,
+            False, True, True, False, False, 
             "cb793e91-6168-4ed2-a70c-f6f9ccf1659b", "ctrl-mock_branch-cb793e91"
         ),
         # Experiment setup - No UUID - legacy archive exists
         (
-            False, False, False, False, True, True,
+            False, False, False, False, True, 
             "cb793e91-6168-4ed2-a70c-f6f9ccf1659b", "ctrl"
-        ),
-        # Experiment setup - No UUID - no archive exists
-        (
-            False, False, False, False, False, True,
-            "cb793e91-6168-4ed2-a70c-f6f9ccf1659b", "ctrl-mock_branch-cb793e91"
         ),
         # Experiment setup - Existing UUID - legacy archive exists
         (
-            True, False, False, False, True, False,
+            True, False, False, False, True,
             "3d18b3b6-dd19-49a9-8d9e-c7fa8582f136", "ctrl"
         ),
         # Experiment setup - Existing UUID - new archive exists
         (
-            True, False, False, True, True, False,
+            True, False, False, True, True, 
             "3d18b3b6-dd19-49a9-8d9e-c7fa8582f136", "ctrl-mock_branch-3d18b3b6"
         ),
     ]
 )
 def test_set_experiment_and_uuid(uuid_exists, keep_uuid, is_new_experiment,
                                  branch_uuid_archive_exists,
-                                 legacy_archive_exists, catch_warning,
-                                 expected_uuid, expected_name):
+                                 legacy_archive_exists, expected_uuid, expected_name):
     # Setup config and metadata
     write_config(config)
     with cd(ctrldir):
@@ -250,13 +245,7 @@ def test_set_experiment_and_uuid(uuid_exists, keep_uuid, is_new_experiment,
         mock_branch.return_value = "mock_branch"
         mock_uuid.return_value = "cb793e91-6168-4ed2-a70c-f6f9ccf1659b"
 
-        if catch_warning:
-            # Test warning raised
-            with pytest.warns(MetadataWarning):
-                metadata.setup(is_new_experiment=is_new_experiment,
-                               keep_uuid=keep_uuid)
-        else:
-            metadata.setup(is_new_experiment=is_new_experiment,
+        metadata.setup(is_new_experiment=is_new_experiment,
                            keep_uuid=keep_uuid)
 
     assert metadata.experiment_name == expected_name
@@ -394,6 +383,28 @@ def test_experiment_name_with_prefix_and_experiment():
             metadata.set_experiment_name()
 
         mock_new_experiment_name.assert_not_called()
+
+
+def test_set_experiment_name_archive_not_found():
+    """Test that when no archive found, the user is prompted to confirm before generating a new UUID."""
+    # Setup config
+    write_config(config)
+    with cd(ctrldir):
+        metadata = Metadata(archive_dir)
+        
+    with patch.object(metadata, 'has_archive') as mock_has_archive, \
+        patch.object(metadata, 'new_experiment_name') as mock_new_experiment_name:
+
+        # Simulate no archive found
+        mock_has_archive.return_value = False  
+
+        # Simulate new experiment name generation
+        mock_new_experiment_name.return_value = "mock_experiment_name"
+
+        # Assert error raised when user did not specify to generate a new UUID
+        with pytest.raises(errors.PayuRuntimeError, match=f"{no_archive_msg}"):
+            metadata.set_experiment_name(is_new_experiment=False)
+
 
 
 def test_metadata_enable_false():

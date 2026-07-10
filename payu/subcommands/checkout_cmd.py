@@ -32,7 +32,7 @@ parameters = {
 
 arguments = [args.model, args.config, args.laboratory, args.new_branch,
              args.branch_name, args.start_point, args.restart_path,
-             args.keep_uuid, args.parent_experiment]
+             args.keep_uuid, args.parent_experiment, args.is_new_experiment]
 
 
 def transform_strings_to_path(path_str=None):
@@ -41,7 +41,7 @@ def transform_strings_to_path(path_str=None):
 
 def runcmd(model_type, config_path, lab_path, new_branch,
            branch_name, start_point,
-           restart_path, keep_uuid, parent_experiment):
+           restart_path, keep_uuid, parent_experiment, is_new_experiment=False):
     """Execute the command."""
     config_path = transform_strings_to_path(config_path)
     lab_path = transform_strings_to_path(lab_path)
@@ -55,7 +55,9 @@ def runcmd(model_type, config_path, lab_path, new_branch,
                     lab_path=lab_path,
                     model_type=model_type,
                     keep_uuid=keep_uuid,
-                    parent_experiment=parent_experiment)
+                    parent_experiment=parent_experiment,
+                    is_new_experiment=is_new_experiment # Result from --new-uuid flag
+    )
 
 
 runscript = runcmd

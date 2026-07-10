@@ -37,12 +37,8 @@ def runcmd(lab_path, config_path, json_output,
         # Determine archive path
         lab = Laboratory(config_path=config_path, lab_path=lab_path)
         warnings.filterwarnings("error", category=MetadataWarning)
-        try:
-            expt = Experiment(lab, config_path=config_path)
-        except MetadataWarning:
-            raise errors.PayuRuntimeError(
-                "Metadata is not setup - can't determine archive path"
-            )
+        
+        expt = Experiment(lab, config_path=config_path)
 
         archive_path = Path(expt.archive_path)
         control_path = Path(expt.control_path)

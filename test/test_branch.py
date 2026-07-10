@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock
 
 from payu.branch import add_restart_to_config, check_restart, switch_symlink
 from payu.branch import checkout_branch, clone, list_branches, DEFAULT_PARENT_STRING
-from payu.metadata import MetadataWarning, UUID_FIELD
+from payu.metadata import MetadataWarning, no_archive_msg
 from payu.fsops import read_config
 from payu.subcommands import clone_cmd
 import payu.errors as errors
@@ -374,19 +374,17 @@ def test_checkout_existing_branch_with_no_metadata(mock_uuid):
     # Mock uuid1 value
     uuid1 = "574ea2c9-2379-4484-86b4-1d1a0f820773"
     mock_uuid.return_value = uuid1
-    expected_no_uuid_msg = (
-        "No experiment uuid found in metadata. Generating a new uuid"
-    )
-    expected_no_archive_msg = (
-        "No pre-existing archive found. Generating a new uuid"
-    )
 
     with cd(ctrldir):
-        # Test checkout existing branch with no existing metadata
-        with pytest.warns(MetadataWarning, match=expected_no_uuid_msg):
-            with pytest.warns(MetadataWarning, match=expected_no_archive_msg):
-                checkout_branch(branch_name="Branch1",
+        # Test checkout existing branch with no existing metadata or archive, expected to fail
+        with pytest.raises(errors.PayuRuntimeError, match=no_archive_msg):
+            checkout_branch(branch_name="Branch1",
                                 lab_path=labdir)
+            
+        # Test checkout existing branch with no existing archive with `--new-uuid` flag, expected to succeed
+        checkout_branch(is_new_experiment=True,
+                        branch_name="Branch1",
+                        lab_path=labdir)
 
     # Check metadata was created and commited
     branch1_experiment_name = f"{ctrldir_basename}-Branch1-574ea2c9"
@@ -417,9 +415,8 @@ def test_checkout_branch_with_no_metadata_and_with_legacy_archive(mock_uuid):
     with cd(ctrldir):
         # Test checkout existing branch (with no existing metadata)
         # and with pre-existing archive
-        with pytest.warns(MetadataWarning, match=expected_no_uuid_msg):
-            checkout_branch(branch_name="Branch1",
-                            lab_path=labdir)
+        checkout_branch(branch_name="Branch1",
+                        lab_path=labdir)
 
     # Check metadata was created and commited - with legacy experiment name
     branch1_experiment_name = ctrldir_basename

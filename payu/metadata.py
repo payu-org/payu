@@ -21,6 +21,7 @@ from ruamel.yaml.comments import CommentedMap
 
 from payu.fsops import read_config
 from payu.git_utils import GitRepository
+import payu.errors as errors
 
 # A truncated uuid is used for branch-uuid aware experiment names
 TRUNCATED_UUID_LENGTH = 8
@@ -41,6 +42,10 @@ SCHEMA_VERSION = "1-0-3"
 SCHEMA_COMMIT_HASH = "cff183437134592723b09af6620e5cb190abeb22" 
 SCHEMA_URL = f"https://raw.githubusercontent.com/ACCESS-NRI/schema/{SCHEMA_COMMIT_HASH}/au.org.access-nri/model/output/experiment-metadata/{SCHEMA_VERSION}.json"
 placeholder_text = "__REPLACE_ME__"
+
+no_archive_msg = """
+Payu needs to generate an experiment UUID and create a new archive directory.
+To proceed, please rerun `payu setup` or `payu run or `payu checkout`` with the `--new-uuid` flag."""
 
 class MetadataWarning(Warning):
     pass
@@ -134,10 +139,10 @@ class Metadata:
                                      is_new_experiment=is_new_experiment)
         else:
             # Generate new UUID
-            if self.uuid is None and not is_new_experiment:
-                warnings.warn("No experiment uuid found in metadata. "
-                              "Generating a new uuid", MetadataWarning)
+            # In older version of payu, there is no UUID in archive name, so self.uuid is None but is_new_experiment could be False.
+            # In this case, we still want to pass is_new_experiment = False.
             self.set_new_uuid(is_new_experiment=is_new_experiment)
+            print("Generated new experiment uuid: ", self.uuid)
 
         self.archive_path = self.lab_archive_path / self.experiment_name
 
@@ -201,12 +206,11 @@ class Metadata:
             # Use same experiment UUID and use branch-UUID name for archive
             self.experiment_name = branch_uuid_experiment_name
         else:
-            # No archive exists - Detecting new experiment
-            warnings.warn(
-                "No pre-existing archive found. Generating a new uuid",
-                MetadataWarning
-            )
-            self.set_new_uuid(is_new_experiment=True)
+            # No archive exists and user did not specify a new UUID
+            raise errors.PayuRuntimeError(f"No archive matching current branch found in: {self.lab_archive_path}."
+                                         f"{no_archive_msg}"
+                               )
+            
 
     def has_archive(self, experiment_name: str) -> bool:
         """Return True if archive under the experiment name exists and
@@ -246,6 +250,7 @@ class Metadata:
                 # Generate a new id and experiment name
                 self.uuid = generate_uuid()
                 self.set_experiment_name(is_new_experiment=is_new_experiment)
+
 
     def write_metadata(self,
                        restart_path: Optional[Union[Path, str]] = None,
@@ -360,7 +365,9 @@ class Metadata:
 
     def copy_to_archive(self) -> None:
         """Copy metadata file to archive"""
-        os.makedirs(self.archive_path, exist_ok=True)
+        if not self.archive_path.exists():
+            print(f"Creating archive directory: {self.archive_path}")
+            os.makedirs(self.archive_path)
         shutil.copy(self.filepath, self.archive_path / METADATA_FILENAME)
         # Note: The existence of an archive is used for determining
         # experiment names and whether to generate a new UUID

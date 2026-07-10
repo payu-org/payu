@@ -73,7 +73,7 @@ def timeit(time_name):
 
 
 class Experiment(object):
-    def __init__(self, lab, reproduce=False, force=False, metadata_off=False, config_path=None):
+    def __init__(self, lab, reproduce=False, force=False, metadata_off=False, config_path=None, is_new_experiment=False):
         self.init_timings()
         self.lab = lab
         # Check laboratory directories are writable
@@ -87,7 +87,7 @@ class Experiment(object):
 
         # Initialise experiment metadata - uuid and experiment name
         self.metadata = Metadata(Path(lab.archive_path), disabled=metadata_off, config_path=config_path)
-        self.metadata.setup()
+        self.metadata.setup(is_new_experiment=is_new_experiment)
 
         # TODO: replace with dict, check versions via key-value pairs
         self.modules = set()
