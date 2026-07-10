@@ -25,15 +25,7 @@ keywords:
 - access-esm1.6
 nominal_resolution: 100 km # In line comments should be reserved
 reference: https://doi.org/10.5281/zenodo.17490072
-realm:
-- atmos
-- land
-- ocean
-- ocnBgchem
-- seaIce
 license: CC-BY-4.0
 version: '1.0'
-long_description: __REPLACE_ME__ # 
-# frequency: The frequency(/ies) included in the experiment (array of strings)
-# variable: The variable(s) included in the experiment (array of strings)
-# related_experiments: experiment_uuids for any related experiment(s) (array of strings)
+long_description: __REPLACE_ME__ # Long description of the experiment (string)
+# The realm(s) description is not added.

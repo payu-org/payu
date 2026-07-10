@@ -13,7 +13,7 @@ import jsonschema
 from payu.metadata import Metadata, MetadataWarning, SCHEMA_FIELD, SCHEMA_VERSION, placeholder_text, no_archive_msg
 import payu.errors as errors
 from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT
-from payu.metadata import arrange_metadata
+from payu.metadata import arrange_metadata, add_template_metadata_values, remove_existing_header
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -82,6 +82,27 @@ def setup_and_teardown():
         shutil.rmtree(labdir)
     except Exception as e:
         print(e)
+
+@pytest.fixture
+def mock_git_repo():
+    with patch("payu.metadata.GitRepository") as mock_repo:
+        # Leave out origin URL and git user info
+        mock_repo.return_value.get_origin_url.return_value = None
+        mock_repo.return_value.get_user_info.return_value = None
+
+        with patch("requests.get") as mock_get:
+            # Mock request for json schema
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_shema = YAML().load(Path(__file__).parent / "resources" / "mock_schema.yaml")
+            mock_response.json.return_value = mock_shema
+            mock_get.return_value = mock_response
+
+            # Mock datetime (for created date)
+            with patch('payu.metadata.datetime') as mock_date:
+                mock_date.now.return_value = datetime(2000, 1, 1)
+
+                yield mock_repo, mock_get, mock_date, mock_response
 
 
 @patch("payu.metadata.GitRepository")
@@ -444,14 +465,11 @@ def test_metadata_disable():
     assert not (ctrldir / "metadata.yaml").exists()
 
 
-# Test metadata is updated with set_template_values = True
-# and test if metadata is valid against the schema
-@patch("payu.metadata.GitRepository")
-def test_update_file_with_template_metadata_values(mock_repo):
-    # Leave out origin URL and git user info
-    mock_repo.return_value.get_origin_url.return_value = None
-    mock_repo.return_value.get_user_info.return_value = None
-
+def test_update_file_with_template_metadata_values(mock_git_repo):
+    """ Test metadata is updated with set_template_values = True
+        and test if metadata is valid against the schema"""
+    mock_repo, mock_get, mock_date, mock_response = mock_git_repo
+    
     # Setup config
     test_config = config.copy()
     test_config['model'] = "test-model"
@@ -463,81 +481,8 @@ def test_update_file_with_template_metadata_values(mock_repo):
     metadata.experiment_name = "ctrldir-branch-cb793e91"
     metadata.uuid = "cb793e91-6168-4ed2-a70c-f6f9ccf1659"
 
-    with patch('requests.get') as mock_get:
-        # Mock request for json schema
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "type": "object",
-            "properties": {
-                "schema_version": {
-                    "const": "1-0-3",
-                    "description": "The version of the schema (string)"
-                },
-                "name": {
-                    "type": "string",
-                    "description": "The name of the experiment (string)"
-                },
-                "experiment_uuid": {
-                    "type": "string",
-                    "format": "uuid",
-                    "description": "Unique uuid for the experiment (string)"
-                },
-                "description": {
-                    "type": "string",
-                    "description": ("Short description of the experiment "
-                                    "(string, < 150 char)")
-                },
-                "long_description": {
-                    "type": "string",
-                    "description": ("Long description of the experiment "
-                                    "(string)")
-                },
-                "model": {
-                    "oneOf": [
-                        {"type": ["string", "null"]},
-                        {
-                            "type": "array",
-                            "items": {"type": ["string", "null"]}
-                        }
-                    ],
-                    "description": "The name(s) of the model(s) used in the experiment (string)"
-                },
-                "realm": {
-                    "type": "array",
-                    "items": {
-                        "oneOf": [
-                            {"type": "null"},
-                            {
-                                "type": "string",
-                                "enum": [
-                                    "aerosol",
-                                    "atmos",
-                                    "unknown",
-                                    "wave"
-                                ]
-                            }
-                        ]
-                    },
-                    "description": "The realm(s) included in the experiment (string)"
-                },
-            },
-            "required": [
-                "name",
-                "experiment_uuid",
-                "description",
-                "long_description"
-            ]
-        }
-        mock_get.return_value = mock_response
-
-        # Mock datetime (for created date)
-        with patch('payu.metadata.datetime') as mock_date:
-            mock_date.now.return_value = datetime(2000, 1, 1)
-
-            # Test function
-            metadata.update_file(set_template_values=True)
+    # Test function
+    metadata.update_file(set_template_values=True)
 
     # Expect commented template values for non-null fields
     expected_metadata = f"""
@@ -553,7 +498,7 @@ model: TEST-MODEL
 # {PLEASE_UPDATE_COMMENT}
 description: {placeholder_text}  # Short description of the experiment (string, < 150 char)
 long_description: {placeholder_text} # Long description of the experiment (string)
-# realm: The realm(s) included in the experiment (string)
+# realm: The realm(s) included in the experiment (array of strings)
 """
     assert (ctrldir / 'metadata.yaml').read_text() == expected_metadata
 
@@ -625,16 +570,19 @@ def test_arrange_metadata(metadata, expected_metadata, manual_fields):
         assert f"# {PLEASE_UPDATE_COMMENT}\n" == result.ca.items["description"][1][1].value
 
 
-@pytest.mark.parametrize("metadata_input, metadata_expected", 
+@pytest.mark.parametrize("metadata_input, metadata_expected, set_template_values", 
     [
-        ("metadata_example.yaml", "metadata_example_arranged.yaml"),
-        ("metadata_unchange.yaml", "metadata_unchange.yaml")
+        ("metadata_example.yaml", "metadata_example_arranged.yaml", True),
+        ("metadata_unchange.yaml", "metadata_unchange.yaml", False)
     ]
 )
-def test_arrange_metadata_preserves_comments(tmp_path, metadata_input, metadata_expected):
-    """Test that arrange_metadata preserves existing comments on manual fields"""
+def test_update_file_given_metadata_file(tmp_path, metadata_input, metadata_expected, set_template_values, mock_git_repo):
+    """Test that add_template_metadata_values + arrange_metadata 
+        oragnise metadata and preserves description comments"""
 
     metadata = YAML().load(Path(__file__).parent / "resources" / metadata_input)
+    if set_template_values:
+        metadata = add_template_metadata_values(metadata)
     result = arrange_metadata(metadata)
     
     # write result to file

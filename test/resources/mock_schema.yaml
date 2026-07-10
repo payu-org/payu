@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+      "schema_version": {
+          "const": "1-0-3",
+          "description": "The version of the schema (string)"
+      },
+      "name": {
+          "type": "string",
+          "description": "The name of the experiment (string)"
+      },
+      "experiment_uuid": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique uuid for the experiment (string)"
+      },
+      "description": {
+          "type": "string",
+          "description": "Short description of the experiment (string, < 150 char)"
+      },
+      "long_description": {
+          "type": "string",
+          "description": "Long description of the experiment (string)"
+      },
+      "model": {
+          "oneOf": [
+              {"type": ["string", "null"]},
+              {
+                  "type": "array",
+                  "items": {"type": ["string", "null"]}
+              }
+          ],
+          "description": "The name(s) of the model(s) used in the experiment (string)"
+      },
+      "realm": {
+          "type": "array",
+          "items": {
+              "oneOf": [
+                  {"type": "null"},
+                  {
+                      "type": "string",
+                      "enum": [
+                          "aerosol",
+                          "atmos",
+                          "unknown",
+                          "wave"
+                      ]
+                  }
+              ]
+          },
+          "description": "The realm(s) included in the experiment (array of strings)"
+      },
+  },
+  "required": [
+      "name",
+      "experiment_uuid",
+      "description",
+      "long_description"
+  ]
+}

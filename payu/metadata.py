@@ -336,7 +336,7 @@ class Metadata:
 
         if set_template_values:
             # Note that retrieving schema requires internet access
-            add_template_metadata_values(metadata)
+            metadata = add_template_metadata_values(metadata)
 
         sorted_metadata = arrange_metadata(metadata)
         # Write updated metadata to file
@@ -403,9 +403,10 @@ def add_template_metadata_values(metadata: CommentedMap) -> None:
     anchor_key = None
     anchor_description = ""
 
-    # Get existing comments to avoid duplicated schema descriptions
-    original_comments = [line for line in load_metadata_in_lines(metadata) if line.startswith("#")]
-
+    # Remove all full-line comments
+    # Payu does not support to preserve user's full-line comments
+    metadata = remove_existing_header(metadata, header_only=False)
+    
     for key, value in schema.get('properties', {}).items():
         if key not in metadata or metadata[key] is None or metadata[key] == placeholder_text:
             # Add field with commented description of value
@@ -423,10 +424,7 @@ def add_template_metadata_values(metadata: CommentedMap) -> None:
                     anchor_key = key
                     anchor_description = description
                 else:
-                    new_comment = f"# {key}: {description}"
-                    # Add new comment only if it doesn't already exist in the original comments
-                    if new_comment not in original_comments:
-                        new_comments.append(new_comment)
+                    new_comments.append(f"# {key}: {description}")
 
     # Add any remaining keys and descriptions as comments at the end of the file,
     # anchored to the last key                
@@ -434,6 +432,7 @@ def add_template_metadata_values(metadata: CommentedMap) -> None:
         anchor_key = next(reversed(metadata), None)
 
     metadata.yaml_add_eol_comment(anchor_description + "\n" + "\n".join(new_comments), anchor_key)
+    return metadata
 
 def generate_uuid() -> str:
     """Generate a new uuid"""
@@ -506,16 +505,20 @@ def load_metadata_in_lines(metadata):
     return yaml_content.splitlines()
 
 
-def remove_existing_header(metadata):
+def remove_existing_header(metadata, header_only=True):
     """
-    Remove existing header comments by dumping the metadata to a string and reloading it
+    Remove existing header comments by dumping the metadata to a string and reloading it.
+    When header_only is True, only remove the auto-generated headers, otherwise remove all full-line comments.
     """
-    # Remove lines that contain the header comments
-    clean_lines = []
-    for line in load_metadata_in_lines(metadata):
-        if DO_NOT_EDIT_COMMENT in line or CAN_EDIT_COMMENT in line or PLEASE_UPDATE_COMMENT in line:
-            continue
-        clean_lines.append(line)
+    lines = load_metadata_in_lines(metadata)
+
+    if header_only:
+        headers = [DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT]
+        # Remove lines that contain any of the header comments
+        clean_lines = [line for line in lines if not any(header in line for header in headers)]
+    else:
+        # Remove all full-line comments
+        clean_lines = [line for line in lines if not line.strip().startswith("#")]
 
     clean_yaml_content = "\n".join(clean_lines)
     return YAML().load(clean_yaml_content)

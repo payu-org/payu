@@ -13,13 +13,6 @@ parent_experiment: 4d052f54-ddc0-4cb6-9fbb-c89054462d72
 schema_version: 1-0-3
 
 # ---- User feel free to update. ----
-realm:
-- atmos
-- land
-- ocean
-- ocnBgchem
-- seaIce
-
 description: |-
   ACCESS-ESM1.6 global coupled model configuration running with an interactive carbon cycle under pre-industrial forcings, branching from an esm-flat10 simulation. Pre-industrial forcing data are primarily sourced from the input4MIPs CMIP7 datasets.
 notes: |-
@@ -31,13 +24,9 @@ notes: |-
 keywords:
 - global
 - access-esm1.6
-# nominal_resolution: The nominal resolution(s) of model(s) used in the experiment (string or array of strings), e.g. 10km
 reference: https://doi.org/10.5281/zenodo.17490072 # In line comments should be reserved
 
-# Customised header comment should be reserved
 license: CC-BY-4.0
 version: '1.0'
-long_description: __REPLACE_ME__ # 
-# frequency: The frequency(/ies) included in the experiment (array of strings)
-# variable: The variable(s) included in the experiment (array of strings)
-# related_experiments: experiment_uuids for any related experiment(s) (array of strings)
+long_description: __REPLACE_ME__  # Long description of the experiment (string)
+# realm: The realm(s) included in the experiment (array of strings)
