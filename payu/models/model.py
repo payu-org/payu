@@ -151,6 +151,13 @@ class Model(object):
         self.prior_output_path = self.expt.prior_output_path
         self.prior_restart_path = self.expt.prior_restart_path
 
+        # If prior restart path exists and is a relative path
+        if self.prior_restart_path and not os.path.isabs(self.prior_restart_path):
+            # Update to absolute path, assuming it is relative to control path
+            rel_path = os.path.join(self.expt.control_path, self.prior_restart_path)
+            self.prior_restart_path = os.path.realpath(rel_path)
+            print(f"Prior restart path is set as a relative path, resolved to {self.prior_restart_path}")
+
         if len(self.expt.models) > 1:
 
             # If '-d' option specified for collate don't want to change the

@@ -171,9 +171,10 @@ def make_inputs():
                          1000**2 + i)
 
 
-def make_restarts(fnames=None):
+def make_restarts(fnames=None, restartdir = None):
     # Create some fake restart files
-    restartdir = labdir / 'archive' / 'restarts'
+    if restartdir is None:
+        restartdir = labdir / 'archive' / 'restarts'
     restartdir.mkdir(parents=True, exist_ok=True)
     if fnames is None:
         fnames = ['restart_00{i}.bin'.format(i=i) for i in range(1, 4)]

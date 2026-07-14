@@ -11,7 +11,7 @@ import json
 import payu
 import payu.errors as errors
 
-from .common import cd, make_random_file, get_manifests
+from .common import cd, make_random_file, get_manifests, make_restarts
 from .common import tmpdir, ctrldir, labdir, workdir
 from .common import payu_init, payu_setup, sweep_work
 from .common import config as config_orig
@@ -72,7 +72,7 @@ def make_config_files():
 
 
 def run_payu_setup(config=config_orig, create_inputs=False,
-                   create_config_files=True):
+                   create_config_files=True, create_restarts=False, restartdir=None):
     """Helper function to write config.yaml files, make inputs,
     config files and run experiment setup"""
     # Setup files
@@ -80,6 +80,8 @@ def run_payu_setup(config=config_orig, create_inputs=False,
     make_exe()
     if create_inputs:
         make_inputs()
+    if create_restarts:
+        make_restarts(restartdir=restartdir)
     if create_config_files:
         make_config_files()
 
@@ -166,6 +168,43 @@ def test_setup_inputs(input_path, is_symlink, is_absolute):
         # Check fullpath is a resolved path
         assert Path(manifest_fullpath).is_absolute()
         assert not Path(manifest_fullpath).is_symlink()
+
+
+@pytest.mark.parametrize(
+    "restart_path, is_absolute",
+    [
+        (labdir / 'restart' / 'my_restart', False),
+        (ctrldir / 'ctrl_restart', False),
+        (tmpdir / 'tmp_restart', True)
+    ]
+)
+def test_setup_restart_paths(restart_path, is_absolute):
+    """Test restart paths are created in work directory,
+    and added to restart manifest"""
+    # Modify config to specify restart path
+    # If not is_absolute, use relative path to the control directory
+    config = copy.deepcopy(config_orig)
+    config['restart'] = str(restart_path) if is_absolute else os.path.relpath(restart_path, start=ctrldir)
+
+    # Run payu setup
+    run_payu_setup(config=config, create_inputs=True, create_config_files=True,
+                   create_restarts=True, restartdir=restart_path)
+
+    restart_manifest = get_manifests(ctrldir/'manifests')['restart.yaml']
+
+    for i in range(1, 4):
+        file_name = f'restart_00{i}.bin'
+
+        # Check relative path is added to manifest
+        filepath = str(Path('work') / file_name)
+        assert filepath in restart_manifest
+
+        # Check manifest fullpath
+        manifest_fullpath = restart_manifest[filepath]['fullpath']
+        assert manifest_fullpath == str(restart_path / file_name)
+
+        # Check fullpath is a resolved path
+        assert Path(manifest_fullpath).is_absolute()
 
 
 def test_setup():
