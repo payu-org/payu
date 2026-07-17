@@ -436,6 +436,7 @@ class PBS(Scheduler):
     
         # Check for module use paths in config and add to search paths
         module_use_paths = pbs_config.get('modules', {}).get('use', [])
+        module_names = pbs_config.get('modules', {}).get('load', None)
         extra_search_paths.extend(module_use_paths)
 
         # Check for sync path in config and add to search paths
@@ -465,7 +466,6 @@ class PBS(Scheduler):
 
         # Set up environment modules here for PBS.
         envmod.setup()
-        envmod.module('load', 'pbs')
 
         # Submit with HPCpy PBSClient
         # TODO: Is there a way to print the command when dry_run is False?
@@ -476,9 +476,9 @@ class PBS(Scheduler):
                       storage = [storage for storage in storages] if storages else None,
                       variables = pbs_vars,
                       render=False, # Save the run script from a template
-                      # module_purge = False,
-                      # module_use = module_use_paths,
-                      # module = 'pbs', # how does this know user's required modules?
+                      module_purge = True,
+                      module_use = module_use_paths,
+                      module = ['pbs'] + (module_names if module_names else []),
                       )
 
         return job_or_cmd

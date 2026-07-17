@@ -128,51 +128,59 @@ def lib_update(required_libs, lib_name):
     return ''
 
 
-def setup_user_modules(user_modules, user_modulepaths):
-    """Run module use + load commands for user-defined modules. Return
-    tuple containing a set of loaded modules and paths added to
-    LOADEDMODULES and PATH environment variable, as result of
-    loading user-modules"""
+def added_path_by_user_module(user_modulepaths, user_module):
+    """Get what paths are added to the environment if a user module is loaded"""
+    cmd = f"""module purge && env | grep '^PATH=' | sort""" 
+    args = ["/bin/bash", "-l", "-c", cmd]
+    result = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=False)
+    stdout, _ = result.communicate()
+    previous_path_string = stdout.strip().replace('PATH=', '', 1)
+    previous_paths = set(previous_path_string.split(os.pathsep))
 
+    cmd = f"""
+module purge && module use {' '.join(user_modulepaths)} && module load {user_module} && env | grep '^PATH=' | sort"""
+    args = ["/bin/bash", "-l", "-c", cmd]
+    result = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=False)
+    stdout, _ = result.communicate()
+    new_path_string = stdout.strip().replace('PATH=', '', 1)
+    new_paths = set(new_path_string.split(os.pathsep))
+
+    paths_added = new_paths - previous_paths
+
+    return paths_added
+
+def check_user_modulepaths(user_modules, user_modulepaths):
+    """ Check user-defined modules and filepaths.
+    Return a set of paths added by loading the user modules, without actually loading them. """
     if 'MODULESHOME' not in os.environ:
         print(
             'payu: warning: No Environment Modules found; ' +
             'skipping running module use/load commands for any module ' +
             'directories/modulefiles defined in config.yaml')
         return (None, None)
-
-    # Add user-defined directories to MODULEPATH
+    
+    # Check user-defined module paths exist
     for modulepath in user_modulepaths:
         if not os.path.isdir(modulepath):
             raise ValueError(
                 f"Module directory is not found: {modulepath}" +
                 "\n Check paths listed under `modules: use:` in config.yaml")
 
-        module('use', modulepath)
-
-    # First un-load all user modules, if they are loaded, so can store
-    # LOADEDMODULES and PATH to compare to later
-    for modulefile in user_modules:
-        if run_module_cmd("is-loaded", modulefile).returncode == 0:
-            module('unload', modulefile)
-    previous_loaded_modules = os.environ.get('LOADEDMODULES', '')
-    previous_path = os.environ.get('PATH', '')
-
     for modulefile in user_modules:
         # Check modulefile exists and is unique or has an exact match
         check_modulefile(modulefile)
 
-        # Load module
-        module('load', modulefile)
-
-    # Create a set of paths and modules loaded by user modules
-    loaded_modules = os.environ.get('LOADEDMODULES', '')
-    path = os.environ.get('PATH', '')
-    loaded_modules = set(loaded_modules.split(':')).difference(
-        previous_loaded_modules.split(':'))
-    paths = set(path.split(':')).difference(set(previous_path.split(':')))
-
-    return (loaded_modules, paths)
+    # Get what is added to PATH if user modules are loaded, without actually loading them
+    added_paths = set()
+    added_modules = set()
+    for module in user_modules:
+        try:
+            added_paths.update(added_path_by_user_module(user_modulepaths, module))
+            added_modules.add(module)
+        except Exception as e:
+            print(f"Error occurred while attempting to determine added paths for {module}: {e}")
+        
+    return (added_modules, added_paths)
 
 
 def check_modulefile(modulefile: str) -> None:

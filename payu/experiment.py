@@ -289,7 +289,7 @@ class Experiment(object):
 
         # Run module use + load commands for user-defined modules, and
         # get a set of paths and loaded modules added by loading the modules
-        loaded_mods, paths = envmod.setup_user_modules(user_modules,
+        loaded_mods, paths = envmod.check_user_modulepaths(user_modules,
                                                        user_modulepaths)
         self.user_modules_paths = paths
         self.loaded_user_modules = [] if loaded_mods is None else loaded_mods
