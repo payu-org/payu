@@ -155,7 +155,7 @@ class Model(object):
         if self.prior_restart_path and not os.path.isabs(self.prior_restart_path):
             # Update to absolute path, assuming it is relative to control path
             rel_path = os.path.join(self.expt.control_path, self.prior_restart_path)
-            self.prior_restart_path = os.path.realpath(rel_path)
+            self.prior_restart_path = os.path.realpath(rel_path, strict=True)
             print(f"Prior restart path is set as a relative path, resolved to {self.prior_restart_path}")
 
         if len(self.expt.models) > 1:
