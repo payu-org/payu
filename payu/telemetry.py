@@ -13,7 +13,7 @@ import requests
 import threading
 from typing import Any, Optional
 import warnings
-from filelock import FileLock, Timeout
+from filelock import SoftFileLock, Timeout
 
 import cftime
 
@@ -476,7 +476,7 @@ def update_job_file(
     Update the job file with the provided data
     and return the updated data
     """
-    lock = FileLock(str(file_path) + ".lock", lifetime=LOCK_LIFETIME, timeout=LOCK_TIMEOUT)
+    lock = SoftFileLock(str(file_path) + ".lock", lifetime=LOCK_LIFETIME, timeout=LOCK_TIMEOUT)
     try:
         with lock:
             run_info = read_job_file(file_path)
