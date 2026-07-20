@@ -486,7 +486,7 @@ def test_update_job_file_timeout(tmp_path):
         json.dump(old_data, f)
 
     # Mock the file lock to always raise a Timeout
-    with patch('payu.telemetry.FileLock') as MockLock:
+    with patch('payu.telemetry.SoftFileLock') as MockLock:
         mock_lock_instance = MockLock.return_value
         mock_lock_instance.__enter__.side_effect = Timeout("Lock timed out")
 
