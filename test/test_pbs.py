@@ -363,14 +363,12 @@ def test_find_mounts():
     assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
 
 @patch("payu.schedulers.pbs.get_user_groups", return_value=test_storage_groups)
-# @patch("payu.schedulers.pbs.client")
 def test_run(mock_get_user_groups):
 
     # Use new mechanism to return a scheduler
     sched_name = config.get('scheduler', 'pbs')
     sched_type = scheduler_index[sched_name]
     sched = sched_type()
-    # mock_client.submit.return_value = "mock_pbs_job_id"
 
     payu.schedulers.pbs.check_exe_path = lambda x, y: y
 
@@ -405,7 +403,6 @@ def test_run(mock_get_user_groups):
         with open(cmd.strip().split()[-1], 'r') as f:
             hpcpy_script_content = f.read()
         assert "payu-run" in hpcpy_script_content
-        # assert python_exe in hpcpy_script_content
         assert f"-q {config['queue']}" in cmd
     
         assert f"-N {config['jobname']}" in cmd

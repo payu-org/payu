@@ -361,9 +361,10 @@ class PBS(Scheduler):
         pbs_flags = []
 
         pbs_project = pbs_config.get('project', os.environ['PROJECT'])
-        pbs_flags.append('-P {project}'.format(project=pbs_project))
         user_groups = get_user_groups()
-        if pbs_project not in user_groups:
+        if pbs_project in user_groups:
+            pbs_flags.append('-P {project}'.format(project=pbs_project))
+        else:
             raise errors.PayuRuntimeError(f"User is not a member of the project '{pbs_project}' specified in config:project.")
 
         # Add PBS resource flags to the qsub command
@@ -398,12 +399,6 @@ class PBS(Scheduler):
                 'Unknown qsub IO stream join setting.')
         else:
             pbs_flags.append('-j {join}'.format(join=pbs_join))
-
-        # Add environment variables to qsub command
-        # TODO: Support full export of environment variables: `qsub -V`
-        # pbs_vstring = ','.join('{0}={1}'.format(k, v)
-        #                        for k, v in pbs_vars.items())
-        # pbs_flags.append('-v ' + pbs_vstring)
 
         # Check for storage mounts and add them to the qsub command
         storages = set()
@@ -474,8 +469,8 @@ class PBS(Scheduler):
                       dry_run = dry_run,
                       queue = pbs_config.get('queue', 'normal'),
                       storage = [storage for storage in storages] if storages else None,
-                      variables = pbs_vars,
-                      render=False, # Save the run script from a template
+                      variables = pbs_vars, # Add environment variables to qsub command # TODO: Support full export of environment variables: `qsub -V`
+                      render = False, # Save the run script from a template
                       module_purge = True,
                       module_use = module_use_paths,
                       module = ['pbs'] + (module_names if module_names else []),
