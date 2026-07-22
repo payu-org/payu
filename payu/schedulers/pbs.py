@@ -400,6 +400,10 @@ class PBS(Scheduler):
         else:
             pbs_flags.append('-j {join}'.format(join=pbs_join))
 
+        # Export all environment variables if requested
+        if pbs_config.get('export_env_vars', False):
+            pbs_flags.append('-V')
+
         # Check for storage mounts and add them to the qsub command
         storages = set()
         storage_config = pbs_config.get('storage', {})
@@ -469,7 +473,7 @@ class PBS(Scheduler):
                       dry_run = dry_run,
                       queue = pbs_config.get('queue', 'normal'),
                       storage = [storage for storage in storages] if storages else None,
-                      variables = pbs_vars, # Add environment variables to qsub command # TODO: Support full export of environment variables: `qsub -V`
+                      variables = pbs_vars,
                       render = False, # Save the run script from a template
                       module_purge = True,
                       module_use = module_use_paths,

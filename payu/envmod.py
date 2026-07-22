@@ -173,7 +173,8 @@ def check_user_modulepaths(user_modules, user_modulepaths):
 
     for modulefile in user_modules:
         # Check modulefile exists and is unique or has an exact match
-        check_modulefile(modulefile)
+        # Pass modulepaths so the check uses the correct search paths
+        check_modulefile(modulefile, modulepaths=user_modulepaths)
 
     # Get what is added to PATH if user modules are loaded, without actually loading them
     added_paths = set()
@@ -188,10 +189,20 @@ def check_user_modulepaths(user_modules, user_modulepaths):
     return (added_modules, added_paths)
 
 
-def check_modulefile(modulefile: str) -> None:
+def check_modulefile(modulefile: str, modulepaths: list = None) -> None:
     """Given a modulefile, check if modulefile exists, and there is
-    a unique modulefile available - e.g. if it's version is specified"""
-    output = run_module_cmd("avail --terse", modulefile).stderr
+    a unique modulefile available - e.g. if it's version is specified.
+    
+    Parameters
+    ----------
+    modulefile : str
+        The modulefile to check
+    modulepaths : list, optional
+        List of module paths to search. If provided, these paths are used
+        during the check without permanently modifying MODULEPATH.
+    """
+
+    output = run_module_cmd("avail --terse", modulefile, modulepaths=modulepaths).stderr
 
     # Extract out the modulefiles available - strip out lines like:
     # /apps/Modules/modulefiles:
@@ -213,8 +224,38 @@ def check_modulefile(modulefile: str) -> None:
         )
 
 
-def run_module_cmd(subcommand, *args):
-    """Wrapper around subprocess module command that captures output"""
+def run_module_cmd(subcommand, *args, modulepaths=None):
+    """Wrapper around subprocess module command that captures output.
+    
+    Parameters
+    ----------
+    subcommand : str
+        The module subcommand (e.g., 'avail', 'load')
+    *args : str
+        Arguments to pass to the subcommand
+    modulepaths : list, optional
+        List of module paths to prepend to MODULEPATH for this command only.
+        Does not modify the environment permanently.
+    
+    Returns
+    -------
+    subprocess.CompletedProcess
+        The result of running the module command
+    """
     modulecmd = f"{os.environ['MODULESHOME']}/bin/modulecmd bash"
-    command = f"{modulecmd} {subcommand} {' '.join(args)}"
-    return subprocess.run(command, shell=True, text=True, capture_output=True)
+    
+    # Build the full bash command
+    bash_commands = []
+    
+    if modulepaths:
+        # Properly evaluate the module use command output before running the main command
+        bash_commands.append(f"eval $({modulecmd} use {' '.join(modulepaths)})")
+    
+    bash_commands.append(f"{modulecmd} {subcommand} {' '.join(args)}")
+    
+    # Run in bash shell to properly evaluate module commands
+    return subprocess.run(
+        ['/bin/bash', '-c', ' && '.join(bash_commands)],
+        text=True,
+        capture_output=True
+    )
