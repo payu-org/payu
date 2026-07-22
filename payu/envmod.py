@@ -127,58 +127,82 @@ def lib_update(required_libs, lib_name):
     # If there are no libraries, return an empty string
     return ''
 
+def cmd_to_load_module(modulepaths=None, module=None):
+    """Return a string of commands required to load a module from the specified paths.
+    If no modulepaths or module is specified, the command will only purge all modules."""
+    cmds = ["module purge"]
+    if modulepaths:
+        cmds.append(f"module use {' '.join(modulepaths)}")
+    if module:
+        cmds.append(f"module load {module}")
+    return ' && '.join(cmds)
 
-def setup_user_modules(user_modules, user_modulepaths):
-    """Run module use + load commands for user-defined modules. Return
-    tuple containing a set of loaded modules and paths added to
-    LOADEDMODULES and PATH environment variable, as result of
-    loading user-modules"""
+def get_env_path(cmd):
+    """Get the current PATH environment variable as a set of paths, after running the provided command."""
+    cmd = f"{cmd} && env | grep '^PATH=' | sort"
+    args = ["/bin/bash", "-l", "-c", cmd]
+    result = subprocess.check_output(args, text=True)
+    path_string = result.strip().replace('PATH=', '', 1)
+    return set(path_string.split(os.pathsep))
 
+def path_added_by_user_module(user_modulepaths, user_module):
+    """Get what paths are added to the environment if a user module is loaded"""
+    # Generate the command to purge and load the module
+    purge_cmd = cmd_to_load_module()
+    load_cmd = cmd_to_load_module(modulepaths=user_modulepaths, module=user_module)
+
+    # Compare the PATH
+    return get_env_path(load_cmd) - get_env_path(purge_cmd)
+
+def check_user_modulepaths(user_modules, user_modulepaths):
+    """ Check user-defined modules and filepaths.
+    Return a set of paths added by loading the user modules, without actually loading them. """
     if 'MODULESHOME' not in os.environ:
         print(
             'payu: warning: No Environment Modules found; ' +
             'skipping running module use/load commands for any module ' +
             'directories/modulefiles defined in config.yaml')
         return (None, None)
-
-    # Add user-defined directories to MODULEPATH
+    
+    # Check user-defined module paths exist
     for modulepath in user_modulepaths:
         if not os.path.isdir(modulepath):
             raise ValueError(
                 f"Module directory is not found: {modulepath}" +
                 "\n Check paths listed under `modules: use:` in config.yaml")
 
-        module('use', modulepath)
-
-    # First un-load all user modules, if they are loaded, so can store
-    # LOADEDMODULES and PATH to compare to later
-    for modulefile in user_modules:
-        if run_module_cmd("is-loaded", modulefile).returncode == 0:
-            module('unload', modulefile)
-    previous_loaded_modules = os.environ.get('LOADEDMODULES', '')
-    previous_path = os.environ.get('PATH', '')
-
     for modulefile in user_modules:
         # Check modulefile exists and is unique or has an exact match
-        check_modulefile(modulefile)
+        # Pass modulepaths so the check uses the correct search paths
+        check_modulefile(modulefile, modulepaths=user_modulepaths)
 
-        # Load module
-        module('load', modulefile)
+    # Get what is added to PATH if user modules are loaded, without actually loading them
+    added_paths = set()
+    added_modules = set()
+    for module in user_modules:
+        try:
+            added_paths.update(path_added_by_user_module(user_modulepaths, module))
+            added_modules.add(module)
+        except Exception as e:
+            print(f"Error occurred while attempting to determine added paths for {module}: {e}")
+        
+    return (added_modules, added_paths)
 
-    # Create a set of paths and modules loaded by user modules
-    loaded_modules = os.environ.get('LOADEDMODULES', '')
-    path = os.environ.get('PATH', '')
-    loaded_modules = set(loaded_modules.split(':')).difference(
-        previous_loaded_modules.split(':'))
-    paths = set(path.split(':')).difference(set(previous_path.split(':')))
 
-    return (loaded_modules, paths)
-
-
-def check_modulefile(modulefile: str) -> None:
+def check_modulefile(modulefile: str, modulepaths: list = None) -> None:
     """Given a modulefile, check if modulefile exists, and there is
-    a unique modulefile available - e.g. if it's version is specified"""
-    output = run_module_cmd("avail --terse", modulefile).stderr
+    a unique modulefile available - e.g. if it's version is specified.
+    
+    Parameters
+    ----------
+    modulefile : str
+        The modulefile to check
+    modulepaths : list, optional
+        List of module paths to search. If provided, these paths are used
+        during the check without permanently modifying MODULEPATH.
+    """
+
+    output = run_module_cmd("avail --terse", modulefile, modulepaths=modulepaths).stderr
 
     # Extract out the modulefiles available - strip out lines like:
     # /apps/Modules/modulefiles:
@@ -200,8 +224,38 @@ def check_modulefile(modulefile: str) -> None:
         )
 
 
-def run_module_cmd(subcommand, *args):
-    """Wrapper around subprocess module command that captures output"""
+def run_module_cmd(subcommand, *args, modulepaths=None):
+    """Wrapper around subprocess module command that captures output.
+    
+    Parameters
+    ----------
+    subcommand : str
+        The module subcommand (e.g., 'avail', 'load')
+    *args : str
+        Arguments to pass to the subcommand
+    modulepaths : list, optional
+        List of module paths to prepend to MODULEPATH for this command only.
+        Does not modify the environment permanently.
+    
+    Returns
+    -------
+    subprocess.CompletedProcess
+        The result of running the module command
+    """
     modulecmd = f"{os.environ['MODULESHOME']}/bin/modulecmd bash"
-    command = f"{modulecmd} {subcommand} {' '.join(args)}"
-    return subprocess.run(command, shell=True, text=True, capture_output=True)
+    
+    # Build the full bash command
+    bash_commands = []
+    
+    if modulepaths:
+        # Properly evaluate the module use command output before running the main command
+        bash_commands.append(f"eval $({modulecmd} use {' '.join(modulepaths)})")
+    
+    bash_commands.append(f"{modulecmd} {subcommand} {' '.join(args)}")
+    
+    # Run in bash shell to properly evaluate module commands
+    return subprocess.run(
+        ['/bin/bash', '-c', ' && '.join(bash_commands)],
+        text=True,
+        capture_output=True
+    )

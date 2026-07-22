@@ -131,6 +131,7 @@ def test_parse_run(parser):
     assert args.pop('n_runs') is None
     assert args.pop('force_prune_restarts') is False
     assert args.pop('is_new_experiment') is False
+    assert args.pop('dry_run') is False
 
     assert len(args) == 0
 
@@ -145,7 +146,8 @@ def test_parse_run(parser):
             "--nruns 999 "
             "--reproduce "
             "--force-prune-restarts "
-            "--new-uuid"
+            "--new-uuid "
+            "--dry-run "
             )
 
     run_cmd, args = parse_args(parser, long_cmd)
@@ -161,6 +163,8 @@ def test_parse_run(parser):
     assert args.pop('n_runs') == '999'
     assert args.pop('force_prune_restarts') is True
     assert args.pop('is_new_experiment') is True
+    assert args.pop('dry_run') is True
+
     assert len(args) == 0
 
     # Test short options
@@ -173,7 +177,7 @@ def test_parse_run(parser):
                 "-i 99 "
                 "-n 999 "
                 "-r "
-                "-F"
+                "-F "
             )
     run_cmd, args = parse_args(parser, short_cmd)
 
@@ -188,6 +192,7 @@ def test_parse_run(parser):
     assert args.pop('n_runs') == '999'
     assert args.pop('force_prune_restarts') is True
     assert args.pop('is_new_experiment') is False
+    assert args.pop('dry_run') is False
 
     assert len(args) == 0
 
@@ -263,6 +268,7 @@ def test_parse_collate(parser):
     assert args.pop('lab_path') is None
     assert args.pop('init_run') is None
     assert args.pop('dir_path') is None
+    assert args.pop('dry_run') is False
 
     assert len(args) == 0
 
@@ -274,6 +280,7 @@ def test_parse_collate(parser):
         "--laboratory path/to/lab "
         "--initial 99 "
         "--directory path/to/files "
+        "--dry-run "
     )
 
     run_cmd, args = parse_args(parser, long_cmd)
@@ -285,6 +292,7 @@ def test_parse_collate(parser):
     assert args.pop('lab_path') == 'path/to/lab'
     assert args.pop('init_run') == '99'
     assert args.pop('dir_path') == 'path/to/files'
+    assert args.pop('dry_run') is True
 
     assert len(args) == 0
 
@@ -306,6 +314,7 @@ def test_parse_collate(parser):
     assert args.pop('lab_path') == 'path/to/lab'
     assert args.pop('init_run') == '99'
     assert args.pop('dir_path') == 'path/to/files'
+    assert args.pop('dry_run') is False
 
     assert len(args) == 0
 
@@ -470,26 +479,40 @@ def test__parse_runscript_error():
 
         
 def test_submit_job_error_msg():
-    """Test that informative error message is raised when job submission fails."""
+    """Test that informative error message is raised when job submission fails in suprocess (Slurm)."""
     # Set up a mock scheduler that returns a submission command
     mock_sched = MagicMock()
-    mock_sched.submit.return_value = "qsub submit_script.sh"
     mock_sched_type = MagicMock(return_value=mock_sched)
-    mock_index = {'PBS': mock_sched_type}
+    mock_index = {'slurm': mock_sched_type}
 
     # Set up a failing subprocess.run
-    mock_sprun = MagicMock()
-    mock_sprun.side_effect = subprocess.CalledProcessError(
+    mock_sched.submit.side_effect = subprocess.CalledProcessError(
         returncode=32, 
-        cmd="qsub submit_script.sh", 
+        cmd="sbatch submit_script.sh", 
         output=b"Submission failed", 
         stderr=b"Error details here")
 
-    with patch("payu.cli.scheduler_index", mock_index), \
-         patch("subprocess.run", mock_sprun):
+    with patch("payu.cli.scheduler_index", mock_index):
         with pytest.raises(errors.PayuRuntimeError) as exc_info:
-            payu.cli.submit_job(config={"scheduler": "PBS"}, script="submit_script.sh")
+            payu.cli.submit_job(config={"scheduler": "slurm"}, script="submit_script.sh")
             assert "Error occurred while submitting job." in str(exc_info.value)
             assert "Exit code: 32" in str(exc_info.value)
             assert "STDOUT: Submission failed" in str(exc_info.value)
             assert "STDERR: Error details here" in str(exc_info.value)
+
+
+def test_submit_job_error_msg_from_hpcpy():
+    """ Test that error message is raised when HPCpy fails to submit a job (PBS). """
+    # Set up a mock scheduler that returns a submission command
+    mock_sched = MagicMock()
+    mock_sched_type = MagicMock(return_value=mock_sched)
+    mock_index = {'pbs': mock_sched_type}
+
+    # Set up a failing HPCpy submission
+    mock_sched.submit.side_effect = Exception("HPCpy submission failed")
+
+    with patch("payu.cli.scheduler_index", mock_index):
+        with pytest.raises(errors.PayuRuntimeError) as exc_info:
+            payu.cli.submit_job(config={"scheduler": "pbs"}, script="submit_script.sh")
+            assert "Error occurred while submitting a job to scheduler pbs" in str(exc_info.value)
+            assert "Error: HPCpy submission failed" in str(exc_info.value)

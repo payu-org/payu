@@ -4,6 +4,7 @@ import json
 import copy
 import os
 from pathlib import Path
+import re
 import shutil
 import sys
 from unittest.mock import patch
@@ -369,13 +370,8 @@ def test_run(mock_get_user_groups):
     sched_type = scheduler_index[sched_name]
     sched = sched_type()
 
-    # Monkey patch pbs_env_init as we don't have a
-    # functioning PBS install in travis
-    payu.schedulers.pbs.pbs_env_init = lambda: True
-
     payu.schedulers.pbs.check_exe_path = lambda x, y: y
 
-    # payu_path = os.path.join(os.environ['PWD'], 'bin')
     payu_path = payudir / 'bin'
     # create new path for payu_path to check a000 picked up as storage
     payu_path = Path('/f/data/a000/some/path')
@@ -385,8 +381,10 @@ def test_run(mock_get_user_groups):
 
     # Test pbs generating a PBS command
     with cd(ctrldir):
-
-        payu_cmd = 'payu-run'
+        job_script = payudir / 'payu-run'
+        script_content = 'Running payu-run'
+        with open(job_script, 'w') as f:
+            f.write(script_content)
 
         config['storage'] = {}
         config['storage']['test'] = ['x00']
@@ -399,69 +397,31 @@ def test_run(mock_get_user_groups):
         config['modules'] = {}
         config['modules']['use'] = ['/f/data/mm01', '/f/data/mm02/test/modules']
 
-        cmd = sched.submit(payu_cmd, config, pbs_vars, python_exe)
+        cmd = sched.submit(str(job_script), config, pbs_vars, python_exe, dry_run=True)
+        print(f"Generated PBS command: {cmd}")
 
-        print(cmd)
-
-        # Create test parser
-        parser = argparse.ArgumentParser(description='Test')
-
-        # Add the arguments
-        parser.add_argument('-q', type=str, required=True)
-        parser.add_argument('-P', type=str, required=True)
-        parser.add_argument('-N', type=str, required=True)
-        parser.add_argument('-v', metavar='KEY-VALUE',
-                            nargs='+', required=True)
-        parser.add_argument('-j', type=str, required=True)
-        parser.add_argument('-l', metavar='KEY=VALUE',
-                            nargs='+', action='append', required=True)
-        parser.add_argument('remaining', nargs=argparse.REMAINDER)
-
-        args = parser.parse_args(cmd.split()[1:])
-
-        assert(args.N == config['jobname'])
-        assert(args.P == config['project'])
-        assert(args.q == config['queue'])
-
-        resources = []
-        for resource in args.l:
-            resources.extend(resource)
-
-        other_resources = {'wd': True}
-
-        resources_found = {}
-        for resource in resources:
-            try:
-                k, v = resource.split('=')
-            except ValueError:
-                k, v = (resource, True)
-            resources_found[k] = v
+        with open(cmd.strip().split()[-1], 'r') as f:
+            hpcpy_script_content = f.read()
+        assert "payu-run" in hpcpy_script_content
+        assert f"-q {config['queue']}" in cmd
+    
+        assert f"-N {config['jobname']}" in cmd
+        assert f"-P {config['project']}" in cmd
+        assert f"-l wd" in cmd
 
         # Check all resources specified in config are correct
         for resource in ['walltime', 'ncpus', 'mem']:
-            assert(resources_found[resource] == str(config[resource]))
+            assert f"-l {resource}={config[resource]}" in cmd
 
-        assert(resources_found['storage'] ==
-               ('fdata/a000+fdata/c000+fdata/m000+fdata/mm01+fdata/mm02+' +
-                'fdata/x00+fdata/xyz999+fdata/y00+test/x00'))
+        expected_storage = ['fdata/a000', 'fdata/c000', 'fdata/m000', 'fdata/mm01', 'fdata/mm02', 
+                                'fdata/x00', 'fdata/xyz999', 'fdata/y00', 'test/x00']
+        storage_in_cmd = re.search(f"storage=([^\s]+)", cmd).group(1).split('+')
+        assert sorted(expected_storage) == sorted(storage_in_cmd)
 
-        # Check other auto-added resources are present
-        for resource in other_resources:
-            assert(other_resources[resource] == resources_found[resource])
-
-        env = {}
-        for env_var in args.v:
-            k, v = env_var.split('=')
-            env[k] = v
-
-        assert('PAYU_PATH' in env)
-        assert(env['PAYU_PATH'] == str(payu_path))
-
-        assert(args.remaining[-2].endswith('python'))
-        assert(args.remaining[-1].endswith(payu_cmd))
+        assert f" -v PAYU_PATH={payu_path}" in cmd
+        assert f" -- {python_exe}" in cmd
 
 
-@patch("payu.schedulers.pbs.pbs_env_init", return_value=True)
 @patch("payu.schedulers.pbs.check_exe_path", side_effect=lambda x, y: y)
 @patch("payu.schedulers.pbs.get_user_groups", return_value=test_storage_groups)
 @pytest.mark.parametrize(
@@ -478,7 +438,7 @@ def test_run(mock_get_user_groups):
     ],
 )
 def test_submit_launcher_script_setting(
-    mock_pbs_env_init, mock_check_exe_path, mock_get_user_groups,
+    mock_check_exe_path, mock_get_user_groups,
     env_exists, file_exists, file_exe, expected_cmd, tmp_path, monkeypatch
 ):
     config = {
@@ -497,7 +457,7 @@ def test_submit_launcher_script_setting(
 
     # Generate the qsub command
     pbs_cmd = pbs.PBS().submit("payu-run", config,
-                               python_exe="/path/to/python")
+                               python_exe="/path/to/python", dry_run=True)
 
     _, cmd = pbs_cmd.split("--")
     assert cmd.strip() == expected_cmd.format(tmp_path=tmp_path)

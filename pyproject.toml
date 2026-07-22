@@ -37,6 +37,7 @@ dependencies = [
     "filelock",
     "questionary",
     "pint",
+    "hpcpy >=0.8.0",
 ]
 
 [project.optional-dependencies]
