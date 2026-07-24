@@ -1,5 +1,4 @@
 import copy
-import os
 from pathlib import Path
 import shutil
 from datetime import datetime
@@ -10,10 +9,10 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 import jsonschema
 
-from payu.metadata import Metadata, MetadataWarning, SCHEMA_FIELD, SCHEMA_VERSION, placeholder_text, no_archive_msg
+from payu.metadata import Metadata, SCHEMA_FIELD, SCHEMA_VERSION, placeholder_text, no_archive_msg
 import payu.errors as errors
-from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT
-from payu.metadata import arrange_metadata, add_template_metadata_values, remove_existing_header
+from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT, BRANCH_OFF_TIME_FIELD
+from payu.metadata import arrange_metadata, add_template_metadata_values
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -591,3 +590,57 @@ def test_update_file_given_metadata_file(tmp_path, metadata_input, metadata_expe
 
     expected_metadata_path = Path(__file__).parent / "resources" / metadata_expected
     assert result_path.read_text() == expected_metadata_path.read_text()
+
+
+@pytest.mark.parametrize(
+    "restart_path, branch_off_time, expected",
+    [   
+        # restart_path and branch_off_time provided - BRANCH_OFF_TIME_FIELD should be updated
+        (Path("/path/to/restart000/"), "2026-07-24T12:00:00", "2026-07-24T12:00:00"),
+
+        # restart_path provided, but no branch_off_time - should not have BRANCH_OFF_TIME_FIELD
+        (Path("/path/to/restart000/"), None, None),
+        
+        # branch_off_time alone, without a restart_path, should not have BRANCH_OFF_TIME_FIELD
+        (None, "2026-07-24T12:00:00", None),
+
+        # No restart_path and no branch_off_time, should not have BRANCH_OFF_TIME_FIELD
+        (None, None, None),
+    ]
+)
+def test_update_file_restart_branch_off_time(restart_path, branch_off_time, expected):
+    """ Test that branch_off_time is added to metadata when restart path is provided"""
+    # Setup config
+    test_config = config.copy()
+    test_config['model'] = "test-model"
+    write_config(test_config)
+
+    # Initialise Metadata
+    with cd(ctrldir):
+        metadata = Metadata(archive_dir)
+    metadata.uuid = "cb793e91-6168-4ed2-a70c-f6f9ccf1659"
+    metadata.experiment_name = "ctrl-mock_branch-cb793e91"
+
+    # Write an initial branch off time
+    orig_metadata = metadata.read_file()
+    orig_metadata[BRANCH_OFF_TIME_FIELD] = "Original branch off time"
+    with open(ctrldir / 'metadata.yaml', 'w') as file:
+        YAML().dump(orig_metadata, file)
+
+    # Mock datetime (for created date)
+    with patch('payu.metadata.datetime') as mock_date:
+        mock_date.now.return_value = datetime(2026, 7, 24)
+
+        # Call update_file
+        metadata.update_file(restart_path=restart_path, branch_off_time=branch_off_time)
+
+    # Read the metadata file
+    with open(ctrldir / 'metadata.yaml', 'r') as file:
+        metadata_content = YAML().load(file)
+
+    if expected is None:
+        # Should not have BRANCH_OFF_TIME_FIELD field
+        assert BRANCH_OFF_TIME_FIELD not in metadata_content
+    else:
+        # Should be the same as the provided branch_off_time
+        assert metadata_content[BRANCH_OFF_TIME_FIELD] == expected
