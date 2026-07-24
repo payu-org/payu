@@ -19,6 +19,7 @@ import git
 
 from payu.fsops import read_config, DEFAULT_CONFIG_FNAME, list_sorted_archive_dirs
 from payu.laboratory import Laboratory
+from payu.experiment import Experiment
 from payu.metadata import Metadata, UUID_FIELD, METADATA_FILENAME
 from payu.git_utils import GitRepository, git_clone
 import payu.errors as errors
@@ -219,14 +220,17 @@ def checkout_branch(branch_name: str,
 
     # Gets valid prior restart path
     prior_restart_path = None
+    branch_off_time = None
     if restart_path:
         prior_restart_path = check_restart(restart_path=restart_path,
                                            archive_path=metadata.archive_path)
+        branch_off_time = get_branch_off_time(prior_restart_path, lab)
 
     # Create/update and commit metadata file
     metadata.write_metadata(set_template_values=True,
                             restart_path=prior_restart_path,
-                            parent_experiment=parent_experiment)
+                            parent_experiment=parent_experiment,
+                            branch_off_time = branch_off_time)
 
     # Add restart option to config
     if prior_restart_path:
@@ -237,6 +241,23 @@ def checkout_branch(branch_name: str,
     switch_symlink(Path(lab.archive_path), control_path, experiment, 'archive')
     switch_symlink(Path(lab.work_path), control_path, experiment, 'work')
 
+def get_branch_off_time(restart_path: Path, lab: Laboratory) -> Optional[str]:
+    """Get the model time of the provided restart path, return a string or None"""
+    try:
+        expt = Experiment(lab, metadata_off = True)
+        expt.restart_path = restart_path
+        datetimes = expt.get_model_restart_datetimes()
+
+        model_finish_time = datetimes.get('model_finish_time', None)
+        if model_finish_time:
+            return model_finish_time.strftime('%Y-%m-%dT%H:%M:%S')
+        
+    except Exception as e:
+        print(f"Error getting model finish time of the restart path: {e}")
+
+    return None
+    
+        
 
 def switch_symlink(lab_dir_path: Path, control_path: Path,
                    experiment_name: str, sym_dir: str) -> None:

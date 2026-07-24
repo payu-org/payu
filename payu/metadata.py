@@ -37,6 +37,7 @@ GIT_URL_FIELD = "url"
 CREATED_FIELD = "created"
 MODEL_FIELD = "model"
 METADATA_FILENAME = "metadata.yaml"
+BRANCH_OFF_TIME_FIELD = "branch_off_parent_time"
 
 # Metadata Schema
 SCHEMA_FIELD = "schema_version"
@@ -55,7 +56,8 @@ PLEASE_UPDATE_COMMENT = "---- User feel free to update. ----"
 FIELD_GROUPS = {
 DO_NOT_EDIT_COMMENT: [UUID_FIELD],
 CAN_EDIT_COMMENT: [NAME_FIELD, CONTACT_FIELD, EMAIL_FIELD, CREATED_FIELD,
-                    GIT_URL_FIELD, MODEL_FIELD, PARENT_UUID_FIELD, SCHEMA_FIELD],
+                    GIT_URL_FIELD, MODEL_FIELD, PARENT_UUID_FIELD, SCHEMA_FIELD,
+                    BRANCH_OFF_TIME_FIELD],
 }
 
 class MetadataWarning(Warning):
@@ -266,7 +268,8 @@ class Metadata:
     def write_metadata(self,
                        restart_path: Optional[Union[Path, str]] = None,
                        set_template_values: bool = False,
-                       parent_experiment: Optional[str] = None) -> None:
+                       parent_experiment: Optional[str] = None,
+                       branch_off_time: Optional[str] = None) -> None:
         """Create/update metadata file, commit any changes and
         copy metadata file to the experiment archive.
 
@@ -292,7 +295,8 @@ class Metadata:
             restart_path = Path(restart_path) if restart_path else None
             self.update_file(restart_path=restart_path,
                              set_template_values=set_template_values,
-                             parent_experiment=parent_experiment)
+                             parent_experiment=parent_experiment,
+                             branch_off_time=branch_off_time)
             self.commit_file()
 
         self.copy_to_archive()
@@ -300,7 +304,8 @@ class Metadata:
     def update_file(self,
                     restart_path: Optional[Path] = None,
                     set_template_values: bool = False,
-                    parent_experiment: Optional[str] = None) -> None:
+                    parent_experiment: Optional[str] = None,
+                    branch_off_time: Optional[str] = None) -> None:
         """Write any updates to metadata file"""
         metadata = self.read_file()
 
@@ -312,6 +317,11 @@ class Metadata:
             parent_experiment = self.get_parent_experiment(restart_path)
         if parent_experiment and parent_experiment != self.uuid:
             metadata[PARENT_UUID_FIELD] = parent_experiment
+        if restart_path and branch_off_time:
+            metadata[BRANCH_OFF_TIME_FIELD] = branch_off_time
+        else:
+            # Remove branch_off_time if entry exists and no restart_path is provided
+            metadata.pop(BRANCH_OFF_TIME_FIELD, None)
 
         # Add extra fields if new branch-uuid experiment
         # so to not over-write fields if it's a pre-existing legacy experiment

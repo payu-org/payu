@@ -1,5 +1,6 @@
 import copy
 import shutil
+from datetime import datetime
 from pathlib import Path
 import subprocess
 
@@ -10,6 +11,7 @@ from unittest.mock import patch, MagicMock
 
 from payu.branch import add_restart_to_config, check_restart, switch_symlink
 from payu.branch import checkout_branch, clone, list_branches, DEFAULT_PARENT_STRING
+from payu.branch import get_branch_off_time
 from payu.metadata import MetadataWarning, no_archive_msg
 from payu.fsops import read_config
 from payu.subcommands import clone_cmd
@@ -1051,3 +1053,44 @@ def test_prompts_for_clone_from_tag_with_restart(monkeypatch):
     assert result['restart_path'] == tmpdir / "restart_path"
     assert result['new_branch_name'] == "new_branch"
     assert result['keep_uuid'] is False
+
+
+@pytest.mark.parametrize(
+    "datetimes, expected",
+    [
+        # model_finish_time present - formatted string returned
+        (
+            {'model_finish_time': datetime(2026, 7, 24, 12, 0, 0)},
+            "2026-07-24T12:00:00"
+        ),
+        # model_finish_time and model_start_time exists
+        (
+            {
+                'model_finish_time': datetime(2026, 7, 24, 12, 0, 0),
+                'model_start_time': datetime(2026, 1, 1, 0, 0, 0),
+            },
+            "2026-07-24T12:00:00"
+        ),
+        # No model_finish_time key
+        ({}, None),
+        # model_finish_time is set to None
+        ({'model_finish_time': None}, None),
+    ]
+)
+@patch("payu.branch.Experiment")
+def test_get_branch_off_time(mock_experiment, datetimes, expected):
+    """Test that get_branch_off_time handles results from
+    get_model_restart_datetimes properly"""
+    mock_expt = MagicMock()
+    mock_expt.get_model_restart_datetimes.return_value = datetimes
+    mock_experiment.return_value = mock_expt
+
+    restart_path = tmpdir / "restart000"
+    lab = MagicMock()
+
+    result = get_branch_off_time(restart_path, lab)
+
+    mock_experiment.assert_called_once_with(lab, metadata_off=True)
+    assert mock_expt.restart_path == restart_path
+    assert result == expected
+    
