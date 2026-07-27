@@ -11,7 +11,7 @@ import jsonschema
 
 from payu.metadata import Metadata, SCHEMA_FIELD, SCHEMA_VERSION, placeholder_text, no_archive_msg
 import payu.errors as errors
-from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT, BRANCH_OFF_TIME_FIELD
+from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT, PARENT_BRANCH_TIME_FIELD
 from payu.metadata import arrange_metadata, add_template_metadata_values
 
 from test.common import cd
@@ -593,23 +593,23 @@ def test_update_file_given_metadata_file(tmp_path, metadata_input, metadata_expe
 
 
 @pytest.mark.parametrize(
-    "restart_path, branch_off_time, expected",
+    "restart_path, parent_branch_time, expected",
     [   
-        # restart_path and branch_off_time provided - BRANCH_OFF_TIME_FIELD should be updated
+        # restart_path and branch_off_time provided - PARENT_BRANCH_TIME_FIELD should be updated
         (Path("/path/to/restart000/"), "2026-07-24T12:00:00", "2026-07-24T12:00:00"),
 
-        # restart_path provided, but no branch_off_time - should not have BRANCH_OFF_TIME_FIELD
+        # restart_path provided, but no branch_off_time - should not have PARENT_BRANCH_TIME_FIELD
         (Path("/path/to/restart000/"), None, None),
         
-        # branch_off_time alone, without a restart_path, should not have BRANCH_OFF_TIME_FIELD
+        # branch_off_time alone, without a restart_path, should not have PARENT_BRANCH_TIME_FIELD
         (None, "2026-07-24T12:00:00", None),
 
-        # No restart_path and no branch_off_time, should not have BRANCH_OFF_TIME_FIELD
+        # No restart_path and no branch_off_time, should not have PARENT_BRANCH_TIME_FIELD
         (None, None, None),
     ]
 )
-def test_update_file_restart_branch_off_time(restart_path, branch_off_time, expected):
-    """ Test that branch_off_time is added to metadata when restart path is provided"""
+def test_update_file_parent_branch_time(restart_path, parent_branch_time, expected):
+    """ Test that parent_branch_time is added to metadata when restart path is provided"""
     # Setup config
     test_config = config.copy()
     test_config['model'] = "test-model"
@@ -621,9 +621,9 @@ def test_update_file_restart_branch_off_time(restart_path, branch_off_time, expe
     metadata.uuid = "cb793e91-6168-4ed2-a70c-f6f9ccf1659"
     metadata.experiment_name = "ctrl-mock_branch-cb793e91"
 
-    # Write an initial branch off time
+    # Write an initial parent branch time
     orig_metadata = metadata.read_file()
-    orig_metadata[BRANCH_OFF_TIME_FIELD] = "Original branch off time"
+    orig_metadata[PARENT_BRANCH_TIME_FIELD] = "Original parent branch time"
     with open(ctrldir / 'metadata.yaml', 'w') as file:
         YAML().dump(orig_metadata, file)
 
@@ -632,15 +632,15 @@ def test_update_file_restart_branch_off_time(restart_path, branch_off_time, expe
         mock_date.now.return_value = datetime(2026, 7, 24)
 
         # Call update_file
-        metadata.update_file(restart_path=restart_path, branch_off_time=branch_off_time)
+        metadata.update_file(restart_path=restart_path, parent_branch_time=parent_branch_time)
 
     # Read the metadata file
     with open(ctrldir / 'metadata.yaml', 'r') as file:
         metadata_content = YAML().load(file)
 
     if expected is None:
-        # Should not have BRANCH_OFF_TIME_FIELD field
-        assert BRANCH_OFF_TIME_FIELD not in metadata_content
+        # Should not have PARENT_BRANCH_TIME_FIELD field
+        assert PARENT_BRANCH_TIME_FIELD not in metadata_content
     else:
-        # Should be the same as the provided branch_off_time
-        assert metadata_content[BRANCH_OFF_TIME_FIELD] == expected
+        # Should be the same as the provided parent_branch_time
+        assert metadata_content[PARENT_BRANCH_TIME_FIELD] == expected

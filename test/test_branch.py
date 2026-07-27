@@ -1,6 +1,5 @@
 import copy
 import shutil
-from datetime import datetime
 from pathlib import Path
 import subprocess
 
@@ -9,10 +8,9 @@ import git
 from ruamel.yaml import YAML
 from unittest.mock import patch, MagicMock
 
-from payu.branch import add_restart_to_config, check_restart, switch_symlink
+from payu.branch import add_restart_to_config, check_restart, switch_symlink, check_existing_restart_in_archive
 from payu.branch import checkout_branch, clone, list_branches, DEFAULT_PARENT_STRING
-from payu.branch import get_branch_off_time
-from payu.metadata import MetadataWarning, no_archive_msg
+from payu.metadata import no_archive_msg
 from payu.fsops import read_config
 from payu.subcommands import clone_cmd
 import payu.errors as errors
@@ -49,6 +47,11 @@ def setup_and_teardown():
     except Exception as e:
         print(e)
 
+@pytest.fixture
+def mock_set_input_paths():
+    """Fixture to mock set_input_paths method of Model class, return pass"""
+    with patch("payu.models.model.Model.set_input_paths"):
+        yield
 
 def setup_control_repository(path=ctrldir, set_config=True):
     """Return an new control repository"""
@@ -143,13 +146,11 @@ def test_check_restart_with_non_existent_restart():
     restart_path = tmpdir / "restartDNE"
 
     expected_msg = (f"Given restart path {restart_path} does not exist. "
-                    f"Skipping setting 'restart' in config file")
+                    f"Skip setting 'restart' in config file")
 
     with cd(ctrldir):
-        with pytest.warns(UserWarning, match=expected_msg):
-            restart_path = check_restart(restart_path, labdir / "archive")
-
-    assert restart_path is None
+        with pytest.raises(errors.PayuFileNotFoundError, match=expected_msg):
+            check_restart(restart_path)
 
 
 def test_check_restart_with_pre_existing_restarts_in_archive():
@@ -163,15 +164,13 @@ def test_check_restart_with_pre_existing_restarts_in_archive():
     restart_path.mkdir(parents=True)
 
     expected_msg = (
-        f"Pre-existing restarts found in archive: {archive_path}."
-        f"Skipping adding 'restart: {restart_path}' to config file"
+        f"Pre-existing restarts found in archive: {archive_path}. "
+        f"Payu will ignore 'restart: {restart_path}' in the config file."
     )
 
     with cd(ctrldir):
         with pytest.warns(UserWarning, match=expected_msg):
-            restart_path = check_restart(restart_path, archive_path)
-
-    assert restart_path is None
+            check_existing_restart_in_archive(archive_path, restart_path)
 
 
 def test_switch_symlink_when_symlink_and_archive_exists():
@@ -290,7 +289,7 @@ def check_branch_metadata(repo,
 
 
 @patch("uuid.uuid4")
-def test_checkout_branch(mock_uuid):
+def test_checkout_branch(mock_uuid, mock_set_input_paths):
     repo = setup_control_repository()
 
     # Mock uuid1 value
@@ -367,7 +366,7 @@ def test_checkout_branch(mock_uuid):
 
 
 @patch("uuid.uuid4")
-def test_checkout_existing_branch_with_no_metadata(mock_uuid):
+def test_checkout_existing_branch_with_no_metadata(mock_uuid, mock_set_input_paths):
     repo = setup_control_repository()
 
     # Create new branch
@@ -397,7 +396,7 @@ def test_checkout_existing_branch_with_no_metadata(mock_uuid):
 
 
 @patch("uuid.uuid4")
-def test_checkout_branch_with_no_metadata_and_with_legacy_archive(mock_uuid):
+def test_checkout_branch_with_no_metadata_and_with_legacy_archive(mock_uuid, mock_set_input_paths):
     # Make experiment archive - This function creates legacy experiment archive
     make_expt_archive_dir(type="restart", index=0)
 
@@ -429,7 +428,7 @@ def test_checkout_branch_with_no_metadata_and_with_legacy_archive(mock_uuid):
 
 
 @patch("uuid.uuid4")
-def test_checkout_new_branch_existing_legacy_archive(mock_uuid):
+def test_checkout_new_branch_existing_legacy_archive(mock_uuid, mock_set_input_paths):
     # Using payu checkout new branch should generate new uuid,
     # and experiment name - even if there"s a legacy archive
     repo = setup_control_repository()
@@ -469,7 +468,7 @@ def test_checkout_branch_with_no_config():
 
     with cd(ctrldir):
         # Test checkout branch that has no config raise error
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(errors.PayuFileNotFoundError):
             checkout_branch(branch_name="Branch1",
                             lab_path=labdir)
 
@@ -477,7 +476,7 @@ def test_checkout_branch_with_no_config():
 
 
 @patch("uuid.uuid4")
-def test_checkout_branch_with_restart_path(mock_uuid):
+def test_checkout_branch_with_restart_path(mock_uuid, mock_set_input_paths):
     # Make experiment archive restart - starting with no metadata
     restart_path = tmpdir / "remote_archive" / "restart0123"
     restart_path.mkdir(parents=True)
@@ -539,7 +538,7 @@ def test_checkout_branch_with_restart_path(mock_uuid):
                             (False)
                         ] )
 @patch("uuid.uuid4")
-def test_checkout_branch_with_parent_experiment(mock_uuid, branch_metadata_with_uuid, monkeypatch):
+def test_checkout_branch_with_parent_experiment(mock_uuid, mock_set_input_paths, branch_metadata_with_uuid, monkeypatch):
     """Test checkout branch with parent experiment set to DEFAULT_PARENT_STRING
     which should set parent experiment to start point's experiment UUID."""
     # Setup repo
@@ -605,7 +604,7 @@ def test_checkout_branch_with_parent_experiment(mock_uuid, branch_metadata_with_
 
 
 @patch("payu.laboratory.Laboratory.initialize")
-def test_checkout_laboratory_path_error(mock_lab_initialise):
+def test_checkout_laboratory_path_error(mock_lab_initialise, mock_set_input_paths):
     mock_lab_initialise.side_effect = PermissionError
 
     repo = setup_control_repository()
@@ -638,7 +637,7 @@ def test_checkout_laboratory_path_error(mock_lab_initialise):
 
 
 @patch("uuid.uuid4")
-def test_clone(mock_uuid, git_identity_setenv):
+def test_clone(mock_uuid, git_identity_setenv, mock_set_input_paths):
     # Create a repo to clone
     source_repo_path = tmpdir / "sourceRepo"
     source_repo_path.mkdir()
@@ -700,7 +699,7 @@ def test_clone(mock_uuid, git_identity_setenv):
 @pytest.mark.parametrize(
     "start_point_type", ["commit", "tag"]
 )
-def test_clone_startpoint(start_point_type, git_identity_setenv):
+def test_clone_startpoint(start_point_type, git_identity_setenv, mock_set_input_paths):
     # Create a repo to clone
     source_repo_path = tmpdir / "sourceRepo"
     source_repo_path.mkdir()
@@ -776,7 +775,7 @@ def test_clone_startpoint_with_no_new_branch_error():
     assert not cloned_repo_path.exists()
 
 
-def test_clone_with_relative_restart_path(git_identity_setenv):
+def test_clone_with_relative_restart_path(git_identity_setenv, mock_set_input_paths):
     """Test clone with a restart path that is relative with respect to
     the directory in which the clone command is run from"""
     # Create a repo to clone
@@ -1055,42 +1054,3 @@ def test_prompts_for_clone_from_tag_with_restart(monkeypatch):
     assert result['keep_uuid'] is False
 
 
-@pytest.mark.parametrize(
-    "datetimes, expected",
-    [
-        # model_finish_time present - formatted string returned
-        (
-            {'model_finish_time': datetime(2026, 7, 24, 12, 0, 0)},
-            "2026-07-24T12:00:00"
-        ),
-        # model_finish_time and model_start_time exists
-        (
-            {
-                'model_finish_time': datetime(2026, 7, 24, 12, 0, 0),
-                'model_start_time': datetime(2026, 1, 1, 0, 0, 0),
-            },
-            "2026-07-24T12:00:00"
-        ),
-        # No model_finish_time key
-        ({}, None),
-        # model_finish_time is set to None
-        ({'model_finish_time': None}, None),
-    ]
-)
-@patch("payu.branch.Experiment")
-def test_get_branch_off_time(mock_experiment, datetimes, expected):
-    """Test that get_branch_off_time handles results from
-    get_model_restart_datetimes properly"""
-    mock_expt = MagicMock()
-    mock_expt.get_model_restart_datetimes.return_value = datetimes
-    mock_experiment.return_value = mock_expt
-
-    restart_path = tmpdir / "restart000"
-    lab = MagicMock()
-
-    result = get_branch_off_time(restart_path, lab)
-
-    mock_experiment.assert_called_once_with(lab, metadata_off=True)
-    assert mock_expt.restart_path == restart_path
-    assert result == expected
-    
