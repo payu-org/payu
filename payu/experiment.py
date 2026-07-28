@@ -869,7 +869,7 @@ class Experiment(object):
             stage='archive',
             timings=self.timings
         )
-        # Check there is a work directory, otherwise bail
+        # Check there is a work directory, otherwise fail
         if not os.path.exists(self.work_sym_path):
             raise errors.PayuFileNotFoundError('No work directory to archive.')
 
@@ -927,7 +927,8 @@ class Experiment(object):
         telemetry.update_run_job_file(
             file_path=self.job_file,
             model_restart_datetimes=self.get_model_restart_datetimes(),
-            output_volume=get_size(self.output_path)
+            output_volume_gb=get_size(self.output_path),
+            restart_volume_gb=get_size(self.restart_path),
         )
 
         collate_config = self.config.get('collate', {})

@@ -197,4 +197,4 @@ def test_get_size(setup_test_dir, write_dir_with_size, file_sizes):
 
     # Assert the calculation gets an expected total size
     expected_size = sum(file_sizes) * 2 / 1024 **3 # Convert bytes to GB
-    assert get_size(test_dir) == f"{expected_size}GB"
+    assert get_size(test_dir) == expected_size
