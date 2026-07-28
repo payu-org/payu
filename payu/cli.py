@@ -228,7 +228,10 @@ def submit_job(script, config, vars=None, expt=None, current_run=None, type=None
                     f"    {job_or_cmd}")
                 return None
             else:
-                # Otherwise, print the job ID after submission
+                
+                # Uncomment this after HPCpy PR#71 is included in a release
+                # print(f"Submitted job: {job_or_cmd.history[0]}") 
+                # Print the job ID after submission
                 job_id = job_or_cmd.id
                 print(f"Job submitted with ID: {job_id}")
         

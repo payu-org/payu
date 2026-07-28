@@ -401,8 +401,8 @@ class PBS(Scheduler):
             pbs_flags.append('-j {join}'.format(join=pbs_join))
 
         # Export all environment variables if requested
-        if pbs_config.get('export_env_vars', False):
-            pbs_flags.append('-V')
+        # if pbs_config.get('export_env_vars', False):
+        #     pbs_flags.append('-V')
 
         # Check for storage mounts and add them to the qsub command
         storages = set()
