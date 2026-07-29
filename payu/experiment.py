@@ -506,7 +506,7 @@ class Experiment(object):
         shutil.copy(config_src, config_dst)
 
         # Stripe directory in Lustre
-        # TODO: Make this more configurable
+        # TODO: Make this more configurable : issue #816
         do_stripe = self.config.get('stripedio', False)
         if do_stripe:
             cmd = 'lfs setstripe -c 8 -s 8m {0}'.format(self.work_path)
