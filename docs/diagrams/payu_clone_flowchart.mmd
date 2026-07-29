@@ -14,15 +14,23 @@ flowchart TB
     Branch L_Branch_LocalDir_0@-- branch name --> LocalDir["Name your local experiment directory"]
     Tag -- tag name or commit --> LocalDir
     LocalDir L_LocalDir_NameNewBranch_0@--> NameNewBranch["Name your new branch"] & NewExpt{"Is this a new expt?"}
-    NewExpt -- No --> KeepBranch["Keep same branch, keep uuid"]
-    KeepBranch L_KeepBranch_RestartPath_0@--> RestartPath["Ask for restart path"]
-    NameNewBranch --> RestartCheck{"Do you want to <br>specify a restart path?"}
-    RestartCheck L_RestartCheck_RestartPath_0@-- Yes --> RestartPath
-    RestartCheck L_RestartCheck_Run_0@-- No --> Run["Run clone"]
-    RestartPath --> Run
+    NameNewBranch --> RestartCheck{"Specify a restart path?"}
+    RestartPath["Ask for restart path"] --> Run["Override shortpath?"]
     NewExpt -- Yes --> NameNewBranch
+    RestartCheck L_RestartCheck_Run_0@-- No --> Run
+    Run -- No --> n1["Run clone"]
+    NewExpt -- No --> RestartCheck
+    RestartCheck L_RestartCheck_RestartPath_0@-- Yes --> RestartPath
+    Run -- Yes --> n3["Ask for shortpath"]
+    n3 --> n1
+    n2@{ label: "<span style=\"text-wrap-mode:\">Keep same branch, keep uuid</span>" }
 
+    Run@{ shape: diam}
+    n1@{ shape: rect}
+    n3@{ shape: rect}
+    n2@{ shape: text}
     style Start fill:#BBDEFB
+    style n1 fill:#BBDEFB
     linkStyle 5 stroke:#ff0000,stroke-width:2px,fill:none
     linkStyle 6 stroke:#ff0000,stroke-width:2px,fill:none
 
@@ -31,6 +39,5 @@ flowchart TB
     L_Branch_LocalDir_0@{ curve: linear } 
     L_LocalDir_NameNewBranch_0@{ curve: linear } 
     L_LocalDir_NewExpt_0@{ curve: linear } 
-    L_KeepBranch_RestartPath_0@{ curve: linear } 
-    L_RestartCheck_RestartPath_0@{ curve: linear } 
-    L_RestartCheck_Run_0@{ curve: linear }
+    L_RestartCheck_Run_0@{ curve: linear } 
+    L_RestartCheck_RestartPath_0@{ curve: linear }

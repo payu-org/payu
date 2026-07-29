@@ -78,7 +78,7 @@ arguments = [args.model, args.config, args.laboratory,
              args.keep_uuid, args.clone_branch,
              args.repository, args.local_directory,
              args.new_branch_name, args.restart_path,
-             args.parent_experiment, args.clone_start_point]
+             args.parent_experiment, args.clone_start_point, args.short_path]
 
 def transform_strings_to_path(path_str=None):
     return Path(path_str) if path_str is not None else None
@@ -86,7 +86,7 @@ def transform_strings_to_path(path_str=None):
 
 def runcmd(model_type, config_path, lab_path, keep_uuid,
            branch, repository, local_directory, new_branch_name, restart_path,
-           parent_experiment, start_point):
+           parent_experiment, start_point, short_path):
     """Execute the command."""
     if repository is None and local_directory is None:
         term_size = shutil.get_terminal_size((80, 20)) # default to 80x20 if unable to query terminal size
@@ -104,11 +104,13 @@ def runcmd(model_type, config_path, lab_path, keep_uuid,
         keep_uuid = user_params.get('keep_uuid')
         new_branch_name = user_params.get('new_branch_name')
         restart_path = user_params.get('restart_path')
+        short_path = user_params.get('short_path')
 
     config_path = transform_strings_to_path(config_path)
     restart_path = transform_strings_to_path(restart_path)
     lab_path = transform_strings_to_path(lab_path)
     directory = transform_strings_to_path(local_directory)
+    short_path = transform_strings_to_path(short_path)
 
     clone(repository=repository,
           directory=directory,
@@ -120,7 +122,8 @@ def runcmd(model_type, config_path, lab_path, keep_uuid,
           new_branch_name=new_branch_name,
           restart_path=restart_path,
           parent_experiment=parent_experiment,
-          start_point=start_point)
+          start_point=start_point,
+          short_path=short_path)
 
 
 runscript = runcmd
@@ -153,29 +156,39 @@ def prompts_for_clone(repository, local_directory, dash_length=50):
     else:
         is_new_expt = True
 
-    # New branch name and restart path (if applicable)
+    # Ask for the new branch name
     if is_new_expt:
         new_branch_name = ask_for_new_branch_name()
         cli_command += f" -b {new_branch_name}"
-        if confirm_restart_path():
-            restart_path = ask_for_restart_path()
-            cli_command += f" -r {restart_path}"
-        else:
-            restart_path = None
+        
     else:
         qprint(
             "Payu clone will keep the same branch name and UUID as the original experiment."
         )
-        restart_path = ask_for_restart_path()
-        print_restart_number_message()
         cli_command += " --keep-uuid"
+
+    # Ask for restart path if the user wants to specify one
+    if confirm_restart_path():
+        restart_path = ask_for_restart_path()
         cli_command += f" -r {restart_path}"
+    else:
+        restart_path = None
+
+    # Ask if the user wants to override the laboratory path
+    if confirm_shortpath():
+        short_path = ask_for_new_shortpath()
+        cli_command += f" --shortpath {short_path}"
+    else:
+        short_path = None
 
     cli_command += f" {repository}"
     cli_command += f" {local_directory}"
     qprint("="*dash_length)
     qprint("Running command:")
     qprint('    ' + cli_command)
+    if restart_path:
+        print_restart_number_message()
+
     return {
         'repository': repository,
         'branch': branch,
@@ -183,7 +196,8 @@ def prompts_for_clone(repository, local_directory, dash_length=50):
         'local_directory': local_directory,
         'new_branch_name': new_branch_name if is_new_expt else None,
         'restart_path': restart_path,
-        'keep_uuid': not is_new_expt
+        'keep_uuid': not is_new_expt,
+        'short_path': short_path,
     }
 
 def fetch_branches(url):
@@ -379,6 +393,30 @@ def ask_for_restart_path():
     return safe_ask(questionary.text(
                 "Please enter the restart path you want to use" + instruction,
                 validate=validate_restart_path,
+                completer=path_completer,
+                style=accessible_style,
+                qmark = custom_qmark
+            ))
+
+def confirm_shortpath():
+    """Ask the user if they want to specify the shortpath. Provide the default shortpath.""" 
+    project = os.environ.get("PROJECT", None)
+    is_shortpath = safe_ask(questionary.select(
+        f"Do you want to override the shortpath? (Default is '/scratch/{project}')",
+        choices=["Yes", "No"],
+        style=accessible_style,
+        qmark = custom_qmark
+        ))
+    if is_shortpath == "Yes":
+        return True
+    else:
+        return False
+
+def ask_for_new_shortpath():
+    """Ask the user for the new shortpath they want to use."""
+    path_completer = PathCompleter(only_directories=True, expanduser=True)
+    return safe_ask(questionary.text(
+                "Please enter the new shortpath you want to use: ",
                 completer=path_completer,
                 style=accessible_style,
                 qmark = custom_qmark

@@ -82,10 +82,11 @@ def check_existing_restart_in_archive(archive_path: Path, restart_path: Path) ->
     return
 
 
-def add_restart_to_config(restart_path: Path, config_path: Path) -> None:
-    """Takes restart path and config path, and add 'restart' flag to the
-    config file - which is used to start a run if there isn't a pre-existing
-    restart in archive"""
+def add_new_key_to_config(key: str, value: Path, config_path: Path) -> None:
+    """Add a new key to the config file,
+    e.g., add a restart path - which is used to start a run if there isn't a pre-existing restart in archive,
+    or, add a shortpath - which overrides the default shortpath (e.g., /scratch/$PROJECT) for the laboratory
+    """
 
     # Default ruamel yaml preserves comments and multiline strings
     try:
@@ -102,11 +103,11 @@ def add_restart_to_config(restart_path: Path, config_path: Path) -> None:
         config = yaml.load(config_path)
 
     # Add in restart path
-    config['restart'] = str(restart_path)
+    config[key] = str(value)
 
     # Write modified lines back to config
     yaml.dump(config, config_path)
-    print(f"Added 'restart: {restart_path}' to configuration file:",
+    print(f"Added '{key}: {value}' to configuration file:",
           config_path.name)
 
 
@@ -218,8 +219,7 @@ def checkout_branch(branch_name: str,
         # Check if restart path exists and resolve to an absolute path
         prior_restart_path = check_restart(restart_path=restart_path)
     if prior_restart_path:
-        # Add restart option to config
-        add_restart_to_config(prior_restart_path, config_path=config_path)
+        add_new_key_to_config('restart', prior_restart_path, config_path=config_path)
 
     # Get model start time and Create/update and commit metadata file
     expt = Experiment(lab, 
@@ -266,7 +266,8 @@ def clone(repository: str,
           config_path: Optional[Path] = None,
           lab_path: Optional[Path] = None,
           restart_path: Optional[Path] = None,
-          parent_experiment: Optional[str] = None) -> None:
+          parent_experiment: Optional[str] = None,
+          short_path: Optional[Path] = None) -> None:
     """Clone an experiment control repository.
 
     Parameters:
@@ -294,6 +295,8 @@ def clone(repository: str,
             Restart path to start experiment from
         parent_experiment: Optional[str]
             Parent experiment UUID to add to generated metadata
+        short_path: Optional[Path]
+            Add user-specified shortpath in config, e.g., /scratch/specified-$PROJECT
 
     Returns: None
 
@@ -359,6 +362,12 @@ def clone(repository: str,
                             lab_path=lab_path,
                             is_new_experiment=True,
                             parent_experiment=parent_experiment)
+    
+        if short_path:
+            # Update shortpath in config file
+            config_path = check_config_path(config_path)
+            add_new_key_to_config('shortpath', short_path, config_path=config_path)
+
     except (errors.PayuBranchError, errors.PayuFileNotFoundError) as e:
         # Remove directory if incomplete checkout
         shutil.rmtree(control_path)
