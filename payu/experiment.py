@@ -431,7 +431,7 @@ class Experiment(object):
         """Check current payu version is greater than minimum required
         payu version, if configured"""
         # TODO: Move this function to a setup file if setup is moved to
-        # a separate file?
+        # a separate file? : issue #508
         minimum_version_fieldname = "payu_minimum_version"
         if minimum_version_fieldname not in self.config:
             # Skip version check
