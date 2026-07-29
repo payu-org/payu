@@ -500,7 +500,7 @@ class Experiment(object):
 
         # Archive the payu config
         # TODO: This just copies the existing config.yaml file, but we should
-        #       reconstruct a new file including default values
+        #       reconstruct a new file including default values : issue #344
         config_src = os.path.join(self.control_path, 'config.yaml')
         config_dst = os.path.join(self.work_path)
         shutil.copy(config_src, config_dst)
