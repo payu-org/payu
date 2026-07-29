@@ -8,7 +8,7 @@ import git
 from ruamel.yaml import YAML
 from unittest.mock import patch, MagicMock
 
-from payu.branch import add_restart_to_config, check_restart, switch_symlink, check_existing_restart_in_archive
+from payu.branch import add_new_key_to_config, check_restart, switch_symlink, check_existing_restart_in_archive
 from payu.branch import checkout_branch, clone, list_branches, DEFAULT_PARENT_STRING
 from payu.metadata import PARENT_UUID_FIELD, PARENT_HASH_FIELD
 from payu.metadata import no_archive_msg
@@ -108,7 +108,7 @@ restart: {0}
         ),
     ]
 )
-def test_add_restart_to_config(test_config, expected_config):
+def test_add_new_key_to_config(test_config, expected_config):
     """Test adding restart: path/to/restart to configuration file"""
     restart_path = tmpdir / "archive" / "tmpRestart"
     restart_path.mkdir(parents=True)
@@ -120,7 +120,7 @@ def test_add_restart_to_config(test_config, expected_config):
 
     # Function to test
     with cd(ctrldir):
-        add_restart_to_config(restart_path, config_path)
+        add_new_key_to_config('restart', restart_path, config_path)
 
     with config_path.open("r") as file:
         updated_config = file.read()
@@ -1008,7 +1008,9 @@ def test_prompts_for_clone_from_branch_not_new_experiment(monkeypatch):
     monkeypatch.setattr(clone_cmd, "ask_for_branch_name", lambda branches: "master")
     monkeypatch.setattr(clone_cmd, "ask_for_local_directory", lambda: "new_expt_local_dir")
     monkeypatch.setattr(clone_cmd, "confirm_new_experiment", lambda: False)
+    monkeypatch.setattr(clone_cmd, "confirm_restart_path", lambda: True)
     monkeypatch.setattr(clone_cmd, "ask_for_restart_path", lambda: tmpdir / "restart_path")
+    monkeypatch.setattr(clone_cmd, "confirm_shortpath", lambda: False)
     
     result = clone_cmd.prompts_for_clone(None, None)
     assert result['repository'] == "https://test_repo.git"
@@ -1017,6 +1019,7 @@ def test_prompts_for_clone_from_branch_not_new_experiment(monkeypatch):
     assert result['restart_path'] == tmpdir / "restart_path"
     assert result['new_branch_name'] is None
     assert result['keep_uuid'] is True
+    assert result['short_path'] == None
 
 def test_prompts_for_clone_from_branch_new_experiment(monkeypatch):
     """ Test prompts_for_clone build a command correctly based on user input:
@@ -1032,6 +1035,8 @@ def test_prompts_for_clone_from_branch_new_experiment(monkeypatch):
     monkeypatch.setattr(clone_cmd, "confirm_new_experiment", lambda: True)
     monkeypatch.setattr(clone_cmd, "ask_for_new_branch_name", lambda: "new_branch")
     monkeypatch.setattr(clone_cmd, "confirm_restart_path", lambda: False)
+    monkeypatch.setattr(clone_cmd, "confirm_shortpath", lambda: True)
+    monkeypatch.setattr(clone_cmd, "ask_for_new_shortpath", lambda: "/scratch/shortpath")
 
     result = clone_cmd.prompts_for_clone(None, None)
     assert result['repository'] == "https://test_repo.git"
@@ -1040,6 +1045,7 @@ def test_prompts_for_clone_from_branch_new_experiment(monkeypatch):
     assert result['restart_path'] == None
     assert result['new_branch_name'] == "new_branch"
     assert result['keep_uuid'] is False
+    assert result['short_path'] == "/scratch/shortpath"
 
 def test_prompts_for_clone_from_tag_with_restart(monkeypatch):
     """ Test prompts_for_clone build a command correctly based on user input:
@@ -1055,6 +1061,7 @@ def test_prompts_for_clone_from_tag_with_restart(monkeypatch):
     monkeypatch.setattr(clone_cmd, "ask_for_new_branch_name", lambda: "new_branch")
     monkeypatch.setattr(clone_cmd, "confirm_restart_path", lambda: True)
     monkeypatch.setattr(clone_cmd, "ask_for_restart_path", lambda: tmpdir / "restart_path")
+    monkeypatch.setattr(clone_cmd, "confirm_shortpath", lambda: False)
 
     result = clone_cmd.prompts_for_clone(None, None)
     assert result['repository'] == "https://test_repo.git"
@@ -1064,5 +1071,4 @@ def test_prompts_for_clone_from_tag_with_restart(monkeypatch):
     assert result['restart_path'] == tmpdir / "restart_path"
     assert result['new_branch_name'] == "new_branch"
     assert result['keep_uuid'] is False
-
-
+    assert result['short_path'] == None
