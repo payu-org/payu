@@ -416,7 +416,6 @@ class Experiment(object):
             output_dir = 'output{0:03}'.format(self.counter)
             self.output_path = os.path.join(self.archive_path, output_dir)
 
-        # TODO: check case counter == 0
         prior_output_dir = 'output{0:03}'.format(self.counter - 1)
         prior_output_path = os.path.join(self.archive_path, prior_output_dir)
         if os.path.exists(prior_output_path):
