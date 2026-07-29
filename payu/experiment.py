@@ -35,6 +35,7 @@ from payu.fsops import make_symlink, read_config, movetree
 from payu.fsops import list_sorted_archive_dirs
 from payu.fsops import run_script_command
 from payu.fsops import needs_subprocess_shell
+from payu.fsops import get_size
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 from payu.models import index as model_index
 from payu.runlog import Runlog
@@ -868,7 +869,7 @@ class Experiment(object):
             stage='archive',
             timings=self.timings
         )
-        # Check there is a work directory, otherwise bail
+        # Check there is a work directory, otherwise fail
         if not os.path.exists(self.work_sym_path):
             raise errors.PayuFileNotFoundError('No work directory to archive.')
 
@@ -893,12 +894,6 @@ class Experiment(object):
             raise errors.PayuRuntimeError('output path already exists')
 
         movetree(self.work_path, self.output_path)
-
-        # Record model restart datetimes in telemetry
-        telemetry.update_run_job_file(
-            file_path=self.job_file,
-            model_restart_datetimes=self.get_model_restart_datetimes()
-        )
 
         # Remove any outdated restart files
         try:
@@ -927,6 +922,14 @@ class Experiment(object):
         archive_script = self.userscripts.get('archive')
         if archive_script:
             self.run_userscript(archive_script, 'archive')
+    
+        # Record model restart datetimes and output volume in telemetry
+        telemetry.update_run_job_file(
+            file_path=self.job_file,
+            model_restart_datetimes=self.get_model_restart_datetimes(),
+            output_volume_gb=get_size(self.output_path),
+            restart_volume_gb=get_size(self.restart_path),
+        )
 
         collate_config = self.config.get('collate', {})
         collating = collate_config.get('enable', True)
