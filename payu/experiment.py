@@ -359,7 +359,7 @@ class Experiment(object):
             model.set_local_pathnames()
 
         # Stream output filenames
-        # TODO: per-model output streams?
+        # TODO: per-model output streams : issue #815
         self.stdout_fname = self.lab.model_type + '.out'
         self.stderr_fname = self.lab.model_type + '.err'
 
