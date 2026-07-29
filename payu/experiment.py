@@ -709,7 +709,7 @@ class Experiment(object):
         if self.expand_shell_vars:
             cmd = os.path.expandvars(cmd)
 
-        # TODO: Consider making this default
+        # TODO: Consider making this default : issue #817
         if self.config.get('coredump', False):
             enable_core_dump()
 
