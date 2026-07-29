@@ -226,7 +226,7 @@ class Experiment(object):
         # XXX: Temporarily adding this to model config...
         model_fields += ['mask']
 
-        # TODO: Rename this to self.submodels
+        # TODO: Rename this to self.submodels: issue #509
         self.models = []
 
         submodels = self.config.get('submodels', [])
