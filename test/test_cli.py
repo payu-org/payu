@@ -450,16 +450,19 @@ def test_set_logger_runscript(log_level_arg, log_level_env, expected_log_level, 
 def test_parse_arg_count(capsys, monkeypatch):
     """Test that the parser correctly excludes --stacktrace when counting arguments."""
     # confirm print help is triggered when only --stacktrace is provided
-    monkeypatch.setattr(sys, "argv", ["payu --stacktrace"])
+    monkeypatch.setattr(sys, "argv", ["payu", "--stacktrace"])
     payu.cli.parse()
-    assert "usage: payu --stacktrace [-h] [--version]" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "usage: payu" in output
+    assert "[-h] [--version]" in output
 
     # confirm print help is not triggered when a subcommand is provided, even with --stacktrace
     monkeypatch.setattr(sys, "argv", ["payu", "list", "--stacktrace"])
     monkeypatch.setattr("payu.subcommands.list_cmd.runcmd", lambda *args, **kwargs: None)
     payu.cli.parse()
-    assert "usage: payu" not in capsys.readouterr().out
-    assert "[-h] [--version]" not in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "usage: payu" not in output
+    assert "[-h] [--version]" not in output
 
 
 
