@@ -224,16 +224,15 @@ def submit_job(script, config, vars=None, expt=None, current_run=None, type=None
 
             if dry_run:
                 # If dry_run is True, print out the submission command and exit
-                print(f"Printing job submission command without executing it:\n"
-                    f"    {job_or_cmd}")
+                print(f"---- Dry run (submission skipped) -----\n"
+                    f"Submission command: {job_or_cmd}")
                 return None
             else:
-                
-                # Uncomment this after HPCpy PR#71 is included in a release
-                # print(f"Submitted job: {job_or_cmd.history[0]}") 
-                # Print the job ID after submission
+                # Print the job ID and command after submission 
+                print(f"------ Job submitted ------\n"
+                    f"Submission command: {job_or_cmd.history[0]}")
                 job_id = job_or_cmd.id
-                print(f"Job submitted with ID: {job_id}")
+                print(f"Job ID: {job_id}")
         
         elif sched_name == 'slurm':
             # Slurm: payu generates the sbatch command and call subprocess.run() to submit the job

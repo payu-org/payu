@@ -3,6 +3,7 @@ import logging
 
 # Third Party imports
 from colorama import init, Fore, Style
+import hpcpy
 
 class ColoredFormatter(logging.Formatter):
     """A custom formatter to add colors based on log level."""
@@ -36,3 +37,7 @@ def setup_logger(log_level='INFO'):
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(ColoredFormatter())
     logger.addHandler(console_handler)
+
+    # Pass the current log level to HPCpy
+    log_level = logging.getLogger().getEffectiveLevel()
+    hpcpy.utilities.get_logger().setLevel(log_level)  

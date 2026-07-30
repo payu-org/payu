@@ -5,7 +5,6 @@
 """
 
 # Standard library
-import logging
 import math
 import os
 from pathlib import Path
@@ -36,9 +35,6 @@ LOCK_LIFETIME = 8
 
 ureg = UnitRegistry()
 
-# Pass the current log level to HPCpy
-log_level = logging.getLogger().getEffectiveLevel()
-hpcpy.utilities.get_logger().setLevel(log_level)  
 client = hpcpy.client.pbs.PBSClient()
 
 def get_pbsnodes_cache_path() -> Path:
