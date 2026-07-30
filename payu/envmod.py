@@ -110,7 +110,6 @@ def module(command, *args):
 
 def lib_update(required_libs, lib_name):
     # Local import to avoid reversion interference
-    # TODO: Bad design, fixme!
     # NOTE: We may be able to move this now that reversion is going away
     from payu import fsops
 
