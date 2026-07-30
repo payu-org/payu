@@ -88,7 +88,7 @@ def generate_parser(is_interactive=False):
     subcmds = [importlib.import_module(mod) for mod in modnames]
 
     # Construct the subcommand parser
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog='payu')
     parser.add_argument('--version', action='version',
                         version='payu {0}'.format(payu.__version__))
 
