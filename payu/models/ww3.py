@@ -27,7 +27,6 @@ class WW3(Model):
     def setup(self):
         super(WW3, self).setup()
 
-        # TODO: Construct grid files
         pass
 
     def archive(self, **kwargs):

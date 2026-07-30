@@ -327,7 +327,6 @@ def fms_collate(model):
         codes.append(rc)
         outputs.append(op)
 
-    # TODO: Categorise the return codes
     if any(rc is not None for rc in codes):
         for p, rc, op in zip(count(), codes, outputs):
             if rc is not None:
