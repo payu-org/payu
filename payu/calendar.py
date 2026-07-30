@@ -85,7 +85,7 @@ def calculate_leapdays(init_date, final_date):
     leap_days -= (final_date.year - 1) // 100 - (init_date.year - 1) // 100
     leap_days += (final_date.year - 1) // 400 - (init_date.year - 1) // 400
 
-    # TODO: Internal date correction (e.g. init_date is 1-March or later)
+    # TODO: Internal date correction (e.g. init_date is 1-March or later) : issue #819
 
     return datetime.timedelta(days=leap_days)
 
