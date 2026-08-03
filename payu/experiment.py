@@ -74,7 +74,7 @@ def timeit(time_name):
 
 class Experiment(object):
     def __init__(self, lab, reproduce=False, force=False, metadata_off=False, config_path=None, 
-                 is_new_experiment=False, keep_uuid=False, set_template_values=False, parent_experiment=None):
+                 is_new_experiment=False, keep_uuid=False, set_template_values=False, parent_info=dict()):
         self.init_timings()
         self.lab = lab
         # Check laboratory directories are writable
@@ -127,11 +127,13 @@ class Experiment(object):
 
         self.set_output_paths()
 
+        # Add parent_branch_time to parent_info
+        parent_info['parent_branch_time'] = self._get_parent_branch_time()
+        
         # Set up and write metadata file
         self.metadata.write_metadata(set_template_values=set_template_values,
                                 restart_path=self.prior_restart_path,
-                                parent_experiment=parent_experiment,
-                                parent_branch_time=self._get_parent_branch_time())
+                                parent_info=parent_info)
 
         if not reproduce:
             # check environment for reproduce flag under PBS

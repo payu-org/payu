@@ -176,7 +176,9 @@ def checkout_branch(branch_name: str,
     repo = GitRepository(control_path, catch_error=True)
     if repo.repo is None:
         raise errors.PayuBranchError("Invalid repository, could not checkout branch.")
-    repo.checkout_branch(branch_name, is_new_branch, start_point)
+    # If is_new_branch is True, parent_hash records the hash of the parent commit,
+    # otherwise parent_hash is None
+    parent_hash = repo.checkout_branch(branch_name, is_new_branch, start_point)
 
      # If parent_experiment is set to DEFAULT_PARENT_STRING, set to start_point's experiment UUID
     if parent_experiment == DEFAULT_PARENT_STRING:
@@ -192,6 +194,9 @@ def checkout_branch(branch_name: str,
             )
 
         parent_experiment = uuid
+
+    # Build a dictionary to store information about parent experiment
+    parent_info = {'parent_experiment': parent_experiment, 'parent_hash': parent_hash}
 
     # Check config file exists on checked out branch
     config_path = check_config_path(config_path)
@@ -221,7 +226,7 @@ def checkout_branch(branch_name: str,
                 set_template_values=True,
                 is_new_experiment=is_new_experiment, 
                 keep_uuid=keep_uuid, 
-                parent_experiment=parent_experiment)
+                parent_info=parent_info)
 
     # Switch/Remove/Add archive and work symlinks
     experiment = expt.metadata.experiment_name

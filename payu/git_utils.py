@@ -191,7 +191,11 @@ class GitRepository:
                         branch_name: str,
                         new_branch: bool = False,
                         start_point: Optional[str] = None) -> None:
-        """Checkout branch and create branch if specified"""
+        """Checkout branch and create branch if specified.
+        Return:
+        - parent hash, if new branch is created
+        - None, if existing branch is checked out
+        """
         # First check for staged changes
         if self.repo.is_dirty(index=True, working_tree=False):
             raise errors.PayuBranchError(
@@ -222,10 +226,14 @@ class GitRepository:
                 branch = self.repo.create_head(branch_name, commit=start_point)
             else:
                 branch = self.repo.create_head(branch_name)
+
+            # Record the parent hash before checking out a new branch
+            parent_hash = branch.commit.hexsha
+
             branch.checkout()
 
             print(f"Created and checked out new branch: {branch_name}")
-            return
+            return parent_hash
 
         # Checkout branch
         if branch_name not in all_branches:
@@ -237,6 +245,8 @@ class GitRepository:
 
         self.repo.git.checkout(branch_name)
         print(f"Checked out branch: {branch_name}")
+
+        return None
 
 
 def git_clone(repository: str,

@@ -10,6 +10,7 @@ from unittest.mock import patch, MagicMock
 
 from payu.branch import add_restart_to_config, check_restart, switch_symlink, check_existing_restart_in_archive
 from payu.branch import checkout_branch, clone, list_branches, DEFAULT_PARENT_STRING
+from payu.metadata import PARENT_UUID_FIELD, PARENT_HASH_FIELD
 from payu.metadata import no_archive_msg
 from payu.fsops import read_config
 from payu.subcommands import clone_cmd
@@ -254,12 +255,14 @@ def test_switch_symkink_when_previous_symlink_dne():
 def check_metadata(expected_uuid,
                    expected_experiment,
                    expected_parent_uuid=None,
+                   expected_parent_hash=None,
                    metadata_file=metadata_path):
     """Helper function to read metadata file and assert changed as expected"""
     assert metadata_file.exists()
     metadata = YAML().load(metadata_file)
     assert metadata.get("experiment_uuid", None) == expected_uuid
-    assert metadata.get("parent_experiment", None) == expected_parent_uuid
+    assert metadata.get(PARENT_UUID_FIELD, None) == expected_parent_uuid
+    assert metadata.get(PARENT_HASH_FIELD, None) == expected_parent_hash
 
     # Assert archive exists for experiment name
     assert (archive_dir / expected_experiment / "metadata.yaml").exists()
@@ -272,12 +275,14 @@ def check_branch_metadata(repo,
                           expected_uuid,
                           expected_experiment,
                           expected_parent_uuid=None,
+                          expected_parent_hash=None,
                           metadata_file=metadata_path):
     """Helper function for checking expected  branch and metadata"""
     # Check metadata
     check_metadata(expected_uuid,
                    expected_experiment,
                    expected_parent_uuid,
+                   expected_parent_hash,
                    metadata_file=metadata_file)
 
     # Check cuurent branch
@@ -565,6 +570,9 @@ def test_checkout_branch_with_parent_experiment(mock_uuid, mock_set_input_paths,
                             expected_uuid=uuid,
                             expected_experiment=experiment_name)
 
+    # Record Branch1's tip commit hash 
+    branch1_commit_hash = repo.heads[branch_names[0]].commit.hexsha
+
     # Mock uuid3 value
     uuid3 = "98c99f06-260e-42cc-a23f-f113fae825e5"
     mock_uuid.return_value = uuid3
@@ -585,7 +593,8 @@ def test_checkout_branch_with_parent_experiment(mock_uuid, mock_set_input_paths,
                             expected_current_branch=branch_names[2],
                             expected_uuid=uuid3,
                             expected_experiment=experiment3_name,
-                            expected_parent_uuid=uuid1)
+                            expected_parent_uuid=uuid1,
+                            expected_parent_hash=branch1_commit_hash)
         
     else:
         # Test checkout -b Branch3 with parent_experiment set to DEFAULT_PARENT_STRING
