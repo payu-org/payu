@@ -1,33 +1,24 @@
-import argparse
-from argparse import Namespace
 import json
 import copy
-import os
 from pathlib import Path
 import re
 import shutil
-import sys
 from unittest.mock import patch
 
-import pdb
 import pytest
 
 import payu
 
-from payu.fsops import read_config
-from payu.laboratory import Laboratory
 from payu.schedulers import pbs
 from payu.schedulers import index as scheduler_index
 from payu.schedulers.pbs import PBS
 import payu.errors as errors
 
-from .common import cd, make_random_file, get_manifests
-from .common import tmpdir, ctrldir, labdir, workdir, payudir, archive_dir
-from .common import sweep_work, payu_init, payu_setup
+from .common import cd
+from .common import tmpdir, ctrldir, labdir, payudir, archive_dir
 from .common import config as original_config
 from .common import write_config
-from .common import make_exe, make_inputs, make_restarts
-from .common import make_payu_exe, make_all_files
+from .common import make_payu_exe
 
 verbose = True
 
@@ -381,10 +372,7 @@ def test_run(mock_get_user_groups):
 
     # Test pbs generating a PBS command
     with cd(ctrldir):
-        job_script = payudir / 'payu-run'
-        script_content = 'Running payu-run'
-        with open(job_script, 'w') as f:
-            f.write(script_content)
+        payu_cmd = 'payu-run'
 
         config['storage'] = {}
         config['storage']['test'] = ['x00']
@@ -397,12 +385,10 @@ def test_run(mock_get_user_groups):
         config['modules'] = {}
         config['modules']['use'] = ['/f/data/mm01', '/f/data/mm02/test/modules']
 
-        cmd = sched.submit(str(job_script), config, pbs_vars, python_exe, dry_run=True)
+        cmd = sched.submit(payu_cmd, config, pbs_vars, python_exe, dry_run=True)
         print(f"Generated PBS command: {cmd}")
 
-        with open(cmd.strip().split()[-1], 'r') as f:
-            hpcpy_script_content = f.read()
-        assert "payu-run" in hpcpy_script_content
+        assert "payu-run" in cmd
         assert f"-q {config['queue']}" in cmd
     
         assert f"-N {config['jobname']}" in cmd

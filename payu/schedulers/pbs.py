@@ -470,10 +470,6 @@ class PBS(Scheduler):
                       queue = pbs_config.get('queue', 'normal'),
                       storage = [storage for storage in storages] if storages else None,
                       variables = pbs_vars,
-                      render = False, # Save the run script from a template
-                      module_purge = True,
-                      module_use = module_use_paths,
-                      module = ['pbs'] + (module_names if module_names else []),
                       )
 
         return job_or_cmd
