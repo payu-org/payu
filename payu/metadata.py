@@ -415,7 +415,7 @@ class Metadata:
             # Remove parent_branch_time and parent_hash if entry exists in metadata
             metadata.pop(PARENT_BRANCH_TIME_FIELD, None)
 
-        # Update parent hash
+        # Update parent hash, only if parent_experiment UUID is defined
         if parent_experiment and parent_hash:
             # If there is a parent experiment, add the parent hash to metadata
             metadata[PARENT_HASH_FIELD] = parent_hash

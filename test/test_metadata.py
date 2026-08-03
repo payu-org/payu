@@ -11,7 +11,8 @@ import jsonschema
 
 from payu.metadata import Metadata, SCHEMA_FIELD, SCHEMA_VERSION, placeholder_text, no_archive_msg
 import payu.errors as errors
-from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT, PARENT_BRANCH_TIME_FIELD
+from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT
+from payu.metadata import PARENT_UUID_FIELD, PARENT_BRANCH_TIME_FIELD, PARENT_HASH_FIELD
 from payu.metadata import arrange_metadata, add_template_metadata_values
 
 from test.common import cd
@@ -593,23 +594,33 @@ def test_update_file_given_metadata_file(tmp_path, metadata_input, metadata_expe
 
 
 @pytest.mark.parametrize(
-    "restart_path, parent_branch_time, expected",
+    "restart_path, parent_experiment, parent_branch_time, parent_hash, " \
+    "expected_parent_experiment, expected_parent_branch_time, expected_parent_hash",
     [   
         # restart_path and branch_off_time provided - PARENT_BRANCH_TIME_FIELD should be updated
-        (Path("/path/to/restart000/"), "2026-07-24T12:00:00", "2026-07-24T12:00:00"),
+        (Path("/path/to/restart000/"), 
+        "parent_expt_uuid", "2026-07-24T12:00:00", "parent_hash_value",
+        "parent_expt_uuid", "2026-07-24T12:00:00", "parent_hash_value"),
 
         # restart_path provided, but no branch_off_time - should not have PARENT_BRANCH_TIME_FIELD
-        (Path("/path/to/restart000/"), None, None),
+        (Path("/path/to/restart000/"), 
+        "parent_expt_uuid", None, "parent_hash_value",
+        "parent_expt_uuid", None, "parent_hash_value"),
         
         # branch_off_time alone, without a restart_path, should not have PARENT_BRANCH_TIME_FIELD
-        (None, "2026-07-24T12:00:00", None),
+        (None, 
+        "parent_expt_uuid", "2026-07-24T12:00:00", "parent_hash_value",
+        "parent_expt_uuid", None, "parent_hash_value"),
 
-        # No restart_path and no branch_off_time, should not have PARENT_BRANCH_TIME_FIELD
-        (None, None, None),
+        # No parent_experiment or restart path given - should not have any parent_info fields
+        (None, 
+        None, "2026-07-24T12:00:00", "parent_hash_value", 
+        None, None, None),
     ]
 )
-def test_update_file_parent_branch_time(restart_path, parent_branch_time, expected):
-    """ Test that parent_branch_time is added to metadata when restart path is provided"""
+def test_update_parent_info(restart_path, parent_experiment, parent_branch_time, parent_hash, 
+                        expected_parent_experiment, expected_parent_branch_time, expected_parent_hash):
+    """ Test that parent_expt-related fields in metadata is updated for different restart_path situations"""
     # Setup config
     test_config = config.copy()
     test_config['model'] = "test-model"
@@ -630,17 +641,25 @@ def test_update_file_parent_branch_time(restart_path, parent_branch_time, expect
     # Mock datetime (for created date)
     with patch('payu.metadata.datetime') as mock_date:
         mock_date.now.return_value = datetime(2026, 7, 24)
+        parent_info = {
+            "parent_experiment": parent_experiment,
+            "parent_branch_time": parent_branch_time,
+            "parent_hash": parent_hash,
+        }
 
-        # Call update_file
-        metadata.update_file(restart_path=restart_path, parent_branch_time=parent_branch_time)
+        updated_metadata = metadata.update_parent_info(orig_metadata, parent_info, restart_path=restart_path)
 
-    # Read the metadata file
-    with open(ctrldir / 'metadata.yaml', 'r') as file:
-        metadata_content = YAML().load(file)
+    # Read the metadata and confirm the parent info fields are updated correctly
+    expected_fields = {
+        PARENT_UUID_FIELD: expected_parent_experiment,
+        PARENT_BRANCH_TIME_FIELD: expected_parent_branch_time,
+        PARENT_HASH_FIELD: expected_parent_hash,
+    }
+    for field, expected_value in expected_fields.items():
+        if expected_value is not None:
+            assert updated_metadata.get(field) == expected_value
+        else:
+            assert field not in updated_metadata
+    
 
-    if expected is None:
-        # Should not have PARENT_BRANCH_TIME_FIELD field
-        assert PARENT_BRANCH_TIME_FIELD not in metadata_content
-    else:
-        # Should be the same as the provided parent_branch_time
-        assert metadata_content[PARENT_BRANCH_TIME_FIELD] == expected
+    

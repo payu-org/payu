@@ -514,6 +514,7 @@ def test_checkout_branch_with_restart_path(mock_uuid, mock_set_input_paths):
     restart_path.mkdir()
 
     branch_name2 = "Branch2"
+    expected_parent_hash = repo.head.object.hexsha
 
     # Mock uuid2 value
     uuid2 = "9cc04c9b-f13d-4f1d-8a35-87146a4381ef"
@@ -532,7 +533,8 @@ def test_checkout_branch_with_restart_path(mock_uuid, mock_set_input_paths):
                           expected_current_branch=branch_name2,
                           expected_uuid=uuid2,
                           expected_experiment=experiment2_name,
-                          expected_parent_uuid=uuid1)
+                          expected_parent_uuid=uuid1,
+                          expected_parent_hash=expected_parent_hash,)
 
 
 @pytest.mark.parametrize("branch_metadata_with_uuid",
@@ -695,6 +697,7 @@ def test_clone(mock_uuid, git_identity_setenv, mock_set_input_paths):
                           expected_uuid=uuid2,
                           expected_experiment="clonedRepo2-Branch2-fd7b4804",
                           expected_parent_uuid=uuid1,
+                          expected_parent_hash=branch_1_commit_hash,
                           metadata_file=metadata_file)
 
     # Check branched from Branch1
