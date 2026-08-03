@@ -127,7 +127,10 @@ class Experiment(object):
 
         self.set_output_paths()
 
-        # Add parent_branch_time to parent_info
+        # Add parent_branch_time and parent_hash to parent_info
+        if self.config.get('record_parent_branch_commit', True) is False:
+            print("'record_parent_branch_commit' is set to False in config. Skip adding parent branch commit to metadata.")
+            parent_info['parent_hash'] = None
         parent_info['parent_branch_time'] = self._get_parent_branch_time()
         
         # Set up and write metadata file
