@@ -1,15 +1,15 @@
 from io import StringIO
 import os
-from pathlib import Path
 import payu.branch
 import pytest
-import shutil
 import stat
 import sys
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+from datetime import datetime
 
 # Submodules
 import payu
+import payu.experiment
 import payu.fsops
 import payu.laboratory
 import payu.envmod
@@ -357,3 +357,61 @@ pbs_flags: value2
     warn_msg = "Removing any subsequent duplicate keys from config.yaml"
     with pytest.warns(UserWarning, match=warn_msg):
         payu.branch.add_restart_to_config(restart_path, config_path)
+
+
+def test_get_parent_branch_time_no_prior_restart_path(capsys):
+    """Test that _get_parent_branch_time in Experiment() returns None when there is no
+    prior restart path"""
+    mock_expt = MagicMock()
+    mock_expt.prior_restart_path = None
+
+    result = payu.experiment.Experiment._get_parent_branch_time(mock_expt)
+
+    assert result is None
+    msg = "No prior restart path provided. Skip adding parent branch time to metadata."
+    assert msg in capsys.readouterr().out
+
+
+def test_get_parent_branch_time_with_prior_restart_path():
+    """Test that _get_parent_branch_time returns a formatted datetime
+    string when the model returns a valid restart datetime"""
+    mock_expt = MagicMock()
+    mock_expt.prior_restart_path = "restart100"
+    mock_expt.model.get_restart_datetime.return_value = datetime(
+        2026, 7, 27, 12, 0, 0
+    )
+
+    result = payu.experiment.Experiment._get_parent_branch_time(mock_expt)
+
+    mock_expt.model.get_restart_datetime.assert_called_once_with("restart100")
+    assert result == "2026-07-27T12:00:00"
+
+
+def test_get_parent_branch_time_get_restart_datetime_raises():
+    """Test that _get_parent_branch_time returns None when the model
+    raises an exception while parsing the restart datetime"""
+    mock_expt = MagicMock()
+    mock_expt.prior_restart_path = "restart000"
+    mock_expt.model.get_restart_datetime.side_effect = Exception("Not Implemented")
+
+    with pytest.warns(UserWarning, match="Failed to get parent branch time from restart path restart000: Not Implemented"):
+        result = payu.experiment.Experiment._get_parent_branch_time(mock_expt)
+        assert result is None
+
+def test_get_parent_branch_time_supressed(capsys):
+    """Test that _get_parent_branch_time returns None if record_parent_branch_time is False in config"""
+    mock_expt = MagicMock()
+    mock_expt.prior_restart_path = "restart000"
+
+    # Set up config with record_parent_branch_time set to False
+    config_path = os.path.join('test', 'resources', 'config_mom5.yaml')
+    config = payu.fsops.read_config(config_path)
+    config['record_parent_branch_time'] = False
+    mock_expt.config = config
+
+    result = payu.experiment.Experiment._get_parent_branch_time(mock_expt)
+
+    assert result is None
+    msg = "'record_parent_branch_time' is set to False in config. Skip adding parent branch time to metadata."
+    assert msg in capsys.readouterr().out
+

@@ -37,6 +37,8 @@ GIT_URL_FIELD = "url"
 CREATED_FIELD = "created"
 MODEL_FIELD = "model"
 METADATA_FILENAME = "metadata.yaml"
+PARENT_BRANCH_TIME_FIELD = "parent_experiment_branch_time"
+PARENT_HASH_FIELD = "parent_experiment_branch_commit"
 
 # Metadata Schema
 SCHEMA_FIELD = "schema_version"
@@ -58,7 +60,8 @@ PLEASE_UPDATE_COMMENT = "---- User feel free to update. ----"
 FIELD_GROUPS = {
 DO_NOT_EDIT_COMMENT: [UUID_FIELD],
 CAN_EDIT_COMMENT: [NAME_FIELD, CONTACT_FIELD, EMAIL_FIELD, CREATED_FIELD,
-                    GIT_URL_FIELD, MODEL_FIELD, PARENT_UUID_FIELD, SCHEMA_FIELD],
+                    GIT_URL_FIELD, MODEL_FIELD, PARENT_UUID_FIELD, SCHEMA_FIELD,
+                    PARENT_BRANCH_TIME_FIELD, PARENT_HASH_FIELD],
 }
 
 class MetadataWarning(Warning):
@@ -269,7 +272,7 @@ class Metadata:
     def write_metadata(self,
                        restart_path: Optional[Union[Path, str]] = None,
                        set_template_values: bool = False,
-                       parent_experiment: Optional[str] = None) -> None:
+                       parent_info: Optional[dict] = dict()) -> None:
         """Create/update metadata file, commit any changes and
         copy metadata file to the experiment archive.
 
@@ -279,8 +282,8 @@ class Metadata:
             set_template_values: bool, default False
                 Read schema and set metadata template values for new
                 experiments
-            parent_experiment: Optional[str]
-                Parent experiment UUID to add to generated metadata
+            parent_info: Optional[dict]
+                Dictionary containing information about the parent experiment
 
         Return: None
 
@@ -295,7 +298,7 @@ class Metadata:
             restart_path = Path(restart_path) if restart_path else None
             self.update_file(restart_path=restart_path,
                              set_template_values=set_template_values,
-                             parent_experiment=parent_experiment)
+                             parent_info=parent_info)
             self.commit_file()
 
         self.copy_to_archive()
@@ -303,18 +306,15 @@ class Metadata:
     def update_file(self,
                     restart_path: Optional[Path] = None,
                     set_template_values: bool = False,
-                    parent_experiment: Optional[str] = None) -> None:
+                    parent_info: Optional[dict] = dict()) -> None:
         """Write any updates to metadata file"""
         metadata = self.read_file()
 
         # Add UUID field
         metadata[UUID_FIELD] = self.uuid
 
-        # Update parent UUID field
-        if parent_experiment is None:
-            parent_experiment = self.get_parent_experiment(restart_path)
-        if parent_experiment and parent_experiment != self.uuid:
-            metadata[PARENT_UUID_FIELD] = parent_experiment
+        # Add parent experiment information to metadata
+        metadata = self.update_parent_info(metadata, parent_info, restart_path)
 
         # Add extra fields if new branch-uuid experiment
         # so to not over-write fields if it's a pre-existing legacy experiment
@@ -387,6 +387,46 @@ class Metadata:
         # Note: The existence of an archive is used for determining
         # experiment names and whether to generate a new UUID
 
+    def update_parent_info(self, 
+                           metadata: CommentedMap,
+                           parent_info: dict,
+                           restart_path: Path) -> CommentedMap:
+        """ Update the parent infomation in the metadata including:
+        - parent_experiment
+        - parent_branch_time
+        - parent_hash
+        """
+        # Read parent infromation from the dictionary
+        parent_experiment = parent_info.get('parent_experiment', None)
+        parent_branch_time = parent_info.get('parent_branch_time', None)
+        parent_hash = parent_info.get('parent_hash', None)
+
+        # Update parent UUID field
+        if parent_experiment is None:
+            parent_experiment = self.get_parent_experiment(restart_path)
+        if parent_experiment and parent_experiment != self.uuid:
+            metadata[PARENT_UUID_FIELD] = parent_experiment
+        else:
+            # Remove parent_experiment if entry exists in metadata
+            metadata.pop(PARENT_UUID_FIELD, None)
+
+        # Update parent branch time
+        if restart_path and parent_branch_time:
+            # If parent branch time can be determined, add it to metadata
+            metadata[PARENT_BRANCH_TIME_FIELD] = parent_branch_time
+        else:
+            # Remove parent_branch_time and parent_hash if entry exists in metadata
+            metadata.pop(PARENT_BRANCH_TIME_FIELD, None)
+
+        # Update parent hash, only if parent_experiment UUID is defined
+        if parent_experiment and parent_hash:
+            # If there is a parent experiment, add the parent hash to metadata
+            metadata[PARENT_HASH_FIELD] = parent_hash
+        else:
+            # Remove parent_hash if entry exists in metadata
+            metadata.pop(PARENT_HASH_FIELD, None)
+
+        return metadata
 
 def get_schema_from_github():
     """Retrieve metadata schema from github"""
@@ -525,4 +565,3 @@ def remove_existing_header(metadata, header_only=True):
 
     clean_yaml_content = "\n".join(clean_lines)
     return YAML().load(clean_yaml_content)
-    

@@ -44,7 +44,7 @@ from payu.calendar import parse_date_offset
 from payu.sync import SyncToRemoteArchive
 from payu.metadata import Metadata
 import payu.telemetry as telemetry
-from payu.git_utils import get_git_repository, PayuGitWarning
+from payu.git_utils import get_git_repository
 import payu.errors as errors
 
 # Setup logger
@@ -74,7 +74,8 @@ def timeit(time_name):
 
 
 class Experiment(object):
-    def __init__(self, lab, reproduce=False, force=False, metadata_off=False, config_path=None, is_new_experiment=False):
+    def __init__(self, lab, reproduce=False, force=False, metadata_off=False, config_path=None, 
+                 is_new_experiment=False, keep_uuid=False, set_template_values=False, parent_info=None):
         self.init_timings()
         self.lab = lab
         # Check laboratory directories are writable
@@ -88,7 +89,7 @@ class Experiment(object):
 
         # Initialise experiment metadata - uuid and experiment name
         self.metadata = Metadata(Path(lab.archive_path), disabled=metadata_off, config_path=config_path)
-        self.metadata.setup(is_new_experiment=is_new_experiment)
+        self.metadata.setup(is_new_experiment=is_new_experiment, keep_uuid=keep_uuid)
 
         # TODO: replace with dict, check versions via key-value pairs
         self.modules = set()
@@ -127,8 +128,19 @@ class Experiment(object):
 
         self.set_output_paths()
 
-        # Create metadata file and move to archive
-        self.metadata.write_metadata(restart_path=self.prior_restart_path)
+        if parent_info is None:
+            parent_info = {}
+
+        # Add parent_branch_time and parent_hash to parent_info
+        if not self.config.get('record_parent_branch_commit', True):
+            print("'record_parent_branch_commit' is set to False in config. Skip adding parent branch commit to metadata.")
+            parent_info['parent_hash'] = None
+        parent_info['parent_branch_time'] = self._get_parent_branch_time()
+        
+        # Set up and write metadata file
+        self.metadata.write_metadata(set_template_values=set_template_values,
+                                restart_path=self.prior_restart_path,
+                                parent_info=parent_info)
 
         if not reproduce:
             # check environment for reproduce flag under PBS
@@ -166,6 +178,28 @@ class Experiment(object):
                                               DEFAULT_SCHEDULER_CONFIG)
         self.scheduler = scheduler_index[self.scheduler_name]()
         self.job_file = None
+
+    def _get_parent_branch_time(self):
+        """Get the parent experiment model time based on the prior restart path, if available."""
+        if self.prior_restart_path is None:
+            print("No prior restart path provided. Skip adding parent branch time to metadata.")
+            return None
+
+        if self.config.get('record_parent_branch_time', True) is False:
+            print("'record_parent_branch_time' is set to False in config. Skip adding parent branch time to metadata.")
+            return None
+
+        # Get model start time based on the given restart path
+        parent_branch_time = None
+        try:
+            datetimes = self.model.get_restart_datetime(self.prior_restart_path)
+            parent_branch_time = datetimes.strftime('%Y-%m-%dT%H:%M:%S')
+
+        except Exception as e:
+            warnings.warn(f"Failed to get parent branch time from restart path {self.prior_restart_path}: {e}")
+            
+        return parent_branch_time
+
 
     def get_job_file(self, type='run'):
         """ Get the job file for the payu job."""

@@ -12,13 +12,13 @@ import warnings
 from pathlib import Path
 from typing import Optional
 import shutil
-import sys
 
 from ruamel.yaml import YAML, CommentedMap, constructor
 import git
 
 from payu.fsops import read_config, DEFAULT_CONFIG_FNAME, list_sorted_archive_dirs
 from payu.laboratory import Laboratory
+from payu.experiment import Experiment
 from payu.metadata import Metadata, UUID_FIELD, METADATA_FILENAME
 from payu.git_utils import GitRepository, git_clone
 import payu.errors as errors
@@ -47,8 +47,7 @@ Where BRANCH_NAME is the name of the branch"""
 
 DEFAULT_PARENT_STRING = "BASE"
 
-def check_restart(restart_path: Path,
-                  archive_path: Optional[Path] = None) -> Optional[Path]:
+def check_restart(restart_path: Path) -> Path:
     """Checks if restart path exists and whether the archive already
     has pre-existing restarts. Returns a resolved restart path
 
@@ -56,33 +55,31 @@ def check_restart(restart_path: Path,
     ----------
     restart_path: Path
         Absolute, or relative, restart path to start experiment from
-    archive_path: Optional[Path], default None
-        Experiment archive directory to check for pre-existing restarts files
 
     Returns
     ----------
     Optional[Path]
-        Absolute restart path if a valid path, otherwise None
+        Absolute restart path if a valid path, otherwise raise an error
     """
 
     # Check for valid path
     if not restart_path.exists():
-        warnings.warn((f"Given restart path {restart_path} does not "
-                       f"exist. Skipping setting 'restart' in config file"))
-        return
+        raise errors.PayuFileNotFoundError(f"Given restart path {restart_path} does not exist. "
+                                           f"Skip setting 'restart' in config file.")
 
     # Resolve to absolute path
     restart_path = restart_path.resolve()
+    return restart_path
 
-    # Check for pre-existing restarts in archive
+def check_existing_restart_in_archive(archive_path: Path, restart_path: Path) -> None:
+    """ Check for pre-existing restarts in archive 
+    e.g., payu checkout -r restart existing_branch should trigger this warning"""
     if archive_path and archive_path.exists():
         if len(list_sorted_archive_dirs(archive_path, dir_type="restart")) > 0:
             warnings.warn((
-                f"Pre-existing restarts found in archive: {archive_path}."
-                f"Skipping adding 'restart: {restart_path}' to config file"))
-            return
-
-    return restart_path
+                f"Pre-existing restarts found in archive: {archive_path}. "
+                f"Payu will ignore 'restart: {restart_path}' in the config file."))
+    return
 
 
 def add_restart_to_config(restart_path: Path, config_path: Path) -> None:
@@ -126,9 +123,9 @@ def check_config_path(config_path: Optional[Path] = None) -> Optional[Path]:
         config_path = Path(DEFAULT_CONFIG_FNAME)
         config_path.resolve()
 
-    if not config_path.exists() or not config_path.is_file:
+    if not config_path.exists() or not config_path.is_file():
         print(NO_CONFIG_FOUND_MESSAGE)
-        raise FileNotFoundError(f"Configuration file {config_path} not found")
+        raise errors.PayuFileNotFoundError(f"Configuration file {config_path} not found")
 
     return config_path
 
@@ -179,7 +176,9 @@ def checkout_branch(branch_name: str,
     repo = GitRepository(control_path, catch_error=True)
     if repo.repo is None:
         raise errors.PayuBranchError("Invalid repository, could not checkout branch.")
-    repo.checkout_branch(branch_name, is_new_branch, start_point)
+    # If is_new_branch is True, parent_hash records the hash of the parent commit,
+    # otherwise parent_hash is None
+    parent_hash = repo.checkout_branch(branch_name, is_new_branch, start_point)
 
      # If parent_experiment is set to DEFAULT_PARENT_STRING, set to start_point's experiment UUID
     if parent_experiment == DEFAULT_PARENT_STRING:
@@ -196,6 +195,9 @@ def checkout_branch(branch_name: str,
 
         parent_experiment = uuid
 
+    # Build a dictionary to store information about parent experiment
+    parent_info = {'parent_experiment': parent_experiment, 'parent_hash': parent_hash}
+
     # Check config file exists on checked out branch
     config_path = check_config_path(config_path)
 
@@ -207,36 +209,33 @@ def checkout_branch(branch_name: str,
         print(LAB_WRITE_ACCESS_ERROR)
         raise
 
-    # Initialise metadata
-    metadata = Metadata(Path(lab.archive_path),
-                        branch=branch_name,
-                        config_path=config_path)
-
-    # Setup Metadata
+    # Setup metadata
     is_new_experiment = is_new_experiment or is_new_branch
-    metadata.setup(keep_uuid=keep_uuid,
-                   is_new_experiment=is_new_experiment)
 
     # Gets valid prior restart path
     prior_restart_path = None
     if restart_path:
-        prior_restart_path = check_restart(restart_path=restart_path,
-                                           archive_path=metadata.archive_path)
-
-    # Create/update and commit metadata file
-    metadata.write_metadata(set_template_values=True,
-                            restart_path=prior_restart_path,
-                            parent_experiment=parent_experiment)
-
-    # Add restart option to config
+        # Check if restart path exists and resolve to an absolute path
+        prior_restart_path = check_restart(restart_path=restart_path)
     if prior_restart_path:
+        # Add restart option to config
         add_restart_to_config(prior_restart_path, config_path=config_path)
 
+    # Get model start time and Create/update and commit metadata file
+    expt = Experiment(lab, 
+                set_template_values=True,
+                is_new_experiment=is_new_experiment, 
+                keep_uuid=keep_uuid, 
+                parent_info=parent_info)
+
     # Switch/Remove/Add archive and work symlinks
-    experiment = metadata.experiment_name
+    experiment = expt.metadata.experiment_name
     switch_symlink(Path(lab.archive_path), control_path, experiment, 'archive')
     switch_symlink(Path(lab.work_path), control_path, experiment, 'work')
 
+    if prior_restart_path:
+        # Check for pre-existing restarts in archive and warn user if restart:in config will be ignored
+        check_existing_restart_in_archive(expt.metadata.archive_path, prior_restart_path)
 
 def switch_symlink(lab_dir_path: Path, control_path: Path,
                    experiment_name: str, sym_dir: str) -> None:
@@ -360,7 +359,7 @@ def clone(repository: str,
                             lab_path=lab_path,
                             is_new_experiment=True,
                             parent_experiment=parent_experiment)
-    except errors.PayuBranchError as e:
+    except (errors.PayuBranchError, errors.PayuFileNotFoundError) as e:
         # Remove directory if incomplete checkout
         shutil.rmtree(control_path)
         msg = (
