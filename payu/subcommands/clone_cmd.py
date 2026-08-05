@@ -12,6 +12,7 @@ import shutil
 import sys
 import os
 from prompt_toolkit.completion import PathCompleter
+from importlib.resources import files
 
 from payu.branch import clone
 import payu.subcommands.args as args
@@ -233,10 +234,7 @@ def fetch_tags(url):
 def show_flowchart():
     """Show the flowchart for the clone process."""
     try:
-        flowchart_path = os.path.join(
-            os.path.dirname(__file__),
-            "../../docs/diagrams/payu_clone_flowchart.ascii"
-        )
+        flowchart_path = files(__package__) / "payu_clone_flowchart.ascii"
         if not os.path.exists(flowchart_path):
             qprint("-- Flowchart file not found. --")
             return
@@ -338,13 +336,15 @@ def ask_for_local_directory():
 
 def confirm_new_experiment():
     """Ask the user if this is a new experiment"""
+    choice_yes = "Yes, create a new UUID as a new experiment"
+    choice_no = "No, keep using the existing UUID in the experiment"
     is_new_expt = safe_ask(questionary.select(
         "Is this a new experiment? (If yes, payu will create a new branch.)",
-        choices=["Yes", "No"],
+        choices=[choice_yes, choice_no],
         style=accessible_style,
         qmark = custom_qmark
     ))
-    if is_new_expt == "Yes":
+    if is_new_expt == choice_yes:
         return True
     else:
         return False
