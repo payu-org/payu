@@ -234,7 +234,7 @@ def fetch_tags(url):
 def show_flowchart():
     """Show the flowchart for the clone process."""
     try:
-        flowchart_path = files(__package__) / "payu_clone_flowchart.ascii"
+        flowchart_path = files(__package__) / ".." / "payu_clone_flowchart.ascii"
         if not os.path.exists(flowchart_path):
             qprint("-- Flowchart file not found. --")
             return
