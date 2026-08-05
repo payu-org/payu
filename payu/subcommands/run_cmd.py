@@ -88,20 +88,6 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
         max_cpus_per_node = platform.get("nodesize", 48)
         max_ram_per_node = platform.get("nodemem", 192)
 
-    # Adjust the CPUs for any model-specific settings
-    # TODO: Incorporate this into the Model driver
-    mask_table = pbs_config.get('mask_table', False)
-    if mask_table:
-
-        # Check if a mask table exists
-        # TODO: Is control_path defined at this stage?
-        mask_table_fname = None
-        for fname in os.listdir(os.curdir):
-            if fname.startswith('mask_table'):
-                mask_table_fname = fname
-
-        # TODO TODO
-
     if 'ncpureq' in pbs_config:
         # Hard override of CPU request
         n_cpus_request = pbs_config.get('ncpureq')

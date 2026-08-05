@@ -306,7 +306,7 @@ def fms_collate(model):
 
             # Remove the collated file if it already exists, since it is
             # probably from a failed collation attempt
-            # TODO: Validate this somehow
+            # TODO: Validate this somehow : issue #820
             if os.path.isfile(nc_path):
                 os.remove(nc_path)
 
@@ -327,7 +327,6 @@ def fms_collate(model):
         codes.append(rc)
         outputs.append(op)
 
-    # TODO: Categorise the return codes
     if any(rc is not None for rc in codes):
         for p, rc, op in zip(count(), codes, outputs):
             if rc is not None:
