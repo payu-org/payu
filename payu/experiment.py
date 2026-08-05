@@ -74,7 +74,7 @@ def timeit(time_name):
 
 class Experiment(object):
     def __init__(self, lab, reproduce=False, force=False, metadata_off=False, config_path=None, 
-                 is_new_experiment=False, keep_uuid=False, set_template_values=False, parent_info=dict()):
+                 is_new_experiment=False, keep_uuid=False, set_template_values=False, parent_info=None):
         self.init_timings()
         self.lab = lab
         # Check laboratory directories are writable
@@ -127,8 +127,11 @@ class Experiment(object):
 
         self.set_output_paths()
 
+        if parent_info is None:
+            parent_info = {}
+
         # Add parent_branch_time and parent_hash to parent_info
-        if self.config.get('record_parent_branch_commit', True) is False:
+        if not self.config.get('record_parent_branch_commit', True):
             print("'record_parent_branch_commit' is set to False in config. Skip adding parent branch commit to metadata.")
             parent_info['parent_hash'] = None
         parent_info['parent_branch_time'] = self._get_parent_branch_time()
