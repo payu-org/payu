@@ -396,10 +396,6 @@ class PBS(Scheduler):
         else:
             pbs_flags.append('-j {join}'.format(join=pbs_join))
 
-        # Export all environment variables if requested
-        # if pbs_config.get('export_env_vars', False):
-        #     pbs_flags.append('-V')
-
         # Check for storage mounts and add them to the qsub command
         storages = set()
         storage_config = pbs_config.get('storage', {})
@@ -463,7 +459,6 @@ class PBS(Scheduler):
         envmod.setup()
 
         # Submit with HPCpy PBSClient
-        # TODO: Is there a way to print the command when dry_run is False?
         job_or_cmd = client.submit(job_script = f"-- {python_exe} {pbs_script}",
                       directives = pbs_flags,
                       dry_run = dry_run,
@@ -572,29 +567,6 @@ def get_job_info_json(
             f"\n Error: {e}"
         )
         raise
-
-
-def pbs_env_init():
-
-    # Initialise against PBS_CONF_FILE
-    if sys.platform == 'win32':
-        pbs_conf_fpath = r'C:\Program Files\PBS Pro\pbs.conf'
-    else:
-        pbs_conf_fpath = '/etc/pbs.conf'
-    os.environ['PBS_CONF_FILE'] = pbs_conf_fpath
-
-    try:
-        with open(pbs_conf_fpath) as pbs_conf:
-            for line in pbs_conf:
-                try:
-                    key, value = line.split('=')
-                    os.environ[key] = value.rstrip()
-                except ValueError:
-                    pass
-    except IOError as ec:
-        raise errors.PayuFileNotFoundError(
-            f'Unable to find PBS_CONF_FILE ... {pbs_conf_fpath}') from ec
-
 
 def encode_mount(mount):
     """
