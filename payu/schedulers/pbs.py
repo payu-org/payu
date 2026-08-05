@@ -468,7 +468,7 @@ class PBS(Scheduler):
                       directives = pbs_flags,
                       dry_run = dry_run,
                       queue = pbs_config.get('queue', 'normal'),
-                      storage = [storage for storage in storages] if storages else None,
+                      storage = list(storages) if storages else None,
                       variables = pbs_vars,
                       )
 

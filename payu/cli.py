@@ -21,7 +21,6 @@ from pathlib import Path
 
 # Local imports
 import payu
-import payu.envmod as envmod
 from payu.fsops import is_conda
 from payu.models import index as supported_models
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
@@ -225,12 +224,12 @@ def submit_job(script, config, vars=None, expt=None, current_run=None, type=None
             if dry_run:
                 # If dry_run is True, print out the submission command and exit
                 print(f"---- Dry run (submission skipped) -----\n"
-                    f"Submission command: {job_or_cmd}")
+                    f"Generated command: {job_or_cmd}")
                 return None
             else:
                 # Print the job ID and command after submission 
                 print(f"------ Job submitted ------\n"
-                    f"Submission command: {job_or_cmd.history[0]}")
+                    f"Submitted command: {job_or_cmd.history[0]}")
                 job_id = job_or_cmd.id
                 print(f"Job ID: {job_id}")
         
