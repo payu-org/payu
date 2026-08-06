@@ -21,7 +21,6 @@ from pathlib import Path
 
 # Local imports
 import payu
-import payu.envmod as envmod
 from payu.fsops import is_conda
 from payu.models import index as supported_models
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
@@ -209,35 +208,58 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
     return payu_env_vars
 
 
-def submit_job(script, config, vars=None, expt=None, current_run=None, type=None):
+def submit_job(script, config, vars=None, expt=None, current_run=None, type=None, dry_run=False):
     """Submit a userscript the scheduler and return the job ID"""
 
     # TODO: Temporary stub to replicate the old approach
     sched_name = config.get('scheduler', DEFAULT_SCHEDULER_CONFIG)
     sched_type = scheduler_index[sched_name]
     sched = sched_type()
-    cmd = sched.submit(script, config, vars)
-    print(cmd)
 
     try:
-        result = subprocess.run(shlex.split(cmd), capture_output=True, check=True, text=True)
+        if sched_name == 'pbs':
+            # Use HPCpy to submit the job in PBS
+            job_or_cmd = sched.submit(script, config, vars, dry_run=dry_run)
+
+            if dry_run:
+                # If dry_run is True, print out the submission command and exit
+                print(f"---- Dry run (submission skipped) -----\n"
+                    f"Generated command: {job_or_cmd}")
+                return None
+            else:
+                # Print the job ID and command after submission 
+                print(f"------ Job submitted ------\n"
+                    f"Submitted command: {job_or_cmd.history[0]}")
+                job_id = job_or_cmd.id
+                print(f"Job ID: {job_id}")
+        
+        elif sched_name == 'slurm':
+            # Slurm: payu generates the sbatch command and call subprocess.run() to submit the job
+            cmd = sched.submit(script, config, vars)
+            result = subprocess.run(shlex.split(cmd), capture_output=True, check=True, text=True)
+
+            job_id = result.stdout.strip().split()[-1]
+            print(f"Job submitted with ID: {job_id}")
+
+        else:
+            warnings.warn(f"Unsupported scheduler type: {sched_name}. Job submission skipped.")
+            return None
 
     except subprocess.CalledProcessError as e:
-        error_msg = ("Error occurred while submitting job.\n")
-
-        if e.returncode:
-            error_msg += f"Exit code: {e.returncode}\n"
-        if e.stdout:
-            error_msg += f"STDOUT: {e.stdout}\n"
-        if e.stderr:
-            error_msg += f"STDERR: {e.stderr}"
-
-        raise errors.PayuRuntimeError(error_msg)
-
-    # Decode stdout and extract the job ID which is last for both PBS and Slurm
-    result = result.stdout.strip()
-    print(result)
-    job_id = result.split()[-1]
+        # Catch errors from subprocess.run() for Slurm
+        raise errors.PayuRuntimeError(
+            "Error occurred while submitting job.\n"
+            f"Exit code {e.returncode}.\n"
+            f"STDOUT: {e.output}\n"
+            f"STDERR: {e.stderr}"
+        )
+    
+    except Exception as e:
+        # Catch other exceptions from PBS submission
+        raise errors.PayuRuntimeError(
+            f"Error occurred while submitting a job to {sched_name} scheduler.\n"
+            f"Error: {str(e)}"
+        ) from e
 
     if expt is not None:
 
@@ -255,7 +277,6 @@ def submit_job(script, config, vars=None, expt=None, current_run=None, type=None
             metadata=expt.metadata,
             current_run=current_run,
         )
-
 
     return job_id
 

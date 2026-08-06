@@ -22,7 +22,7 @@ parameters = {'description': 'Run the model experiment'}
 
 arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory, args.reproduce, args.force,
-             args.force_prune_restarts, args.is_new_experiment]
+             args.force_prune_restarts, args.is_new_experiment, args.dry_run]
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ def validate_platform_node(platform, queue, get_queue_node_shape):
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
            reproduce=False, force=False, force_prune_restarts=False,
-           is_new_experiment=False):
+           is_new_experiment=False, dry_run=False):
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
     pbs_vars = cli.set_env_vars(init_run=init_run,
@@ -183,7 +183,7 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
     current_run = int(init_run) if init_run is not None else expt.counter
 
-    cli.submit_job('payu-run', pbs_config, pbs_vars, expt, current_run, type='run')
+    cli.submit_job('payu-run', pbs_config, pbs_vars, expt, current_run, type='run', dry_run=dry_run)
 
 
 def runscript(**run_args):

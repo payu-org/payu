@@ -17,10 +17,10 @@ title = 'collate'
 parameters = {'description': 'Collate tiled output into single output files'}
 
 arguments = [args.model, args.config, args.initial, args.laboratory,
-             args.dir_path]
+             args.dir_path, args.dry_run]
 
 
-def runcmd(model_type, config_path, init_run, lab_path, dir_path):
+def runcmd(model_type, config_path, init_run, lab_path, dir_path, dry_run=False):
 
     pbs_config = fsops.read_config(config_path)
     pbs_vars = cli.set_env_vars(init_run=init_run,
@@ -94,7 +94,7 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path):
 
     # Submit the collation job and write queue job file
     cli.submit_job('payu-collate', pbs_config, pbs_vars, expt=expt, 
-                current_run = int(init_run) if init_run else None, type='collate')
+                current_run = int(init_run) if init_run else None, type='collate', dry_run=dry_run)
 
     
 

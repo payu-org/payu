@@ -15,11 +15,11 @@ title = 'sync'
 parameters = {'description': 'Sync model output to a remote directory'}
 
 arguments = [args.model, args.config, args.initial, args.laboratory, args.dir_path,
-             args.sync_restarts, args.sync_ignore_last]
+             args.sync_restarts, args.sync_ignore_last, args.dry_run]
 
 
 def runcmd(model_type, config_path, init_run, lab_path, dir_path, sync_restarts,
-           sync_ignore_last):
+           sync_ignore_last, dry_run=False):
 
     pbs_config = fsops.read_config(config_path)
 
@@ -60,7 +60,7 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path, sync_restarts,
     pbs_config['qsub_flags'] = sync_config.get('qsub_flags', '')
 
     # Submit PBS job with expt = None so no job file is written
-    cli.submit_job('payu-sync', pbs_config, pbs_vars)
+    cli.submit_job('payu-sync', pbs_config, pbs_vars, dry_run=dry_run)
 
 
 def runscript(**run_args):

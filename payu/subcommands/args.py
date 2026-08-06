@@ -378,3 +378,13 @@ log_level = {
         'help': 'Set the logging level (choices: DEBUG, INFO, WARNING, ERROR, CRITICAL)'
     }
 }
+
+dry_run = {
+    'flags': ['--dry-run'],
+    'parameters': {
+        'dest': 'dry_run',
+        'action': 'store_true',
+        'default': False,
+        'help': 'Print out the submission command without executing it'
+    }
+}
