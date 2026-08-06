@@ -71,7 +71,10 @@ include = ["payu*"]
 namespaces = false
 
 [tool.setuptools.package-data]
-"payu" = ["telemetry/*.json"]
+"payu" = [
+    "telemetry/*.json",
+    "payu_clone_flowchart.ascii",
+]
 
 [tool.pytest.ini_options]
 addopts = "--cov=payu"

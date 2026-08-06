@@ -267,6 +267,16 @@ restart_path = {
     }
 }
 
+# Shortpath for laboratory
+short_path = {
+    'flags': ('--shortpath',),
+    'parameters': {
+        'dest': 'short_path',
+        'action': 'store',
+        'help': 'The shortpath for the laboratory, e.g., /scratch/$PROJECT'
+    }
+}
+
 # Checkout new branch flag
 new_branch = {
     'flags': ['-b'],

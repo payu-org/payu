@@ -356,7 +356,7 @@ pbs_flags: value2
     # still raises another warning that duplicates keys will be deleted
     warn_msg = "Removing any subsequent duplicate keys from config.yaml"
     with pytest.warns(UserWarning, match=warn_msg):
-        payu.branch.add_restart_to_config(restart_path, config_path)
+        payu.branch.add_new_key_to_config('restart', restart_path, config_path)
 
 
 def test_get_parent_branch_time_no_prior_restart_path(capsys):
@@ -414,4 +414,3 @@ def test_get_parent_branch_time_supressed(capsys):
     assert result is None
     msg = "'record_parent_branch_time' is set to False in config. Skip adding parent branch time to metadata."
     assert msg in capsys.readouterr().out
-
