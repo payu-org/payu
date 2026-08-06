@@ -257,7 +257,7 @@ def submit_job(script, config, vars=None, expt=None, current_run=None, type=None
     except Exception as e:
         # Catch other exceptions from PBS submission
         raise errors.PayuRuntimeError(
-            "Error occurred while submitting a job to scheduler {sched_name}.\n"
+            f"Error occurred while submitting a job to {sched_name} scheduler.\n"
             f"Error: {str(e)}"
         ) from e
 
