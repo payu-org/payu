@@ -211,7 +211,6 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
 def submit_job(script, config, vars=None, expt=None, current_run=None, type=None, dry_run=False):
     """Submit a userscript the scheduler and return the job ID"""
 
-    # TODO: Temporary stub to replicate the old approach
     sched_name = config.get('scheduler', DEFAULT_SCHEDULER_CONFIG)
     sched_type = scheduler_index[sched_name]
     sched = sched_type()

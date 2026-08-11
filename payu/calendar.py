@@ -85,14 +85,11 @@ def calculate_leapdays(init_date, final_date):
     leap_days -= (final_date.year - 1) // 100 - (init_date.year - 1) // 100
     leap_days += (final_date.year - 1) // 400 - (init_date.year - 1) // 400
 
-    # TODO: Internal date correction (e.g. init_date is 1-March or later)
+    # TODO: Internal date correction (e.g. init_date is 1-March or later) : issue #819
 
     return datetime.timedelta(days=leap_days)
 
 
-# TODO: The caltype logic could be simplified if we switched
-# to using just a string as the caltype input. Might require reworking of other
-# functions for consistency.
 def seconds_between_dates(start_date, end_date, caltype_int):
     """
     Calculate the number of seconds between two datetime objects
@@ -109,9 +106,12 @@ def seconds_between_dates(start_date, end_date, caltype_int):
     -------
     seconds: Number of seconds between start_date and end_date.
     """
-    # Get the cftime string corresponding to the caltype integer
 
-    # TODO: Is it confusing that GREGORIAN means proleptic gregorian?
+    # Get the cftime string corresponding to the caltype integer.
+    # The caltype logic could be simplified if we switched to using 
+    # a string as the caltype input. Might require reworking of other
+    # functions for consistency.  Potentially confusing that GREGORIAN 
+    # means proleptic gregorian.
     if caltype_int == GREGORIAN:
         calendar_str = "proleptic_gregorian"
     elif caltype_int == NOLEAP:

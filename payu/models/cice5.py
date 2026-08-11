@@ -102,8 +102,6 @@ class Cice5(Cice):
         return iced_restart_file
 
     def set_access_timestep(self, t_step):
-        # TODO: Figure out some way to move this to the ACCESS driver
-        # Re-read ice timestep and move this over there
         self.set_local_timestep(t_step)
 
     def get_restart_datetime(self, restart_path):

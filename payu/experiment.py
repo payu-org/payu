@@ -51,7 +51,6 @@ import payu.errors as errors
 logger = logging.getLogger(__name__)
 
 # Environment module support on vayu
-# TODO: To be removed
 core_modules = ['python', 'payu']
 
 # Default payu parameters
@@ -91,10 +90,8 @@ class Experiment(object):
         self.metadata = Metadata(Path(lab.archive_path), disabled=metadata_off, config_path=config_path)
         self.metadata.setup(is_new_experiment=is_new_experiment, keep_uuid=keep_uuid)
 
-        # TODO: replace with dict, check versions via key-value pairs
         self.modules = set()
 
-        # TODO: __init__ should not be a config dumping ground!
         self.config = read_config(config_path)
 
         # Payu experiment type
@@ -103,7 +100,7 @@ class Experiment(object):
         self.repeat_run = self.config.get('repeat', False)
 
         # Configuration
-        self.expand_shell_vars = True   # TODO: configurable
+        self.expand_shell_vars = True
 
         # Model run time
         self.runtime = None
@@ -119,7 +116,6 @@ class Experiment(object):
         # Initialize the submodels
         self.init_models()
 
-        # TODO: Move to run/collate/sweep?
         self.set_expt_pathnames()
         self.set_counters()
 
@@ -151,7 +147,6 @@ class Experiment(object):
                                  reproduce=reproduce)
 
         # Miscellaneous configurations
-        # TODO: Move this stuff somewhere else
         userscript_val = self.config.get('userscripts', {})
         self.userscripts = userscript_val if isinstance(userscript_val, dict) else {}
 
@@ -161,9 +156,7 @@ class Experiment(object):
 
         self.runlog = Runlog(self)
 
-        # XXX: Temporary spot for the payu path
-        #      This is horrible; payu/cli.py does this much more safely!
-        #      But also does not even store it in os.environ!
+        #  This is a bit hacky
         default_payu_bin = os.path.dirname(sys.argv[0])
         payu_bin = os.environ.get('PAYU_PATH', default_payu_bin)
 
@@ -233,7 +226,7 @@ class Experiment(object):
         # XXX: Temporarily adding this to model config...
         model_fields += ['mask']
 
-        # TODO: Rename this to self.submodels
+        # TODO: Rename this to self.submodels: issue #509
         self.models = []
 
         submodels = self.config.get('submodels', [])
@@ -360,7 +353,6 @@ class Experiment(object):
         for mod in self.modules:
             envmod.module('load', mod)
 
-        # TODO: Consolidate this profiling stuff
         c_ipm = self.config.get('ipm', False)
         if c_ipm:
             if isinstance(c_ipm, str):
@@ -402,7 +394,7 @@ class Experiment(object):
             model.set_local_pathnames()
 
         # Stream output filenames
-        # TODO: per-model output streams?
+        # TODO: per-model output streams : issue #815
         self.stdout_fname = self.lab.model_type + '.out'
         self.stderr_fname = self.lab.model_type + '.err'
 
@@ -424,7 +416,6 @@ class Experiment(object):
             output_dir = 'output{0:03}'.format(self.counter)
             self.output_path = os.path.join(self.archive_path, output_dir)
 
-        # TODO: check case counter == 0
         prior_output_dir = 'output{0:03}'.format(self.counter - 1)
         prior_output_path = os.path.join(self.archive_path, prior_output_dir)
         if os.path.exists(prior_output_path):
@@ -475,7 +466,7 @@ class Experiment(object):
         """Check current payu version is greater than minimum required
         payu version, if configured"""
         # TODO: Move this function to a setup file if setup is moved to
-        # a separate file?
+        # a separate file? : issue #508
         minimum_version_fieldname = "payu_minimum_version"
         if minimum_version_fieldname not in self.config:
             # Skip version check
@@ -544,13 +535,13 @@ class Experiment(object):
 
         # Archive the payu config
         # TODO: This just copies the existing config.yaml file, but we should
-        #       reconstruct a new file including default values
+        #       reconstruct a new file including default values : issue #344
         config_src = os.path.join(self.control_path, 'config.yaml')
         config_dst = os.path.join(self.work_path)
         shutil.copy(config_src, config_dst)
 
         # Stripe directory in Lustre
-        # TODO: Make this more configurable
+        # TODO: Make this more configurable : issue #816
         do_stripe = self.config.get('stripedio', False)
         if do_stripe:
             cmd = 'lfs setstripe -c 8 -s 8m {0}'.format(self.work_path)
@@ -631,7 +622,6 @@ class Experiment(object):
         if not isinstance(mpi_flags, list):
             mpi_flags = [mpi_flags]
 
-        # TODO: More uniform support needed here
         if self.config.get('scalasca', False):
             mpi_flags = ['\"{0}\"'.format(f) for f in mpi_flags]
 
@@ -653,7 +643,6 @@ class Experiment(object):
             mpi_module = mpi_config.get('module', None)
 
             # Update MPI library module (if not explicitly set)
-            # TODO: Check for MPI library mismatch across multiple binaries
             if mpi_module is None and model.required_libs is not None:
                 envmod.lib_update(
                     model.required_libs,
@@ -684,7 +673,6 @@ class Experiment(object):
                     model_prog.append('-np {0}'.format(model_ncpus))
 
             model_npernode = model.config.get('npernode')
-            # TODO: New Open MPI format?
             if model_npernode:
                 npernode_flag = ('-map-by ppr:{0}:node'
                                   ''.format(model_npernode))
@@ -721,7 +709,7 @@ class Experiment(object):
         if self.expand_shell_vars:
             cmd = os.path.expandvars(cmd)
 
-        # TODO: Consider making this default
+        # TODO: Consider making this default : issue #817
         if self.config.get('coredump', False):
             enable_core_dump()
 
@@ -751,7 +739,6 @@ class Experiment(object):
         print(cmd)
         runcmd_start_time = time.perf_counter()
         if env:
-            # TODO: Replace with mpirun -x flag inputs
             proc = sp.Popen(shlex.split(cmd), stdout=f_out, stderr=f_err,
                             env=os.environ.copy())
             proc.wait()
@@ -778,7 +765,6 @@ class Experiment(object):
             if os.path.getsize(fpath) == 0:
                 os.remove(fpath)
 
-        # TODO: Need a model-specific cleanup method call here
         # NOTE: This does not appear to catch hanging jobs killed by PBS
         if rc != 0:
             # Backup logs for failed runs
@@ -1106,9 +1092,7 @@ class Experiment(object):
             self.timings[f"{type}_userscript_duration_seconds"] = elapsed_time
 
     def sweep(self, hard_sweep=False):
-        # TODO: Fix the IO race conditions!
 
-        # TODO: model outstreams and pbs logs need to be handled separately
         default_job_name = os.path.basename(os.getcwd())
         short_job_name = str(self.config.get('jobname', default_job_name))[:15]
 
@@ -1130,7 +1114,6 @@ class Experiment(object):
         legacy_pbs_log_path = os.path.join(self.control_path, 'pbs_logs')
 
         if os.path.isdir(legacy_pbs_log_path):
-            # TODO: New path may still exist!
             assert not os.path.isdir(pbs_log_path)
             print('payu: Moving pbs_logs to {0}'.format(pbs_log_path))
             shutil.move(legacy_pbs_log_path, pbs_log_path)

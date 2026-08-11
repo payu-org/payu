@@ -36,9 +36,6 @@ class Oasis(Model):
         super(Oasis, self).setup()
 
         # Copy OASIS data to the other submodels
-
-        # TODO: Parse namcouple to determine filelist
-        # TODO: Let users map files to models
         input_files = [f for f in os.listdir(self.work_path)
                        if f not in self.config_files]
 
@@ -59,7 +56,7 @@ class Oasis(Model):
                 make_symlink(f_path, f_sympath)
 
         if self.expt.runtime:
-            # TODO: Implement runtime patch to namcouple
+            # TODO: Implement runtime patch to namcouple : issue #823
             pass
 
     def set_timestep(self, t_step):
@@ -101,7 +98,7 @@ class Oasis(Model):
     def archive(self):
         super(Oasis, self).archive()
 
-        # TODO: Determine the exchange files
+        # TODO: Determine the exchange files : issue #823
         restart_files = ['a2i.nc', 'i2a.nc', 'i2o.nc', 'o2i.nc']
 
         os.makedirs(self.restart_path, exist_ok=True)
