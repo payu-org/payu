@@ -366,7 +366,8 @@ def write_queued_job_file(
             type: str,
             scheduler: Scheduler,
             metadata: Metadata,
-            current_run: int
+            current_run: int,
+            depends_on: Optional[list[str]] = None,
         ) -> None:
     """Initialise the queued job file in the control path with the job ID
 
@@ -396,6 +397,7 @@ def write_queued_job_file(
         "scheduler_type": scheduler.name,
         "stage": "queued",
         "payu_current_run": current_run,
+        "depends_on": depends_on,
     }
     data.update(get_metadata(metadata))
     update_job_file(file_path=job_file_path, data=data)

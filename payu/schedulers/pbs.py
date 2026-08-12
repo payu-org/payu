@@ -344,7 +344,7 @@ class PBS(Scheduler):
                 f"than the limit of {mem_per_node:.2f}GB per node for queue '{queue}'."
             )
 
-    def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None, dry_run=False):
+    def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None, dry_run=False, depends_on=None):
         """Prepare a correct PBS command string"""
 
         # Initialisation
@@ -465,6 +465,7 @@ class PBS(Scheduler):
                       queue = pbs_config.get('queue', 'normal'),
                       storage = list(storages) if storages else None,
                       variables = pbs_vars,
+                      depends_on = depends_on,
                       )
 
         return job_or_cmd

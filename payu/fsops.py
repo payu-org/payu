@@ -205,7 +205,9 @@ def check_exe_path(payu_path, pbs_script):
     if not os.path.isabs(pbs_script):
         pbs_script = os.path.join(payu_path, pbs_script)
 
-    assert os.path.isfile(pbs_script)
+    if not os.path.isfile(pbs_script):
+        raise errors.PayuRuntimeError(
+            'Payu executable not found at {0}.'.format(pbs_script))
 
     return pbs_script
 
@@ -419,3 +421,21 @@ def str_to_bool(value):
         return False
     else:
         raise ValueError(f"Input is not acceptable. Please use 'True' or 'False' or '1' or '0'.")
+    
+
+def get_job_id_given_job_type(expt, job_type):
+    """Get the job ID out of the most recent job file, given a specific type (run, collate, sync) for the current experiment."""
+    job_dir = Path(expt.archive_path) / "payu_jobs" / str(expt.counter) / job_type
+
+    if not job_dir.exists():
+        return None
+
+    # Get the most recent job file in the job directory
+    job_files = sorted(job_dir.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+    if not job_files:
+        return None
+
+    # Read the job ID from the most recent job file
+    with job_files[0].open('r') as f:
+        job_data = json.load(f)
+        return job_data.get("scheduler_job_id", None)

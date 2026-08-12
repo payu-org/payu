@@ -3,13 +3,15 @@
 # Standard Library
 import argparse
 import os
+from pathlib import Path
 
 # Local
 from payu import cli
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
-from payu import fsops
+from payu.fsops import read_config, get_job_id_given_job_type
+from payu.telemetry import record_run
 
 title = 'sync'
 parameters = {'description': 'Sync model output to a remote directory'}
@@ -21,7 +23,7 @@ arguments = [args.model, args.config, args.initial, args.laboratory, args.dir_pa
 def runcmd(model_type, config_path, init_run, lab_path, dir_path, sync_restarts,
            sync_ignore_last, dry_run=False):
 
-    pbs_config = fsops.read_config(config_path)
+    pbs_config = read_config(config_path)
 
     pbs_vars = cli.set_env_vars(init_run=init_run,
                                 lab_path=lab_path,
@@ -59,8 +61,14 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path, sync_restarts,
 
     pbs_config['qsub_flags'] = sync_config.get('qsub_flags', '')
 
+    # Initialise experiment to determine archive path and run number (which is needed to write job file)
+    lab = Laboratory(model_type, config_path, lab_path)
+    expt = Experiment(lab)
+
     # Submit PBS job with expt = None so no job file is written
-    cli.submit_job('payu-sync', pbs_config, pbs_vars, dry_run=dry_run)
+    cli.submit_job('payu-sync', pbs_config, pbs_vars, expt=expt, 
+                   current_run=int(init_run) if init_run else None, type='sync',
+                   dry_run=dry_run, depends_on=expt.get_dependency_job_ids('sync'))
 
 
 def runscript(**run_args):
@@ -80,4 +88,24 @@ def runscript(**run_args):
                      run_args.lab_path)
     expt = Experiment(lab)
 
-    expt.sync()
+    try:
+        expt.sync()
+        sync_status = 0
+    except:
+        sync_status = 1
+        raise
+    finally:
+        # Record sync job information into job file
+        job_file_path = expt.get_job_file(type='sync')
+
+        # Record the sync status (duration time and success/failure) in the job file
+        record_run(
+            timings=expt.timings,
+            scheduler=expt.scheduler,
+            status=sync_status,
+            config=expt.config,
+            file_path=job_file_path,
+            archive_path=Path(expt.archive_path),
+            type="sync",
+            stage="exited"
+        )

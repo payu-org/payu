@@ -27,6 +27,9 @@ import logging
 # Extensions
 from ruamel.yaml import YAML
 from packaging import version
+import hpcpy
+
+client = hpcpy.client.pbs.PBSClient()
 
 # Local
 import payu
@@ -34,8 +37,8 @@ from payu import envmod
 from payu.fsops import make_symlink, read_config, movetree
 from payu.fsops import list_sorted_archive_dirs
 from payu.fsops import run_script_command
-from payu.fsops import needs_subprocess_shell
 from payu.fsops import get_size, str_to_bool
+from payu.fsops import get_job_id_given_job_type
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 from payu.models import index as model_index
 from payu.runlog import Runlog
@@ -55,6 +58,13 @@ core_modules = ['python', 'payu']
 
 # Default payu parameters
 default_restart_freq = 5
+
+# Default job dependency
+DEFAULT_DEPENDENCIES = {
+    "collate": ["run"],
+    "postscript": ["run", "collate"],
+    "sync": ["run", "collate", "postscript"],
+}
 
 
 def timeit(time_name):
@@ -978,9 +988,8 @@ class Experiment(object):
             )
             sp.check_call(shlex.split(cmd))
 
-        # Ensure postprocessing runs if model not collating
-        if not collating:
-            self.postprocess()
+        # Call postprocessing step after collation
+        self.postprocess()
 
     @timeit("payu_collate_duration_seconds")
     def collate(self):
@@ -1015,6 +1024,22 @@ class Experiment(object):
         for model in self.models:
             model.profile()
 
+    def get_dependency_job_ids(self, current_job_type: str) -> list:
+        if current_job_type not in self.dependencies:
+            raise errors.PayuRuntimeError(
+                f"Current job type '{current_job_type}' not found in dependencies list: "
+                f"{self.dependencies}"
+            )
+
+        depends_on = []
+        for job_type in self.dependencies[current_job_type]:
+            job_id = get_job_id_given_job_type(self, job_type)
+
+            if job_id:
+                depends_on.append(job_id)
+        return depends_on
+            
+            
     def postprocess(self):
         """Submit any postprocessing scripts or remote syncing if enabled"""
 
@@ -1024,13 +1049,29 @@ class Experiment(object):
             envmod.setup()
             envmod.module('load', 'pbs')
 
-            # Name of this PBS job is set to "payu_postscript"
-            cmd = 'qsub -N payu_postscript {script}'.format(script=self.postscript)
+            # Postscript depends on run and collate jobs, if any of them exist
+            depends_on = self.get_dependency_job_ids('postscript')
+            
+            # Submit through HPCpy
+            # Job name is set to "payu_postscript"
+            postscript_job = client.submit(job_script = f"{self.postscript}",
+                      directives = ['-N payu_postscript'],
+                      depends_on = depends_on
+                      )
+            print(f"--- Postscript submitted ---\n"
+                f"Submitted command: {postscript_job.history[0]}\n"
+                f"Job ID: {postscript_job.id}.\n")
 
-            if needs_subprocess_shell(cmd):
-                sp.check_call(cmd, shell=True)
-            else:
-                sp.check_call(shlex.split(cmd))
+            # Write postscript job file to archive/payu_jobs/{run_number}/postscript/{job_id}-gadi-pbs.json
+            telemetry.write_queued_job_file(
+                        archive_path=Path(self.archive_path),
+                        job_id=postscript_job.id,
+                        type='postscript',
+                        scheduler=self.scheduler,
+                        metadata=self.metadata,
+                        current_run=self.counter,
+                        depends_on=depends_on,
+                    )
 
         # Submit a sync script if remote syncing is enabled
         sync_config = self.config.get('sync', {})
@@ -1042,18 +1083,16 @@ class Experiment(object):
                 expt=self.counter
             )
 
-            if self.postscript:
-                print('payu: warning: postscript is configured, so by default '
-                      'the lastest outputs will not be synced. To sync the '
-                      'latest output, after the postscript job has completed '
-                      'run:\n'
-                      '    payu sync')
-                cmd += f' --sync-ignore-last'
-
             sp.check_call(shlex.split(cmd))
 
     @timeit("payu_sync_duration_seconds")
     def sync(self):
+        # Update collate stage to running
+        telemetry.update_job_file(
+            file_path=self.get_job_file(type='sync'),
+            data={"stage": "running"}
+        )
+
         # RUN any user scripts before syncing archive
         envmod.setup()
         pre_sync_script = self.userscripts.get('sync')

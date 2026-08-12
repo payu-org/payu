@@ -380,6 +380,7 @@ def test_get_job_file_list_selected_run(tmp_path, queued_job, running_job,
 
 def expected_archive_job_info(run_number):
     return {
+        'depends_on': None,
         'exit_status': 0,
         'job_id': f'test-job-id-{run_number}',
         'run_id': f'commit-hash{run_number}',
@@ -394,6 +395,7 @@ def expected_archive_job_info(run_number):
 
 def expected_running_job_info():
     return {
+        'depends_on': None,
         'exit_status': None,
         'job_id': 'test-job-id-3',
         'run_id': 'commit-hash3',
@@ -409,6 +411,7 @@ def expected_running_job_info():
 
 def expected_queued_job_info():
     return {
+        'depends_on': None,
         'exit_status': None,
         'job_id': 'test-job-id-3',
         'run_id': None,
@@ -423,6 +426,7 @@ def expected_queued_job_info():
 
 def expected_failed_job_info():
     return {
+        'depends_on': None,
         'exit_status': 1,
         'job_id': 'test-job-id-0failed',
         'run_id': 'commit-hash-failed',
@@ -436,6 +440,7 @@ def expected_failed_job_info():
 
 def expected_running_collate_job_info(run_number):
     return {
+        'depends_on': None,
         'job_id': f'test-collate-id-{run_number}',
         'stage': 'running',
         'exit_status': None,
@@ -446,6 +451,7 @@ def expected_running_collate_job_info(run_number):
 
 def expected_collate_job_info(run_number):
     return {
+        'depends_on': None,
         'job_id': f'test-collate-id-{run_number}',
         'stage': 'exited',
         'exit_status': 0,
@@ -456,6 +462,7 @@ def expected_collate_job_info(run_number):
 
 def expected_failed_collate_job_info():
     return {
+        'depends_on': None,
         'job_id': "test-collate-id-0failed",
         'stage': 'exited',
         'exit_status': 1,

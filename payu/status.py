@@ -178,7 +178,7 @@ def build_job_info(
     """
     status_data: dict[str, Any] = {}
     runs: dict[int, dict[str, list]] = {}
-    for job_type in ["run", "collate"]:
+    for job_type in ["run", "collate", "postscript", "sync"]:
         job_files = get_job_file_list(archive_path, run_number, all_runs, type=job_type)
         # If no job files found for this type, skip to the next type
         if not job_files:
@@ -198,6 +198,9 @@ def build_job_info(
                 type=data.get("scheduler_type")
             )
 
+            if job_type == "postscript":
+                data = update_postscript_job_file(data, job_file, stdout, stderr)
+
             run_info = {
                 "job_id": data.get("scheduler_job_id"),
                 "stage": data.get("stage"),
@@ -206,6 +209,7 @@ def build_job_info(
                 "stderr_file": str(stderr) if stderr else None,
                 "job_file": str(job_file),
                 "start_time": data.get("timings", {}).get("payu_start_time"),
+                "depends_on": data.get("depends_on"),
             }
 
             if job_type == "run":
@@ -384,6 +388,7 @@ def display_job_info(data: dict[str, Any]) -> None:
                 print(f"  {'-' * 13} {job_type.capitalize()} Info {'-' * 13}")
                 print_line("Job ID", "job_id", job_info)
                 print_line("Run ID", "run_id", job_info)
+                print_line("Job Dependencies", "depends_on", job_info)
                 print_line("Stage", "stage", job_info)
 
                 # Read out qtime and stime from the job file and display queue time
@@ -447,3 +452,23 @@ def display_expt_paths(expt_paths):
     print_line("Archive Directory", "archive_path", expt_paths, description = "Where all experiment outputs are stored")
     print_line("Sync Destination", "sync_path", expt_paths, description = "Remote directory to sync outputs to")
     print("=" * line_width)
+
+
+def update_postscript_job_file(data, job_file, stdout, stderr):
+    """Check if the postscript log file exists and update the stage to exited or queued/running,
+    Return the updated job file data"""
+    # If both stdout and stderr exist, update the stage to exited
+    if stdout and stdout.exists() and stderr and stderr.exists():
+        data["stage"] = "exited"
+
+        # Write the updated job file
+        json.dump(data, job_file.open("w"), indent=4)
+
+    elif data["stage"] == "queued":
+        # If stdout or stderr is not ready, update the stage to queued/running
+        data["stage"] = "queued/running"
+
+        # Write the updated job file
+        json.dump(data, job_file.open("w"), indent=4)
+        
+    return data

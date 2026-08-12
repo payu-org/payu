@@ -174,8 +174,9 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
     current_run = int(init_run) if init_run is not None else expt.counter
 
-    cli.submit_job('payu-run', pbs_config, pbs_vars, expt, current_run, type='run', dry_run=dry_run)
-
+    cli.submit_job('payu-run', pbs_config, pbs_vars, expt, 
+                   current_run, type='run', 
+                   dry_run=dry_run)
 
 def runscript(**run_args):
     run_args = argparse.Namespace(**run_args)

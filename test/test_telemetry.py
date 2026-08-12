@@ -368,6 +368,7 @@ def test_write_queued_job_file(tmp_path, mock_scheduler, mock_metadata):
     assert queued_file.exists()
     with open(queued_file, 'r') as f:
         assert json.load(f) == {
+            "depends_on": None,
             "stage": "queued",
             "scheduler_job_id": "test-id",
             "scheduler_type": "test-scheduler",
