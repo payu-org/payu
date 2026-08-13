@@ -38,7 +38,6 @@ from payu.fsops import make_symlink, read_config, movetree
 from payu.fsops import list_sorted_archive_dirs
 from payu.fsops import run_script_command
 from payu.fsops import get_size, str_to_bool
-from payu.fsops import get_job_id_given_job_type
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 from payu.models import index as model_index
 from payu.runlog import Runlog
@@ -49,6 +48,7 @@ from payu.metadata import Metadata
 import payu.telemetry as telemetry
 from payu.git_utils import get_git_repository
 import payu.errors as errors
+
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -88,6 +88,7 @@ class Experiment(object):
                  runlog_off=False, repeat=False):
         self.init_timings()
         self.lab = lab
+        self.config_path = config_path
         # Check laboratory directories are writable
         self.lab.initialize()
 
@@ -970,16 +971,6 @@ class Experiment(object):
             restart_volume_gb=get_size(self.restart_path),
         )
 
-        collate_config = self.config.get('collate', {})
-        collating = collate_config.get('enable', True)
-        if collating:
-            cmd = '{python} {payu} collate -i {expt}'.format(
-                python=sys.executable,
-                payu=self.payu_path,
-                expt=self.counter
-            )
-            sp.check_call(shlex.split(cmd))
-
         if self.config.get('hpctoolkit', False):
             cmd = '{python} {payu} profile -i {expt}'.format(
                 python=sys.executable,
@@ -988,9 +979,17 @@ class Experiment(object):
             )
             sp.check_call(shlex.split(cmd))
 
-        # Call postprocessing step after collation
-        self.postprocess()
-
+    def build_workflow(self):
+        """Build the workflow for the current run, including run, collate, postscript and sync steps."""
+        workflow = []
+        if self.config.get('collate', {}).get('enable', True):
+            workflow.append('collate')
+        if self.postscript:
+            workflow.append('postscript')
+        if self.config.get('sync', {}).get('enable', False):
+            workflow.append('sync')
+        return workflow
+    
     @timeit("payu_collate_duration_seconds")
     def collate(self):
         """ Run model collation and record the time taken in seconds to run collation"""
@@ -1023,67 +1022,6 @@ class Experiment(object):
     def profile(self):
         for model in self.models:
             model.profile()
-
-    def get_dependency_job_ids(self, current_job_type: str) -> list:
-        if current_job_type not in self.dependencies:
-            raise errors.PayuRuntimeError(
-                f"Current job type '{current_job_type}' not found in dependencies list: "
-                f"{self.dependencies}"
-            )
-
-        depends_on = []
-        for job_type in self.dependencies[current_job_type]:
-            job_id = get_job_id_given_job_type(self, job_type)
-
-            if job_id:
-                depends_on.append(job_id)
-        return depends_on
-            
-            
-    def postprocess(self):
-        """Submit any postprocessing scripts or remote syncing if enabled"""
-
-        # First submit postprocessing script
-        if self.postscript:
-            self.set_userscript_env_vars()
-            envmod.setup()
-            envmod.module('load', 'pbs')
-
-            # Postscript depends on run and collate jobs, if any of them exist
-            depends_on = self.get_dependency_job_ids('postscript')
-            
-            # Submit through HPCpy
-            # Job name is set to "payu_postscript"
-            postscript_job = client.submit(job_script = f"{self.postscript}",
-                      directives = ['-N payu_postscript'],
-                      depends_on = depends_on
-                      )
-            print(f"--- Postscript submitted ---\n"
-                f"Submitted command: {postscript_job.history[0]}\n"
-                f"Job ID: {postscript_job.id}.\n")
-
-            # Write postscript job file to archive/payu_jobs/{run_number}/postscript/{job_id}-gadi-pbs.json
-            telemetry.write_queued_job_file(
-                        archive_path=Path(self.archive_path),
-                        job_id=postscript_job.id,
-                        type='postscript',
-                        scheduler=self.scheduler,
-                        metadata=self.metadata,
-                        current_run=self.counter,
-                        depends_on=depends_on,
-                    )
-
-        # Submit a sync script if remote syncing is enabled
-        sync_config = self.config.get('sync', {})
-        syncing = sync_config.get('enable', False)
-        if syncing:
-            cmd = '{python} {payu} sync -i {expt}'.format(
-                python=sys.executable,
-                payu=self.payu_path,
-                expt=self.counter
-            )
-
-            sp.check_call(shlex.split(cmd))
 
     @timeit("payu_sync_duration_seconds")
     def sync(self):

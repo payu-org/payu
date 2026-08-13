@@ -198,8 +198,8 @@ def build_job_info(
                 type=data.get("scheduler_type")
             )
 
-            if job_type == "postscript":
-                data = update_postscript_job_file(data, job_file, stdout, stderr)
+            if job_type == "postscript" and "running" in data["stage"]:
+                data = update_postscript_job_file(data, expt.scheduler, job_file, stdout, stderr)
 
             run_info = {
                 "job_id": data.get("scheduler_job_id"),
@@ -310,11 +310,11 @@ def update_all_job_files(
             exit_status = None
             job_state = None
 
-        if exit_status and stage == "queued":
+        if exit_status and "queued" in stage:
             # Job has exited, but is still marked as queued in the job file
             remove_job_file(file_path=job_file)
 
-        elif job_state == "F" and stage == "queued":
+        elif job_state == "F" and "queued" in stage:
             # Job is killed or deleted but still exists in the job file
             remove_job_file(file_path=job_file)
 
@@ -454,21 +454,26 @@ def display_expt_paths(expt_paths):
     print("=" * line_width)
 
 
-def update_postscript_job_file(data, job_file, stdout, stderr):
-    """Check if the postscript log file exists and update the stage to exited or queued/running,
+def update_postscript_job_file(data, scheduler, job_file, stdout, stderr):
+    """Check if the postscript log file exists,  update the stage to exited and update scheduler info.
+     Otherwise, update from queued to queued/running,
     Return the updated job file data"""
+    job_id = data.get("scheduler_job_id")
+        
     # If both stdout and stderr exist, update the stage to exited
-    if stdout and stdout.exists() and stderr and stderr.exists():
+    if stdout and stderr and stdout.exists() and stderr.exists():
         data["stage"] = "exited"
 
-        # Write the updated job file
-        json.dump(data, job_file.open("w"), indent=4)
+        # Update the scheduler info by calling qstat -xf -F json job_id
+        if job_id and scheduler:
+            data["scheduler_job_info"] = scheduler.get_job_info(job_id)
+            data["payu_postscript_status"] = data["scheduler_job_info"].get("Jobs", {}).get(job_id, {}).get("Exit_status")
 
-    elif data["stage"] == "queued":
-        # If stdout or stderr is not ready, update the stage to queued/running
-        data["stage"] = "queued/running"
+        update_job_file(job_file, data)
 
-        # Write the updated job file
-        json.dump(data, job_file.open("w"), indent=4)
+    # If stdout and stderr are not ready, check if job_state is running (happens when user called payu status --update)
+    elif data.get("scheduler_job_info", {}).get("Jobs", {}).get(job_id, {}).get("job_state", None) == "R":
+        data["stage"] = "running"
+        update_job_file(job_file, data)
         
     return data

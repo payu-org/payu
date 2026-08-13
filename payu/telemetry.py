@@ -392,10 +392,11 @@ def write_queued_job_file(
         job_id=job_id,
         type=type
     )
+    stage = "queued/running" if type == "postscript" else "queued"
     data = {
         "scheduler_job_id": job_id,
         "scheduler_type": scheduler.name,
-        "stage": "queued",
+        "stage": stage,
         "payu_current_run": current_run,
         "depends_on": depends_on,
     }

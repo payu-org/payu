@@ -16,6 +16,12 @@ from payu.telemetry import record_run
 from payu.schedulers.pbs import PBS
 import payu.errors as errors
 
+# Local imports for subcommand job submission
+from payu.subcommands.collate_cmd import submit_collate
+from payu.subcommands.postscript_cmd import submit_postscript
+from payu.subcommands.sync_cmd import submit_sync
+from payu.subcommands.status_cmd import runcmd as status_runcmd
+
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
 
@@ -196,13 +202,34 @@ def runscript(**run_args):
               ''.format(expt.n_runs, n_runs_per_submit, subrun))
         # Set job filepath for the payu run
         expt.set_job_file()
+        # Build workflow chain
+        workflow = expt.build_workflow()
         try:
             expt.setup()
             expt.run()
             expt.archive(force_prune_restarts=run_args.force_prune_restarts)
+            
+            # Submit each job in the workflow, pass the job ID onto the next job as dependency
+            next_depends_on = expt.scheduler.get_job_id(short=False)
+            for step in workflow:
+                if step == 'collate':
+                    collate_job_id = submit_collate(expt, depends_on=next_depends_on)
+                    next_depends_on = collate_job_id
+                elif step == 'postscript':
+                    postscript_job_id = submit_postscript(expt, depends_on=next_depends_on)
+                    next_depends_on = postscript_job_id
+                elif step == 'sync':
+                    sync_job_id = submit_sync(expt, depends_on=next_depends_on)
+                    next_depends_on = sync_job_id
+
             run_status = 0
         except:
             run_status = 1
+            # If run fails, remove job files of all dependent jobs
+            if workflow:
+                for step in workflow:
+                    job_file_path = expt.get_job_file(type=step)
+                    job_file_path.unlink(missing_ok=True)
             raise
         finally:
             # Record job information for experiment run
@@ -213,7 +240,7 @@ def runscript(**run_args):
                 config=expt.config,
                 file_path=expt.job_file,
                 archive_path=Path(expt.archive_path),
-            )
+            )   
 
         # Finished runs
         if expt.n_runs == 0:

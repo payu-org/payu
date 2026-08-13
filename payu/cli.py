@@ -215,7 +215,8 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
     return payu_env_vars
 
 
-def submit_job(script, config, vars=None, expt=None, current_run=None, type=None, dry_run=False, depends_on=None):
+def submit_job(script, config, vars=None, expt=None, current_run=None, 
+               type=None, dry_run=False, depends_on=None, postscript=False):
     """Submit a userscript the scheduler and return the job ID"""
 
     sched_name = config.get('scheduler', DEFAULT_SCHEDULER_CONFIG)
@@ -227,13 +228,13 @@ def submit_job(script, config, vars=None, expt=None, current_run=None, type=None
             # Use HPCpy to submit the job in PBS
             if dry_run:
                 # If dry_run is True, print out the submission command and exit
-                cmd = sched.submit(script, config, vars, dry_run=dry_run, depends_on=depends_on)
+                cmd = sched.submit(script, config, vars, dry_run=dry_run, depends_on=depends_on, postscript=postscript)
                 print(f"---- Dry run (submission skipped) -----\n"
                     f"Generated command: {cmd}")
                 return None
             else:
                 # Print the job ID and command after submission 
-                job = sched.submit(script, config, vars, dry_run=dry_run, depends_on=depends_on)
+                job = sched.submit(script, config, vars, dry_run=dry_run, depends_on=depends_on, postscript=postscript)
                 print(f"------ Job submitted ------\n"
                     f"Submitted command: {job.history[0]}")
                 job_id = job.id

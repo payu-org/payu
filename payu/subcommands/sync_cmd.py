@@ -10,7 +10,7 @@ from payu import cli
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
-from payu.fsops import read_config, get_job_id_given_job_type
+from payu.fsops import read_config
 from payu.telemetry import record_run
 
 title = 'sync'
@@ -19,9 +19,27 @@ parameters = {'description': 'Sync model output to a remote directory'}
 arguments = [args.model, args.config, args.initial, args.laboratory, args.dir_path,
              args.sync_restarts, args.sync_ignore_last, args.dry_run]
 
+def submit_sync(expt, depends_on=None):
+    """ Submit the sync job by calling runcmd.
+    Return the job id of the sync job"""
+    sync_config = expt.config.get('sync', {})
+    job_id = runcmd(
+        model_type=expt.lab.model_type,
+        config_path=expt.config_path,
+        init_run=expt.counter,
+        lab_path=expt.lab.basepath,
+        dir_path=expt.output_path,
+        sync_restarts = sync_config.get('restarts', False),
+        sync_ignore_last = sync_config.get('ignore_last', False),
+        dry_run=False,
+        depends_on=depends_on
+    )
+
+    return job_id
+
 
 def runcmd(model_type, config_path, init_run, lab_path, dir_path, sync_restarts,
-           sync_ignore_last, dry_run=False):
+           sync_ignore_last, dry_run=False, depends_on=None):
 
     pbs_config = read_config(config_path)
 
@@ -66,9 +84,10 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path, sync_restarts,
     expt = Experiment(lab)
 
     # Submit PBS job with expt = None so no job file is written
-    cli.submit_job('payu-sync', pbs_config, pbs_vars, expt=expt, 
+    job_id = cli.submit_job('payu-sync', pbs_config, pbs_vars, expt=expt, 
                    current_run=int(init_run) if init_run else None, type='sync',
-                   dry_run=dry_run, depends_on=expt.get_dependency_job_ids('sync'))
+                   dry_run=dry_run, depends_on=depends_on)
+    return job_id
 
 
 def runscript(**run_args):
