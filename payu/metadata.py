@@ -64,6 +64,8 @@ CAN_EDIT_COMMENT: [NAME_FIELD, CONTACT_FIELD, EMAIL_FIELD, CREATED_FIELD,
                     PARENT_BRANCH_TIME_FIELD, PARENT_HASH_FIELD],
 }
 
+HARD_SWEPT_UUID = "uuid-wiped-by-sweep-hard"
+
 class MetadataWarning(Warning):
     pass
 
@@ -147,18 +149,21 @@ class Metadata:
         Note: Experiment name is the name used for the work and archive
         directories in the Laboratory.
         """
+        # Check if user run payu sweep --hard before
+        hard_swept = self.uuid == HARD_SWEPT_UUID
+
         if not self.enabled:
             # Set experiment name only - either configured or legacy name
             self.set_experiment_name()
 
-        elif self.uuid is not None and (keep_uuid or not is_new_experiment):
+        elif self.uuid is not None and hard_swept is False and (keep_uuid or not is_new_experiment):
             self.set_experiment_name(keep_uuid=keep_uuid,
                                      is_new_experiment=is_new_experiment)
         else:
             # Generate new UUID
             # In older version of payu, there is no UUID in archive name, so self.uuid is None but is_new_experiment could be False.
             # In this case, we still want to pass is_new_experiment = False.
-            self.set_new_uuid(is_new_experiment=is_new_experiment)
+            self.set_new_uuid(is_new_experiment=is_new_experiment, hard_swept=hard_swept)
             print("Generated new experiment uuid: ", self.uuid)
 
         self.archive_path = self.lab_archive_path / self.experiment_name
@@ -184,7 +189,8 @@ class Metadata:
 
     def set_experiment_name(self,
                             is_new_experiment: bool = False,
-                            keep_uuid: bool = False) -> None:
+                            keep_uuid: bool = False,
+                            hard_swept: bool = False) -> None:
         """Set experiment name - this is used for work and archive
         sub-directories in the Laboratory"""
         # Experiment name configuration - this overrides experiment name
@@ -219,7 +225,7 @@ class Metadata:
         elif self.has_archive(legacy_name):
             # Use legacy CONTROL-DIR experiment name
             self.experiment_name = legacy_name
-        elif keep_uuid:
+        elif keep_uuid or hard_swept:
             # Use same experiment UUID and use branch-UUID name for archive
             self.experiment_name = branch_uuid_experiment_name
         else:
@@ -248,11 +254,11 @@ class Metadata:
             print(f"Found experiment archive: {archive_path}")
         return archive_path.exists()
 
-    def set_new_uuid(self, is_new_experiment: bool = False) -> None:
+    def set_new_uuid(self, is_new_experiment: bool = False, hard_swept: bool = False) -> None:
         """Generate a new uuid and set experiment name"""
         self.uuid_updated = True
         self.uuid = generate_uuid()
-        self.set_experiment_name(is_new_experiment=is_new_experiment)
+        self.set_experiment_name(is_new_experiment=is_new_experiment, hard_swept=hard_swept)
 
         # If experiment name does not include UUID, leave it unchanged
         if self.experiment_name.endswith(self.uuid[:TRUNCATED_UUID_LENGTH]):
@@ -266,7 +272,18 @@ class Metadata:
             while self.experiment_name in local_experiments:
                 # Generate a new id and experiment name
                 self.uuid = generate_uuid()
-                self.set_experiment_name(is_new_experiment=is_new_experiment)
+                self.set_experiment_name(is_new_experiment=is_new_experiment, hard_swept=hard_swept)
+
+
+    def wipe_uuid(self) -> None:
+        """Wipe the uuid from metadata to be HARD_SWEPT_UUID, as part of payu sweep --hard"""
+        if not self.enabled:
+            return
+
+        metadata = self.read_file()
+        metadata[UUID_FIELD] = HARD_SWEPT_UUID
+        YAML().dump(metadata, self.filepath)
+        print(f"Wiping {UUID_FIELD} in metadata file: {self.filepath}")
 
 
     def write_metadata(self,

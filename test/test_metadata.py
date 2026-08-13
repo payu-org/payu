@@ -12,7 +12,7 @@ import jsonschema
 from payu.metadata import Metadata, SCHEMA_FIELD, SCHEMA_VERSION, placeholder_text, no_archive_msg
 import payu.errors as errors
 from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT
-from payu.metadata import PARENT_UUID_FIELD, PARENT_BRANCH_TIME_FIELD, PARENT_HASH_FIELD
+from payu.metadata import PARENT_UUID_FIELD, PARENT_BRANCH_TIME_FIELD, PARENT_HASH_FIELD, UUID_FIELD, HARD_SWEPT_UUID
 from payu.metadata import arrange_metadata, add_template_metadata_values
 
 from test.common import cd
@@ -115,7 +115,7 @@ def mock_git_repo():
             "ctrl-branch-b1f3ce3d",
             None,
             {
-                "experiment_uuid": "b1f3ce3d-99da-40e4-849a-c8b352948a31",
+                UUID_FIELD: "b1f3ce3d-99da-40e4-849a-c8b352948a31",
                 "created": '2000-01-01',
                 "name": "ctrl-branch-b1f3ce3d",
                 "model": "TEST-MODEL",
@@ -129,13 +129,13 @@ def mock_git_repo():
             "7b90f37c-4619-44f9-a439-f76fdf6ae2bd",
             "Control-Branch-7b90f37c",
             {
-                "experiment_uuid": "b3298c7f-01f6-4f0a-be32-ce5d2cfb9a04",
+                UUID_FIELD: "b3298c7f-01f6-4f0a-be32-ce5d2cfb9a04",
                 "contact": "Add your name here",
                 "email": "Add your email address here",
                 "description": "Add description here",
             },
             {
-                "experiment_uuid": "7b90f37c-4619-44f9-a439-f76fdf6ae2bd",
+                UUID_FIELD: "7b90f37c-4619-44f9-a439-f76fdf6ae2bd",
                 "description": "Add description here",
                 "created": '2000-01-01',
                 "name": "Control-Branch-7b90f37c",
@@ -150,13 +150,13 @@ def mock_git_repo():
             "7b90f37c-4619-44f9-a439-f76fdf6ae2bd",
             "ctrl",
             {
-                "experiment_uuid": "0f49f2a0-f45e-4c0b-a3b6-4b0bf21f2b75",
+                UUID_FIELD: "0f49f2a0-f45e-4c0b-a3b6-4b0bf21f2b75",
                 "name": "UserDefinedExperimentName",
                 "contact": "TestUser",
                 "email": "Test@email.com"
             },
             {
-                "experiment_uuid": "7b90f37c-4619-44f9-a439-f76fdf6ae2bd",
+                UUID_FIELD: "7b90f37c-4619-44f9-a439-f76fdf6ae2bd",
                 "name": "UserDefinedExperimentName",
                 "contact": "TestUser",
                 "email": "Test@email.com"
@@ -314,7 +314,7 @@ def test_has_archive(archive_metadata_exists, archive_uuid, expected_result):
         archive_metadata = {}
 
         if archive_uuid is not None:
-            archive_metadata["experiment_uuid"] = archive_uuid
+            archive_metadata[UUID_FIELD] = archive_uuid
 
         with open(archive_path / 'metadata.yaml', 'w') as file:
             YAML().dump(archive_metadata, file)
@@ -487,7 +487,7 @@ def test_update_file_with_template_metadata_values(mock_git_repo):
     # Expect commented template values for non-null fields
     expected_metadata = f"""
 # {DO_NOT_EDIT_COMMENT}
-experiment_uuid: cb793e91-6168-4ed2-a70c-f6f9ccf1659
+{UUID_FIELD}: cb793e91-6168-4ed2-a70c-f6f9ccf1659
 
 # {CAN_EDIT_COMMENT}
 name: ctrldir-branch-cb793e91
@@ -514,14 +514,14 @@ long_description: {placeholder_text} # Long description of the experiment (strin
             # Test fields arranged in correct order: auto don't edit fields + auto may edit fields
             CommentedMap([
                 ("name", "Control-Branch-UUID"),
-                ("experiment_uuid", "test-uuid"),
+                (UUID_FIELD, "test-uuid"),
                 ("email", "test@domain.com"),
                 ("created", "2026-01-01"),
                 ("url", "test-url"),
                 ("model", "test-model"),
             ]),
             CommentedMap([
-                ("experiment_uuid", "test-uuid"),
+                (UUID_FIELD, "test-uuid"),
                 ("name", "Control-Branch-UUID"),
                 ("email", "test@domain.com"),
                 ("created", "2026-01-01"),
@@ -538,11 +538,11 @@ long_description: {placeholder_text} # Long description of the experiment (strin
                 ("created", "2026-01-01"),
                 ("url", None),
                 ("model", "test-model"),
-                ("experiment_uuid", "test-uuid"),
+                (UUID_FIELD, "test-uuid"),
                 ("name", "Control-Branch-UUID"),
             ]),
             CommentedMap([
-                ("experiment_uuid", "test-uuid"),
+                (UUID_FIELD, "test-uuid"),
                 ("name", "Control-Branch-UUID"),
                 ("email", "test@domain.com"),
                 ("created", "2026-01-01"),
@@ -561,8 +561,8 @@ def test_arrange_metadata(metadata, expected_metadata, manual_fields):
     assert expected_metadata == result
 
     # Test headers added for auto-generated fields
-    assert "\n" == result.ca.items["experiment_uuid"][1][0].value
-    assert f"# {DO_NOT_EDIT_COMMENT}\n" == result.ca.items["experiment_uuid"][1][1].value
+    assert "\n" == result.ca.items[UUID_FIELD][1][0].value
+    assert f"# {DO_NOT_EDIT_COMMENT}\n" == result.ca.items[UUID_FIELD][1][1].value
     assert f"# {CAN_EDIT_COMMENT}\n" == result.ca.items["name"][1][1].value
 
     # Test header added if there are manual fields
@@ -662,4 +662,26 @@ def test_update_parent_info(restart_path, parent_experiment, parent_branch_time,
             assert field not in updated_metadata
     
 
+def test_wipe_uuid():
+    """Test that wipe_uuid removes the UUID from the metadata file"""
+    # Initialise Metadata
+    test_uuid = "cb793e91-6168-4ed2-a70c-f6f9ccf1659"
+    init_metadata = {
+        UUID_FIELD: test_uuid,
+        "name": "ctrl-mock_branch-cb793e91",
+        "model": "test-model",
+        "created": '2026-07-24',
+    }
+    with open(ctrldir / 'metadata.yaml', 'w') as file:
+        YAML().dump(init_metadata, file)
+
+    # Call wipe_uuid
+    with cd(ctrldir):
+        metadata = Metadata(archive_dir)
     
+    assert metadata.uuid == test_uuid
+
+    # Confirm the UUID is removed
+    metadata.wipe_uuid()
+    updated_metadata = metadata.read_file()
+    assert updated_metadata.get(UUID_FIELD) == HARD_SWEPT_UUID
