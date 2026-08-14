@@ -1136,6 +1136,9 @@ class Experiment(object):
                 print('Removing symlink {0}'.format(self.archive_sym_path))
                 os.remove(self.archive_sym_path)
 
+            # Remove UUID from metadata file
+            self.metadata.wipe_uuid()
+
         # Remove stdout/err and yaml dumps
         for f in self.output_fnames:
             if os.path.isfile(f):

@@ -64,6 +64,8 @@ CAN_EDIT_COMMENT: [NAME_FIELD, CONTACT_FIELD, EMAIL_FIELD, CREATED_FIELD,
                     PARENT_BRANCH_TIME_FIELD, PARENT_HASH_FIELD],
 }
 
+HARD_SWEPT_UUID = "uuid-wiped-by-sweep-hard"
+
 class MetadataWarning(Warning):
     pass
 
@@ -147,18 +149,21 @@ class Metadata:
         Note: Experiment name is the name used for the work and archive
         directories in the Laboratory.
         """
+        # Check if user run payu sweep --hard before
+        hard_swept = self.uuid == HARD_SWEPT_UUID
+
         if not self.enabled:
             # Set experiment name only - either configured or legacy name
             self.set_experiment_name()
 
-        elif self.uuid is not None and (keep_uuid or not is_new_experiment):
+        elif self.uuid is not None and hard_swept is False and (keep_uuid or not is_new_experiment):
             self.set_experiment_name(keep_uuid=keep_uuid,
                                      is_new_experiment=is_new_experiment)
         else:
             # Generate new UUID
             # In older version of payu, there is no UUID in archive name, so self.uuid is None but is_new_experiment could be False.
             # In this case, we still want to pass is_new_experiment = False.
-            self.set_new_uuid(is_new_experiment=is_new_experiment)
+            self.set_new_uuid(is_new_experiment=(is_new_experiment or hard_swept))
             print("Generated new experiment uuid: ", self.uuid)
 
         self.archive_path = self.lab_archive_path / self.experiment_name
@@ -267,6 +272,22 @@ class Metadata:
                 # Generate a new id and experiment name
                 self.uuid = generate_uuid()
                 self.set_experiment_name(is_new_experiment=is_new_experiment)
+
+
+    def wipe_uuid(self) -> None:
+        """Wipe the uuid from metadata to be HARD_SWEPT_UUID, as part of payu sweep --hard"""
+        if not self.enabled:
+            return
+
+        # Wipe the uuid in metadata file to HARD_SWEPT_UUID
+        metadata = self.read_file()
+        metadata[UUID_FIELD] = HARD_SWEPT_UUID
+        self.uuid = HARD_SWEPT_UUID
+        YAML().dump(metadata, self.filepath)
+
+        # Commit the change to metadata file
+        print(f"Wiping {UUID_FIELD} in metadata file: {self.filepath}")
+        self.commit_file()
 
 
     def write_metadata(self,
