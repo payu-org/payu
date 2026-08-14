@@ -163,7 +163,7 @@ class Metadata:
             # Generate new UUID
             # In older version of payu, there is no UUID in archive name, so self.uuid is None but is_new_experiment could be False.
             # In this case, we still want to pass is_new_experiment = False.
-            self.set_new_uuid(is_new_experiment=is_new_experiment, hard_swept=hard_swept)
+            self.set_new_uuid(is_new_experiment=(is_new_experiment or hard_swept))
             print("Generated new experiment uuid: ", self.uuid)
 
         self.archive_path = self.lab_archive_path / self.experiment_name
@@ -189,8 +189,7 @@ class Metadata:
 
     def set_experiment_name(self,
                             is_new_experiment: bool = False,
-                            keep_uuid: bool = False,
-                            hard_swept: bool = False) -> None:
+                            keep_uuid: bool = False) -> None:
         """Set experiment name - this is used for work and archive
         sub-directories in the Laboratory"""
         # Experiment name configuration - this overrides experiment name
@@ -225,7 +224,7 @@ class Metadata:
         elif self.has_archive(legacy_name):
             # Use legacy CONTROL-DIR experiment name
             self.experiment_name = legacy_name
-        elif keep_uuid or hard_swept:
+        elif keep_uuid:
             # Use same experiment UUID and use branch-UUID name for archive
             self.experiment_name = branch_uuid_experiment_name
         else:
@@ -254,11 +253,11 @@ class Metadata:
             print(f"Found experiment archive: {archive_path}")
         return archive_path.exists()
 
-    def set_new_uuid(self, is_new_experiment: bool = False, hard_swept: bool = False) -> None:
+    def set_new_uuid(self, is_new_experiment: bool = False) -> None:
         """Generate a new uuid and set experiment name"""
         self.uuid_updated = True
         self.uuid = generate_uuid()
-        self.set_experiment_name(is_new_experiment=is_new_experiment, hard_swept=hard_swept)
+        self.set_experiment_name(is_new_experiment=is_new_experiment)
 
         # If experiment name does not include UUID, leave it unchanged
         if self.experiment_name.endswith(self.uuid[:TRUNCATED_UUID_LENGTH]):
@@ -272,7 +271,7 @@ class Metadata:
             while self.experiment_name in local_experiments:
                 # Generate a new id and experiment name
                 self.uuid = generate_uuid()
-                self.set_experiment_name(is_new_experiment=is_new_experiment, hard_swept=hard_swept)
+                self.set_experiment_name(is_new_experiment=is_new_experiment)
 
 
     def wipe_uuid(self) -> None:
@@ -280,10 +279,15 @@ class Metadata:
         if not self.enabled:
             return
 
+        # Wipe the uuid in metadata file to HARD_SWEPT_UUID
         metadata = self.read_file()
         metadata[UUID_FIELD] = HARD_SWEPT_UUID
+        self.uuid = HARD_SWEPT_UUID
         YAML().dump(metadata, self.filepath)
+
+        # Commit the change to metadata file
         print(f"Wiping {UUID_FIELD} in metadata file: {self.filepath}")
+        self.commit_file()
 
 
     def write_metadata(self,
