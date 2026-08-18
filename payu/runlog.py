@@ -22,14 +22,20 @@ class Runlog(object):
 
         self.expt = expt
 
-        # Fetch and update the runlog config
-        runlog_config = self.expt.config.get('runlog', {})
-        if isinstance(runlog_config, bool):
-            self.enabled = runlog_config
+        if self.expt.runlog_off:
+            self.enabled = False
             runlog_config = {}
+
         else:
-            assert isinstance(runlog_config, dict)
-            self.enabled = runlog_config.pop('enable', True)
+            # Fetch and update the runlog config
+            runlog_config = self.expt.config.get('runlog', {})
+            if isinstance(runlog_config, bool):
+                self.enabled = runlog_config
+                runlog_config = {}
+            else:
+                assert isinstance(runlog_config, dict)
+                self.enabled = runlog_config.pop('enable', True)            
+
         self.config = runlog_config
 
         self.manifest = []

@@ -99,10 +99,20 @@ reproduce = {
         'action':   'store_true',
         'dest':     'reproduce',
         'default':  False,
-        'help':     'Only run if manifests are correct',
+        'help': 'A fallback value when manifest reproduce section is not configured in config.yaml',
     }
 }
 
+
+reproduce_off = {
+    'flags': ('--reproduce-off',),
+    'parameters': {
+        'action':   'store_true',
+        'dest':     'reproduce_off',
+        'default':  False,
+        'help': 'Disable reproducible run, ignoring any manifest reproduce section in config.yaml',
+    }
+}
 
 # Force run to proceed despite existing directories
 force = {
@@ -396,5 +406,26 @@ dry_run = {
         'action': 'store_true',
         'default': False,
         'help': 'Print out the submission command without executing it'
+    }
+}
+
+
+runlog_off = {
+    'flags': ['--runlog-off'],
+    'parameters': {
+        'dest': 'runlog_off',
+        'action': 'store_true',
+        'default': False,
+        'help': 'Disable runlog tracking for this experiment'
+    }
+}
+
+repeat_run = {
+    'flags': ['--repeat'],
+    'parameters': {
+        'dest': 'repeat_run',
+        'action': 'store_true',
+        'default': False,
+        'help': 'Remove any archived restart files and repeat the initial run upon resubmission'
     }
 }

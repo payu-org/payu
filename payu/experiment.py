@@ -74,7 +74,8 @@ def timeit(time_name):
 
 class Experiment(object):
     def __init__(self, lab, reproduce=False, force=False, metadata_off=False, config_path=None, 
-                 is_new_experiment=False, keep_uuid=False, set_template_values=False, parent_info=None):
+                 is_new_experiment=False, keep_uuid=False, set_template_values=False, parent_info=None,
+                 runlog_off=False, repeat_run=False, reproduce_off=False):
         self.init_timings()
         self.lab = lab
         # Check laboratory directories are writable
@@ -97,7 +98,12 @@ class Experiment(object):
         # Payu experiment type
         self.debug = self.config.get('debug', False)
         self.postscript = self.config.get('postscript')
-        self.repeat_run = self.config.get('repeat', False)
+        # repeat_run prioritise CLI flag > environment variable > config.yaml
+        if not repeat_run:
+            repeat_run = os.environ.get('PAYU_REPEAT_RUN', False)
+        if not repeat_run:
+            repeat_run = self.config.get('repeat', False)
+        self.repeat_run = repeat_run
 
         # Configuration
         self.expand_shell_vars = True
@@ -142,9 +148,12 @@ class Experiment(object):
             # check environment for reproduce flag under PBS
             reproduce = os.environ.get('PAYU_REPRODUCE', False)
 
+        if not reproduce_off:
+            reproduce_off = os.environ.get('PAYU_REPRODUCE_OFF', False)
+
         # Initialize manifest
         self.manifest = Manifest(self.config.get('manifest', {}),
-                                 reproduce=reproduce)
+                                 reproduce=reproduce, reproduce_off=reproduce_off)
 
         # Miscellaneous configurations
         userscript_val = self.config.get('userscripts', {})
@@ -154,6 +163,11 @@ class Experiment(object):
         if init_script:
             self.run_userscript(init_script, 'init')
 
+        # runlog_off prioritise CLI flag > environment variable > config.yaml (in runlog.py)
+        if not runlog_off:
+            self.runlog_off = os.environ.get('PAYU_RUNLOG_OFF', False)
+        else:
+            self.runlog_off = runlog_off
         self.runlog = Runlog(self)
 
         #  This is a bit hacky

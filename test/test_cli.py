@@ -10,6 +10,7 @@ import logging
 import payu
 import payu.cli
 import payu.errors as errors
+from payu.subcommands.run_cmd import validate_reproduce_flags
 
 verbose = True
 ORIGINAL_WARNING = warnings.formatwarning
@@ -132,6 +133,9 @@ def test_parse_run(parser):
     assert args.pop('force_prune_restarts') is False
     assert args.pop('is_new_experiment') is False
     assert args.pop('dry_run') is False
+    assert args.pop('runlog_off') is False
+    assert args.pop('repeat_run') is False
+    assert args.pop('reproduce_off') is False
 
     assert len(args) == 0
 
@@ -148,6 +152,9 @@ def test_parse_run(parser):
             "--force-prune-restarts "
             "--new-uuid "
             "--dry-run "
+            "--runlog-off "
+            "--repeat "
+            "--reproduce-off "
             )
 
     run_cmd, args = parse_args(parser, long_cmd)
@@ -164,6 +171,9 @@ def test_parse_run(parser):
     assert args.pop('force_prune_restarts') is True
     assert args.pop('is_new_experiment') is True
     assert args.pop('dry_run') is True
+    assert args.pop('runlog_off') is True
+    assert args.pop('repeat_run') is True
+    assert args.pop('reproduce_off') is True
 
     assert len(args) == 0
 
@@ -193,6 +203,9 @@ def test_parse_run(parser):
     assert args.pop('force_prune_restarts') is True
     assert args.pop('is_new_experiment') is False
     assert args.pop('dry_run') is False
+    assert args.pop('runlog_off') is False
+    assert args.pop('repeat_run') is False
+    assert args.pop('reproduce_off') is False
 
     assert len(args) == 0
 
@@ -519,3 +532,11 @@ def test_submit_job_error_msg_from_hpcpy():
             payu.cli.submit_job(config={"scheduler": "pbs"}, script="submit_script.sh")
             assert "Error occurred while submitting a job to scheduler pbs" in str(exc_info.value)
             assert "Error: HPCpy submission failed" in str(exc_info.value)
+
+def test_validate_reproduce_flags():
+    """Test that validate_reproduce_flags raises an error when both reproduce and reproduce_off are True."""
+    validate_reproduce_flags(False, True)
+    validate_reproduce_flags(True, False)
+    with pytest.raises(errors.PayuConfigError, match="--reproduce and --reproduce-off cannot both be specified."):
+        validate_reproduce_flags(True, True)
+    

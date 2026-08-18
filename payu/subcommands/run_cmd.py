@@ -22,9 +22,20 @@ parameters = {'description': 'Run the model experiment'}
 
 arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory, args.reproduce, args.force,
-             args.force_prune_restarts, args.is_new_experiment, args.dry_run]
+             args.force_prune_restarts, args.is_new_experiment, args.dry_run,
+             args.runlog_off, args.repeat_run, args.reproduce_off]
 
 logger = logging.getLogger(__name__)
+
+
+def validate_reproduce_flags(reproduce, reproduce_off):
+    """
+    Validate that --reproduce and --reproduce-off are not both set.
+    """
+    if reproduce and reproduce_off:
+        raise errors.PayuConfigError(
+            "--reproduce and --reproduce-off cannot both be specified."
+        )
 
 
 def validate_platform_node(platform, queue, get_queue_node_shape):
@@ -48,21 +59,28 @@ def validate_platform_node(platform, queue, get_queue_node_shape):
 
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
            reproduce=False, force=False, force_prune_restarts=False,
-           is_new_experiment=False, dry_run=False):
+           is_new_experiment=False, dry_run=False, runlog_off=False, 
+           repeat_run=False, reproduce_off=False):
+    validate_reproduce_flags(reproduce, reproduce_off)
+
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
     pbs_vars = cli.set_env_vars(init_run=init_run,
                                 n_runs=n_runs,
                                 lab_path=lab_path,
                                 reproduce=reproduce,
+                                reproduce_off=reproduce_off,
                                 force=force,
-                                force_prune_restarts=force_prune_restarts)
+                                force_prune_restarts=force_prune_restarts,
+                                runlog_off=runlog_off,
+                                repeat_run=repeat_run)
 
     # Initialise Experiment early so we can detect scheduler
     # Run experiment initialisation to update metadata,
     # and determine the run counter and uuid before job submission
     lab = Laboratory(model_type, config_path, lab_path)
-    expt = Experiment(lab, reproduce=reproduce, force=force, is_new_experiment=is_new_experiment)
+    expt = Experiment(lab, reproduce=reproduce, reproduce_off=reproduce_off, force=force, is_new_experiment=is_new_experiment, 
+                    runlog_off=runlog_off, repeat_run=repeat_run)
 
     # Set the queue
     # NOTE: Maybe force all jobs on the normal queue
@@ -174,11 +192,13 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
 def runscript(**run_args):
     run_args = argparse.Namespace(**run_args)
+    validate_reproduce_flags(run_args.reproduce, run_args.reproduce_off)
 
     lab = Laboratory(run_args.model_type, run_args.config_path,
                      run_args.lab_path)
 
-    expt = Experiment(lab, reproduce=run_args.reproduce, force=run_args.force, is_new_experiment=run_args.is_new_experiment)
+    expt = Experiment(lab, reproduce=run_args.reproduce, reproduce_off=run_args.reproduce_off, force=run_args.force, is_new_experiment=run_args.is_new_experiment,
+                      runlog_off=run_args.runlog_off, repeat_run=run_args.repeat_run)
 
     n_runs_per_submit = expt.config.get('runspersub', 1)
     subrun = 1
