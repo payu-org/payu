@@ -59,14 +59,6 @@ core_modules = ['python', 'payu']
 # Default payu parameters
 default_restart_freq = 5
 
-# Default job dependency
-DEFAULT_DEPENDENCIES = {
-    "collate": ["run"],
-    "postscript": ["run", "collate"],
-    "sync": ["run", "collate", "postscript"],
-}
-
-
 def timeit(time_name):
     """Decorator to time a function and store the elapsed time in seconds
     to the timings dictionary in the class"""
@@ -980,14 +972,16 @@ class Experiment(object):
             sp.check_call(shlex.split(cmd))
 
     def build_workflow(self):
-        """Build the workflow for the current run, including run, collate, postscript and sync steps."""
-        workflow = []
+        """Build the workflow for the current experiment, e.g.,
+        {"run": None, "collate": None, "postscript": None, "sync": None}. 
+        The value will be updated as job id when available"""
+        workflow = dict()
         if self.config.get('collate', {}).get('enable', True):
-            workflow.append('collate')
+            workflow['collate'] = None
         if self.postscript:
-            workflow.append('postscript')
+            workflow['postscript'] = None
         if self.config.get('sync', {}).get('enable', False):
-            workflow.append('sync')
+            workflow['sync'] = None
         return workflow
     
     @timeit("payu_collate_duration_seconds")
@@ -1054,14 +1048,14 @@ class Experiment(object):
     def set_userscript_env_vars(self):
         """Save information of output directories and current run to
         environment variables, so they can be accessed via user-scripts"""
-        os.environ.update(
-            {
+        update_env_vars = {
                 'PAYU_CURRENT_OUTPUT_DIR': self.output_path,
                 'PAYU_CURRENT_RESTART_DIR': self.restart_path,
                 'PAYU_ARCHIVE_DIR': self.archive_path,
                 'PAYU_CURRENT_RUN': str(self.counter)
             }
-        )
+        os.environ.update(update_env_vars)
+        return update_env_vars
 
     def run_userscript(self, script_cmd: str, type: str):
         """Run a user defined script or subcommand at various stages of the

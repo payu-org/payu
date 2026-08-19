@@ -24,22 +24,17 @@ def submit_sync(expt, depends_on=None):
     Return the job id of the sync job"""
     sync_config = expt.config.get('sync', {})
     job_id = runcmd(
-        model_type=expt.lab.model_type,
-        config_path=expt.config_path,
         init_run=expt.counter,
-        lab_path=expt.lab.basepath,
-        dir_path=expt.output_path,
         sync_restarts = sync_config.get('restarts', False),
         sync_ignore_last = sync_config.get('ignore_last', False),
-        dry_run=False,
-        depends_on=depends_on
+        depends_on=depends_on,
     )
 
     return job_id
 
 
-def runcmd(model_type, config_path, init_run, lab_path, dir_path, sync_restarts,
-           sync_ignore_last, dry_run=False, depends_on=None):
+def runcmd(model_type=None, config_path=None, init_run=None, lab_path=None, dir_path=None, 
+           sync_restarts=None, sync_ignore_last=None, dry_run=False, depends_on=None):
 
     pbs_config = read_config(config_path)
 

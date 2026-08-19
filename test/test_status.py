@@ -17,6 +17,7 @@ from payu.status import (
     display_job_info,
     collect_expt_paths,
     display_expt_paths,
+    parse_exit_status_from_logs,
 )
 
 from payu.laboratory import Laboratory
@@ -1118,3 +1119,34 @@ def test__sort_run_jobs():
         {"job_id": "1", "start_time": "2025-06-01T09:00:00"},
         {"job_id": "3", "start_time": "2025-06-03T09:00:00"},
     ]
+
+def test_parse_exit_status_from_logs(tmp_path):
+    """Test that parse_exit_status_from_logs correctly extracts exit status from logs."""
+    stdout_path = tmp_path / "test.stdout"
+
+    # Write some expected log content
+    log_content = """
+Some log output...
+Model finished with exit status: 0
+More log output...
+======================================================================================
+                  Resource Usage on 2026-08-19 15:07:58:
+   Job Id:             176671730.gadi-pbs
+   Project:            tm70
+   Exit Status:        0
+   Service Units:      0.02
+   JobFS Requested:    100.0MB                JobFS Used: 0B
+======================================================================================
+"""
+    stdout_path.write_text(log_content)
+    assert parse_exit_status_from_logs(stdout_path) == 0
+
+    # Write log content without exit status
+    log_content_no_status = """
+Some log output...
+"""
+    stdout_path.write_text(log_content_no_status)
+    assert parse_exit_status_from_logs(stdout_path) is None
+
+    # Test when stdout does not exist
+    assert parse_exit_status_from_logs(tmp_path / "nonexistent.stdout") is None

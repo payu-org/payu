@@ -347,20 +347,20 @@ class PBS(Scheduler):
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None, 
                dry_run=False, depends_on=None, postscript=False):
         """Prepare a correct PBS command string"""
+        # Initialisation
+        if pbs_vars is None:
+            pbs_vars = {}
 
         if postscript:
             # Directly submit the postscript, no configuring the environment variables
             job_or_cmd = client.submit(job_script = f"{pbs_script}",
                             directives = ["-N payu_postscript"],
+                            variables = pbs_vars,
                             dry_run = dry_run,
                             depends_on = depends_on,
                             )
     
             return job_or_cmd
-
-        # Initialisation
-        if pbs_vars is None:
-            pbs_vars = {}
 
         if python_exe is None:
             python_exe = sys.executable
