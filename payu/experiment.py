@@ -44,6 +44,7 @@ from payu.runlog import Runlog
 from payu.manifest import Manifest
 from payu.calendar import parse_date_offset
 from payu.sync import SyncToRemoteArchive
+from payu.datastore import MakeIntakeDatastore
 from payu.metadata import Metadata
 import payu.telemetry as telemetry
 from payu.git_utils import get_git_repository
@@ -1013,6 +1014,22 @@ class Experiment(object):
         for model in self.models:
             model.profile()
 
+    def catalog(self):
+        """Submit a `payu catalog` job to build an intake-esm datastore for
+        the experiment output, if enabled. Runs as its own PBS job """
+        catalog_config = self.config.get('catalog', {})
+        if catalog_config.get('enable', False):
+            cmd = '{python} {payu} catalog -i {expt}'.format(
+                python=sys.executable,
+                payu=self.payu_path,
+                expt=self.counter
+            )
+            sp.check_call(shlex.split(cmd))
+
+    def make_datastore(self):
+        """Build an intake-esm datastore for the experiment output"""
+        MakeIntakeDatastore(self).run()
+
     @timeit("payu_sync_duration_seconds")
     def sync(self):
         # Update sync stage to running
@@ -1029,6 +1046,10 @@ class Experiment(object):
 
         # Run rsync commmands
         SyncToRemoteArchive(self).run()
+
+        # Submit a job to build the datastore in the sync destination,
+        # if enabled
+        self.catalog()
 
     def resubmit(self):
         next_run = self.counter + 1
