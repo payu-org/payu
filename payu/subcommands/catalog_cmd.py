@@ -29,9 +29,9 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path):
 
     catalog_config = pbs_config.get('catalog', {})
 
-    default_ncpus = 1
+    default_ncpus = 104
     default_queue = 'normalsr'
-    default_mem = '2GB'
+    default_mem = '500GB'
     default_walltime = '01:00:00'
 
     pbs_config['queue'] = catalog_config.get('queue', default_queue)
