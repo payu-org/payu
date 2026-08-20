@@ -58,6 +58,7 @@ payu-run = "payu.cli:parse_run"
 payu-collate = "payu.cli:parse_collate"
 payu-profile = "payu.cli:parse_profile"
 payu-sync = "payu.cli:parse_sync"
+payu-catalog = "payu.cli:parse_catalog"
 
 [build-system]
 build-backend = "setuptools.build_meta"
