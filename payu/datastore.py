@@ -10,9 +10,7 @@ import warnings
 
 # Local
 from payu.status import collect_expt_paths
-
-# Default datastore basename used by access_nri_intake.experiment.use_datastore
-DATASTORE_NAME = 'experiment_datastore'
+from payu.sync import DATASTORE_NAME
 
 
 class MakeIntakeDatastore():
