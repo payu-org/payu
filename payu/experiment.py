@@ -35,7 +35,7 @@ from payu.fsops import make_symlink, read_config, movetree
 from payu.fsops import list_sorted_archive_dirs
 from payu.fsops import run_script_command
 from payu.fsops import needs_subprocess_shell
-from payu.fsops import get_size
+from payu.fsops import get_size, str_to_bool
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 from payu.models import index as model_index
 from payu.runlog import Runlog
@@ -73,9 +73,9 @@ def timeit(time_name):
 
 
 class Experiment(object):
-    def __init__(self, lab, reproduce=False, force=False, metadata_off=False, config_path=None, 
+    def __init__(self, lab, reproduce=None, force=False, metadata_off=False, config_path=None, 
                  is_new_experiment=False, keep_uuid=False, set_template_values=False, parent_info=None,
-                 runlog_off=False, repeat_run=False, reproduce_off=False):
+                 runlog_off=False, repeat=False):
         self.init_timings()
         self.lab = lab
         # Check laboratory directories are writable
@@ -98,12 +98,12 @@ class Experiment(object):
         # Payu experiment type
         self.debug = self.config.get('debug', False)
         self.postscript = self.config.get('postscript')
-        # repeat_run prioritise CLI flag > environment variable > config.yaml
-        if not repeat_run:
-            repeat_run = os.environ.get('PAYU_REPEAT_RUN', False)
-        if not repeat_run:
-            repeat_run = self.config.get('repeat', False)
-        self.repeat_run = repeat_run
+        # repeat prioritise CLI flag > environment variable > config.yaml
+        if not repeat:
+            repeat = os.environ.get('PAYU_REPEAT', False)
+        if not repeat:
+            repeat = self.config.get('repeat', False)
+        self.repeat = repeat
 
         # Configuration
         self.expand_shell_vars = True
@@ -144,16 +144,14 @@ class Experiment(object):
                                 restart_path=self.prior_restart_path,
                                 parent_info=parent_info)
 
-        if not reproduce:
+        if reproduce is None:
             # check environment for reproduce flag under PBS
-            reproduce = os.environ.get('PAYU_REPRODUCE', False)
-
-        if not reproduce_off:
-            reproduce_off = os.environ.get('PAYU_REPRODUCE_OFF', False)
+            reproduce = os.environ.get('PAYU_REPRODUCE', None)
+            reproduce = str_to_bool(reproduce) if reproduce else None
 
         # Initialize manifest
         self.manifest = Manifest(self.config.get('manifest', {}),
-                                 reproduce=reproduce, reproduce_off=reproduce_off)
+                                 reproduce=reproduce)
 
         # Miscellaneous configurations
         userscript_val = self.config.get('userscripts', {})
@@ -165,10 +163,9 @@ class Experiment(object):
 
         # runlog_off prioritise CLI flag > environment variable > config.yaml (in runlog.py)
         if not runlog_off:
-            self.runlog_off = os.environ.get('PAYU_RUNLOG_OFF', False)
-        else:
-            self.runlog_off = runlog_off
-        self.runlog = Runlog(self)
+            runlog_off = os.environ.get('PAYU_RUNLOG_OFF', False)
+
+        self.runlog = Runlog(self, runlog_off)
 
         #  This is a bit hacky
         default_payu_bin = os.path.dirname(sys.argv[0])
@@ -446,13 +443,13 @@ class Experiment(object):
         no_restarts = self.max_output_index(output_type="restart") is None
         # Check if a user restart directory is avaiable
         user_restart_dir = self.config.get('restart')
-        if (no_restarts or self.repeat_run) and user_restart_dir:
+        if (no_restarts or self.repeat) and user_restart_dir:
             if not os.path.isdir(user_restart_dir):
                 raise errors.PayuConfigError(
                     f"No restart directory found at {user_restart_dir}. "
                     "Check 'restart:' field in config.yaml."
                 )
-            if self.counter > 0 and not self.repeat_run:
+            if self.counter > 0 and not self.repeat:
                 warnings.warn(
                     "Starting run from restart directory (in config.yaml): "
                     f"{user_restart_dir}"
@@ -462,11 +459,11 @@ class Experiment(object):
             prior_restart_dir = 'restart{0:03}'.format(self.counter - 1)
             prior_restart_path = os.path.join(self.archive_path,
                                               prior_restart_dir)
-            if os.path.exists(prior_restart_path) and not self.repeat_run:
+            if os.path.exists(prior_restart_path) and not self.repeat:
                 self.prior_restart_path = prior_restart_path
             else:
                 self.prior_restart_path = None
-                if self.counter > 0 and not self.repeat_run:
+                if self.counter > 0 and not self.repeat:
                     warnings.warn(
                         "No prior restart directory found in archive "
                         "or specified in config.yaml"
@@ -1184,9 +1181,9 @@ class Experiment(object):
         for restart in restarts:
             restart_indices[restart] = int(restart.lstrip('restart'))
 
-        # TODO: Previous logic was to prune all restarts if self.repeat_run
+        # TODO: Previous logic was to prune all restarts if self.repeat
         # Still need to figure out what should happen in this case
-        if self.repeat_run:
+        if self.repeat:
             return [os.path.join(self.archive_path, restart)
                     for restart in restarts]
 

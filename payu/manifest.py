@@ -238,7 +238,7 @@ class Manifest(object):
     methods to operate on them
     """
 
-    def __init__(self, config, reproduce, reproduce_off=False):
+    def __init__(self, config, reproduce):
 
         # Manifest control configuration
         self.manifest_config = config
@@ -273,14 +273,17 @@ class Manifest(object):
         self.previous_manifests = {}
         self.reproduce = {}
 
-        # reproduce_off flag > config.yaml > reproduce flag
-        reproduce_config = self.manifest_config.get('reproduce', {})
         for mf in ['input', 'restart', 'exe']:
             self.init_mf(mf)
-            if reproduce_off:
-                self.reproduce[mf] = False
+            if reproduce is not None:
+                # If reproduce is True or False, set all manifests to that value
+                self.reproduce[mf] = reproduce
+
             else:
-                self.reproduce[mf] = reproduce_config.get(mf, reproduce)
+                # If reproduce is None, read config.yaml setting and fall back to False
+                reproduce_config = self.manifest_config.get('reproduce', {})
+                self.reproduce[mf] = reproduce_config.get(mf, False)
+
         # Make sure the manifests directory exists
         os.makedirs(os.path.dirname(self.manifests['exe'].path), exist_ok=True)
 

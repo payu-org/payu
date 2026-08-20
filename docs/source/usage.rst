@@ -264,12 +264,12 @@ If you have instructed ``payu`` to run for a number of resubmits but for some
 reason need to stop a run after the current run has completed create a file
 called ``stop_run`` in the control directory. 
 
-It is possible to require that a run reproduce an existing run using the 
-``-r/--reproduce`` flag:
+You may require a run to reproduce an existing run using the ``-r/--reproduce`` flag, 
+which overrides the reproduce setting in the configuration file.:
 
    payu run -r
 
-When this invoked all the manifests are read in and hashes checked for consistency
+When enabled, all manifests are read in and hashes are checked for consistency
 and only if all executables, inputs and restart files are unchanged will the run
 proceed. As the restart files are read directly from the manifests which are written
 before the previous run completed, by definition a restart run will not look for 
@@ -279,6 +279,10 @@ The reproduce option can be useful to be able to re-run a simulation for the
 purposes of checking reproducibility when compute infrastructure changes, or when
 spinning off a perturbation run to ensure consistency with a control run before
 applying modifications.
+
+To override the reproduce setting in configuration and skip the reproducibility check 
+for a particular run, please use ``payu run -r False``. This allows the run to 
+proceed even if manifests have changed.
 
 To run from an existing model run, also called a warm start, set the
 ``restart`` option to point to the folder containing the restart files

@@ -406,3 +406,13 @@ def get_size(work_path):
 
     # Convert the total size from bytes to gigabytes
     return (int(total_size) * ureg.byte).to(ureg.gibibyte).magnitude
+
+def str_to_bool(value):
+    if isinstance(value, bool):
+        return value
+    if value.lower() in ('true', '1'):
+        return True
+    elif value.lower() in ('false', '0'):
+        return False
+    else:
+        raise ValueError(f"Input is not acceptable. Please use 'True' or 'False' or '1' or '0'.")

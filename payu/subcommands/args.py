@@ -1,4 +1,5 @@
 # coding: utf-8
+from payu.fsops import str_to_bool
 
 # Model type selection
 model = {
@@ -43,7 +44,7 @@ nruns = {
         'action':   'store',
         'dest':     'n_runs',
         'default':  None,
-        'help':     'Number of successive experiments ro run',
+        'help':     'Number of successive experiments to run',
     }
 }
 
@@ -94,23 +95,15 @@ dir_path = {
 
 # Specify a reproducible run
 reproduce = {
-    'flags': ('--reproduce', '--repro', '-r'),
+    'flags': ['--reproduce', '--repro', '-r'],
     'parameters': {
-        'action':   'store_true',
+        'action':   'store',
         'dest':     'reproduce',
-        'default':  False,
-        'help': 'A fallback value when manifest reproduce section is not configured in config.yaml',
-    }
-}
-
-
-reproduce_off = {
-    'flags': ('--reproduce-off',),
-    'parameters': {
-        'action':   'store_true',
-        'dest':     'reproduce_off',
-        'default':  False,
-        'help': 'Disable reproducible run, ignoring any manifest reproduce section in config.yaml',
+        'nargs':     '?',    # Accepts `-r`, `-r True`, or `-r False`
+        'const':    True,    # When only `-r` is provided, set reproduce to True (boolean)
+        'default':  None,    # When `-r` is not provided, set reproduce to None
+        'type': str_to_bool,
+        'help': 'Set up for a reproducible run, overriding any manifest reproduce section in config.yaml.',
     }
 }
 
@@ -420,10 +413,10 @@ runlog_off = {
     }
 }
 
-repeat_run = {
+repeat = {
     'flags': ['--repeat'],
     'parameters': {
-        'dest': 'repeat_run',
+        'dest': 'repeat',
         'action': 'store_true',
         'default': False,
         'help': 'Remove any archived restart files and repeat the initial run upon resubmission'
