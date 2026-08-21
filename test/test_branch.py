@@ -1012,7 +1012,7 @@ def test_prompts_for_clone_from_branch_not_new_experiment(monkeypatch):
     monkeypatch.setattr(clone_cmd, "ask_for_restart_path", lambda: tmpdir / "restart_path")
     monkeypatch.setattr(clone_cmd, "confirm_shortpath", lambda: False)
     
-    result = clone_cmd.prompts_for_clone(None, None)
+    result = clone_cmd.prompts_for_clone()
     assert result['repository'] == "https://test_repo.git"
     assert result['branch'] == "master"
     assert result['local_directory'] == "new_expt_local_dir"
@@ -1038,7 +1038,7 @@ def test_prompts_for_clone_from_branch_new_experiment(monkeypatch):
     monkeypatch.setattr(clone_cmd, "confirm_shortpath", lambda: True)
     monkeypatch.setattr(clone_cmd, "ask_for_new_shortpath", lambda: "/scratch/shortpath")
 
-    result = clone_cmd.prompts_for_clone(None, None)
+    result = clone_cmd.prompts_for_clone()
     assert result['repository'] == "https://test_repo.git"
     assert result['branch'] == "master"
     assert result['local_directory'] == "new_expt_local_dir"
@@ -1063,7 +1063,7 @@ def test_prompts_for_clone_from_tag_with_restart(monkeypatch):
     monkeypatch.setattr(clone_cmd, "ask_for_restart_path", lambda: tmpdir / "restart_path")
     monkeypatch.setattr(clone_cmd, "confirm_shortpath", lambda: False)
 
-    result = clone_cmd.prompts_for_clone(None, None)
+    result = clone_cmd.prompts_for_clone()
     assert result['repository'] == "https://test_repo.git"
     assert result['branch'] == None
     assert result['start_point'] == "v1.0"
@@ -1072,3 +1072,21 @@ def test_prompts_for_clone_from_tag_with_restart(monkeypatch):
     assert result['new_branch_name'] == "new_branch"
     assert result['keep_uuid'] is False
     assert result['short_path'] == None
+
+
+def test_check_tree_in_url(monkeypatch):
+    """ Test check_tree_in_url correctly checks if a branch name is included in a URL"""
+    base_url = "https://github.com/repository.git"
+    monkeypatch.setattr(clone_cmd, "fetch_branches", lambda repository: ["master", "branch1"])
+
+    repo_url, branch = clone_cmd.check_tree_in_url(base_url)
+    assert repo_url == base_url
+    assert branch is None
+
+    repo_url, branch = clone_cmd.check_tree_in_url(base_url+"/tree/branch1")
+    assert repo_url == base_url
+    assert branch == "branch1"
+
+    with pytest.raises(errors.PayuBranchError, match=f'Branch "new_branch" not found in repository {base_url}'):
+        clone_cmd.check_tree_in_url(base_url+"/tree/new_branch")
+

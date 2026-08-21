@@ -112,8 +112,11 @@ For example::
       payu clone ${REPOSITORY} my_expt
       cd my_expt
 
-Where ``${REPOSITORY}`` is the git URL or path of the repository to clone from, 
-for example, https://github.com/payu-org/mom-example.git.
+Where ``${REPOSITORY}`` is the Git URL or path of the repository to clone from, 
+for example, https://github.com/payu-org/mom-example.git. Branch names  
+in the repository URL (e.g., https://github.com/payu-org/mom-example/tree/master) are 
+supported, but only in interactive payu clone (see below). For non-interactive payu clone, 
+the repository URL must use the base ``<org>/<repo>`` format.
 
 To clone and checkout an existing git branch, use the ``-B/--branch`` flag and
 specify the branch name::

@@ -12,6 +12,7 @@ import warnings
 from pathlib import Path
 from typing import Optional
 import shutil
+import urllib
 
 from ruamel.yaml import YAML, CommentedMap, constructor
 import git
@@ -255,6 +256,29 @@ def switch_symlink(lab_dir_path: Path, control_path: Path,
         sym_path.symlink_to(dir_path)
         print(f"Added {sym_dir} symlink to {dir_path}")
 
+def validate_repo_url(repository: str) -> None:
+    """Validate the repository URL or path.
+
+    Parameters:
+        repository: str
+            Git URL or path to Git repository to validate
+    """
+    split_url = urllib.parse.urlsplit(repository)
+    if split_url.netloc != 'github.com':
+        return # Not a GitHub URL, skip validation
+
+    # Check if the URL is /<org>/<repo> format
+    path = split_url.path
+    parts = path.strip("/").split("/")
+    if len(parts) != 2:
+        raise errors.PayuBranchError(
+            f"Malformed GitHub repository URL: {repository}.\n"
+            "Expected one of the following formats:\n"
+            "   https://github.com/<org>/<repo>,\n"
+            "   https://github.com/<org>/<repo>/tree/<branch> (clone wizard only).\n"
+            "Please check the URL and try again."
+        )
+
 
 def clone(repository: str,
           directory: Path,
@@ -324,6 +348,7 @@ def clone(repository: str,
         )
 
     # git clone the repository
+    validate_repo_url(repository)
     repo = git_clone(repository, control_path, branch)
 
     if restart_path:
@@ -370,13 +395,14 @@ def clone(repository: str,
 
     except (errors.PayuBranchError, errors.PayuFileNotFoundError) as e:
         # Remove directory if incomplete checkout
-        shutil.rmtree(control_path)
+        shutil.rmtree(control_path, ignore_errors=True)
         msg = (
-            "Incomplete checkout. To run payu clone again, modify/remove "
-            "the checkout new branch flag: --new-branch/-b, or "
-            "checkout existing branch flag: --branch/-B "
-            f"\n  Checkout error: {e}\n"
-            "For more infomation on payu clone, run `payu clone --help`"
+            f"Incomplete checkout. Checkout error: {e}\n"
+            "Please try one of the following:\n"
+            "    Choose a source branch with a valid payu configuration file, \n"
+            "    Use --branch/-B to checkout an existing branch, \n"
+            "    Modify or remove the new branch flag: --new-branch/-b, \n"
+            "For more information on payu clone, please run `payu clone --help`"
         )
         raise errors.PayuBranchError(msg)
     finally:
