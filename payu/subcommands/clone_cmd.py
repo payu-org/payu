@@ -246,6 +246,7 @@ def fetch_branches(url):
 def fetch_tags(url):
     """Fetch all tags from the remote repository."""
     try:
+        validate_repo_url(url)
         result = subprocess.run(
             ["git", "ls-remote", "--tags", url],
             stdout=subprocess.PIPE,
