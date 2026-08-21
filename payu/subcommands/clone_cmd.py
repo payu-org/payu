@@ -14,7 +14,7 @@ import os
 from prompt_toolkit.completion import PathCompleter
 from importlib.resources import files
 
-from payu.branch import clone
+from payu.branch import clone, validate_repo_url
 import payu.subcommands.args as args
 import payu.errors as errors
 
@@ -135,8 +135,8 @@ def prompts_for_clone(dash_length=50, start_point=None):
     # Source selection
     repository = ask_for_repo_url()
 
-    # Check if branch is specified in repo url
-    repository, branch = check_branch_in_url(repository)
+    # Check if /tree/<branch> is specified in repo url
+    repository, branch = check_tree_in_url(repository)
     if branch:
         # If branch is specified in the repo url
         cli_command += f" -B {branch}"
@@ -208,7 +208,7 @@ def prompts_for_clone(dash_length=50, start_point=None):
         'short_path': short_path,
     }
 
-def check_branch_in_url(repository):
+def check_tree_in_url(repository):
     """Check if a branch is specified in the repository URL."""
     split_pattern = '/tree/'
     # Check if branch is specified in the url
@@ -226,6 +226,7 @@ def check_branch_in_url(repository):
 def fetch_branches(url):
     """Fetch all branches from the remote repository."""
     try:
+        validate_repo_url(url)
         result = subprocess.run(
             ["git", "ls-remote", "--heads", url],
             stdout=subprocess.PIPE,
@@ -236,7 +237,11 @@ def fetch_branches(url):
         branches = [line.split('\t')[1].replace("refs/heads/", "") for line in result.stdout.splitlines()]
         return branches
     except subprocess.CalledProcessError as e:
-        raise errors.PayuBranchError(f'Error fetching branches: {e}') from e
+        raise errors.PayuBranchError(f'Error fetching branches: '
+                                     f'{e.returncode}'
+                                     f'{e.stdout}'
+                                     f'{e.stderr}'
+                                     ) from e
 
 def fetch_tags(url):
     """Fetch all tags from the remote repository."""

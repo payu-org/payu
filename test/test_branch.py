@@ -1074,19 +1074,19 @@ def test_prompts_for_clone_from_tag_with_restart(monkeypatch):
     assert result['short_path'] == None
 
 
-def test_check_branch_in_url(monkeypatch):
-    """ Test check_branch_in_url correctly checks if a branch name is included in a URL"""
+def test_check_tree_in_url(monkeypatch):
+    """ Test check_tree_in_url correctly checks if a branch name is included in a URL"""
     base_url = "https://github.com/repository.git"
     monkeypatch.setattr(clone_cmd, "fetch_branches", lambda repository: ["master", "branch1"])
 
-    repo_url, branch = clone_cmd.check_branch_in_url(base_url)
+    repo_url, branch = clone_cmd.check_tree_in_url(base_url)
     assert repo_url == base_url
     assert branch is None
 
-    repo_url, branch = clone_cmd.check_branch_in_url(base_url+"/tree/branch1")
+    repo_url, branch = clone_cmd.check_tree_in_url(base_url+"/tree/branch1")
     assert repo_url == base_url
     assert branch == "branch1"
 
     with pytest.raises(errors.PayuBranchError, match=f'Branch "new_branch" not found in repository {base_url}'):
-        clone_cmd.check_branch_in_url(base_url+"/tree/new_branch")
+        clone_cmd.check_tree_in_url(base_url+"/tree/new_branch")
 
