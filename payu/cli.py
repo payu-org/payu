@@ -8,6 +8,7 @@
 """
 # Standard imports
 import argparse
+import json
 import sysconfig
 import importlib
 import os
@@ -201,7 +202,7 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
         payu_env_vars['PAYU_REPEAT'] = repeat
         
     if exist_workflow:
-        payu_env_vars['PAYU_EXIST_WORKFLOW'] = exist_workflow
+       payu_env_vars['PAYU_EXIST_WORKFLOW'] = exist_workflow
 
     # Pass through important module related environment variables
     module_env_vars = ['MODULESHOME', 'MODULES_CMD', 'MODULEPATH', 'MODULEV']
@@ -239,7 +240,7 @@ def submit_job(script, config, vars=None, expt=None, current_run=None,
                 # Print the job ID and command after submission 
                 job = sched.submit(script, config, vars, dry_run=dry_run, depends_on=depends_on, postscript=postscript)
                 print(f"------ Job submitted ------\n"
-                    f"Submitted command: {job.history[0]}")
+                    f"Submitted command: {job.history[-1]}")
                 job_id = job.id
                 print(f"Job ID: {job_id}")
         

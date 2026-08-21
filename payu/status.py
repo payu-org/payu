@@ -493,7 +493,7 @@ def update_postscript_job_file(data, scheduler, job_file, stdout, stderr):
     if stdout and stderr and stdout.exists() and stderr.exists():
         data["stage"] = "exited"
 
-        # Update the scheduler info by calling qstat -xf -F json job_id
+        # Update the scheduler info by querying the scheduler
         exit_status = None
         if job_id and scheduler:
             scheduler_info = scheduler.get_job_info(job_id)

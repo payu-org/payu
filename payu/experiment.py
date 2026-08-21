@@ -970,19 +970,6 @@ class Experiment(object):
                 expt=self.counter
             )
             sp.check_call(shlex.split(cmd))
-
-    def build_workflow(self):
-        """Build the workflow for the current experiment, e.g.,
-        {"run": None, "collate": None, "postscript": None, "sync": None}. 
-        The value will be updated as job id when available"""
-        workflow = dict()
-        if self.config.get('collate', {}).get('enable', True):
-            workflow['collate'] = None
-        if self.postscript:
-            workflow['postscript'] = None
-        if self.config.get('sync', {}).get('enable', False):
-            workflow['sync'] = None
-        return workflow
     
     @timeit("payu_collate_duration_seconds")
     def collate(self):

@@ -4,17 +4,26 @@
 import argparse
 import os
 from pathlib import Path
+import json
 
 # Local
 from payu import cli
 from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
-from payu.telemetry import record_run, get_job_file_path_with_id
+from payu.telemetry import record_run
 from payu.fsops import read_config
+import payu.errors as errors
 
 from payu.subcommands.postscript_cmd import submit_postscript
 from payu.subcommands.sync_cmd import submit_sync
+from payu.workflow import Workflow
+
+# A function lookup dictionary for subcommand job submission functions in runscript
+fn = {
+    "postscript": submit_postscript,
+    "sync": submit_sync
+}
 
 title = 'collate'
 parameters = {'description': 'Collate tiled output into single output files'}
@@ -22,14 +31,17 @@ parameters = {'description': 'Collate tiled output into single output files'}
 arguments = [args.model, args.config, args.initial, args.laboratory,
              args.dir_path, args.dry_run]
 
-def submit_collate(expt, depends_on=None):
+def submit_collate(counter, depends_on=None):
     """ Submit the collate job by calling runcmd.
     Return the job id of the collate job"""
-    job_id = runcmd(
-            init_run=expt.counter,
-            depends_on=depends_on,
-            exist_workflow=True
-        )
+    try:
+        job_id = runcmd(
+                init_run=counter,
+                depends_on=depends_on,
+                exist_workflow=True,
+                )
+    except Exception as e:
+        raise errors.PayuRuntimeError(f"Failed to submit collate job: {e}")
     return job_id
 
 
@@ -126,52 +138,30 @@ def runscript(**run_args):
     for var in pbs_vars:
         os.environ[var] = str(pbs_vars[var])
 
-    # Get exist_workflow from environment variable (passed from runcmd via PBS)
-    exist_workflow = os.environ.get('PAYU_EXIST_WORKFLOW', 'false').lower() == 'true'
-    workflow = dict()
-
     lab = Laboratory(run_args.model_type,
                      run_args.config_path,
                      run_args.lab_path)
     expt = Experiment(lab)
+
+    # Initialise the Workflow class to manage the workflow
+    workflow = Workflow(expt.config,
+                        run_number=expt.counter)
+    
     try:
         # Collate the model output
         expt.collate()
 
-        # Build workflow chain if no workflow is provided in collate runcmd
-        if not exist_workflow:
-            workflow = expt.build_workflow()
-            workflow.pop('collate', None)
-
-            # Submit each job in the workflow, pass the job ID onto the next job as dependency
-            next_depends_on = expt.scheduler.get_job_id(short=False)
-            for step in workflow.keys():
-                if step == 'postscript':
-                    postscript_job_id = submit_postscript(expt, depends_on=next_depends_on)
-                    next_depends_on = postscript_job_id
-                elif step == 'sync':
-                    sync_job_id = submit_sync(expt, depends_on=next_depends_on)
-                    next_depends_on = sync_job_id
-                # Update the workflow dictionary with the job ID for each step
-                workflow[step] = next_depends_on
-
         # If collation succeeds, then collate_status is set to 0
         collate_status = 0
-
+        
     except:
         # If collation fails, then collate_status is set to 1
         collate_status = 1
-        # If collate fails, remove job files of all dependent jobs
-        # Only when collate builds its own workflow
-        if not exist_workflow and workflow:
-            for step, job_id in workflow.items():
-                job_file_path = get_job_file_path_with_id(
-                                    archive_path=Path(expt.archive_path),
-                                    run_number=expt.counter,
-                                    job_id=job_id,
-                                    type=step
-                                )
-                job_file_path.unlink(missing_ok=True)
+
+        # If collate is called by payu-run, there may be postscript/sync waiting in queue
+        # Clean up any later jobs in the workflow
+        # workflow.clean_up(failed_step='collate', job_file=expt.get_job_file(type='run'))
+
         raise
     
     finally:
@@ -190,3 +180,10 @@ def runscript(**run_args):
             stage="exited"
         )
 
+        # Submit follow-up jobs in the workflow, if payu-collate succeed and not called by payu-run
+        exist_workflow = os.environ.get('PAYU_EXIST_WORKFLOW', 'false').lower() == 'true'
+
+        if collate_status == 0 and not exist_workflow:
+            workflow.build_workflow(expt.postscript)
+            workflow.workflow_steps.pop('collate', None)
+            workflow.submit_workflow(depends_on=expt.scheduler.get_job_id(short=False))
