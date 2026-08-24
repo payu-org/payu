@@ -360,6 +360,11 @@ def clone(repository: str,
         # cd into cloned directory
         os.chdir(control_path)
 
+        if short_path:
+            # Update shortpath in config file
+            config_path = check_config_path(config_path)
+            add_new_key_to_config('shortpath', short_path, config_path=config_path)
+
         # Use checkout wrapper
         if new_branch_name is not None:
             # Create and checkout new branch
@@ -388,10 +393,6 @@ def clone(repository: str,
                             is_new_experiment=True,
                             parent_experiment=parent_experiment)
     
-        if short_path:
-            # Update shortpath in config file
-            config_path = check_config_path(config_path)
-            add_new_key_to_config('shortpath', short_path, config_path=config_path)
 
     except (errors.PayuBranchError, errors.PayuFileNotFoundError) as e:
         # Remove directory if incomplete checkout
