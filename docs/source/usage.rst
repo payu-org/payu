@@ -434,6 +434,15 @@ This is useful when the data files have been moved out of the payu
 directory structure, or if you need to collate restart files, which is
 necessary when changing processor layout.
 
+If the uncollated files have been moved outside the original experiment directory,
+the original configuration file may need to be provided explicitly
+using the ``-c`` option::
+
+  payu collate -d dir_name -c /path/to/config.yaml
+
+This allows Payu to use the collation settings from the specified ``config.yaml``
+while reading the uncollated files from the directory provided with ``-d``.
+
 To manually sync experiment output files to a remote archive, firstly ensure
 that ``path`` in the ``sync`` namespace in ``config.yaml``, 
 is correctly configured as it may overwrite any pre-exisiting outputs. 
