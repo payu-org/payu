@@ -440,7 +440,7 @@ using the ``-c`` option::
 
   payu collate -d dir_name -c /path/to/config.yaml
 
-This allows Payu to use the collation settings from the specified ``config.yaml``
+This allows payu to use the collation settings from the specified ``config.yaml``
 while reading the uncollated files from the directory provided with ``-d``.
 
 To manually sync experiment output files to a remote archive, firstly ensure
