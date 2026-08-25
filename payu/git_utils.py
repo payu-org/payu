@@ -223,7 +223,7 @@ class GitRepository:
                         start_point in remote_branches):
                     # Use hash for remote start point
                     start_point = remote_branches[start_point].commit
-                branch = self.repo.create_head(branch_name, commit=start_point)
+                branch = self.repo.create_head(branch_name, commit=self.repo.commit(start_point))
             else:
                 branch = self.repo.create_head(branch_name)
 
