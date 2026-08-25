@@ -142,6 +142,7 @@ def checkout_branch(branch_name: str,
                     control_path: Optional[Path] = None,
                     model_type: Optional[str] = None,
                     lab_path: Optional[Path] = None,
+                    short_path: Optional[Path] = None,
                     parent_experiment: Optional[str] = None) -> None:
     """Checkout branch, setup metadata and add symlinks
 
@@ -202,6 +203,10 @@ def checkout_branch(branch_name: str,
 
     # Check config file exists on checked out branch
     config_path = check_config_path(config_path)
+
+    # Add shortpath to config if specified
+    if short_path:
+        add_new_key_to_config('shortpath', short_path, config_path=config_path)
 
     # Initialise Lab
     lab = Laboratory(model_type, config_path, lab_path)
@@ -371,6 +376,7 @@ def clone(repository: str,
                             control_path=control_path,
                             model_type=model_type,
                             lab_path=lab_path,
+                            short_path=short_path,
                             parent_experiment=parent_experiment,
                             start_point=start_point)
         else:
@@ -385,13 +391,10 @@ def clone(repository: str,
                             control_path=control_path,
                             model_type=model_type,
                             lab_path=lab_path,
+                            short_path=short_path,
                             is_new_experiment=True,
                             parent_experiment=parent_experiment)
     
-        if short_path:
-            # Update shortpath in config file
-            config_path = check_config_path(config_path)
-            add_new_key_to_config('shortpath', short_path, config_path=config_path)
 
     except (errors.PayuBranchError, errors.PayuFileNotFoundError) as e:
         # Remove directory if incomplete checkout
