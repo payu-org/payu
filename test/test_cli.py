@@ -205,7 +205,7 @@ def test_parse_run(parser):
     assert len(args) == 0
 
 def test_parse_run_reproduce_arg(parser):
-    """ Test that --reproduce argument can accpet True or False values. """
+    """ Test that --reproduce argument can accept True or False values. """
     cmd = 'run'
     false_cmd = (
             f"payu {cmd} "

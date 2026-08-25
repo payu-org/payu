@@ -100,9 +100,7 @@ class Experiment(object):
         self.postscript = self.config.get('postscript')
         # repeat prioritise CLI flag > environment variable > config.yaml
         if not repeat:
-            repeat = os.environ.get('PAYU_REPEAT', False)
-        if not repeat:
-            repeat = self.config.get('repeat', False)
+            repeat = os.environ.get('PAYU_REPEAT', False) or self.config.get('repeat', False)
         self.repeat = repeat
 
         # Configuration
@@ -163,7 +161,7 @@ class Experiment(object):
 
         # runlog_off prioritise CLI flag > environment variable > config.yaml (in runlog.py)
         if not runlog_off:
-            runlog_off = os.environ.get('PAYU_RUNLOG_OFF', False)
+            runlog_off = os.environ.get('PAYU_RUNLOG_OFF', 'False').lower() == 'true'
 
         self.runlog = Runlog(self, runlog_off)
 

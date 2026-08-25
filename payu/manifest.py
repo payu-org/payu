@@ -272,17 +272,17 @@ class Manifest(object):
         self.manifests = {}
         self.previous_manifests = {}
         self.reproduce = {}
+        print(f"Manifest reproduce flag: {reproduce}")
 
+        reproduce_config = self.manifest_config.get('reproduce', {})
         for mf in ['input', 'restart', 'exe']:
             self.init_mf(mf)
-            if reproduce is not None:
+            if reproduce is None:
+                # If reproduce is None, read config.yaml setting and fall back to False
+                self.reproduce[mf] = reproduce_config.get(mf, False)
+            else:
                 # If reproduce is True or False, set all manifests to that value
                 self.reproduce[mf] = reproduce
-
-            else:
-                # If reproduce is None, read config.yaml setting and fall back to False
-                reproduce_config = self.manifest_config.get('reproduce', {})
-                self.reproduce[mf] = reproduce_config.get(mf, False)
 
         # Make sure the manifests directory exists
         os.makedirs(os.path.dirname(self.manifests['exe'].path), exist_ok=True)

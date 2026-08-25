@@ -335,7 +335,7 @@ def test_check_payu_version_configured_invalid_version(minimum_version):
          ]
 )
 @pytest.mark.filterwarnings("error")
-def test_runlog_off(runlog, enabled):
+def test_runlog_enable(runlog, enabled):
     config = copy.deepcopy(config_orig)
     if runlog == None:
         config.pop('runlog') #remove from config for default case
@@ -470,7 +470,7 @@ def test_null_userscripts():
 
 
 @patch('payu.git_utils.get_git_repository')
-def test_setup_runlog_offd_not_git(mock_git_repo):
+def test_setup_runlog_enabled_not_git(mock_git_repo):
     """ Test an error is raised if runlog is enabled but no git repository is found."""
     mock_git_repo.return_value = None
 

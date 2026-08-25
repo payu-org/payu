@@ -31,7 +31,8 @@ class Runlog(object):
             if isinstance(runlog_config, bool):
                 runlog_config = {'enable': runlog_config}
 
-        self.enabled = runlog_config.pop('enable', True)            
+        self.enabled = runlog_config.pop('enable', True)   
+        print(f"Runlog enabled: {self.enabled}")         
 
         self.manifest = []
 

@@ -408,6 +408,9 @@ def get_size(work_path):
     return (int(total_size) * ureg.byte).to(ureg.gibibyte).magnitude
 
 def str_to_bool(value):
+    """Convert a boolean-like value to `bool`. Accepts a boolean directly, or a 
+    case-insensitive string in: `{"true", "1", "false", "0"}`.
+    """
     if isinstance(value, bool):
         return value
     if value.lower() in ('true', '1'):
