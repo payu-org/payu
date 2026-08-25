@@ -272,7 +272,6 @@ class Manifest(object):
         self.manifests = {}
         self.previous_manifests = {}
         self.reproduce = {}
-        print(f"Manifest reproduce flag: {reproduce}")
 
         reproduce_config = self.manifest_config.get('reproduce', {})
         for mf in ['input', 'restart', 'exe']:
