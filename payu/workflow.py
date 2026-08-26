@@ -1,7 +1,4 @@
-# --- Work in progress: build a workflow class ---
-# Local imports for subcommand job submission
-from payu.telemetry import get_job_file_path_with_id
-import json
+# --- Build a Workflow class to manage the workflow of collate, postscript, sync jobs ---
 
 class Workflow:
     """Class to manage the workflow of run, collate, postscript, sync jobs."""
@@ -27,26 +24,29 @@ class Workflow:
     def submit_workflow(self, depends_on):
         """Submit all later jobs in the workflow in order, passing job IDs as dependencies,
         Update the value in workflow dictionary."""
+        fn = self.import_subcommands()
+
         for step in self.workflow_steps.keys():
-            if step == "collate":
-                from payu.subcommands.collate_cmd import submit_collate
-                depends_on = submit_collate(self.run_number, depends_on)
+            self.workflow_steps[step] = fn[step](self.run_number, depends_on, self.config)
 
-            elif step == "postscript":
-                from payu.subcommands.postscript_cmd import submit_postscript
-                depends_on = submit_postscript(self.run_number, depends_on)
-
-            elif step == "sync":
-                from payu.subcommands.sync_cmd import submit_sync
-                depends_on = submit_sync(self.run_number, depends_on, self.config)
-
-            else:
-                raise ValueError(f"Unknown workflow step: {step}")
-
-            self.workflow_steps[step] = depends_on
+            depends_on = self.workflow_steps[step]
 
         return self.workflow_steps
 
+    @staticmethod
+    def import_subcommands():
+        # Local imports for subcommand job submission
+        from payu.subcommands.collate_cmd import submit_collate
+        from payu.subcommands.postscript_cmd import submit_postscript
+        from payu.subcommands.sync_cmd import submit_sync
+
+        # Build a function lookup dictionary
+        return {
+            "collate": submit_collate,
+            "postscript": submit_postscript,
+            "sync": submit_sync
+        }
+    
 
     def clean_up(self, failed_step):
         """Clean up any later jobs that depends on the current failed job."""

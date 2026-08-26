@@ -18,7 +18,7 @@ parameters = {'description': 'Run postscript commands provided by the user in co
 arguments = [args.model, args.config, args.laboratory, args.initial, args.dry_run]
 
             
-def submit_postscript(counter, depends_on=None):
+def submit_postscript(counter, depends_on=None, config=None):
     """ Submit postprocessing script if configured in config.yaml. Return the job id of the postscript job"""
     try:
         job_id = runcmd(

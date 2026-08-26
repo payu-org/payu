@@ -15,15 +15,7 @@ from payu.telemetry import record_run
 from payu.fsops import read_config
 import payu.errors as errors
 
-from payu.subcommands.postscript_cmd import submit_postscript
-from payu.subcommands.sync_cmd import submit_sync
 from payu.workflow import Workflow
-
-# A function lookup dictionary for subcommand job submission functions in runscript
-fn = {
-    "postscript": submit_postscript,
-    "sync": submit_sync
-}
 
 title = 'collate'
 parameters = {'description': 'Collate tiled output into single output files'}
@@ -31,7 +23,7 @@ parameters = {'description': 'Collate tiled output into single output files'}
 arguments = [args.model, args.config, args.initial, args.laboratory,
              args.dir_path, args.dry_run]
 
-def submit_collate(counter, depends_on=None):
+def submit_collate(counter, depends_on=None, config=None):
     """ Submit the collate job by calling runcmd.
     Return the job id of the collate job"""
     try:
