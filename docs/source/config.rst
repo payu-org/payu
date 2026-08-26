@@ -250,7 +250,12 @@ configuration.
 ``experiment``
    The experiment name used for archival. This will override the experiment
    name generated using metadata and existing archives 
-   (see :ref:`usage-metadata`).
+   (see :ref:`experiment_names`).
+
+``experiment_prefix``
+   The prefix to use when generating an experiment name, if ``experiment`` is not set.
+   This overrides the default of using the control directory name (see :ref:`experiment_names`).
+   The experiment name is generated as ``<experiment_prefix>-<branch_name>-<UUID>``.
 
 Manifests
 ---------
@@ -260,19 +265,18 @@ section for details.
 
 ``reproduce``
       These options allow fine-grained control of manifest checking to enable
-      reproducible experiments. The default value is the value of the global
-      ``reproduce`` flag, which is set using a command line argument and
-      defaults to *False*. These options **override** the global ``reproduce``
-      flag. If set to *True* payu will refuse to run if the MD5 hashes in the
-      relevant manifest do not match.
+      reproducible experiments. By default, all options are *False*. They are 
+      **overriden** by the global ``reproduce (True/False)`` flag (see :ref:`running-experiment`). 
+      If an option is set to *True*, payu will refuse to run if the MD5 hashes in the relevant 
+      manifest do not match.
 
-      ``exe`` (*Default: global reproduce flag*)
+      ``exe`` (*Default: False*)
             Enforce executable reproducibility.
 
-      ``input`` (*Default: global reproduce flag*)
+      ``input`` (*Default: False*)
             Enforce input file reproducibility.
 
-      ``restart`` (*Default: global reproduce flag*)
+      ``restart`` (*Default: False*)
             Enforce restart file reproducibility.
 
 ``ignore`` (*Default:* ``[.*]``):
