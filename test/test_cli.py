@@ -57,7 +57,7 @@ def test_parse_setup(parser):
     assert args.pop('model_type') is None
     assert args.pop('config_path') is None
     assert args.pop('lab_path') is None
-    assert args.pop('reproduce') is False
+    assert args.pop('reproduce') is None
     assert args.pop('force') is False
     assert args.pop('metadata_off') is False
     assert args.pop('is_new_experiment') is False
@@ -125,13 +125,15 @@ def test_parse_run(parser):
     assert args.pop('model_type') is None
     assert args.pop('config_path') is None
     assert args.pop('lab_path') is None
-    assert args.pop('reproduce') is False
+    assert args.pop('reproduce') is None
     assert args.pop('force') is False
     assert args.pop('init_run') is None
     assert args.pop('n_runs') is None
     assert args.pop('force_prune_restarts') is False
     assert args.pop('is_new_experiment') is False
     assert args.pop('dry_run') is False
+    assert args.pop('runlog_off') is False
+    assert args.pop('repeat') is False
 
     assert len(args) == 0
 
@@ -148,6 +150,8 @@ def test_parse_run(parser):
             "--force-prune-restarts "
             "--new-uuid "
             "--dry-run "
+            "--runlog-off "
+            "--repeat "
             )
 
     run_cmd, args = parse_args(parser, long_cmd)
@@ -164,6 +168,8 @@ def test_parse_run(parser):
     assert args.pop('force_prune_restarts') is True
     assert args.pop('is_new_experiment') is True
     assert args.pop('dry_run') is True
+    assert args.pop('runlog_off') is True
+    assert args.pop('repeat') is True
 
     assert len(args) == 0
 
@@ -193,8 +199,35 @@ def test_parse_run(parser):
     assert args.pop('force_prune_restarts') is True
     assert args.pop('is_new_experiment') is False
     assert args.pop('dry_run') is False
+    assert args.pop('runlog_off') is False
+    assert args.pop('repeat') is False
 
     assert len(args) == 0
+
+def test_parse_run_reproduce_arg(parser):
+    """ Test that --reproduce argument can accept True or False values. """
+    cmd = 'run'
+    false_cmd = (
+            f"payu {cmd} "
+            "--reproduce "
+            "False "
+            )
+    run_cmd, args = parse_args(parser, false_cmd)
+    
+    assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
+
+    assert args.pop('reproduce') == False
+
+    true_cmd = (
+                f"payu {cmd} "
+                "--reproduce "
+                "True "
+                )
+    run_cmd, args = parse_args(parser, true_cmd)
+    
+    assert run_cmd.__module__ == 'payu.subcommands.{cmd}_cmd'.format(cmd=cmd)
+
+    assert args.pop('reproduce') == True
 
 
 def test_parse_sweep(parser):
@@ -519,3 +552,5 @@ def test_submit_job_error_msg_from_hpcpy():
             payu.cli.submit_job(config={"scheduler": "pbs"}, script="submit_script.sh")
             assert "Error occurred while submitting a job to scheduler pbs" in str(exc_info.value)
             assert "Error: HPCpy submission failed" in str(exc_info.value)
+
+    

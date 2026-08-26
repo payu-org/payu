@@ -16,21 +16,22 @@ from payu.git_utils import GitRepository, get_git_repository
 import payu.errors as errors
 
 class Runlog(object):
-    def __init__(self, expt):
+    def __init__(self, expt, runlog_off=False):
         # Disable user's global git rc file
         os.environ['GIT_CONFIG_NOGLOBAL'] = 'yes'
 
         self.expt = expt
 
-        # Fetch and update the runlog config
-        runlog_config = self.expt.config.get('runlog', {})
-        if isinstance(runlog_config, bool):
-            self.enabled = runlog_config
-            runlog_config = {}
+        # If runlog_off is specified in CLI or environment variable, disable runlog
+        if runlog_off:
+            runlog_config = {'enable': False}
         else:
-            assert isinstance(runlog_config, dict)
-            self.enabled = runlog_config.pop('enable', True)
-        self.config = runlog_config
+            # Fetch and update the runlog config
+            runlog_config = self.expt.config.get('runlog', {})
+            if isinstance(runlog_config, bool):
+                runlog_config = {'enable': runlog_config}
+
+        self.enabled = runlog_config.pop('enable', True)  
 
         self.manifest = []
 
