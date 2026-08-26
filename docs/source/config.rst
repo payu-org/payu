@@ -250,7 +250,11 @@ configuration.
 ``experiment``
    The experiment name used for archival. This will override the experiment
    name generated using metadata and existing archives 
-   (see :ref:`usage-metadata`).
+   (see :ref:`experiment_names`).
+
+``experiment_prefix``
+   The prefix to used when generating an experiment name, if ``experiment`` is not set.
+   The experiment name will be generated as ``<experiment_prefix>-<branch_name>-<UUID>``.
 
 Manifests
 ---------

@@ -530,6 +530,7 @@ Some common metadata fields are shown in the table below, with their definitions
 
 .. _schema: https://github.com/ACCESS-NRI/schema/blob/main/experiment_asset.json
 
+.. _experiment_names:
 Experiment names
 ----------------
 
@@ -557,6 +558,9 @@ To preserve backwards compatibility, if there's a pre-existing archive under
 the *control directory* name, this will remain the experiment name (e.g. 
 ``my_expt`` in the above example). Similarly, if the ``experiment`` value is
 configured (see :ref:`config`), this will be used for the experiment name.
+Alternatively, if ``experiment`` is not set but ``experiment_prefix`` is set, 
+payu uses the prefix instead of the control directory name to generate the experiment name 
+(i.e., ``<experiment_prefix>-<branch_name>-<UUID>``).
 
 Switching between related experiments
 -------------------------------------
