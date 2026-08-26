@@ -19,7 +19,7 @@ arguments = [
 
 
 def runcmd(model_type, config_path, lab_path,
-           reproduce=False, force=False, metadata_off=False, is_new_experiment=False):
+           reproduce=None, force=False, metadata_off=False, is_new_experiment=False):
 
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab, reproduce=reproduce, force=force,

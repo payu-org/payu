@@ -45,14 +45,14 @@ def setup_and_teardown():
         print(e)
 
 
-def init_experiment(config):
+def init_experiment(config, reproduce=None, runlog_off=False, repeat=False):
     """Helper function to initialize an experiment with a given config."""
     write_config(config)
     make_inputs()
 
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
+        expt = payu.experiment.Experiment(lab, reproduce=reproduce, runlog_off=runlog_off, repeat=repeat)
         return expt
 
 
@@ -347,6 +347,95 @@ def test_runlog_enable(runlog, enabled):
 
     assert model.expt.runlog.enabled == enabled
 
+
+@pytest.mark.parametrize(
+    "runlog_off_flag, runlog_off_env, config_runlog, expected_enabled",
+    [
+        (True, None, True, False),
+        (False, "True", True, False),
+        (False, None, False, False),
+        (False, None, True, True),
+    ],
+)
+def test_runlog_off_flag(monkeypatch, runlog_off_flag, runlog_off_env, config_runlog, expected_enabled):
+    """Test that --runlog-off disables runlog and overrides config.yaml."""
+    config = copy.deepcopy(config_orig)
+    config["runlog"] = config_runlog
+
+    if runlog_off_env is None:
+        monkeypatch.delenv("PAYU_RUNLOG_OFF", raising=False)
+    else:
+        monkeypatch.setenv("PAYU_RUNLOG_OFF", runlog_off_env)
+
+    expt = init_experiment(config, runlog_off=runlog_off_flag)
+    assert expt.runlog.enabled == expected_enabled
+
+
+@pytest.mark.parametrize(
+    "reproduce_flag, env_value, expected_reproduce",
+    [
+        (True, None, True),
+        (False, None, False),
+        (None, "True", True),
+        (None, "False", False),
+    ],
+)
+def test_reproduce_flag(monkeypatch, reproduce_flag, env_value, expected_reproduce):
+    config = copy.deepcopy(config_orig)
+
+    if env_value is None:
+        monkeypatch.delenv("PAYU_REPRODUCE", raising=False)
+    else:
+        monkeypatch.setenv("PAYU_REPRODUCE", env_value)
+
+    expt = init_experiment(config, reproduce=reproduce_flag)
+
+    for value in expt.manifest.reproduce.values():
+        assert value == expected_reproduce
+
+
+@pytest.mark.parametrize(
+    "config_reproduce",
+    [
+        ({"input": True, "exe": True, "restart": True}),
+        ({"input": False, "exe": True, "restart": False}),
+        ({"input": True, "exe": False, "restart": True}),
+    ],
+)
+def test_no_reproduce_flag(monkeypatch, config_reproduce):
+    """Test that manifest reproduce values are taken from config.yaml when -r is not provided."""
+    config = copy.deepcopy(config_orig)
+    config["manifest"]["reproduce"] = config_reproduce
+
+    monkeypatch.delenv("PAYU_REPRODUCE", raising=False)
+    expt = init_experiment(config)
+
+    assert expt.manifest.reproduce == config_reproduce
+
+
+@pytest.mark.parametrize(
+    "repeat_flag, repeat_env, repeat_config, expected_repeat",
+    [
+        (True, None, False, True),  # CLI flag > environment variable > config.yaml
+        (False, 'True', False, True),  
+        (False, None, True, True),
+        (False, None, False, False),
+        (True, 'False', False, True),
+    ]
+)
+def test_repeat_flag_priority(monkeypatch, repeat_flag, repeat_env, repeat_config, expected_repeat):
+    """Test that the repeat flag follows the priority: CLI flag > environment variable > config.yaml"""
+    config = copy.deepcopy(config_orig)
+    config['repeat'] = repeat_config
+
+    # Set up or clear the PAYU_REPEAT environment variable
+    if repeat_env is None:
+        monkeypatch.delenv('PAYU_REPEAT', raising=False)
+    else:
+        monkeypatch.setenv('PAYU_REPEAT', repeat_env)
+
+    expt = init_experiment(config, repeat=repeat_flag)
+    assert expt.repeat == expected_repeat
 
 def test_set_prior_restart_path_no_restarts_in_archive():
     """Test that prior restart path is set to None if no restarts in archive."""

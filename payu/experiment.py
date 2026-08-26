@@ -100,7 +100,7 @@ class Experiment(object):
         self.postscript = self.config.get('postscript')
         # repeat prioritise CLI flag > environment variable > config.yaml
         if not repeat:
-            repeat = os.environ.get('PAYU_REPEAT', False) or self.config.get('repeat', False)
+            repeat = str_to_bool(os.environ.get('PAYU_REPEAT', False)) or self.config.get('repeat', False)
         self.repeat = repeat
 
         # Configuration
