@@ -150,10 +150,6 @@ def runscript(**run_args):
         # If collation fails, then collate_status is set to 1
         collate_status = 1
 
-        # If collate is called by payu-run, there may be postscript/sync waiting in queue
-        # Clean up any later jobs in the workflow
-        # workflow.clean_up(failed_step='collate', job_file=expt.get_job_file(type='run'))
-
         raise
     
     finally:
@@ -176,6 +172,6 @@ def runscript(**run_args):
         exist_workflow = os.environ.get('PAYU_EXIST_WORKFLOW', 'false').lower() == 'true'
 
         if collate_status == 0 and not exist_workflow:
-            workflow.build_workflow(expt.postscript)
+            workflow.build_workflow()
             workflow.workflow_steps.pop('collate', None)
             workflow.submit_workflow(depends_on=expt.scheduler.get_job_id(short=False))

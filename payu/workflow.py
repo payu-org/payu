@@ -8,14 +8,14 @@ class Workflow:
         self.config = config
 
 
-    def build_workflow(self, postscript):
+    def build_workflow(self):
         """Build the workflow for the current experiment, e.g.,
         {"collate": None, "postscript": None, "sync": None}. 
         The value will be updated as job id when available"""
         self.workflow_steps = dict()
         if self.config.get('collate', {}).get('enable', True):
             self.workflow_steps['collate'] = None
-        if postscript:
+        if self.config.get('postscript', None):
             self.workflow_steps['postscript'] = None
         if self.config.get('sync', {}).get('enable', False):
             self.workflow_steps['sync'] = None

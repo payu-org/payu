@@ -209,7 +209,7 @@ def runscript(**run_args):
                                 run_number=expt.counter)
                 
             # Submit each job in the workflow, pass the job ID onto the next job as dependency
-            workflow.build_workflow(expt.postscript)
+            workflow.build_workflow()
             workflow.submit_workflow(depends_on=expt.scheduler.get_job_id(short=False))
             
         except:
