@@ -1180,7 +1180,7 @@ class Experiment(object):
             restart_indices[restart] = int(restart.lstrip('restart'))
 
         # TODO: Previous logic was to prune all restarts if self.repeat
-        # Still need to figure out what should happen in this case
+        # Should add a check if any restart exists before the run (issue 845)
         if self.repeat:
             return [os.path.join(self.archive_path, restart)
                     for restart in restarts]
