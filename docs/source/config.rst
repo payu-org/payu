@@ -253,8 +253,9 @@ configuration.
    (see :ref:`experiment_names`).
 
 ``experiment_prefix``
-   The prefix to used when generating an experiment name, if ``experiment`` is not set.
-   The experiment name will be generated as ``<experiment_prefix>-<branch_name>-<UUID>``.
+   The prefix to use when generating an experiment name, if ``experiment`` is not set.
+   This overrides the default of using the control directory name (see :ref:`experiment_names`).
+   The experiment name is generated as ``<experiment_prefix>-<branch_name>-<UUID>``.
 
 Manifests
 ---------
