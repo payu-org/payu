@@ -18,6 +18,7 @@ from payu.status import (
     collect_expt_paths,
     display_expt_paths,
     parse_exit_status_from_logs,
+    update_postscript_job_file,
 )
 
 from payu.laboratory import Laboratory
@@ -1150,3 +1151,83 @@ Some log output...
 
     # Test when stdout does not exist
     assert parse_exit_status_from_logs(tmp_path / "nonexistent.stdout") is None
+
+
+@pytest.mark.parametrize(
+    "stdout_exists,scheduler_has_info,job_state,expected_stage,expected_exit_status",
+    [
+        # Both stdout and stderr exist with scheduler info
+        (True, True, None, "exited", 0),
+        # Both stdout and stderr exist but scheduler has no info, parse from logs
+        (True, False, None, "exited", 0),
+        # Job is running (job_state="R" due to payu status --update before) but logs don't exist yet
+        (False, None, "R", "running", None),
+        # Neither condition met - data should be unchanged
+        (False, None, None, "queued/running", None),
+    ]
+)
+def test_update_postscript_job_file(tmp_path, stdout_exists, scheduler_has_info, job_state, expected_stage, expected_exit_status):
+    """Test that update_postscript_job_file correctly updates the job file with running/exit status."""
+    # Create temporary stdout/stderr files
+    stdout_path = tmp_path / "postscript.out"
+    stderr_path = tmp_path / "postscript.err"
+    if stdout_exists:
+        stderr_path.touch()
+        stdout_path.write_bytes(b"Exit Status:        0\n")
+    
+    # Create job file
+    job_file = tmp_path / "test-postscript-id-3.json"
+    
+    # Set up initial job data
+    data = {
+        "scheduler_job_id": "test-postscript-id-3",
+        "stage": "queued/running",
+        "payu_current_run": 3,
+    }
+    
+    # User called payu status --update beforehand
+    if job_state == "R":
+        data["scheduler_job_info"] = {
+            "Jobs": {
+                "test-postscript-id-3": {
+                    "job_state": "R"
+                }
+            }
+        }
+    
+    # Set up mock scheduler to fetch job info
+    mock_scheduler = MagicMock()
+
+    if scheduler_has_info:
+        # If job still in scheduler
+        mock_scheduler.get_job_info.return_value = {
+            "Jobs": {
+                "test-postscript-id-3": {
+                    "Exit_status": 0,
+                    "job_state": "F"
+                }
+            }
+        }
+    
+    else:
+        # If job no longer in scheduler, return None
+        mock_scheduler.get_job_info.return_value = None
+    
+    # Call the function
+    result = update_postscript_job_file(data, mock_scheduler, job_file, stdout_path, stderr_path)
+    
+    # Assertions
+    assert result["stage"] == expected_stage
+    
+    if expected_exit_status is not None:
+        assert result.get("payu_postscript_status") == expected_exit_status
+    
+    # Verify job file was updated when expected
+    if expected_stage in ["exited", "running"]:
+        assert job_file.exists()
+
+    # Verify that the job file is not updated (not created in this test)
+    # if the stage is still "queued/running"
+    if expected_stage == "queued/running":
+        assert not job_file.exists()
+        assert data["stage"] == "queued/running"
