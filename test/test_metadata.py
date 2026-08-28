@@ -499,6 +499,7 @@ model: TEST-MODEL
 description: {placeholder_text}  # Short description of the experiment (string, < 150 char)
 long_description: {placeholder_text} # Long description of the experiment (string)
 # realm: The realm(s) included in the experiment (array of strings)
+# parent_experiment_branch_time: The model time corresponding to the restart path used to create this branch, e.g., 1951-02-01T00:00:00 (string)
 """
     assert (ctrldir / 'metadata.yaml').read_text() == expected_metadata
 
