@@ -205,11 +205,9 @@ def runscript(**run_args):
             run_status = 0
 
             # Initialise the Workflow class to manage the workflow
-            workflow = Workflow(expt.config,
-                                run_number=expt.counter)
+            workflow = Workflow.read_config(expt.config, run_number=expt.counter)
                 
             # Submit each job in the workflow, pass the job ID onto the next job as dependency
-            workflow.build_workflow()
             workflow.submit_workflow(depends_on=expt.scheduler.get_job_id(short=False))
             
         except:

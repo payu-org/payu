@@ -8,27 +8,31 @@ from payu.workflow import Workflow
 from .common import config as config_orig
 
 @pytest.mark.parametrize(
-    "collate_value, sync_value, postscript, expect_workflow", 
+    "collate_value, sync_value, postscript, skip_step, expect_workflow", 
     [   
         # collate/postscript/sync enabled
         ({"enable": True}, {"enable": True}, "-v ${PBS_NCI_STORAGE} postscript.sh", 
-         {"collate": None, "postscript": None, "sync": None}),
+         None, {"collate": None, "postscript": None, "sync": None}),
 
         # Manually disable collate and sync, postscript enabled
         ({"enable": False}, {"enable": False}, "-v ${PBS_NCI_STORAGE} postscript.sh",
-         {"postscript": None}),
+         None, {"postscript": None}),
 
          # By default, collate is enabled, postscript is disabled, sync is disabled
         (None, None, None,
-         {"collate": None}),
+         None, {"collate": None}),
 
         # A case that no follow-up jobs are enabled
         ({"enable": False}, {"enable": False}, "",
-         {}),
+         None, {}),
+
+        # collate/postscript/sync enabled, but collate is skipped (e.g., workflow called by payu collate)
+        ({"enable": True}, {"enable": True}, "-v ${PBS_NCI_STORAGE} postscript.sh", 
+         "collate", {"postscript": None, "sync": None}),
     ]
 )
-def test_build_workflow(collate_value, sync_value, postscript, expect_workflow):
-    """Test the build_workflow method include correct stage based on the config.yaml."""
+def test_workflow_read_config(collate_value, sync_value, postscript, skip_step, expect_workflow):
+    """Test the read_config class method include correct stage based on the config.yaml."""
     config = copy.deepcopy(config_orig)
 
     # Update the config based on the test
@@ -39,8 +43,7 @@ def test_build_workflow(collate_value, sync_value, postscript, expect_workflow):
             config.pop(key, None)
 
     # Initialize the Workflow class and build the workflow
-    workflow = Workflow(config, run_number=1)
-    workflow.build_workflow()
+    workflow = Workflow.read_config(config, run_number=1, skip_step=skip_step)
 
     # Assert that the workflow_steps dictionary are as expected
     assert workflow.workflow_steps == expect_workflow
@@ -55,8 +58,7 @@ def test_submit_workflow(monkeypatch):
     mock_submit_sync = Mock(return_value="sync_job_id")
 
     # Initialise the workflow class and change the workflow_steps
-    workflow = Workflow(config_orig, run_number=1)
-    workflow.build_workflow()
+    workflow = Workflow.read_config(config_orig, run_number=1)
     workflow.workflow_steps = {"collate": None, "postscript": None, "sync": None}
 
     # When workflow import subcommands, it returns the mock function instead of the real ones

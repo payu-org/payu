@@ -3,22 +3,25 @@
 class Workflow:
     """Class to manage the workflow of run, collate, postscript, sync jobs."""
     
-    def __init__(self, config, run_number=None):
-        self.run_number = run_number
+    def __init__(self, workflow_steps, config=None, run_number=None):
+        self.workflow_steps = workflow_steps
         self.config = config
+        self.run_number = run_number
 
+    @classmethod
+    def read_config(cls, config, run_number=None, skip_step=None):
+        """Read the config dictionary and return a dictionary of workflow steps to be executed.
+        If skip_step is provided, that step will be skipped in the workflow."""
+        workflow_steps = dict()
 
-    def build_workflow(self):
-        """Build the workflow for the current experiment, e.g.,
-        {"collate": None, "postscript": None, "sync": None}. 
-        The value will be updated as job id when available"""
-        self.workflow_steps = dict()
-        if self.config.get('collate', {}).get('enable', True):
-            self.workflow_steps['collate'] = None
-        if self.config.get('postscript', None):
-            self.workflow_steps['postscript'] = None
-        if self.config.get('sync', {}).get('enable', False):
-            self.workflow_steps['sync'] = None
+        if config.get('collate', {}).get('enable', True) and skip_step != 'collate':
+            workflow_steps['collate'] = None
+        if config.get('postscript', None) and skip_step != 'postscript':
+            workflow_steps['postscript'] = None
+        if config.get('sync', {}).get('enable', False) and skip_step != 'sync':
+            workflow_steps['sync'] = None
+
+        return cls(workflow_steps, config, run_number)
 
 
     def submit_workflow(self, depends_on):
@@ -29,6 +32,7 @@ class Workflow:
         for step in self.workflow_steps.keys():
             self.workflow_steps[step] = fn[step](self.run_number, depends_on, self.config)
 
+            # Next step depends on this step's job ID
             depends_on = self.workflow_steps[step]
 
         return self.workflow_steps

@@ -12,7 +12,7 @@ from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
 from payu.telemetry import record_run
-from payu.fsops import read_config
+from payu.fsops import read_config, str_to_bool
 import payu.errors as errors
 
 from payu.workflow import Workflow
@@ -136,8 +136,7 @@ def runscript(**run_args):
     expt = Experiment(lab)
 
     # Initialise the Workflow class to manage the workflow
-    workflow = Workflow(expt.config,
-                        run_number=expt.counter)
+    workflow = Workflow.read_config(expt.config, run_number=expt.counter, skip_step='collate')
     
     try:
         # Collate the model output
@@ -169,9 +168,7 @@ def runscript(**run_args):
         )
 
         # Submit follow-up jobs in the workflow, if payu-collate succeed and not called by payu-run
-        exist_workflow = os.environ.get('PAYU_EXIST_WORKFLOW', 'false').lower() == 'true'
+        exist_workflow = str_to_bool(os.environ.get('PAYU_EXIST_WORKFLOW', 'false'))
 
         if collate_status == 0 and not exist_workflow:
-            workflow.build_workflow()
-            workflow.workflow_steps.pop('collate', None)
             workflow.submit_workflow(depends_on=expt.scheduler.get_job_id(short=False))
