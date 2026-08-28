@@ -22,7 +22,7 @@ keywords:
 - global
 - access-esm1.6
 # All full-line comments should be removed
-schema_version: 1-0-3
+schema_version: 1-0-4
 reference: https://doi.org/10.5281/zenodo.17490072 # In line comments should be reserved
 
 # Customised header comment should be removed

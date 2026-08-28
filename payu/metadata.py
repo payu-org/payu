@@ -42,7 +42,7 @@ PARENT_HASH_FIELD = "parent_experiment_branch_commit"
 
 # Metadata Schema
 SCHEMA_FIELD = "schema_version"
-SCHEMA_VERSION = "1-0-3"
+SCHEMA_VERSION = "1-0-4"
 SCHEMA_COMMIT_HASH = "cff183437134592723b09af6620e5cb190abeb22" 
 SCHEMA_URL = f"https://raw.githubusercontent.com/ACCESS-NRI/schema/{SCHEMA_COMMIT_HASH}/au.org.access-nri/model/output/experiment-metadata/{SCHEMA_VERSION}.json"
 placeholder_text = "__REPLACE_ME__"
@@ -477,7 +477,7 @@ def add_template_metadata_values(metadata: CommentedMap) -> None:
             description = value.get('description', None)
             if description is not None:
                 if key == SCHEMA_FIELD:
-                    # Set the schema to 1-0-3
+                    # Set the schema to 1-0-4
                     metadata[key] = SCHEMA_VERSION
                     anchor_key = key
                     anchor_description = description

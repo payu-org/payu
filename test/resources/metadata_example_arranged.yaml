@@ -10,7 +10,7 @@ created: '2026-07-02'
 url: url
 model: MOM6
 parent_experiment: 4d052f54-ddc0-4cb6-9fbb-c89054462d72
-schema_version: 1-0-3
+schema_version: 1-0-4
 
 # ---- User feel free to update. ----
 description: |-
@@ -30,3 +30,4 @@ license: CC-BY-4.0
 version: '1.0'
 long_description: __REPLACE_ME__  # Long description of the experiment (string)
 # realm: The realm(s) included in the experiment (array of strings)
+# parent_experiment_branch_time: The model time corresponding to the restart path used to create this branch, e.g., 1951-02-01T00:00:00 (string)
