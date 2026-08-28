@@ -128,6 +128,10 @@ class Experiment(object):
 
         self.set_output_paths()
 
+        # If repeat is True, check for pre-existing restarts
+        if self.repeat:
+            self.check_restart_exists()
+
         if parent_info is None:
             parent_info = {}
 
@@ -470,6 +474,23 @@ class Experiment(object):
         for model in self.models:
             model.set_model_output_paths()
 
+    def check_restart_exists(self):
+        """Check if any restart directories already exist in the archive path. 
+        If so, raise an error to prevent removing previous restarts due to repeat: True."""
+        # Check if archive path exists
+        if not os.path.exists(self.archive_path):
+            return
+        
+        # Sorted list of restart directories in archive
+        restarts = list_sorted_archive_dirs(archive_path=self.archive_path,
+                                        dir_type='restart')
+        if len(restarts) > 0:
+            raise errors.PayuConfigError(
+                f"Pre-existing restarts are found in the archive \'{self.archive_path}\'.\n"
+                "A repeat run is expected to start from the initial conditions.\n"
+                "Please remove all restart directories before a repeat run."
+            )
+        return
 
     def check_payu_version(self):
         """Check current payu version is greater than minimum required
