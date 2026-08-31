@@ -945,7 +945,7 @@ class Experiment(object):
             Path(self.restart_path), 
             self.run_id, 
             self.counter,
-            model_restart_datetimes["model_finish_time"],
+            model_restart_datetimes.get("model_finish_time", None),
         )
 
         # Ensure dynamic library support for subsequent python calls

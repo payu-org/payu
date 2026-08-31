@@ -3,6 +3,7 @@ from pathlib import Path
 import shutil
 from datetime import datetime
 
+import cftime
 import pytest
 from unittest.mock import patch, Mock
 from ruamel.yaml import YAML
@@ -13,8 +14,8 @@ from payu.metadata import Metadata, SCHEMA_FIELD, SCHEMA_VERSION, placeholder_te
 import payu.errors as errors
 from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT
 from payu.metadata import PARENT_UUID_FIELD, PARENT_BRANCH_TIME_FIELD, PARENT_HASH_FIELD, UUID_FIELD, HARD_SWEPT_UUID
-from payu.metadata import arrange_metadata, add_template_metadata_values
-from payu.metadata import NAME_FIELD, EXPERIMENT_TIME_FIELD, RUN_ID_FIELD, RUN_NUMBER_FIELD
+from payu.metadata import arrange_metadata, add_template_metadata_values, add_restart_field
+from payu.metadata import NAME_FIELD, EXPERIMENT_TIME_FIELD, RUN_ID_FIELD, RUN_NUMBER_FIELD, missing_text
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -728,3 +729,26 @@ def test_write_restart_provenance(init_metadata, parent_info):
         assert PARENT_UUID_FIELD not in restart_metadata
     else:
         assert restart_metadata[PARENT_UUID_FIELD] == parent_info["parent_experiment"]
+
+
+@pytest.mark.parametrize(
+    "value, expected_value",
+    [
+        # Test with a non-None value
+        ("test_value", "test_value"),
+        # Test with a None value
+        (None, missing_text),
+        # Test with a datetime value
+        (datetime(2026, 8, 31, 12, 0, 0), "2026-08-31T12:00:00"),
+        # Test with a cftime.datetime value
+        (cftime.datetime(2026, 8, 31, 14, 0, 0), "2026-08-31T14:00:00")
+    ]
+)
+def test_add_restart_field(value, expected_value):
+    """Test that add_restart_field correctly adds a field to the restart metadata, 
+    or adds a missing text if value is None"""
+    restart_metadata = CommentedMap()
+    field_name = "test_field"
+
+    add_restart_field(restart_metadata, field_name, value)
+    assert restart_metadata[field_name] == expected_value
