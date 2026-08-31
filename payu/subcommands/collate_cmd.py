@@ -4,6 +4,7 @@
 import argparse
 import os
 from pathlib import Path
+import json
 
 # Local
 from payu import cli
@@ -11,7 +12,10 @@ from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
 from payu.telemetry import record_run
-from payu import fsops
+from payu.fsops import read_config, str_to_bool
+import payu.errors as errors
+
+from payu.workflow import Workflow
 
 title = 'collate'
 parameters = {'description': 'Collate tiled output into single output files'}
@@ -19,13 +23,29 @@ parameters = {'description': 'Collate tiled output into single output files'}
 arguments = [args.model, args.config, args.initial, args.laboratory,
              args.dir_path, args.dry_run]
 
+def submit_collate(counter, depends_on=None, config=None):
+    """ Submit the collate job by calling runcmd.
+    Return the job id of the collate job"""
+    try:
+        job_id = runcmd(
+                init_run=counter,
+                depends_on=depends_on,
+                exist_workflow=True,
+                )
+    except Exception as e:
+        raise errors.PayuRuntimeError(f"Failed to submit collate job: {e}")
+    return job_id
 
-def runcmd(model_type, config_path, init_run, lab_path, dir_path, dry_run=False):
 
-    pbs_config = fsops.read_config(config_path)
+def runcmd(model_type=None, config_path=None, init_run=None, 
+           lab_path=None, dir_path=None, dry_run=False, depends_on=None, 
+           exist_workflow=False):
+
+    pbs_config = read_config(config_path)
     pbs_vars = cli.set_env_vars(init_run=init_run,
                                 lab_path=lab_path,
-                                dir_path=dir_path)
+                                dir_path=dir_path,
+                                exist_workflow=exist_workflow)
 
     collate_config = pbs_config.get('collate', {})
 
@@ -93,9 +113,10 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path, dry_run=False)
     expt = Experiment(lab)
 
     # Submit the collation job and write queue job file
-    cli.submit_job('payu-collate', pbs_config, pbs_vars, expt=expt, 
-                current_run = int(init_run) if init_run else None, type='collate', dry_run=dry_run)
-
+    job_id = cli.submit_job('payu-collate', pbs_config, pbs_vars, expt=expt, 
+                current_run = int(init_run) if init_run else None, type='collate', 
+                dry_run=dry_run, depends_on=depends_on)
+    return job_id
     
 
 
@@ -113,16 +134,23 @@ def runscript(**run_args):
                      run_args.config_path,
                      run_args.lab_path)
     expt = Experiment(lab)
+
+    # Initialise the Workflow class to manage the workflow
+    workflow = Workflow.read_config(expt.config, run_number=expt.counter, skip_step='collate')
+    
     try:
         # Collate the model output
-        # If collation succeeds, then collate_status is set to 0
         expt.collate()
-        expt.postprocess()
+
+        # If collation succeeds, then collate_status is set to 0
         collate_status = 0
+        
     except:
         # If collation fails, then collate_status is set to 1
         collate_status = 1
+
         raise
+    
     finally:
         # Record collation job information into job file
         job_file_path = expt.get_job_file(type='collate')
@@ -138,3 +166,10 @@ def runscript(**run_args):
             type="collate",
             stage="exited"
         )
+
+        # Submit follow-up jobs in the workflow, if payu-collate succeed and not called by payu-run
+        exist_workflow = str_to_bool(os.environ.get('PAYU_EXIST_WORKFLOW', 'false'))
+
+        if collate_status == 0 and not exist_workflow:
+            workflow.submit_workflow(depends_on=expt.scheduler.get_job_id(short=False),
+                                    config=expt.config)

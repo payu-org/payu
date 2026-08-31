@@ -15,6 +15,7 @@ from payu.manifest import Manifest
 from payu.telemetry import record_run
 from payu.schedulers.pbs import PBS
 import payu.errors as errors
+from payu.workflow import Workflow
 
 title = 'run'
 parameters = {'description': 'Run the model experiment'}
@@ -174,8 +175,9 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
 
     current_run = int(init_run) if init_run is not None else expt.counter
 
-    cli.submit_job('payu-run', pbs_config, pbs_vars, expt, current_run, type='run', dry_run=dry_run)
-
+    cli.submit_job('payu-run', pbs_config, pbs_vars, expt, 
+                   current_run, type='run', 
+                   dry_run=dry_run)
 
 def runscript(**run_args):
     run_args = argparse.Namespace(**run_args)
@@ -199,9 +201,19 @@ def runscript(**run_args):
             expt.setup()
             expt.run()
             expt.archive(force_prune_restarts=run_args.force_prune_restarts)
+
             run_status = 0
+
+            # Initialise the Workflow class to manage the workflow
+            workflow = Workflow.read_config(expt.config, run_number=expt.counter)
+                
+            # Submit each job in the workflow, pass the job ID onto the next job as dependency
+            workflow.submit_workflow(depends_on=expt.scheduler.get_job_id(short=False),
+                                    config=expt.config)
+            
         except:
             run_status = 1
+
             raise
         finally:
             # Record job information for experiment run
@@ -212,7 +224,8 @@ def runscript(**run_args):
                 config=expt.config,
                 file_path=expt.job_file,
                 archive_path=Path(expt.archive_path),
-            )
+            )   
+
 
         # Finished runs
         if expt.n_runs == 0:

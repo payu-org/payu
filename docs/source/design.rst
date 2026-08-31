@@ -71,8 +71,9 @@ archive
 Post-processing PBS Jobs
 ======================
 
-After payu completes the experiment steps, there are some optional post-processing steps 
-which will submit follow-up PBS jobs to do further processing on the archived output.
+After the model run completes, payu can submit optional follow-up PBS jobs to perform further 
+processing on the archived output. Please see :ref:`Postprocessing` for more details about the 
+run order and manual submission of these jobs.
 
 collate
    When enabled, payu joins a number of smaller files which contain different
@@ -80,14 +81,13 @@ collate
 
 postscript
    Users can specify arbitrary post-processing scripts, which runs as a separate PBS job. 
-   This step is after the collate job is completed successfully, if collate is enabled.
+   This step runs after the model run and collate job (if enabled) have completed successfully.
 
 sync
    When enabled, payu syncs the archive directory with a specificed remote directory.
-   Payu sync job is submitted after the collate job is completed successfully, if collate is enabled.
-   Currently, ``postscript`` and ``sync`` jobs are submitted at the same time.
-   As a result, ``payu sync`` does not wait for the postscript job to complete, 
-   and does not sync the most recent ``output`` directory (see :ref:`Postprocessing` and :ref:`User_processing`).
+   The sync job runs after the model run, collate job (if enabled), and postscript job (if enabled) 
+   have completed successfully.
+   
 
 Style Guide
 ===========

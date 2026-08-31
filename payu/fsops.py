@@ -205,7 +205,9 @@ def check_exe_path(payu_path, pbs_script):
     if not os.path.isabs(pbs_script):
         pbs_script = os.path.join(payu_path, pbs_script)
 
-    assert os.path.isfile(pbs_script)
+    if not os.path.isfile(pbs_script):
+        raise errors.PayuRuntimeError(
+            'Payu executable not found at {0}.'.format(pbs_script))
 
     return pbs_script
 
@@ -419,3 +421,5 @@ def str_to_bool(value):
         return False
     else:
         raise ValueError(f"Input is not acceptable. Please use 'True' or 'False' or '1' or '0'.")
+    
+

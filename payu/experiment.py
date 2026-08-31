@@ -27,6 +27,9 @@ import logging
 # Extensions
 from ruamel.yaml import YAML
 from packaging import version
+import hpcpy
+
+client = hpcpy.client.pbs.PBSClient()
 
 # Local
 import payu
@@ -34,7 +37,6 @@ from payu import envmod
 from payu.fsops import make_symlink, read_config, movetree
 from payu.fsops import list_sorted_archive_dirs
 from payu.fsops import run_script_command
-from payu.fsops import needs_subprocess_shell
 from payu.fsops import get_size, str_to_bool
 from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 from payu.models import index as model_index
@@ -47,6 +49,7 @@ import payu.telemetry as telemetry
 from payu.git_utils import get_git_repository
 import payu.errors as errors
 
+
 # Setup logger
 logger = logging.getLogger(__name__)
 
@@ -55,7 +58,6 @@ core_modules = ['python', 'payu']
 
 # Default payu parameters
 default_restart_freq = 5
-
 
 def timeit(time_name):
     """Decorator to time a function and store the elapsed time in seconds
@@ -78,6 +80,7 @@ class Experiment(object):
                  runlog_off=False, repeat=False):
         self.init_timings()
         self.lab = lab
+        self.config_path = config_path
         # Check laboratory directories are writable
         self.lab.initialize()
 
@@ -960,16 +963,6 @@ class Experiment(object):
             restart_volume_gb=get_size(self.restart_path),
         )
 
-        collate_config = self.config.get('collate', {})
-        collating = collate_config.get('enable', True)
-        if collating:
-            cmd = '{python} {payu} collate -i {expt}'.format(
-                python=sys.executable,
-                payu=self.payu_path,
-                expt=self.counter
-            )
-            sp.check_call(shlex.split(cmd))
-
         if self.config.get('hpctoolkit', False):
             cmd = '{python} {payu} profile -i {expt}'.format(
                 python=sys.executable,
@@ -977,11 +970,7 @@ class Experiment(object):
                 expt=self.counter
             )
             sp.check_call(shlex.split(cmd))
-
-        # Ensure postprocessing runs if model not collating
-        if not collating:
-            self.postprocess()
-
+    
     @timeit("payu_collate_duration_seconds")
     def collate(self):
         """ Run model collation and record the time taken in seconds to run collation"""
@@ -1015,45 +1004,14 @@ class Experiment(object):
         for model in self.models:
             model.profile()
 
-    def postprocess(self):
-        """Submit any postprocessing scripts or remote syncing if enabled"""
-
-        # First submit postprocessing script
-        if self.postscript:
-            self.set_userscript_env_vars()
-            envmod.setup()
-            envmod.module('load', 'pbs')
-
-            # Name of this PBS job is set to "payu_postscript"
-            cmd = 'qsub -N payu_postscript {script}'.format(script=self.postscript)
-
-            if needs_subprocess_shell(cmd):
-                sp.check_call(cmd, shell=True)
-            else:
-                sp.check_call(shlex.split(cmd))
-
-        # Submit a sync script if remote syncing is enabled
-        sync_config = self.config.get('sync', {})
-        syncing = sync_config.get('enable', False)
-        if syncing:
-            cmd = '{python} {payu} sync -i {expt}'.format(
-                python=sys.executable,
-                payu=self.payu_path,
-                expt=self.counter
-            )
-
-            if self.postscript:
-                print('payu: warning: postscript is configured, so by default '
-                      'the lastest outputs will not be synced. To sync the '
-                      'latest output, after the postscript job has completed '
-                      'run:\n'
-                      '    payu sync')
-                cmd += f' --sync-ignore-last'
-
-            sp.check_call(shlex.split(cmd))
-
     @timeit("payu_sync_duration_seconds")
     def sync(self):
+        # Update sync stage to running
+        telemetry.update_job_file(
+            file_path=self.get_job_file(type='sync'),
+            data={"stage": "running"}
+        )
+
         # RUN any user scripts before syncing archive
         envmod.setup()
         pre_sync_script = self.userscripts.get('sync')
@@ -1077,14 +1035,14 @@ class Experiment(object):
     def set_userscript_env_vars(self):
         """Save information of output directories and current run to
         environment variables, so they can be accessed via user-scripts"""
-        os.environ.update(
-            {
+        update_env_vars = {
                 'PAYU_CURRENT_OUTPUT_DIR': self.output_path,
                 'PAYU_CURRENT_RESTART_DIR': self.restart_path,
                 'PAYU_ARCHIVE_DIR': self.archive_path,
                 'PAYU_CURRENT_RUN': str(self.counter)
             }
-        )
+        os.environ.update(update_env_vars)
+        return update_env_vars
 
     def run_userscript(self, script_cmd: str, type: str):
         """Run a user defined script or subcommand at various stages of the

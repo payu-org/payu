@@ -17,6 +17,8 @@ from payu.status import (
     display_job_info,
     collect_expt_paths,
     display_expt_paths,
+    parse_exit_status_from_logs,
+    update_postscript_job_file,
 )
 
 from payu.laboratory import Laboratory
@@ -380,6 +382,7 @@ def test_get_job_file_list_selected_run(tmp_path, queued_job, running_job,
 
 def expected_archive_job_info(run_number):
     return {
+        'depends_on': None,
         'exit_status': 0,
         'job_id': f'test-job-id-{run_number}',
         'run_id': f'commit-hash{run_number}',
@@ -394,6 +397,7 @@ def expected_archive_job_info(run_number):
 
 def expected_running_job_info():
     return {
+        'depends_on': None,
         'exit_status': None,
         'job_id': 'test-job-id-3',
         'run_id': 'commit-hash3',
@@ -409,6 +413,7 @@ def expected_running_job_info():
 
 def expected_queued_job_info():
     return {
+        'depends_on': None,
         'exit_status': None,
         'job_id': 'test-job-id-3',
         'run_id': None,
@@ -423,6 +428,7 @@ def expected_queued_job_info():
 
 def expected_failed_job_info():
     return {
+        'depends_on': None,
         'exit_status': 1,
         'job_id': 'test-job-id-0failed',
         'run_id': 'commit-hash-failed',
@@ -436,6 +442,7 @@ def expected_failed_job_info():
 
 def expected_running_collate_job_info(run_number):
     return {
+        'depends_on': None,
         'job_id': f'test-collate-id-{run_number}',
         'stage': 'running',
         'exit_status': None,
@@ -446,6 +453,7 @@ def expected_running_collate_job_info(run_number):
 
 def expected_collate_job_info(run_number):
     return {
+        'depends_on': None,
         'job_id': f'test-collate-id-{run_number}',
         'stage': 'exited',
         'exit_status': 0,
@@ -456,6 +464,7 @@ def expected_collate_job_info(run_number):
 
 def expected_failed_collate_job_info():
     return {
+        'depends_on': None,
         'job_id': "test-collate-id-0failed",
         'stage': 'exited',
         'exit_status': 1,
@@ -1111,3 +1120,114 @@ def test__sort_run_jobs():
         {"job_id": "1", "start_time": "2025-06-01T09:00:00"},
         {"job_id": "3", "start_time": "2025-06-03T09:00:00"},
     ]
+
+def test_parse_exit_status_from_logs(tmp_path):
+    """Test that parse_exit_status_from_logs correctly extracts exit status from logs."""
+    stdout_path = tmp_path / "test.stdout"
+
+    # Write some expected log content
+    log_content = """
+Some log output...
+Model finished with exit status: 0
+More log output...
+======================================================================================
+                  Resource Usage on 2026-08-19 15:07:58:
+   Job Id:             176671730.gadi-pbs
+   Project:            tm70
+   Exit Status:        0
+   Service Units:      0.02
+   JobFS Requested:    100.0MB                JobFS Used: 0B
+======================================================================================
+"""
+    stdout_path.write_text(log_content)
+    assert parse_exit_status_from_logs(stdout_path) == 0
+
+    # Write log content without exit status
+    log_content_no_status = """
+Some log output...
+"""
+    stdout_path.write_text(log_content_no_status)
+    assert parse_exit_status_from_logs(stdout_path) is None
+
+    # Test when stdout does not exist
+    assert parse_exit_status_from_logs(tmp_path / "nonexistent.stdout") is None
+
+
+@pytest.mark.parametrize(
+    "stdout_exists,scheduler_has_info,job_state,expected_stage,expected_exit_status",
+    [
+        # Both stdout and stderr exist with scheduler info
+        (True, True, None, "exited", 0),
+        # Both stdout and stderr exist but scheduler has no info, parse from logs
+        (True, False, None, "exited", 0),
+        # Job is running (job_state="R" due to payu status --update before) but logs don't exist yet
+        (False, None, "R", "running", None),
+        # Neither condition met - data should be unchanged
+        (False, None, None, "queued/running", None),
+    ]
+)
+def test_update_postscript_job_file(tmp_path, stdout_exists, scheduler_has_info, job_state, expected_stage, expected_exit_status):
+    """Test that update_postscript_job_file correctly updates the job file with running/exit status."""
+    # Create temporary stdout/stderr files
+    stdout_path = tmp_path / "postscript.out"
+    stderr_path = tmp_path / "postscript.err"
+    if stdout_exists:
+        stderr_path.touch()
+        stdout_path.write_bytes(b"Exit Status:        0\n")
+    
+    # Create job file
+    job_file = tmp_path / "test-postscript-id-3.json"
+    
+    # Set up initial job data
+    data = {
+        "scheduler_job_id": "test-postscript-id-3",
+        "stage": "queued/running",
+        "payu_current_run": 3,
+    }
+    
+    # User called payu status --update beforehand
+    if job_state == "R":
+        data["scheduler_job_info"] = {
+            "Jobs": {
+                "test-postscript-id-3": {
+                    "job_state": "R"
+                }
+            }
+        }
+    
+    # Set up mock scheduler to fetch job info
+    mock_scheduler = MagicMock()
+
+    if scheduler_has_info:
+        # If job still in scheduler
+        mock_scheduler.get_job_info.return_value = {
+            "Jobs": {
+                "test-postscript-id-3": {
+                    "Exit_status": 0,
+                    "job_state": "F"
+                }
+            }
+        }
+    
+    else:
+        # If job no longer in scheduler, return None
+        mock_scheduler.get_job_info.return_value = None
+    
+    # Call the function
+    result = update_postscript_job_file(data, mock_scheduler, job_file, stdout_path, stderr_path)
+    
+    # Assertions
+    assert result["stage"] == expected_stage
+    
+    if expected_exit_status is not None:
+        assert result.get("payu_postscript_status") == expected_exit_status
+    
+    # Verify job file was updated when expected
+    if expected_stage in ["exited", "running"]:
+        assert job_file.exists()
+
+    # Verify that the job file is not updated (not created in this test)
+    # if the stage is still "queued/running"
+    if expected_stage == "queued/running":
+        assert not job_file.exists()
+        assert data["stage"] == "queued/running"

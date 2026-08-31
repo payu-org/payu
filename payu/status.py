@@ -4,6 +4,7 @@ payu runs by inspecting the job files generated for telemetry,
 scheduler stdout/stderr logs, and querying the scheduler
 """
 from pathlib import Path
+import re
 from typing import Any, Optional
 import warnings
 from datetime import datetime
@@ -178,7 +179,7 @@ def build_job_info(
     """
     status_data: dict[str, Any] = {}
     runs: dict[int, dict[str, list]] = {}
-    for job_type in ["run", "collate"]:
+    for job_type in ["run", "collate", "postscript", "sync"]:
         job_files = get_job_file_list(archive_path, run_number, all_runs, type=job_type)
         # If no job files found for this type, skip to the next type
         if not job_files:
@@ -198,6 +199,9 @@ def build_job_info(
                 type=data.get("scheduler_type")
             )
 
+            if job_type == "postscript" and "running" in data["stage"]:
+                data = update_postscript_job_file(data, expt.scheduler, job_file, stdout, stderr)
+
             run_info = {
                 "job_id": data.get("scheduler_job_id"),
                 "stage": data.get("stage"),
@@ -206,6 +210,7 @@ def build_job_info(
                 "stderr_file": str(stderr) if stderr else None,
                 "job_file": str(job_file),
                 "start_time": data.get("timings", {}).get("payu_start_time"),
+                "depends_on": data.get("depends_on"),
             }
 
             if job_type == "run":
@@ -306,11 +311,11 @@ def update_all_job_files(
             exit_status = None
             job_state = None
 
-        if exit_status and stage == "queued":
+        if exit_status and "queued" in stage:
             # Job has exited, but is still marked as queued in the job file
             remove_job_file(file_path=job_file)
 
-        elif job_state == "F" and stage == "queued":
+        elif job_state == "F" and "queued" in stage:
             # Job is killed or deleted but still exists in the job file
             remove_job_file(file_path=job_file)
 
@@ -384,6 +389,7 @@ def display_job_info(data: dict[str, Any]) -> None:
                 print(f"  {'-' * 13} {job_type.capitalize()} Info {'-' * 13}")
                 print_line("Job ID", "job_id", job_info)
                 print_line("Run ID", "run_id", job_info)
+                print_line("Job Dependencies", "depends_on", job_info)
                 print_line("Stage", "stage", job_info)
 
                 # Read out qtime and stime from the job file and display queue time
@@ -447,3 +453,68 @@ def display_expt_paths(expt_paths):
     print_line("Archive Directory", "archive_path", expt_paths, description = "Where all experiment outputs are stored")
     print_line("Sync Destination", "sync_path", expt_paths, description = "Remote directory to sync outputs to")
     print("=" * line_width)
+
+
+def parse_exit_status_from_logs(stdout):
+    """
+    Attempt to parse the exit status from stdout/stderr logs.
+    
+    Returns:
+        Exit status code (int) if found, None otherwise
+    """
+    if not stdout or not stdout.exists():
+        logger.debug(f"Stdout file {stdout} does not exist, cannot parse exit status.")
+        return None
+    
+    try:
+        content = stdout.read_text()
+        # Look for a line that is "Exit status: N"
+        match = re.search(r"Exit Status:\s*(\d+)", content)
+        if match:
+            return int(match.group(1))
+    except (IOError, ValueError, OSError) as e:
+        logger.debug(f"Could not read exit status from stdout file {stdout}: {e}")
+    
+    return None
+
+
+def update_postscript_job_file(data, scheduler, job_file, stdout, stderr):
+    """Check if the postscript log file exists, update the stage to exited and update scheduler info.
+    Otherwise, update to running of status is "R".
+    
+    When the job has aged out of the scheduler, attempt to parse the exit status
+    from the log files as a fallback mechanism.
+    
+    Return the updated job file data
+    """
+    job_id = data.get("scheduler_job_id")
+        
+    # If both stdout and stderr exist, update the stage to exited
+    if stdout and stderr and stdout.exists() and stderr.exists():
+        data["stage"] = "exited"
+
+        # Update the scheduler info by querying the scheduler
+        exit_status = None
+        if job_id and scheduler:
+            scheduler_info = scheduler.get_job_info(job_id)
+
+            if scheduler_info:
+                # Job still in scheduler - get exit status from scheduler
+                data["scheduler_job_info"] = scheduler_info
+                exit_status = scheduler_info.get("Jobs", {}).get(job_id, {}).get("Exit_status")
+            else:
+                # Job has aged out - try to parse from logs
+                logger.debug(f"Job {job_id} not found in scheduler, attempting to parse exit status from logs")
+                exit_status = parse_exit_status_from_logs(stdout)
+        
+        if exit_status is not None:
+            data["payu_postscript_status"] = exit_status
+
+        update_job_file(job_file, data)
+
+    # If stdout and stderr are not ready, check if job_state is running (happens when user called payu status --update)
+    elif data.get("scheduler_job_info", {}).get("Jobs", {}).get(job_id, {}).get("job_state", None) == "R":
+        data["stage"] = "running"
+        update_job_file(job_file, data)
+        
+    return data

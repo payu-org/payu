@@ -344,12 +344,23 @@ class PBS(Scheduler):
                 f"than the limit of {mem_per_node:.2f}GB per node for queue '{queue}'."
             )
 
-    def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None, dry_run=False):
+    def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None, 
+               dry_run=False, depends_on=None, postscript=False):
         """Prepare a correct PBS command string"""
-
         # Initialisation
         if pbs_vars is None:
             pbs_vars = {}
+
+        if postscript:
+            # Directly submit the postscript, no configuring the environment variables
+            job_or_cmd = client.submit(job_script = f"{pbs_script}",
+                            directives = ["-N payu_postscript"],
+                            variables = pbs_vars,
+                            dry_run = dry_run,
+                            depends_on = depends_on,
+                            )
+    
+            return job_or_cmd
 
         if python_exe is None:
             python_exe = sys.executable
@@ -465,6 +476,7 @@ class PBS(Scheduler):
                       queue = pbs_config.get('queue', 'normal'),
                       storage = list(storages) if storages else None,
                       variables = pbs_vars,
+                      depends_on = depends_on,
                       )
 
         return job_or_cmd
@@ -491,7 +503,7 @@ class PBS(Scheduler):
 
         return jobid
 
-    def get_job_info(self) -> Optional[Dict[str, Any]]:
+    def get_job_info(self, jobid=None) -> Optional[Dict[str, Any]]:
         """
         Get information about the job from the PBS server
 
@@ -500,7 +512,8 @@ class PBS(Scheduler):
         Optional[Dict[str, Any]]
             Dictionary of information extracted from qstat output
         """
-        jobid = self.get_job_id()
+        if not jobid:
+            jobid = self.get_job_id()
 
         info = None
 
