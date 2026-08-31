@@ -40,6 +40,11 @@ METADATA_FILENAME = "metadata.yaml"
 PARENT_BRANCH_TIME_FIELD = "parent_experiment_branch_time"
 PARENT_HASH_FIELD = "parent_experiment_branch_commit"
 
+# Metadata file field names for restart provenance
+EXPERIMENT_TIME_FIELD = "model_finish_time"
+RUN_ID_FIELD = "payu_run_id"
+RUN_NUMBER_FIELD = "payu_current_run"
+
 # Metadata Schema
 SCHEMA_FIELD = "schema_version"
 SCHEMA_VERSION = "1-0-4"
@@ -448,6 +453,41 @@ class Metadata:
             metadata.pop(PARENT_HASH_FIELD, None)
 
         return metadata
+
+    def write_restart_provenance(self, 
+                                restart_path: Path, 
+                                run_id: str,
+                                run_number: int,
+                                cur_expt_time: datetime,) -> None:
+        """Write provenance information to the restart directory"""
+        if not self.enabled:
+            return
+
+        # Read the existing metadata file from control directory
+        metadata = self.read_file()
+
+        # Create a new commented map to store the restart provenance information
+        restart_metadata = CommentedMap()
+
+        # Add experiment UUID, name, run ID, and run number to the restart metadata
+        restart_metadata[UUID_FIELD] = self.uuid
+        restart_metadata[NAME_FIELD] = metadata.get(NAME_FIELD, None)
+        restart_metadata[RUN_ID_FIELD] = run_id
+        restart_metadata[RUN_NUMBER_FIELD] = run_number
+
+        # Add current experiment time to the restart metadata
+        restart_metadata[EXPERIMENT_TIME_FIELD] = cur_expt_time.strftime('%Y-%m-%dT%H:%M:%S')
+
+        # Extract parent experiment UUID from metadata, and add to the restart metadata if it exists
+        parent_uuid = metadata.get(PARENT_UUID_FIELD, None)
+        if parent_uuid:
+            restart_metadata[PARENT_UUID_FIELD] = parent_uuid
+
+        # Write restart metadata file to restart directory
+        restart_metadata_path = restart_path / f"restart_{METADATA_FILENAME}"
+        YAML().dump(restart_metadata, restart_metadata_path)
+        print(f"Provenance information is written to restarts: {restart_metadata_path}")
+        
 
 def get_schema_from_github():
     """Retrieve metadata schema from github"""

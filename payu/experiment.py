@@ -939,6 +939,15 @@ class Experiment(object):
                     not os.path.islink(restart_path)):
                 shutil.rmtree(restart_path)
 
+        # Write provenance information to restart directory
+        model_restart_datetimes=self.get_model_restart_datetimes()
+        self.metadata.write_restart_provenance(
+            Path(self.restart_path), 
+            self.run_id, 
+            self.counter,
+            model_restart_datetimes["model_finish_time"],
+        )
+
         # Ensure dynamic library support for subsequent python calls
         ld_libpaths = os.environ.get('LD_LIBRARY_PATH', None)
         py_libpath = sysconfig.get_config_var('LIBDIR')
@@ -955,7 +964,7 @@ class Experiment(object):
         # Record model restart datetimes and output volume in telemetry
         telemetry.update_run_job_file(
             file_path=self.job_file,
-            model_restart_datetimes=self.get_model_restart_datetimes(),
+            model_restart_datetimes=model_restart_datetimes,
             output_volume_gb=get_size(self.output_path),
             restart_volume_gb=get_size(self.restart_path),
         )
