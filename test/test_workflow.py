@@ -73,7 +73,7 @@ def test_submit_workflow(monkeypatch):
     )
 
     # Call the submit_workflow and check the new workflow_steps dictionary
-    assert workflow.submit_workflow("run_job_id") == {
+    assert workflow.submit_workflow("run_job_id", config=config_orig) == {
         "collate": "collate_job_id",
         "postscript": "postscript_job_id",
         "sync": "sync_job_id",

@@ -171,4 +171,5 @@ def runscript(**run_args):
         exist_workflow = str_to_bool(os.environ.get('PAYU_EXIST_WORKFLOW', 'false'))
 
         if collate_status == 0 and not exist_workflow:
-            workflow.submit_workflow(depends_on=expt.scheduler.get_job_id(short=False))
+            workflow.submit_workflow(depends_on=expt.scheduler.get_job_id(short=False),
+                                    config=expt.config)

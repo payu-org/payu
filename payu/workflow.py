@@ -3,9 +3,8 @@
 class Workflow:
     """Class to manage the workflow of run, collate, postscript, sync jobs."""
     
-    def __init__(self, workflow_steps, config=None, run_number=None):
+    def __init__(self, workflow_steps, run_number=None):
         self.workflow_steps = workflow_steps
-        self.config = config
         self.run_number = run_number
 
     @classmethod
@@ -14,23 +13,23 @@ class Workflow:
         If skip_step is provided, that step will be skipped in the workflow."""
         workflow_steps = dict()
 
-        if config.get('collate', {}).get('enable', True) and skip_step != 'collate':
+        if skip_step != 'collate' and config.get('collate', {}).get('enable', True):
             workflow_steps['collate'] = None
-        if config.get('postscript', None) and skip_step != 'postscript':
+        if skip_step != 'postscript' and config.get('postscript', None):
             workflow_steps['postscript'] = None
-        if config.get('sync', {}).get('enable', False) and skip_step != 'sync':
+        if skip_step != 'sync' and config.get('sync', {}).get('enable', False):
             workflow_steps['sync'] = None
 
-        return cls(workflow_steps, config, run_number)
+        return cls(workflow_steps, run_number)
 
 
-    def submit_workflow(self, depends_on):
+    def submit_workflow(self, depends_on, config):
         """Submit all later jobs in the workflow in order, passing job IDs as dependencies,
         Update the value in workflow dictionary."""
         fn = self.import_subcommands()
 
         for step in self.workflow_steps.keys():
-            self.workflow_steps[step] = fn[step](self.run_number, depends_on, self.config)
+            self.workflow_steps[step] = fn[step](self.run_number, depends_on, config)
 
             # Next step depends on this step's job ID
             depends_on = self.workflow_steps[step]
