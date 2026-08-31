@@ -14,6 +14,7 @@ import os
 import uuid
 import warnings
 from datetime import datetime
+import cftime
 from pathlib import Path
 from typing import Optional, Union
 
@@ -40,12 +41,18 @@ METADATA_FILENAME = "metadata.yaml"
 PARENT_BRANCH_TIME_FIELD = "parent_experiment_branch_time"
 PARENT_HASH_FIELD = "parent_experiment_branch_commit"
 
+# Metadata file field names for restart provenance
+EXPERIMENT_TIME_FIELD = "model_finish_time"
+RUN_ID_FIELD = "payu_run_id"
+RUN_NUMBER_FIELD = "payu_current_run"
+
 # Metadata Schema
 SCHEMA_FIELD = "schema_version"
 SCHEMA_VERSION = "1-0-4"
 SCHEMA_COMMIT_HASH = "cff183437134592723b09af6620e5cb190abeb22" 
 SCHEMA_URL = f"https://raw.githubusercontent.com/ACCESS-NRI/schema/{SCHEMA_COMMIT_HASH}/au.org.access-nri/model/output/experiment-metadata/{SCHEMA_VERSION}.json"
 placeholder_text = "__REPLACE_ME__"
+missing_text = "__DISABLED_OR_NOT_IMPLEMENTED__"
 
 no_archive_msg = """
 Payu needs to generate an experiment UUID and create a new archive directory.
@@ -449,6 +456,37 @@ class Metadata:
 
         return metadata
 
+    def write_restart_provenance(self, 
+                                restart_path: Path, 
+                                run_id: str,
+                                run_number: int,
+                                model_finish_time: datetime,) -> None:
+        """Write provenance information to the restart directory"""
+        # Read the existing metadata file from control directory
+        metadata = self.read_file()
+
+        # Create a new commented map to store the restart provenance information
+        restart_metadata = CommentedMap()
+        # Add experiment name and current run number
+        restart_metadata[RUN_NUMBER_FIELD] = run_number
+        restart_metadata[NAME_FIELD] = self.experiment_name
+
+        # Add experiment UUID, run id, and model finish time
+        add_restart_field(restart_metadata, UUID_FIELD, self.uuid)
+        add_restart_field(restart_metadata, RUN_ID_FIELD, run_id)
+        add_restart_field(restart_metadata, EXPERIMENT_TIME_FIELD, model_finish_time)
+
+        # If parent experiment UUID exists in metadata, add this field to the restart metadata
+        parent_uuid = metadata.get(PARENT_UUID_FIELD, None)
+        if parent_uuid:
+            restart_metadata[PARENT_UUID_FIELD] = parent_uuid
+
+        # Write restart metadata file to restart directory
+        restart_metadata_path = restart_path / f"restart_{METADATA_FILENAME}"
+        YAML().dump(restart_metadata, restart_metadata_path)
+        print(f"Provenance information is written to restarts: {restart_metadata_path}")
+        
+
 def get_schema_from_github():
     """Retrieve metadata schema from github"""
     response = requests.get(SCHEMA_URL)
@@ -586,3 +624,15 @@ def remove_existing_header(metadata, header_only=True):
 
     clean_yaml_content = "\n".join(clean_lines)
     return YAML().load(clean_yaml_content)
+
+def add_restart_field(restart_metadata, field_name, value):
+    """Add the value to a restart provenance metadata if the value is not None, otherwise add a missing text"""
+    if value is None:
+        restart_metadata[field_name] = missing_text
+        return
+
+    if isinstance(value, (datetime, cftime.datetime)):
+        # Convert the datetime object to format YYYY-MM-DDTHH:MM:SS
+        restart_metadata[field_name] = value.strftime('%Y-%m-%dT%H:%M:%S')
+    else:
+        restart_metadata[field_name] = value

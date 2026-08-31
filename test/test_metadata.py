@@ -3,6 +3,7 @@ from pathlib import Path
 import shutil
 from datetime import datetime
 
+import cftime
 import pytest
 from unittest.mock import patch, Mock
 from ruamel.yaml import YAML
@@ -13,7 +14,8 @@ from payu.metadata import Metadata, SCHEMA_FIELD, SCHEMA_VERSION, placeholder_te
 import payu.errors as errors
 from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT
 from payu.metadata import PARENT_UUID_FIELD, PARENT_BRANCH_TIME_FIELD, PARENT_HASH_FIELD, UUID_FIELD, HARD_SWEPT_UUID
-from payu.metadata import arrange_metadata, add_template_metadata_values
+from payu.metadata import arrange_metadata, add_template_metadata_values, add_restart_field
+from payu.metadata import NAME_FIELD, EXPERIMENT_TIME_FIELD, RUN_ID_FIELD, RUN_NUMBER_FIELD, missing_text
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -104,6 +106,23 @@ def mock_git_repo():
 
                 yield mock_repo, mock_get, mock_date, mock_response
 
+@pytest.fixture
+def init_metadata():
+    """Fixture to create an initial metadata file for testing"""
+    def _init_metadata(experiment_name="ctrldir-branch-cb793e91",
+                       uuid="cb793e91-6168-4ed2-a70c-f6f9ccf1659"):
+        # Setup config
+        test_config = config.copy()
+        test_config['model'] = "test-model"
+        write_config(test_config)
+
+        # Initialise Metadata and UUID and experiment name
+        with cd(ctrldir):
+            metadata = Metadata(archive_dir)
+        metadata.experiment_name = experiment_name
+        metadata.uuid = uuid
+        return metadata
+    return _init_metadata
 
 @patch("payu.metadata.GitRepository")
 @pytest.mark.parametrize(
@@ -164,7 +183,7 @@ def mock_git_repo():
         ),
     ]
 )
-def test_update_file(mock_repo, uuid, experiment_name,
+def test_update_file(mock_repo, init_metadata, uuid, experiment_name,
                      previous_metadata, expected_metadata):
     # Create pre-existing metadata file
     metadata_path = ctrldir / 'metadata.yaml'
@@ -177,16 +196,8 @@ def test_update_file(mock_repo, uuid, experiment_name,
     mock_repo.return_value.get_origin_url.return_value = "mockUrl"
     mock_repo.return_value.get_user_info.side_effect = mocked_get_git_user_info
 
-    # Setup config
-    test_config = config.copy()
-    test_config['model'] = "test-model"
-    write_config(test_config)
-
     # Initialise Metadata
-    with cd(ctrldir):
-        metadata = Metadata(archive_dir)
-    metadata.uuid = uuid
-    metadata.experiment_name = experiment_name
+    metadata = init_metadata(experiment_name=experiment_name, uuid=uuid)
 
     # Mock datetime (for created date)
     with patch('payu.metadata.datetime') as mock_date:
@@ -465,21 +476,13 @@ def test_metadata_disable():
     assert not (ctrldir / "metadata.yaml").exists()
 
 
-def test_update_file_with_template_metadata_values(mock_git_repo):
+def test_update_file_with_template_metadata_values(init_metadata, mock_git_repo):
     """ Test metadata is updated with set_template_values = True
         and test if metadata is valid against the schema"""
     mock_repo, mock_get, mock_date, mock_response = mock_git_repo
-    
-    # Setup config
-    test_config = config.copy()
-    test_config['model'] = "test-model"
-    write_config(test_config)
 
-    # Initialise Metadata and UUID and experiment name
-    with cd(ctrldir):
-        metadata = Metadata(archive_dir)
-    metadata.experiment_name = "ctrldir-branch-cb793e91"
-    metadata.uuid = "cb793e91-6168-4ed2-a70c-f6f9ccf1659"
+    # Initialise Metadata
+    metadata = init_metadata()
 
     # Test function
     metadata.update_file(set_template_values=True)
@@ -619,19 +622,11 @@ def test_update_file_given_metadata_file(tmp_path, metadata_input, metadata_expe
         None, None, None),
     ]
 )
-def test_update_parent_info(restart_path, parent_experiment, parent_branch_time, parent_hash, 
+def test_update_parent_info(init_metadata, restart_path, parent_experiment, parent_branch_time, parent_hash, 
                         expected_parent_experiment, expected_parent_branch_time, expected_parent_hash):
     """ Test that parent_expt-related fields in metadata is updated for different restart_path situations"""
-    # Setup config
-    test_config = config.copy()
-    test_config['model'] = "test-model"
-    write_config(test_config)
-
     # Initialise Metadata
-    with cd(ctrldir):
-        metadata = Metadata(archive_dir)
-    metadata.uuid = "cb793e91-6168-4ed2-a70c-f6f9ccf1659"
-    metadata.experiment_name = "ctrl-mock_branch-cb793e91"
+    metadata = init_metadata()
 
     # Write an initial parent branch time
     orig_metadata = metadata.read_file()
@@ -686,3 +681,74 @@ def test_wipe_uuid():
     metadata.wipe_uuid()
     updated_metadata = metadata.read_file()
     assert updated_metadata.get(UUID_FIELD) == HARD_SWEPT_UUID
+
+
+@pytest.mark.parametrize(
+    "parent_info",
+    [
+        # Test with parent info provided
+        {"parent_experiment": "mock_parent_expt_uuid"},
+        # Test without parent info
+        {}
+    ]
+)
+def test_write_restart_provenance(init_metadata, parent_info):
+    """Test that write_restart_provenance writes the correct provenance information to the restart directory"""
+    # Initialise Metadata
+    metadata = init_metadata()
+
+    # Write metadata file with parent info if provided
+    metadata.update_file(set_template_values=True, parent_info=parent_info)
+    
+    # Setup restart directory
+    run_number = 3
+    restart_path = Path(ctrldir) / f"restart00{run_number}"
+    restart_path.mkdir(parents=True, exist_ok=True)
+
+    # Setup test parameters
+    run_id = "test_run_id"
+    cur_expt_time = datetime(2026, 8, 31, 12, 0, 0)
+
+    # Call write_restart_provenance
+    metadata.write_restart_provenance(restart_path, run_id, run_number, cur_expt_time)
+
+    # Confirm the restart metadata file is created and contains the correct information
+    restart_metadata_path = restart_path / f"restart_metadata.yaml"
+    assert restart_metadata_path.exists()
+
+    with open(restart_metadata_path, 'r') as file:
+        restart_metadata = YAML().load(file)
+
+    assert restart_metadata[UUID_FIELD] == metadata.uuid
+    assert restart_metadata[NAME_FIELD] == metadata.experiment_name
+    assert restart_metadata[RUN_ID_FIELD] == run_id
+    assert restart_metadata[RUN_NUMBER_FIELD] == run_number
+    assert restart_metadata[EXPERIMENT_TIME_FIELD] == cur_expt_time.isoformat()
+
+    if len(parent_info) == 0:
+        assert PARENT_UUID_FIELD not in restart_metadata
+    else:
+        assert restart_metadata[PARENT_UUID_FIELD] == parent_info["parent_experiment"]
+
+
+@pytest.mark.parametrize(
+    "value, expected_value",
+    [
+        # Test with a non-None value
+        ("test_value", "test_value"),
+        # Test with a None value
+        (None, missing_text),
+        # Test with a datetime value
+        (datetime(2026, 8, 31, 12, 0, 0), "2026-08-31T12:00:00"),
+        # Test with a cftime.datetime value
+        (cftime.datetime(2026, 8, 31, 14, 0, 0), "2026-08-31T14:00:00")
+    ]
+)
+def test_add_restart_field(value, expected_value):
+    """Test that add_restart_field correctly adds a field to the restart metadata, 
+    or adds a missing text if value is None"""
+    restart_metadata = CommentedMap()
+    field_name = "test_field"
+
+    add_restart_field(restart_metadata, field_name, value)
+    assert restart_metadata[field_name] == expected_value
