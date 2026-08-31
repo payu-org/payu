@@ -416,6 +416,24 @@ Other experiment runs will not be harmed by this command.
 Postprocessing
 ==============
 
+By default, payu submits all enabled postprocessing jobs automatically after the model run has completed.
+Postprocessing includes 
+- collate, 
+- postscript, 
+- sync. 
+These jobs can also be run manually if required.
+When payu submits postprocessing jobs, it adds job dependencies to ensure that they run in the correct order:: 
+
+   collate -> postscript -> sync
+
+If a postprocessing job failed, any subsequent job(s) will be terminated and removed from the queue.
+You can use ``payu status`` to check the status of all postprocessing jobs.
+To clean up postprocessing jobs that have been killed, please run ``payu status --update`` once.
+
+
+Collate
+--------
+
 Model output in parallel jobs is sometimes divided across several files, which
 can be inconvenient for analysis. Payu offers a ``collate`` subcommand to
 collate these separated files into a single file. This is only necessary, and 
@@ -446,6 +464,21 @@ using the ``-c`` option::
 
 This allows payu to use the collation settings from the specified ``config.yaml``
 while reading the uncollated files from the directory provided with ``-d``.
+
+When ``payu collate`` is called, payu will submit the subsequent postscript and sync jobs 
+after collation has completed, if they are enabled in the configuration file. 
+
+Postscript
+----------
+
+You may configure the postscript job in the configuration file (see :ref:`config`),
+which will run after the model run and collation (if enabled) has completed.
+To manually run the postscript for a specific run ``K``, please use::
+
+   payu postscript -i K
+
+Sync
+----
 
 To manually sync experiment output files to a remote archive, firstly ensure
 that ``path`` in the ``sync`` namespace in ``config.yaml``, 

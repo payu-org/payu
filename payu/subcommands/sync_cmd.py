@@ -105,6 +105,8 @@ def runscript(**run_args):
                      run_args.config_path,
                      run_args.lab_path)
     expt = Experiment(lab)
+    # Set the counters to keep the run number for sync job file
+    expt.set_counters(keep_run_number=True)
 
     try:
         expt.sync()

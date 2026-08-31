@@ -430,9 +430,6 @@ User Processing
    configured path to sync output to, i.e. ``path``, is the correct location 
    before enabling automatic syncing or before running ``payu sync``.
 
-   If postscript is also configured, the latest output and restart files will
-   not be automatically synced after a run.
-
    ``enable`` (*Default:* ``False``):
       Controls whether or not a sync job is submitted either after the archive or 
       collation job, if collation is enabled.

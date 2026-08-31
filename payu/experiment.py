@@ -1006,7 +1006,7 @@ class Experiment(object):
 
     @timeit("payu_sync_duration_seconds")
     def sync(self):
-        # Update collate stage to running
+        # Update sync stage to running
         telemetry.update_job_file(
             file_path=self.get_job_file(type='sync'),
             data={"stage": "running"}

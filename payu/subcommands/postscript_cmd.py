@@ -44,6 +44,7 @@ def runcmd(model_type=None, config_path=None, init_run=None, lab_path=None, dry_
     # Initialise experiment to determine archive path and run number (which is needed to write job file)
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab)
+    expt.set_counters(keep_run_number=True)
     
     # Submit through HPCpy
     # Job name is set to "payu_postscript"
