@@ -477,7 +477,7 @@ def test_update_run_job_file(tmp_path, mock_manifests):
     assert run_info['model_calendar'] == "julian"
 
 
-@freeze_time("2026-03-04 09:01:02")
+@freeze_time("2026-03-04 09:01:02", ignore=["intake"])
 def test_update_job_file_timeout(tmp_path):
     """Test when job file is locked, the updated info is written to a temporary file 
     and a warning is raised"""
