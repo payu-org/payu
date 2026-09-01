@@ -14,6 +14,8 @@ import os
 import shutil
 import json
 import cftime
+from access_nri_intake.source import builders as builders
+from access_nri_intake.experiment import use_datastore
 
 from payu.models.model import Model
 
@@ -116,4 +118,23 @@ class AccessOm2(Model):
                         return cftime.datetime.strptime(time_str, '%Y-%m-%dT%H:%M:%S')
 
         raise ValueError(f"Key 'cur_exp-datetime' not found in {log_path}")
+
+    def make_intake_datastore(self, expt_name, expt_uuid, datastore_path):
+        """Generate an intake-esm datastore for the experiment output.
+        Parameters:
+        expt_name : str
+            The name of the experiment.
+        expt_uuid : str
+            The UUID of the experiment.
+        datastore_path : pathlib.Path | str
+            The path to the directory where the datastore should be created.
+        """
+        description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
+
+        use_datastore(
+                    experiment_dir=datastore_path,
+                    description=description,
+                    builder=builders.AccessOm2Builder,
+                    builder_kwargs={},
+                )
 

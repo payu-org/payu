@@ -43,8 +43,7 @@ from payu.models import index as model_index
 from payu.runlog import Runlog
 from payu.manifest import Manifest
 from payu.calendar import parse_date_offset
-from payu.sync import SyncToRemoteArchive
-from payu.datastore import MakeIntakeDatastore
+from payu.sync import SyncToRemoteArchive, DATASTORE_NAME
 from payu.metadata import Metadata
 import payu.telemetry as telemetry
 from payu.git_utils import get_git_repository
@@ -1014,21 +1013,31 @@ class Experiment(object):
         for model in self.models:
             model.profile()
 
-    def catalog(self):
-        """Submit a `payu catalog` job to build an intake-esm datastore for
-        the experiment output, if enabled. Runs as its own PBS job """
-        catalog_config = self.config.get('catalog', {})
-        if catalog_config.get('enable', False):
-            cmd = '{python} {payu} catalog -i {expt}'.format(
-                python=sys.executable,
-                payu=self.payu_path,
-                expt=self.counter
-            )
-            sp.check_call(shlex.split(cmd))
-
     def make_datastore(self):
-        """Build an intake-esm datastore for the experiment output"""
-        MakeIntakeDatastore(self).run()
+        """Build an intake-esm datastore for the experiment output.
+        The datastore is built in the sync destination if syncing is
+        enabled, otherwise it is built in the archive directory."""
+        datastore_path = self.archive_path
+
+        # If syncing is enabled, use the sync destination path to build the datastore
+        if self.config.get('sync', {}).get('enable', False):
+            sync_path = self.get_sync_destination()
+
+            if sync_path is not None:
+                datastore_path = sync_path
+                remove_datastore(self.archive_path)
+            else:
+                warnings.warn(
+                    "Sync is enabled but the sync destination is unconfigured. "
+                    "Datastore will be built in the local archive directory."
+                )
+                
+        self.model.make_intake_datastore(
+            expt_name=self.name,
+            expt_uuid=self.metadata.uuid,
+            datastore_path=datastore_path,
+        )
+    
 
     @timeit("payu_sync_duration_seconds")
     def sync(self):
@@ -1047,9 +1056,16 @@ class Experiment(object):
         # Run rsync commmands
         SyncToRemoteArchive(self).run()
 
-        # Submit a job to build the datastore in the sync destination,
-        # if enabled
-        self.catalog()
+    def get_sync_destination(self):
+        """Get the destination path for syncing based on path/base_path/remote in config.yaml.
+        If the destination path is not defined, return None."""
+        try:
+            syncer = SyncToRemoteArchive(self)
+            syncer.set_destination_path(verbose=False)
+            
+        except (ValueError, errors.PayuConfigError):
+            return None
+        return str(syncer.destination_path)
 
     def resubmit(self):
         next_run = self.counter + 1
@@ -1095,7 +1111,7 @@ class Experiment(object):
 
         # find all PBS log files including payu runs, collate runs, postscript runs, and sync runs
         log_filenames = [short_job_name + '.o', short_job_name + '.e']
-        for postfix in ['_c.o', '_c.e', '_p.o', '_p.e', '_s.o', '_s.e']:
+        for postfix in ['_c.o', '_c.e', '_p.o', '_p.e', '_s.o', '_s.e', '_i.o', '_i.e']:
             log_filenames.append(short_job_name[:13] + postfix)
             
         if self.postscript:
@@ -1297,3 +1313,14 @@ def enable_core_dump():
     # Allow unlimited core dump file sizes
     resource.setrlimit(resource.RLIMIT_CORE,
                        (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
+
+def remove_datastore(directory):
+        """Remove any existing datastore files (json, csv and hash) from
+        `directory`, if present."""
+        directory = Path(directory)
+        # Also matches the "<name>_invalid_assets_<timestamp>.csv" file
+        # use_datastore() writes if some assets fail to parse.
+        patterns = [f"{DATASTORE_NAME}*", f".{DATASTORE_NAME}*"]
+        for pattern in patterns:
+            for path in directory.glob(pattern):
+                path.unlink()

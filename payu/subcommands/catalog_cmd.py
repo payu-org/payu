@@ -10,16 +10,32 @@ from payu.experiment import Experiment
 from payu.laboratory import Laboratory
 import payu.subcommands.args as args
 from payu import fsops
+import payu.errors as errors
 
 title = 'catalog'
 parameters = {'description': 'Generate an intake-esm datastore for the '
                               'experiment output'}
 
 arguments = [args.model, args.config, args.initial, args.laboratory,
-             args.dir_path]
+             args.dir_path, args.dry_run]
+
+def submit_catalog(counter, depends_on=None, config=None):
+    """ Submit the catalog job by calling runcmd.
+    Return the job id of the catalog job"""
+    try:
+        job_id = runcmd(
+            init_run=counter,
+            dry_run=False,
+            depends_on=depends_on,
+            )
+
+    except Exception as e:
+        raise errors.PayuRuntimeError(f"Failed to submit catalog job: {e}")
+    return job_id
 
 
-def runcmd(model_type, config_path, init_run, lab_path, dir_path):
+def runcmd(model_type=None, config_path=None, init_run=None, lab_path=None, dir_path=None, 
+           dry_run=False, depends_on=None):
 
     pbs_config = fsops.read_config(config_path)
 
@@ -58,7 +74,9 @@ def runcmd(model_type, config_path, init_run, lab_path, dir_path):
     pbs_config['qsub_flags'] = catalog_config.get('qsub_flags', '')
 
     # Submit PBS job with expt = None so no job file is written
-    cli.submit_job('payu-catalog', pbs_config, pbs_vars)
+    job_id = cli.submit_job('payu-catalog', pbs_config, pbs_vars, expt=None,
+                            dry_run=dry_run, depends_on=depends_on)
+    return job_id
 
 
 def runscript(**run_args):

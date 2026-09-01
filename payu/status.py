@@ -424,13 +424,8 @@ def collect_expt_paths(expt):
             "archive_path": expt.archive_path
         }
 
-        try:
-            syncer = SyncToRemoteArchive(expt)
-            syncer.set_destination_path(verbose=False)
-            sync_path = syncer.destination_path
-            expt_paths["sync_path"] = str(sync_path)
-        except (ValueError, errors.PayuConfigError):
-            expt_paths["sync_path"] = "Unconfigured"
+        sync_path = expt.get_sync_destination()
+        expt_paths["sync_path"] = sync_path if sync_path is not None else "Unconfigured"
 
     except Exception as e:
         warnings.warn(f"Failed to collect experiment paths: {e}")

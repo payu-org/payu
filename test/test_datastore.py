@@ -1,19 +1,16 @@
 import copy
-import os
-import sys
-import types
+import shutil
+from pathlib import Path
 from unittest.mock import MagicMock
-
 import pytest
 
-import payu
-from payu.datastore import MakeIntakeDatastore
+from access_nri_intake.source import builders as builders
 
+import payu
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir
 from test.common import config as config_orig
-from test.common import write_config
-from test.common import make_all_files, write_metadata
+from test.common import write_config, make_inputs
 
 # Global config
 config = copy.deepcopy(config_orig)
@@ -23,182 +20,138 @@ config.pop('metadata')
 
 
 @pytest.fixture(autouse=True)
-def setup_module(setup_test_dir):
-    make_all_files()
-    write_metadata()
+def setup_and_teardown():
+    # Create tmp, lab and control directories
+    try:
+        tmpdir.mkdir()
+        labdir.mkdir()
+        ctrldir.mkdir()
+    except Exception as e:
+        print(e)
+
     yield
 
-
-@pytest.fixture
-def mock_intake_catalog(monkeypatch):
-    """Inject a stand-in access_nri_intake package, since the real
-    (optional) dependency is not installed in the test environment."""
-    builders_mod = types.ModuleType("access_nri_intake.source.builders")
-
-    # Real (dummy) classes, not MagicMock instances - datastore.py checks
-    # issubclass(builder, AccessEsm15Builder), which requires an actual
-    # class, and AccessEsm16Builder really does subclass AccessEsm15Builder.
-    class AccessEsm15Builder:
-        def __init__(self, path, ensemble, **kwargs):
-            pass
-
-    class AccessEsm16Builder(AccessEsm15Builder):
-        pass
-
-    class AccessOm2Builder:
-        def __init__(self, path, **kwargs):
-            pass
-
-    class AccessOm3Builder:
-        def __init__(self, path, **kwargs):
-            pass
-
-    class Mom6Builder:
-        def __init__(self, path, **kwargs):
-            pass
-
-    for name, cls in [("AccessEsm15Builder", AccessEsm15Builder),
-                      ("AccessEsm16Builder", AccessEsm16Builder),
-                      ("AccessOm2Builder", AccessOm2Builder),
-                      ("AccessOm3Builder", AccessOm3Builder),
-                      ("Mom6Builder", Mom6Builder)]:
-        setattr(builders_mod, name, cls)
-
-    experiment_mod = types.ModuleType("access_nri_intake.experiment")
-    use_datastore_mock = MagicMock()
-    experiment_mod.use_datastore = use_datastore_mock
-
-    monkeypatch.setitem(sys.modules, "access_nri_intake",
-                        types.ModuleType("access_nri_intake"))
-    monkeypatch.setitem(sys.modules, "access_nri_intake.source",
-                        types.ModuleType("access_nri_intake.source"))
-    monkeypatch.setitem(sys.modules, "access_nri_intake.source.builders",
-                        builders_mod)
-    monkeypatch.setitem(sys.modules, "access_nri_intake.experiment",
-                        experiment_mod)
-
-    return use_datastore_mock
+    # Remove tmp directory
+    try:
+        shutil.rmtree(tmpdir)
+    except Exception as e:
+        print(e)
 
 
-def setup_experiment(additional_config, monkeypatch):
-    """Given additional configuration, return an initialised Experiment"""
+def setup_experiment(additional_config=None, model=None):
+    """Helper function to initialize an experiment with a given config."""
     test_config = copy.deepcopy(config)
-    test_config.update(additional_config)
+    if additional_config is not None:
+        test_config.update(additional_config)
+    if model is not None:
+        test_config['model'] = model
+
     write_config(test_config)
+    make_inputs()
 
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        experiment = payu.experiment.Experiment(lab, reproduce=False)
-
-    return experiment
-
-
-def test_datastore_built_in_archive_when_sync_disabled(monkeypatch,
-                                                        mock_intake_catalog):
-    experiment = setup_experiment({}, monkeypatch)
-    experiment.model_name = 'access-om2'
-
-    MakeIntakeDatastore(experiment).run()
-
-    assert mock_intake_catalog.call_count == 1
-    called_kwargs = mock_intake_catalog.call_args.kwargs
-    assert called_kwargs['experiment_dir'] == experiment.archive_path
+        expt = payu.experiment.Experiment(lab)
+        return expt
 
 
-def test_datastore_built_in_sync_path_when_sync_enabled(monkeypatch,
-                                                         mock_intake_catalog):
-    remote_archive = str(tmpdir / 'remote')
-    additional_config = {
-        "sync": {
-            "enable": True,
-            "path": remote_archive,
+def mock_make_intake_datastore(expt_name, expt_uuid, datastore_path):
+    """Write a mock datastore description in the destination directory."""
+    description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
+    datastore_file = Path(datastore_path) / 'test_datastore.txt'
+    with open(datastore_file, 'w') as f:
+        f.write(description)
+
+    
+def check_intake_datastore_contents(datastore_path, expt_name, expt_uuid):
+    """Check that the datastore file contains the expected description."""
+    datastore_file = Path(datastore_path) / 'test_datastore.txt'
+    with open(datastore_file, 'r') as f:
+        content = f.read()
+        expected_description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
+        assert content == expected_description
+
+
+@pytest.mark.parametrize("sync_config, sync", [
+    (None, False),
+    ({
+        'sync': {
+            'enable': True,
+            'path': str(tmpdir / "sync_path"),
         }
-    }
-    experiment = setup_experiment(additional_config, monkeypatch)
-    experiment.model_name = 'access-om2'
-
-    MakeIntakeDatastore(experiment).run()
-
-    assert mock_intake_catalog.call_count == 1
-    called_kwargs = mock_intake_catalog.call_args.kwargs
-    assert called_kwargs['experiment_dir'] == remote_archive
-
-
-def test_datastore_removes_stale_archive_datastore_when_sync_enabled(
-        monkeypatch, mock_intake_catalog):
-    """If a datastore was previously built in the archive directory (e.g.
-    before syncing was turned on), it should be removed once syncing is
-    enabled, so a stale copy doesn't linger there or get synced over the
-    current one at the sync destination."""
-    remote_archive = str(tmpdir / 'remote')
-    additional_config = {
-        "sync": {
-            "enable": True,
-            "path": remote_archive,
+    }, True),
+    ({
+        'sync': {
+            'enable': True,
+            'base_path': None,
+            'path': None,
         }
-    }
-    experiment = setup_experiment(additional_config, monkeypatch)
-    experiment.model_name = 'access-om2'
+    }, False),
+])
+def test_expt_make_datastore(monkeypatch, sync_config, sync):
+    """Test the make_datastore choose sync path when sync is enabled, 
+    and choose archive path when sync is disabled or unconfigured."""
+    expt = setup_experiment(sync_config)
 
-    stale_files = [
-        "experiment_datastore.json",
-        "experiment_datastore.csv",
-        ".experiment_datastore.hash",
-        "experiment_datastore_invalid_assets_2026-01-01-00:00:00.csv",
+    # Mock the model.make_intake_datastore method
+    expt.model.make_intake_datastore = MagicMock(side_effect=mock_make_intake_datastore)
+
+    # Mock the remove_datastore function
+    remove_datastore = MagicMock()
+    monkeypatch.setattr(payu.experiment, 'remove_datastore', remove_datastore)
+
+    expt.make_datastore()
+
+    if sync:
+        check_intake_datastore_contents(
+            sync_config['sync']['path'], expt.name, expt.metadata.uuid)
+    
+        remove_datastore.assert_called_once_with(expt.archive_path)
+    else:
+        check_intake_datastore_contents(
+            expt.archive_path, expt.name, expt.metadata.uuid)
+
+
+
+def test_datastore_raises_error_for_unsupported_model():
+    """Test that a NotImplementedError is raised for unsupported models."""
+    expt = setup_experiment()
+
+    with pytest.raises(NotImplementedError, match='Datastore generation is not implemented for this model.'):
+        expt.make_datastore()
+
+
+@pytest.mark.parametrize(
+    "model_type, model_module, builder, builder_kwargs",
+    [
+        ('access', payu.models.access,
+        builders.AccessEsm15Builder, {'ensemble': False}),
+        ('access-esm1.6', payu.models.access_esm1p6,
+         builders.AccessEsm16Builder, {'ensemble': False}),
+        ('access-om2', payu.models.accessom2,
+        builders.AccessOm2Builder, {}),
+        ('mom6', payu.models.mom6,
+         builders.Mom6Builder, {}),
     ]
-    for filename in stale_files:
-        with open(os.path.join(experiment.archive_path, filename), 'w') as f:
-            f.write("stale")
+)
+def test_datastore_generation_uses_correct_builder(
+        monkeypatch, model_type, model_module, builder, builder_kwargs):
+    """Test each supported model calls use_datastore with its builder."""
+    expt = setup_experiment(model=model_type)
+    use_datastore = MagicMock()
+    monkeypatch.setattr(model_module, 'use_datastore', use_datastore)
 
-    unrelated_file = os.path.join(experiment.archive_path, "metadata.yaml")
-    with open(unrelated_file, 'w') as f:
-        f.write("keep me")
+    expt.make_datastore()
 
-    MakeIntakeDatastore(experiment).run()
-
-    for filename in stale_files:
-        assert not os.path.exists(
-            os.path.join(experiment.archive_path, filename)
-        ), f"expected stale {filename} to be removed"
-
-    assert os.path.exists(unrelated_file)
-
-
-def test_datastore_passes_ensemble_kwarg_for_esm_builders(monkeypatch,
-                                                            mock_intake_catalog):
-    """AccessEsm15Builder/AccessEsm16Builder require an explicit `ensemble`
-    kwarg (unlike the other builders); regression test for a bug where
-    use_datastore() was called without it, raising a TypeError."""
-    experiment = setup_experiment({}, monkeypatch)
-    experiment.model_name = 'access-esm1.6'
-
-    MakeIntakeDatastore(experiment).run()
-
-    called_kwargs = mock_intake_catalog.call_args.kwargs
-    assert called_kwargs['builder_kwargs'] == {'ensemble': False}
+    use_datastore.assert_called_once_with(
+        experiment_dir=expt.archive_path,
+        description=(
+            f'Intake-ESM datastores for experiment {expt.name} '
+            f'({expt.metadata.uuid})'
+        ),
+        builder=builder,
+        builder_kwargs=builder_kwargs,
+    )
 
 
-def test_datastore_skipped_for_unsupported_model(monkeypatch,
-                                                   mock_intake_catalog):
-    experiment = setup_experiment({}, monkeypatch)
-    experiment.model_name = 'test'
 
-    with pytest.warns(UserWarning, match="No intake datastore builder found"):
-        MakeIntakeDatastore(experiment).run()
-
-    assert mock_intake_catalog.call_count == 0
-
-
-def test_datastore_skipped_when_intake_catalog_not_installed(monkeypatch):
-    monkeypatch.delitem(sys.modules, "access_nri_intake", raising=False)
-    monkeypatch.delitem(sys.modules, "access_nri_intake.source", raising=False)
-    monkeypatch.delitem(sys.modules, "access_nri_intake.source.builders",
-                        raising=False)
-    monkeypatch.delitem(sys.modules, "access_nri_intake.experiment",
-                        raising=False)
-
-    experiment = setup_experiment({}, monkeypatch)
-    experiment.model_name = 'access-om2'
-
-    with pytest.warns(UserWarning, match="access-nri-intake-catalog not found"):
-        MakeIntakeDatastore(experiment).run()

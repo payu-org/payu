@@ -18,7 +18,9 @@ import sys
 
 # Extensions
 import f90nml
-from datetime import date, timedelta, datetime
+from datetime import datetime
+from access_nri_intake.source import builders as builders
+from access_nri_intake.experiment import use_datastore
 
 # Local
 from payu.fsops import make_symlink
@@ -338,3 +340,24 @@ class AccessEsm1p6(Model):
 
     def collate(self):
         pass
+
+    def make_intake_datastore(self, expt_name, expt_uuid, datastore_path):
+        """Generate an intake-esm datastore for the experiment output.
+        Parameters:
+        expt_name : str
+            The name of the experiment.
+        expt_uuid : str
+            The UUID of the experiment.
+        datastore_path : pathlib.Path | str
+            The path to the directory where the datastore should be created.
+        """
+        description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
+
+        use_datastore(
+                    experiment_dir=datastore_path,
+                    description=description,
+                    builder=builders.AccessEsm16Builder,
+                    builder_kwargs={"ensemble": False},
+                )
+        
+
