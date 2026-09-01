@@ -487,3 +487,12 @@ class Model(object):
             f'{", ".join(model_types)}. '
             'to determine current experiment time.'
         )
+
+    def make_intake_datastore(self, expt_name, expt_uuid, datastore_path):
+        """For model not implemented to generate an intake-esm datastore, raise an error.
+        """
+        raise NotImplementedError(
+            "Datastore generation is not implemented for this model."
+        )
+
+    

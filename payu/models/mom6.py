@@ -19,6 +19,8 @@ import f90nml
 import shutil
 from warnings import warn
 from glob import glob
+from access_nri_intake.source import builders as builders
+from access_nri_intake.experiment import use_datastore
 
 # Local
 from payu.models.fms import Fms
@@ -169,3 +171,22 @@ class Mom6(MomMixin, Fms):
 
         cur_expt_time = start_date + timedelta(days=timestep)
         return cur_expt_time
+
+    def make_intake_datastore(self, expt_name, expt_uuid, datastore_path):
+        """Generate an intake-esm datastore for the experiment output.
+        Parameters:
+        expt_name : str
+            The name of the experiment.
+        expt_uuid : str
+            The UUID of the experiment.
+        datastore_path : pathlib.Path | str
+            The path to the directory where the datastore should be created.
+        """
+        description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
+
+        use_datastore(
+                    experiment_dir=datastore_path,
+                    description=description,
+                    builder=builders.Mom6Builder,
+                    builder_kwargs={},
+                )
