@@ -442,6 +442,15 @@ class Experiment(object):
         # Prior restart path
         # Check if there are any restart directories in archive
         no_restarts = self.max_output_index(output_type="restart") is None
+
+        # If repeat is True, check for pre-existing restarts 
+        if self.repeat and not no_restarts:
+            raise errors.PayuConfigError(
+                    f"Pre-existing restarts are found in the archive \'{self.archive_path}\'.\n"
+                    "A repeat run is expected to start from the initial conditions.\n"
+                    "Please remove all restart directories before a repeat run."
+                )
+
         # Check if a user restart directory is avaiable
         user_restart_dir = self.config.get('restart')
         if (no_restarts or self.repeat) and user_restart_dir:
@@ -472,7 +481,6 @@ class Experiment(object):
 
         for model in self.models:
             model.set_model_output_paths()
-
 
     def check_payu_version(self):
         """Check current payu version is greater than minimum required

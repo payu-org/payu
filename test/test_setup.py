@@ -437,6 +437,31 @@ def test_repeat_flag_priority(monkeypatch, repeat_flag, repeat_env, repeat_confi
     expt = init_experiment(config, repeat=repeat_flag)
     assert expt.repeat == expected_repeat
 
+
+def test_check_restart_exists_repeat_true():
+    """Test that an error is raised if repeat is True and restarts exist in the archive."""
+    # Make an archive directory with a restart
+    make_expt_archive_dir(type='restart', index=9)
+
+    with pytest.raises(errors.PayuConfigError, match="Pre-existing restarts are found in the archive"):
+        init_experiment(config_orig, repeat=True)
+
+
+def test_check_restart_exists_repeat_false(monkeypatch):
+    """Test that no error is raised if repeat is False and restarts exist in the archive."""
+    # Make an archive directory with a restart
+    make_expt_archive_dir(type='restart', index=9)
+
+    # Set repeat:False in config.yaml
+    config = copy.deepcopy(config_orig)
+    config['repeat'] = False
+
+    # Remove environment variable PAYU_REPEAT
+    monkeypatch.delenv('PAYU_REPEAT', raising=False)
+
+    init_experiment(config)
+
+
 def test_set_prior_restart_path_no_restarts_in_archive():
     """Test that prior restart path is set to None if no restarts in archive."""
     expt = init_experiment(config_orig)
