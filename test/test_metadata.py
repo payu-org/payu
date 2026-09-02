@@ -494,7 +494,7 @@ def test_update_file_with_template_metadata_values(init_metadata, mock_git_repo)
     # Expect commented template values for non-null fields
     expected_metadata = f"""
 # {DO_NOT_EDIT_COMMENT}
-{UUID_FIELD}: cb793e91-6168-4ed2-a70c-f6f9ccf1659
+{UUID_FIELD}: {METADATA_UUID}
 
 # {CAN_EDIT_COMMENT}
 name: ctrldir-branch-cb793e91
@@ -803,8 +803,8 @@ def test_validate_parent_uuid_against_metadata(init_metadata):
 
     # Error should be raised if parent_experiment and archive metadata don't match
     with pytest.raises(errors.PayuBranchError, 
-                match=f"The parent experiment UUID {TEST_UUID} does not match the UUID "
-                    f"of the given restart directory {restart_path}: {METADATA_UUID}."):
+                match=f"The parent experiment UUID '{TEST_UUID}' does not match the UUID "
+                    f"of the given restart directory '{restart_path}': '{METADATA_UUID}'."):
         metadata.validate_parent_uuid(parent_experiment=TEST_UUID, 
                                         restart_path=restart_path)
     shutil.rmtree(restart_path)
@@ -827,8 +827,8 @@ def test_validate_parent_uuid_against_metadata(init_metadata):
 
     # Test with non-matching parent_experiment and restart_metadata
     with pytest.raises(errors.PayuBranchError, 
-                match=f"The parent experiment UUID {TEST_UUID} does not match the UUID "
-                    f"of the given restart directory {restart_path}: {RESTART_METADATA_UUID}."):
+                match=f"The parent experiment UUID '{TEST_UUID}' does not match the UUID "
+                    f"of the given restart directory '{restart_path}': '{RESTART_METADATA_UUID}'."):
         metadata.validate_parent_uuid(parent_experiment=TEST_UUID, 
                                       restart_path=restart_path, 
                                       parent_experiment_from_restart=False)
