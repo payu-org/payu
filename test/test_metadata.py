@@ -847,5 +847,5 @@ def test_validate_parent_uuid_no_restart_path_or_no_metadata(init_metadata):
     metadata.validate_parent_uuid(parent_experiment=TEST_UUID, 
                               restart_path=archive_dir / "restart000", 
                               parent_experiment_from_restart=True)
-    assert metadata.get_parent_experiment.not_called
+    metadata.get_parent_experiment.assert_not_called()
     
