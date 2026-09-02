@@ -389,11 +389,14 @@ class Metadata:
         # Resolve to absolute path
         prior_restart_path = prior_restart_path.resolve()
 
-        # Check for pre-existing metadata file
-        base_output_directory = Path(prior_restart_path).parent
-        metadata_filepath = base_output_directory / METADATA_FILENAME
+        # Check for restart_metadata.yaml in the restart directory
+        metadata_filepath = prior_restart_path / f"restart_{METADATA_FILENAME}"
+
         if not metadata_filepath.exists():
-            return
+            # Check for metadata file in the archive of the restart directory
+            metadata_filepath = Path(prior_restart_path).parent / METADATA_FILENAME
+            if not metadata_filepath.exists():
+                return
 
         # Read metadata file
         parent_metadata = YAML().load(metadata_filepath)
@@ -430,13 +433,18 @@ class Metadata:
         parent_hash = parent_info.get('parent_hash', None)
 
         # Update parent UUID field
-        if parent_experiment is None:
+        # If parent uuid is None, get it from the restart path
+        parent_experiment_from_restart = parent_experiment is None
+        if parent_experiment_from_restart:
             parent_experiment = self.get_parent_experiment(restart_path)
-        if parent_experiment and parent_experiment != self.uuid:
-            metadata[PARENT_UUID_FIELD] = parent_experiment
-        else:
-            # Remove parent_experiment if entry exists in metadata
+
+        if parent_experiment in (None, HARD_SWEPT_UUID, self.uuid):
+            # Remove parent_experiment entry if it is None/HARD_SWEPT_UUID/current_UUID
             metadata.pop(PARENT_UUID_FIELD, None)
+        else:
+            # Validate the parent UUID before adding it to metadata
+            self.validate_parent_uuid(parent_experiment, restart_path, parent_experiment_from_restart)
+            metadata[PARENT_UUID_FIELD] = parent_experiment
 
         # Update parent branch time
         if restart_path and parent_branch_time:
@@ -455,6 +463,34 @@ class Metadata:
             metadata.pop(PARENT_HASH_FIELD, None)
 
         return metadata
+
+    def validate_parent_uuid(self, 
+                            parent_experiment: str, 
+                            restart_path: Path = None,
+                            parent_experiment_from_restart: bool = False) -> None:
+        """Validate the parent experiment UUID.
+        The UUID must be a valid UUID4. 
+        If a restart path is provided and contains a UUID, the parent UUID must match it.
+        """
+        # Check UUID4 format
+        if not is_uuid4(parent_experiment):
+            raise errors.PayuBranchError(
+                f"The parent experiment UUID {parent_experiment} is not a valid UUID4 format.\n"
+                "Please provide a valid UUID4 format for the parent experiment."
+            )
+
+        # Skip further matching check if no restart or parent uuid reads from restart path
+        if restart_path is None or parent_experiment_from_restart:
+            return
+        
+        # If restart_path is provided, check if parent_experiment matches the UUID of the restart directory
+        restart_uuid = self.get_parent_experiment(restart_path)
+        if restart_uuid and restart_uuid != parent_experiment:
+            raise errors.PayuBranchError(
+                f"The parent experiment UUID '{parent_experiment}' does not match "
+                f"the UUID of the given restart directory '{restart_path}': '{restart_uuid}'. \n"
+                f"Suggest fix: leave out the `-p` option to use the UUID of the restarts.")
+
 
     def write_restart_provenance(self, 
                                 restart_path: Path, 
@@ -636,3 +672,10 @@ def add_restart_field(restart_metadata, field_name, value):
         restart_metadata[field_name] = value.strftime('%Y-%m-%dT%H:%M:%S')
     else:
         restart_metadata[field_name] = value
+
+def is_uuid4(value: str) -> bool:
+    """Check if a string is a valid UUID4"""
+    try:
+        return uuid.UUID(value).version == 4
+    except:
+        return False
