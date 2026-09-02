@@ -24,8 +24,8 @@ def test_runcmd_preserves_zero_init_run(monkeypatch, command_mod, config):
         MagicMock(return_value=experiment),
     )
     monkeypatch.setattr(command_mod.cli, "set_env_vars", MagicMock(return_value={}))
-    submit_job = MagicMock(return_value="12")
+    submit_job = MagicMock(return_value="1000-gadi.pbs")
     monkeypatch.setattr(command_mod.cli, "submit_job", submit_job)
 
-    assert command_mod.runcmd(init_run=0) == "12"
+    assert command_mod.runcmd(init_run=0) == "1000-gadi.pbs"
     assert submit_job.call_args.kwargs["current_run"] == 0
