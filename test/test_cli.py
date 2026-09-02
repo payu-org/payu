@@ -32,6 +32,19 @@ def parse_args(parser, cmd):
     log_level = args.pop("log_level")
     return run_cmd, args
 
+
+def test_set_env_vars_preserves_zero_init_run(monkeypatch):
+    monkeypatch.setattr(payu.cli, "is_conda", lambda: True)
+    env_vars = payu.cli.set_env_vars(init_run=0)
+    assert env_vars["PAYU_CURRENT_RUN"] == 0
+
+
+def test_set_env_vars_rejects_negative_init_run(monkeypatch):
+    monkeypatch.setattr(payu.cli, "is_conda", lambda: True)
+    with pytest.raises(errors.PayuRuntimeError, match="Run number is negative"):
+        payu.cli.set_env_vars(init_run=-1)
+
+
 def test_parse(parser):
 
     arguments = shlex.split("payu -h")
@@ -552,5 +565,3 @@ def test_submit_job_error_msg_from_hpcpy():
             payu.cli.submit_job(config={"scheduler": "pbs"}, script="submit_script.sh")
             assert "Error occurred while submitting a job to scheduler pbs" in str(exc_info.value)
             assert "Error: HPCpy submission failed" in str(exc_info.value)
-
-    
