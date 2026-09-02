@@ -268,10 +268,7 @@ class Experiment(object):
         assert self.archive_path
 
         current_counter = os.environ.get('PAYU_CURRENT_RUN')
-        if current_counter:
-            self.counter = int(current_counter)
-        else:
-            self.counter = None
+        self.counter = int(current_counter) if current_counter is not None else None
 
         self.n_runs = int(os.environ.get('PAYU_N_RUNS', 1))
 

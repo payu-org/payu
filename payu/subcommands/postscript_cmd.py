@@ -53,7 +53,7 @@ def runcmd(model_type=None, config_path=None, init_run=None, lab_path=None, dry_
                         config={"scheduler": expt.scheduler_name},
                         vars=expt.set_userscript_env_vars(),
                         expt=expt,
-                        current_run=int(init_run) if init_run else None,
+                        current_run=int(init_run) if init_run is not None else None,
                         type="postscript",
                         dry_run=dry_run,
                         depends_on=depends_on,

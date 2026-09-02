@@ -114,7 +114,7 @@ def runcmd(model_type=None, config_path=None, init_run=None,
 
     # Submit the collation job and write queue job file
     job_id = cli.submit_job('payu-collate', pbs_config, pbs_vars, expt=expt, 
-                current_run = int(init_run) if init_run else None, type='collate', 
+                current_run = int(init_run) if init_run is not None else None, type='collate',
                 dry_run=dry_run, depends_on=depends_on)
     return job_id
     

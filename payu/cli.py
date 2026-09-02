@@ -163,9 +163,10 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
     payu_env_vars['PAYU_PATH'] = payu_binpath
 
     # Set the run counters
-    if init_run:
+    if init_run is not None:
         init_run = int(init_run)
-        assert init_run >= 0
+        if init_run < 0:
+            raise errors.PayuRuntimeError("Run number is negative.")
         payu_env_vars['PAYU_CURRENT_RUN'] = init_run
 
     if n_runs:
