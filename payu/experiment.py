@@ -53,6 +53,8 @@ import payu.errors as errors
 # Setup logger
 logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
+
 # Environment module support on vayu
 core_modules = ['python', 'payu']
 
@@ -118,7 +120,10 @@ class Experiment(object):
         # Stacksize
         # NOTE: Possible PBS issue in setting non-unlimited stacksizes
         stacksize = self.config.get('stacksize', 'unlimited')
-        self.set_stacksize(stacksize)
+        try:
+            self.set_stacksize(stacksize)
+        except ValueError as err:
+            logger.warning('Failed to set stacksize to %s: %s', stacksize, err)
 
         # Initialize the submodels
         self.init_models()
@@ -706,7 +711,7 @@ class Experiment(object):
 
             # Use the full path to symlinked exec_name in work as some
             # older MPI libraries complained executable was not in PATH
-            model_prog.append(os.path.join(model.work_path, model.exec_name))
+            model_prog.append(os.path.join(os.path.abspath(model.work_path), model.exec_name))
 
             if model.exec_postfix:
                 model_prog.append(model.exec_postfix)
