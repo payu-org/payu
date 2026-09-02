@@ -48,8 +48,8 @@ RUN_NUMBER_FIELD = "payu_current_run"
 
 # Metadata Schema
 SCHEMA_FIELD = "schema_version"
-SCHEMA_VERSION = "1-0-4"
-SCHEMA_COMMIT_HASH = "cff183437134592723b09af6620e5cb190abeb22" 
+SCHEMA_VERSION = "1-0-4" # SCHEMA_VERSION and SCHEMA_COMMIT_HASH should be updated together
+SCHEMA_COMMIT_HASH = "6ac29573e75537cc4cbedb412ab08b8d4a8773cb" 
 SCHEMA_URL = f"https://raw.githubusercontent.com/ACCESS-NRI/schema/{SCHEMA_COMMIT_HASH}/au.org.access-nri/model/output/experiment-metadata/{SCHEMA_VERSION}.json"
 placeholder_text = "__REPLACE_ME__"
 missing_text = "__DISABLED_OR_NOT_IMPLEMENTED__"
