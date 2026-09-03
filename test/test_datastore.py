@@ -139,7 +139,8 @@ def test_datastore_generation_uses_correct_builder(
     """Test each supported model calls use_datastore with its builder."""
     expt = setup_experiment(model=model_type)
     use_datastore = MagicMock()
-    monkeypatch.setattr(model_module, 'use_datastore', use_datastore)
+    from access_nri_intake import experiment
+    monkeypatch.setattr(experiment, 'use_datastore', use_datastore)
 
     expt.make_datastore()
 
