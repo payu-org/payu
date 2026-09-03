@@ -138,7 +138,7 @@ def set_up_restart_metadata():
 
     yield
 
-    shutil.rmtree(restart_path)
+    shutil.rmtree(restart_path, ignore_errors=True)
 
 @pytest.fixture()
 def set_up_archive_metadata():
@@ -149,7 +149,7 @@ def set_up_archive_metadata():
 
     yield
 
-    shutil.rmtree(archive_dir)
+    shutil.rmtree(archive_dir, ignore_errors=True)
 
 @patch("payu.metadata.GitRepository")
 @pytest.mark.parametrize(
