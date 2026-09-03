@@ -17,9 +17,6 @@ import shutil
 import cftime
 from warnings import warn
 
-from access_nri_intake.source import builders as builders
-from access_nri_intake.experiment import use_datastore
-
 from payu.fsops import make_symlink
 from payu.models.model import Model
 from payu.models.fms import fms_collate
@@ -476,6 +473,14 @@ class AccessOm3(CesmCmeps):
         datastore_path : pathlib.Path | str
             The path to the directory where the datastore should be created.
         """
+
+        try:
+            from access_nri_intake.source import builders as builders
+            from access_nri_intake.experiment import use_datastore
+        except ImportError:
+            warn("access_nri_intake not found, skip datastore generation.")
+            return
+        
         description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
 
         use_datastore(
