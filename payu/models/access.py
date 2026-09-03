@@ -11,11 +11,11 @@ http://www.apache.org/licenses/LICENSE-2.0
 from __future__ import print_function
 
 # Standard Library
-import errno
 import os
 import re
 import shutil
 import sys
+import warnings
 
 # Extensions
 import f90nml
@@ -302,3 +302,30 @@ class Access(Model):
 
     def collate(self):
         pass
+
+    def make_intake_datastore(self, expt_name, expt_uuid, datastore_path):
+        """Generate an intake-esm datastore for the experiment output.
+        Parameters:
+        expt_name : str
+            The name of the experiment.
+        expt_uuid : str
+            The UUID of the experiment.
+        datastore_path : pathlib.Path | str
+            The path to the directory where the datastore should be created.
+        """
+
+        try:
+            from access_nri_intake.source import builders as builders
+            from access_nri_intake.experiment import use_datastore
+        except ImportError:
+            warnings.warn("access_nri_intake not found, skip datastore generation.")
+            return
+        
+        description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
+
+        use_datastore(
+                    experiment_dir=datastore_path,
+                    description=description,
+                    builder=builders.AccessEsm15Builder,
+                    builder_kwargs={"ensemble": False},
+                )

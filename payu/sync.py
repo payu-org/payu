@@ -18,7 +18,10 @@ import time
 # Local
 from payu.fsops import list_sorted_archive_dirs
 from payu.metadata import METADATA_FILENAME, UUID_FIELD
-import payu.errors as errors 
+import payu.errors as errors
+
+# Default datastore basename used by access_nri_intake.experiment.use_datastore
+DATASTORE_NAME = 'experiment_datastore'
 
 DEST_NOT_CONFIGURED_MSG ="""
 There's is no configured `base_path` or `path` to sync output to.
@@ -222,14 +225,15 @@ class SyncToRemoteArchive():
         if isinstance(exclude, str):
             exclude = [exclude]
 
-        excludes = ' '.join(['--exclude ' + pattern for pattern in exclude])
+        # Default to not exclude uncollated files or intake datastore
+        exclude += [f"{DATASTORE_NAME}*", f".{DATASTORE_NAME}*"]
 
-        # Default to not exclude uncollated files
         exclude_uncollated = self.config.get('exclude_uncollated', False)
-        exclude_flag = "--exclude *.nc.*"
-        if (exclude_uncollated and exclude_flag not in excludes
-                and exclude_flag not in self.config.get('rsync_flags', [])):
-            excludes += f" {exclude_flag}" if excludes != "" else exclude_flag
+        if ( exclude_uncollated and "*.nc.*" not in exclude and 
+            "--exclude *.nc.*" not in self.config.get('rsync_flags', []) ):
+            exclude += ["*.nc.*"]
+
+        excludes = ' '.join(['--exclude ' + pattern for pattern in exclude])
 
         self.excludes = excludes
 
