@@ -5,7 +5,7 @@ from datetime import datetime
 
 import cftime
 import pytest
-from unittest.mock import patch, Mock
+from unittest.mock import MagicMock, patch, Mock
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 import jsonschema
@@ -31,6 +31,10 @@ config.pop("metadata")
 
 pytestmark = pytest.mark.filterwarnings(
     "ignore::payu.git_utils.PayuGitWarning")
+
+METADATA_UUID = "cb793e91-6168-4ed2-a70c-f6f9ccf19999"
+RESTART_METADATA_UUID = "0000b928-c6b6-482c-ae34-520000000c89"
+TEST_UUID = "3d18b3b6-dd19-49a9-8d9e-c7fa8582f136"
 
 
 def setup_module(module):
@@ -110,7 +114,7 @@ def mock_git_repo():
 def init_metadata():
     """Fixture to create an initial metadata file for testing"""
     def _init_metadata(experiment_name="ctrldir-branch-cb793e91",
-                       uuid="cb793e91-6168-4ed2-a70c-f6f9ccf1659"):
+                       uuid=METADATA_UUID):
         # Setup config
         test_config = config.copy()
         test_config['model'] = "test-model"
@@ -123,6 +127,29 @@ def init_metadata():
         metadata.uuid = uuid
         return metadata
     return _init_metadata
+
+@pytest.fixture()
+def set_up_restart_metadata():
+    """A fixture to set up a restart directory outside archive, with restart_metadata inside"""
+    restart_path = archive_dir / "restart000"
+    restart_path.mkdir(parents=True, exist_ok=True)
+    with open(restart_path / 'restart_metadata.yaml', 'w') as file:
+        YAML().dump({UUID_FIELD: RESTART_METADATA_UUID}, file)
+
+    yield
+
+    shutil.rmtree(restart_path, ignore_errors=True)
+
+@pytest.fixture()
+def set_up_archive_metadata():
+    """ A fixture to set up metadata file in archive"""
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    with open(archive_dir / 'metadata.yaml', 'w') as file:
+        YAML().dump({UUID_FIELD: METADATA_UUID}, file)
+
+    yield
+
+    shutil.rmtree(archive_dir, ignore_errors=True)
 
 @patch("payu.metadata.GitRepository")
 @pytest.mark.parametrize(
@@ -490,7 +517,7 @@ def test_update_file_with_template_metadata_values(init_metadata, mock_git_repo)
     # Expect commented template values for non-null fields
     expected_metadata = f"""
 # {DO_NOT_EDIT_COMMENT}
-{UUID_FIELD}: cb793e91-6168-4ed2-a70c-f6f9ccf1659
+{UUID_FIELD}: {METADATA_UUID}
 
 # {CAN_EDIT_COMMENT}
 name: ctrldir-branch-cb793e91
@@ -603,18 +630,18 @@ def test_update_file_given_metadata_file(tmp_path, metadata_input, metadata_expe
     [   
         # restart_path and branch_off_time provided - PARENT_BRANCH_TIME_FIELD should be updated
         (Path("/path/to/restart000/"), 
-        "parent_expt_uuid", "2026-07-24T12:00:00", "parent_hash_value",
-        "parent_expt_uuid", "2026-07-24T12:00:00", "parent_hash_value"),
+        TEST_UUID, "2026-07-24T12:00:00", "parent_hash_value",
+        TEST_UUID, "2026-07-24T12:00:00", "parent_hash_value"),
 
         # restart_path provided, but no branch_off_time - should not have PARENT_BRANCH_TIME_FIELD
         (Path("/path/to/restart000/"), 
-        "parent_expt_uuid", None, "parent_hash_value",
-        "parent_expt_uuid", None, "parent_hash_value"),
+        TEST_UUID, None, "parent_hash_value",
+        TEST_UUID, None, "parent_hash_value"),
         
         # branch_off_time alone, without a restart_path, should not have PARENT_BRANCH_TIME_FIELD
         (None, 
-        "parent_expt_uuid", "2026-07-24T12:00:00", "parent_hash_value",
-        "parent_expt_uuid", None, "parent_hash_value"),
+        TEST_UUID, "2026-07-24T12:00:00", "parent_hash_value",
+        TEST_UUID, None, "parent_hash_value"),
 
         # No parent_experiment or restart path given - should not have any parent_info fields
         (None, 
@@ -687,7 +714,7 @@ def test_wipe_uuid():
     "parent_info",
     [
         # Test with parent info provided
-        {"parent_experiment": "mock_parent_expt_uuid"},
+        {"parent_experiment": TEST_UUID},
         # Test without parent info
         {}
     ]
@@ -752,3 +779,95 @@ def test_add_restart_field(value, expected_value):
 
     add_restart_field(restart_metadata, field_name, value)
     assert restart_metadata[field_name] == expected_value
+
+
+@pytest.mark.parametrize(
+    "parent_experiment, raise_error, expected_value",
+    [
+        # Test with a valid UUID4 format
+        (TEST_UUID, False, True),
+        # Test with an invalid UUID format
+        ("mock_parent_uuid", True, None),
+        # Test with an hash-like string
+        ("b6962f8d005a75a4f1158e9a2cf53d1003e465d0", True, None),
+        # Test with emtpy string
+        ("", True, None),
+        # Test with None
+        (None, False, False),
+        # Test with HARD_SWEPT_UUID
+        (HARD_SWEPT_UUID, False, False)
+    ]
+)
+def test_validate_parent_uuid_format(init_metadata, parent_experiment, raise_error, expected_value):
+    """Test that validate_parent_uuid checks the uuid format"""
+    # Initialise Metadata
+    metadata = init_metadata()
+
+    if raise_error:
+        with pytest.raises(errors.PayuBranchError, 
+                           match=f"The parent experiment UUID {parent_experiment} is not a valid UUID4 format."):
+            metadata.validate_parent_uuid(parent_experiment=parent_experiment)
+    else:
+        assert metadata.validate_parent_uuid(parent_experiment=parent_experiment) == expected_value
+
+
+def test_validate_parent_uuid_against_metadata(init_metadata, set_up_archive_metadata):
+    """Test that validate_parent_uuid checks if parent_experiment matches with archive metadata"""
+    # Initialise Metadata
+    metadata = init_metadata()
+
+    # Setup restart in archive
+    restart_path = archive_dir / "restart000"
+    restart_path.mkdir(parents=True, exist_ok=True)
+
+    # parent uuid is required to match the archive metadata uuid
+    metadata.update_parent_info(metadata.read_file(), 
+                                parent_info={'parent_experiment': METADATA_UUID},
+                                restart_path=restart_path)
+
+    # Error should be raised if parent_experiment and archive metadata don't match
+    with pytest.raises(errors.PayuBranchError, 
+                match=f"The parent experiment UUID '{TEST_UUID}' does not match the UUID "
+                    f"of the given restart directory '{restart_path}': '{METADATA_UUID}'."):
+        metadata.update_parent_info(metadata.read_file(), 
+                                parent_info={'parent_experiment': TEST_UUID},
+                                restart_path=restart_path)
+    shutil.rmtree(restart_path)
+
+
+def test_validate_parent_uuid_against_restart_metadata(init_metadata, set_up_restart_metadata, set_up_archive_metadata):
+    """Test that validate_parent_uuid checks if parent_experiment matches with restart metadata"""
+    # Initialise Metadata
+    metadata = init_metadata()
+    restart_path = archive_dir / "restart000"
+
+    # payu prioritise the restart_metadata.yaml over the archive metadata.yaml
+    metadata.update_parent_info(metadata.read_file(), 
+                                parent_info={'parent_experiment': RESTART_METADATA_UUID},
+                                restart_path=restart_path)
+
+    # Test error is raised when not matching
+    with pytest.raises(errors.PayuBranchError, 
+                match=f"The parent experiment UUID '{METADATA_UUID}' does not match the UUID "
+                    f"of the given restart directory '{restart_path}': '{RESTART_METADATA_UUID}'."):
+        metadata.update_parent_info(metadata.read_file(), 
+                                parent_info={'parent_experiment': METADATA_UUID},
+                                restart_path=restart_path)
+
+
+def test_validate_parent_uuid_no_restart_path_or_no_metadata(init_metadata):
+    # Initialise Metadata
+    metadata = init_metadata()
+
+    # No restart is provided, should only validate the UUID4 format
+    data = metadata.update_parent_info(metadata.read_file(), 
+                                parent_info={'parent_experiment': TEST_UUID},
+                                restart_path=None)
+    assert data[PARENT_UUID_FIELD] == TEST_UUID
+
+    # parent_experiment is set to HARD_SWEPT_UUID, should not be added to metadata
+    with pytest.warns(UserWarning, match=f"The parent experiment UUID '{HARD_SWEPT_UUID}' is not informative."):
+        data = metadata.update_parent_info(metadata.read_file(), 
+                                    parent_info={'parent_experiment': HARD_SWEPT_UUID},
+                                    restart_path=None)
+        assert PARENT_UUID_FIELD not in data
