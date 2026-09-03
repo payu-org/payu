@@ -380,11 +380,11 @@ class Metadata:
         model_name = self.metadata_config.get('model', default_model_name)
         return model_name
 
-    def get_parent_experiment(self, prior_restart_path: Path) -> None:
+    def get_parent_experiment(self, prior_restart_path: Path) -> str:
         """Searches UUID in the metadata in the parent directory that
         contains the restart"""
         if prior_restart_path is None:
-            return
+            return None
 
         # Resolve to absolute path
         prior_restart_path = prior_restart_path.resolve()
@@ -396,7 +396,7 @@ class Metadata:
             # Check for metadata file in the archive of the restart directory
             metadata_filepath = Path(prior_restart_path).parent / METADATA_FILENAME
             if not metadata_filepath.exists():
-                return
+                return None
 
         # Read metadata file
         parent_metadata = YAML().load(metadata_filepath)
@@ -432,19 +432,31 @@ class Metadata:
         parent_branch_time = parent_info.get('parent_branch_time', None)
         parent_hash = parent_info.get('parent_hash', None)
 
-        # Update parent UUID field
-        # If parent uuid is None, get it from the restart path
-        parent_experiment_from_restart = parent_experiment is None
-        if parent_experiment_from_restart:
-            parent_experiment = self.get_parent_experiment(restart_path)
+        # Get the uuid from the restart path, could be None if not exists
+        restart_uuid = self.get_parent_experiment(restart_path)
 
-        if parent_experiment in (None, HARD_SWEPT_UUID, self.uuid):
-            # Remove parent_experiment entry if it is None/HARD_SWEPT_UUID/current_UUID
-            metadata.pop(PARENT_UUID_FIELD, None)
+        # Update parent UUID field
+        if parent_experiment is not None:
+            # Compare the parent_experiment UUID with the restart_uuid
+            if restart_uuid and restart_uuid != parent_experiment:
+                raise errors.PayuBranchError(
+                    f"The parent experiment UUID '{parent_experiment}' does not match "
+                    f"the UUID of the given restart directory '{restart_path}': '{restart_uuid}'. \n"
+                    f"Suggest fix: leave out the `-p` option to use the UUID of the restarts.")
         else:
-            # Validate the parent UUID before adding it to metadata
-            self.validate_parent_uuid(parent_experiment, restart_path, parent_experiment_from_restart)
+            # If parent_experiment is None, use restart_uuid
+            parent_experiment = restart_uuid
+
+        # Validate the parent_experiment UUID
+        if self.validate_parent_uuid(parent_experiment):
             metadata[PARENT_UUID_FIELD] = parent_experiment
+        else:
+            # Remove parent_experiment entry if it is 
+            # None/HARD_SWEPT_UUID/current_UUID/missing_text(from restart_metadata)
+            warnings.warn(
+                f"The parent experiment UUID '{parent_experiment}' is not informative.\n"
+                "Skipped adding it to the metadata file.")
+            metadata.pop(PARENT_UUID_FIELD, None)
 
         # Update parent branch time
         if restart_path and parent_branch_time:
@@ -465,13 +477,14 @@ class Metadata:
         return metadata
 
     def validate_parent_uuid(self, 
-                            parent_experiment: str, 
-                            restart_path: Path = None,
-                            parent_experiment_from_restart: bool = False) -> None:
+                            parent_experiment: str) -> bool:
         """Validate the parent experiment UUID.
-        The UUID must be a valid UUID4. 
-        If a restart path is provided and contains a UUID, the parent UUID must match it.
+        Return False if it is not None, HARD_SWEPT_UUID, current UUID, or missing_text.
+        The UUID must be a valid UUID4.
         """
+        if parent_experiment in (None, HARD_SWEPT_UUID, self.uuid, missing_text):
+            return False
+        
         # Check UUID4 format
         if not is_uuid4(parent_experiment):
             raise errors.PayuBranchError(
@@ -479,17 +492,7 @@ class Metadata:
                 "Please provide a valid UUID4 format for the parent experiment."
             )
 
-        # Skip further matching check if no restart or parent uuid reads from restart path
-        if restart_path is None or parent_experiment_from_restart:
-            return
-        
-        # If restart_path is provided, check if parent_experiment matches the UUID of the restart directory
-        restart_uuid = self.get_parent_experiment(restart_path)
-        if restart_uuid and restart_uuid != parent_experiment:
-            raise errors.PayuBranchError(
-                f"The parent experiment UUID '{parent_experiment}' does not match "
-                f"the UUID of the given restart directory '{restart_path}': '{restart_uuid}'. \n"
-                f"Suggest fix: leave out the `-p` option to use the UUID of the restarts.")
+        return True
 
 
     def write_restart_provenance(self, 
