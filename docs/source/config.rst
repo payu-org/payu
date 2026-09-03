@@ -257,6 +257,8 @@ configuration.
    This overrides the default of using the control directory name (see :ref:`experiment_names`).
    The experiment name is generated as ``<experiment_prefix>-<branch_name>-<UUID>``.
 
+
+.. _manifests-config:
 Manifests
 ---------
 
