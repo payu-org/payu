@@ -19,8 +19,6 @@ import f90nml
 import shutil
 from warnings import warn
 from glob import glob
-from access_nri_intake.source import builders as builders
-from access_nri_intake.experiment import use_datastore
 
 # Local
 from payu.models.fms import Fms
@@ -182,6 +180,13 @@ class Mom6(MomMixin, Fms):
         datastore_path : pathlib.Path | str
             The path to the directory where the datastore should be created.
         """
+        try:
+            from access_nri_intake.source import builders as builders
+            from access_nri_intake.experiment import use_datastore
+        except ImportError:
+            warn("access_nri_intake not found, skip datastore generation.")
+            return
+        
         description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
 
         use_datastore(

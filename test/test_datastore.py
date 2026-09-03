@@ -154,4 +154,16 @@ def test_datastore_generation_uses_correct_builder(
     )
 
 
+def test_datastore_generation_skips_when_access_nri_intake_not_found(monkeypatch):
+    """Test that a warning is issued and datastore generation is skipped when
+    access_nri_intake is not found."""
+    expt = setup_experiment(model='access-om2')
 
+    def mock_import(name, *args, **kwargs):
+        if name.startswith("access_nri_intake"):
+            raise ImportError
+
+    monkeypatch.setattr("builtins.__import__", mock_import)
+
+    with pytest.warns(UserWarning, match="access_nri_intake not found, skip datastore generation."):
+        expt.make_datastore()

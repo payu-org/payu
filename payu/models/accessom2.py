@@ -14,8 +14,7 @@ import os
 import shutil
 import json
 import cftime
-from access_nri_intake.source import builders as builders
-from access_nri_intake.experiment import use_datastore
+import warnings
 
 from payu.models.model import Model
 
@@ -129,6 +128,13 @@ class AccessOm2(Model):
         datastore_path : pathlib.Path | str
             The path to the directory where the datastore should be created.
         """
+        try:
+            from access_nri_intake.source import builders as builders
+            from access_nri_intake.experiment import use_datastore
+        except ImportError:
+            warnings.warn("access_nri_intake not found, skip datastore generation.")
+            return
+        
         description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
 
         use_datastore(

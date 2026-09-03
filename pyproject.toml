@@ -38,7 +38,6 @@ dependencies = [
     "questionary",
     "pint",
     "hpcpy >=0.9.0",
-    "access-nri-intake",
 ]
 
 [project.optional-dependencies]
@@ -48,9 +47,11 @@ test = [
     "pylint",
     "Sphinx",
     "mnctools",
-    "freezegun"
+    "freezegun",
+    "access-nri-intake",
 ]
 mitgcm = ["mnctools>=0.2"]
+intake = ["access-nri-intake"]
 
 [project.scripts]
 payu = "payu.cli:parse"
