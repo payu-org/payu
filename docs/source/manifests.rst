@@ -86,7 +86,7 @@ change the update hashes are saved in the manifest. These changes in the
 manifest files are then tracked with git.
 
 There are some configuration options available to change this default 
-behaviour.
+behaviour (see the :ref:`manifests-config` section for details).
 
 
 
