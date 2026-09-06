@@ -59,7 +59,15 @@ def check_pbsnode_file(pbsnodes_json_path):
             # Check if the file is recent (modified within the last 7 days)
             with pbsnodes_json_path.open() as f:
                 pbsnodes_json = json.load(f)
-            timestamp = datetime.fromtimestamp(pbsnodes_json.get("timestamp", 0))
+        
+            try:
+                # Convert timestamp to float
+                raw_timestamp = float(pbsnodes_json.get("timestamp"))
+            except (ValueError, TypeError):
+                # Convert None, empty string or invalid string to 0
+                raw_timestamp = 0
+
+            timestamp = datetime.fromtimestamp(raw_timestamp)
 
             if (datetime.now() - timestamp) < timedelta(days=expire_day):
                 refresh_cache_file = False

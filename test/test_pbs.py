@@ -70,6 +70,9 @@ def test_get_queue_node_shape_no_matching_topology(monkeypatch):
     [
         (True, 0, 1),  # No timestamp
         (True, 100, 1),  # Old timestamp
+        (True, None, 1),  # None timestamp
+        (True, "invalid", 1),  # Invalid timestamp
+        (True, "", 1),  # Empty timestamp
         (True, 9999999999, 0),  # Recent timestamp
         (False, 0, 1),  # File doesn't exist
     ]
