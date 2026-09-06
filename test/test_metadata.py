@@ -795,7 +795,9 @@ def test_add_restart_field(value, expected_value):
         # Test with None
         (None, False, False),
         # Test with HARD_SWEPT_UUID
-        (HARD_SWEPT_UUID, False, False)
+        (HARD_SWEPT_UUID, False, False),
+        # Test with missing_text UUID
+        (missing_text, False, False)
     ]
 )
 def test_validate_parent_uuid_format(init_metadata, parent_experiment, raise_error, expected_value):
