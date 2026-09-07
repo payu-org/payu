@@ -237,6 +237,7 @@ During the model run, the output files of each submodel are stored under differe
    * - Submodel
      - File type: Store location during run
    * - Atmosphere
+     -
    * - Ocean
      - - Output files: ``${WORK}/ocean/``
        - Restart files: ``${WORK}/ocean/RESTART/``
