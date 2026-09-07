@@ -7,7 +7,7 @@
 import os
 import shutil
 import shlex
-import sys
+import warnings
 import subprocess as sp
 
 from payu import envmod
@@ -495,4 +495,37 @@ class Model(object):
             "Datastore generation is not implemented for this model."
         )
 
-    
+
+class IntakeMixin:
+    """Mixin class for models that support intake-esm datastore generation."""
+    intake_builder = None
+    builder_kwargs = None
+
+    def make_intake_datastore(self, expt_name, expt_uuid, datastore_path):
+        """Generate an intake-esm datastore for the experiment output.
+        Parameters:
+        expt_name : str
+            The name of the experiment.
+        expt_uuid : str
+            The UUID of the experiment.
+        datastore_path : pathlib.Path | str
+            The path to the directory where the datastore should be created.
+        """
+        try:
+            from access_nri_intake.source import builders as builders
+            from access_nri_intake.experiment import use_datastore
+        except ImportError:
+            warnings.warn("access_nri_intake not found, skip datastore generation.")
+            return
+
+        # Dynamically get the builder using getattr()
+        builder = getattr(builders, self.intake_builder)
+
+        description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
+
+        use_datastore(
+                    experiment_dir=datastore_path,
+                    description=description,
+                    builder=builder,
+                    builder_kwargs=self.builder_kwargs if self.builder_kwargs is not None else {},
+                )

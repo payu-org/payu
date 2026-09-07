@@ -14,16 +14,16 @@ import os
 import shutil
 import json
 import cftime
-import warnings
 
-from payu.models.model import Model
+from payu.models.model import Model, IntakeMixin
 
-class AccessOm2(Model):
+class AccessOm2(IntakeMixin, Model):
 
     def __init__(self, expt, name, config):
         super(AccessOm2, self).__init__(expt, name, config)
 
         self.model_type = 'access-om2'
+        self.intake_builder = "AccessOm2Builder"
         self.config_files = ['accessom2.nml', 'namcouple']
 
     def setup(self):
@@ -117,30 +117,3 @@ class AccessOm2(Model):
                         return cftime.datetime.strptime(time_str, '%Y-%m-%dT%H:%M:%S')
 
         raise ValueError(f"Key 'cur_exp-datetime' not found in {log_path}")
-
-    def make_intake_datastore(self, expt_name, expt_uuid, datastore_path):
-        """Generate an intake-esm datastore for the experiment output.
-        Parameters:
-        expt_name : str
-            The name of the experiment.
-        expt_uuid : str
-            The UUID of the experiment.
-        datastore_path : pathlib.Path | str
-            The path to the directory where the datastore should be created.
-        """
-        try:
-            from access_nri_intake.source import builders as builders
-            from access_nri_intake.experiment import use_datastore
-        except ImportError:
-            warnings.warn("access_nri_intake not found, skip datastore generation.")
-            return
-        
-        description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
-
-        use_datastore(
-                    experiment_dir=datastore_path,
-                    description=description,
-                    builder=builders.AccessOm2Builder,
-                    builder_kwargs={},
-                )
-
