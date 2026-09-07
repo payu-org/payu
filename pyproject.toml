@@ -46,11 +46,12 @@ test = [
     "pytest-cov",
     "pylint",
     "Sphinx",
+    "furo",
     "pytest-cov",
     "mnctools",
     "freezegun"
 ]
-mitgcm = ["mnctools>=0.2"]
+mitgcm = ["mnctools>=0.2"] 
 
 [project.scripts]
 payu = "payu.cli:parse"
