@@ -29,12 +29,22 @@ Type: Coupled model
 
 Submodels: 
 
-- atmosphere (YATM), 
-- ocean (MOM5), 
-- sea ice (CICE5)
+- Yet another data-driven atmosphere model (YATM). It keeps track of the current model time, 
+  read current atmospheric forcing data and deliver it to the rest of the model via the coupler.
+  Technical details and source code are available in the
+  `libaccessom2 GitHub repository <https://github.com/ACCESS-NRI/libaccessom2>`_.
+- Modular Ocean Model, version 5 (MOM5). Technical details about how to configure the model and 
+  how the physics is modelled are available on the 
+  `Modular Ocean Model website <https://mom-ocean.github.io>`_.
+- Los Alamos Sea Ice Model, version 5 (CICE5). Please see the 
+  `CICE5 user's guide <https://cesmcice.readthedocs.io/en/latest/>`_ 
+  for more technical details and the physics of the model.
 
 This section introduces necessary information of how ACCESS-OM2 model driver organises the workflow and file paths,
 in the order of setup, running and archiving an experiment.
+Technical details about how to configure the ACCESS-OM2 model and how the physics 
+is modelled are available on the 
+`COSIMA website <https://cosima.org.au/index.php/models/access-om2/>`_.
 
 
 Setup
