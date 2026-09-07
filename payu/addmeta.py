@@ -4,10 +4,9 @@ addmeta tool
 :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details.
 :license: Apache License, Version 2.0, see LICENSE for details.
 """
-from collections import defaultdict
 from types import SimpleNamespace
 
-from addmeta import addmeta
+import addmeta
 
 class AddMeta:
     """Add metadata to model output directories using the addmeta tool"""
