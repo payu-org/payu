@@ -497,6 +497,11 @@ class Model(object):
         # overridden by model-specific addmeta configuration in the model control directory
         add_meta_config['files'] = f'{self.output_path}/*.nc'
 
+        # Add the top level metadata.yaml and local env.yaml files to the datafiles list
+        # to give the addmeta tool access to the metadata and environment information for the experiment
+        add_meta_config['datafiles'].append(f'{self.expt.archive_path}/env.yaml')]
+        add_meta_config['datafiles'].append(f'{self.expt.control_path}/metadata.yaml')]
+
         # Create an AddMeta instance from the configuration dictionary
         addmeta_instance = AddMeta.from_config(add_meta_config)
 
