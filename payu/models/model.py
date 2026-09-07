@@ -11,6 +11,8 @@ import shlex
 import sys
 import subprocess as sp
 
+import addmeta as addmeta_lib
+
 from payu import envmod
 from payu.fsops import required_libs
 import payu.errors as errors
@@ -507,12 +509,12 @@ class Model(object):
         # Create an AddMeta instance from the configuration dictionary
         addmeta_instance = AddMeta.from_config(add_meta_config)
 
-        if addmeta_instance.enable:
+        if addmeta_instance.options.enable:
 
             # Support model specific addmeta configuration in the model control directory
             cmdfilepath = Path(self.control_path / 'addmeta.cmd')
             if cmdfilepath.exists():
-                model_options = addmeta.main_parse_args(['-c',str(cmdfilepath)])
+                model_options = addmeta_lib.main_parse_args(['-c', str(cmdfilepath)])
                 addmeta_instance = AddMeta.update(model_options)
 
             addmeta_instance.run()
