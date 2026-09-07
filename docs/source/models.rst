@@ -123,8 +123,8 @@ ACCESS-OM2
 ``accessom2_restart.nml`` is linked to the restart namelist file in the previous run, if it exists.
 This file captures the forcing current date and experiment current date.
 ``namcouple`` is a configuration file for the OASIS coupler.
-__FIX_ME__: provide more details about how the coupling configuration file works.
-The input, output and restart file locations are defined as below:
+**__FIX_ME__: provide more details about how the coupling configuration file works.**
+The input and restart file locations are defined as below:
 
 .. list-table::
    :header-rows: 1
@@ -141,10 +141,11 @@ The input, output and restart file locations are defined as below:
 YATM
 """""""
 
-The input files are linked to static data files from previous model outputs.
-__FIX_ME__: provide more details about how ``forcing.json`` works.
+The file-based atmosphere is provided by `libaccessom2 <https://github.com/ACCESS-NRI/libaccessom2>`_
+and configured through the ``forcing.json`` file.
+Input files are linked to static data files from previous model outputs.
 
-The input, output and restart file locations are defined as below:
+The input files are located as below:
 
 .. list-table::
    :header-rows: 1
@@ -199,10 +200,11 @@ The input, output and restart file locations are defined as below:
 Set model run length
 ^^^^^^^^^^^^^^^^^^^^
 
-The model run length are set in the ``accessom2.nml`` configuration file.
-
-__FIX_ME__: provide more details about how the run length is set in the namelist file.
-
+The model run length is managed by `libaccessom2 <https://github.com/ACCESS-NRI/libaccessom2>`_ 
+through the ``accessom2.nml`` configuration file.
+In ``date_manager_nml`` section of ``accessom2.nml``, the run length is
+configured in years, months, and days. 
+Two of these values must be set to zero.
 
 
 Running
@@ -235,7 +237,6 @@ During the model run, the output files of each submodel are stored under differe
    * - Submodel
      - File type: Store location during run
    * - Atmosphere
-     - -
    * - Ocean
      - - Output files: ``${WORK}/ocean/``
        - Restart files: ``${WORK}/ocean/RESTART/``
@@ -245,7 +246,7 @@ During the model run, the output files of each submodel are stored under differe
 
 The current model time is tracked in file ${WORK}/atmosphere/log/matmxx.pe00000.log by key ``cur_exp-datetime``.
 
-__ASK_AIDAN__: I am not sure if there is any model-specific checks.
+**__ASK_AIDAN__: I am not sure if there is any model-specific checks.**
 
 
 Archive
