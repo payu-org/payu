@@ -1014,6 +1014,12 @@ class Experiment(object):
             data={"collate_mapping": full_mapping_collate_dict}
         )
 
+    @timeit("payu_add_file_metadata_duration_seconds")
+    def add_file_metadata(self):
+        """Add metadata for all files in the archive directory"""
+        for model in self.models:
+            model.add_file_metadata()
+
     def profile(self):
         for model in self.models:
             model.profile()
