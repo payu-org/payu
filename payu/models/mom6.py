@@ -24,6 +24,7 @@ from glob import glob
 from payu.models.fms import Fms
 from payu.models.mom_mixin import MomMixin
 from payu.git_utils import GitRepository
+from payu.models.model import IntakeMixin
 
 MOM6_DOCS = ["MOM_parameter_doc.*","available_diags.*"]
 
@@ -79,7 +80,7 @@ def mom6_save_docs_files(model):
             paths_to_commit = paths_to_commit
         )
 
-class Mom6(MomMixin, Fms):
+class Mom6(IntakeMixin, MomMixin, Fms):
     """Interface to GFDL's MOM6 ocean model."""
 
     def __init__(self, expt, name, config):
@@ -99,6 +100,8 @@ class Mom6(MomMixin, Fms):
             'data_table',
             'field_table'
         ]
+
+        self.intake_builder = 'Mom6Builder'
 
     def setup(self):
         # FMS initialisation
@@ -169,29 +172,4 @@ class Mom6(MomMixin, Fms):
 
         cur_expt_time = start_date + timedelta(days=timestep)
         return cur_expt_time
-
-    def make_intake_datastore(self, expt_name, expt_uuid, datastore_path):
-        """Generate an intake-esm datastore for the experiment output.
-        Parameters:
-        expt_name : str
-            The name of the experiment.
-        expt_uuid : str
-            The UUID of the experiment.
-        datastore_path : pathlib.Path | str
-            The path to the directory where the datastore should be created.
-        """
-        try:
-            from access_nri_intake.source import builders as builders
-            from access_nri_intake.experiment import use_datastore
-        except ImportError:
-            warn("access_nri_intake not found, skip datastore generation.")
-            return
-        
-        description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
-
-        use_datastore(
-                    experiment_dir=datastore_path,
-                    description=description,
-                    builder=builders.Mom6Builder,
-                    builder_kwargs={},
-                )
+    

@@ -18,7 +18,7 @@ import cftime
 from warnings import warn
 
 from payu.fsops import make_symlink
-from payu.models.model import Model
+from payu.models.model import Model, IntakeMixin
 from payu.models.fms import fms_collate
 from payu.models.mom6 import mom6_add_parameter_files, mom6_save_docs_files
 
@@ -81,7 +81,7 @@ component_info = {
     },
 }
 
-class CesmCmeps(Model):
+class CesmCmeps(IntakeMixin, Model):
 
     def __init__(self, expt, name, config):
         super().__init__(expt, name, config)
@@ -429,6 +429,7 @@ class CesmCmeps(Model):
 
 
 class AccessOm3(CesmCmeps):
+    intake_builder = "AccessOm3Builder"
 
     def get_components(self):
         super().get_components()
@@ -461,34 +462,7 @@ class AccessOm3(CesmCmeps):
                     return cftime.datetime.strptime(time_str, '%Y-%m-%dT%H:%M:%S')
         
         raise ValueError(f"Key string 'memory_write: model date' not found in {log_path}, cannot determine current experiment time")
-
-
-    def make_intake_datastore(self, expt_name, expt_uuid, datastore_path):
-        """Generate an intake-esm datastore for the experiment output.
-        Parameters:
-        expt_name : str
-            The name of the experiment.
-        expt_uuid : str
-            The UUID of the experiment.
-        datastore_path : pathlib.Path | str
-            The path to the directory where the datastore should be created.
-        """
-
-        try:
-            from access_nri_intake.source import builders as builders
-            from access_nri_intake.experiment import use_datastore
-        except ImportError:
-            warn("access_nri_intake not found, skip datastore generation.")
-            return
-        
-        description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
-
-        use_datastore(
-                    experiment_dir=datastore_path,
-                    description=description,
-                    builder=builders.AccessOm3Builder,
-                    builder_kwargs={},
-                )
+ 
 
 class Runconfig:
     """ Simple class for parsing and editing nuopc.runconfig """

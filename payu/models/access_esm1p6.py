@@ -15,7 +15,6 @@ import os
 import re
 import shutil
 import sys
-import warnings
 
 # Extensions
 import f90nml
@@ -23,19 +22,23 @@ from datetime import datetime
 
 # Local
 from payu.fsops import make_symlink
-from payu.models.model import Model
+from payu.models.model import Model, IntakeMixin
 import payu.calendar as cal
 
 INIT_DATE = 10101 #aka 0001/01/01
 # this is the reference date for time calculations in CICE5, 
 # see https://github.com/ACCESS-NRI/cice5/issues/25
 
-class AccessEsm1p6(Model):
+class AccessEsm1p6(IntakeMixin, Model):
 
     def __init__(self, expt, name, config):
         super(AccessEsm1p6, self).__init__(expt, name, config)
 
         self.model_type = 'access-esm1.6'
+
+        # Configure the intake-esm datastore builder
+        self.intake_builder = 'AccessEsm16Builder'
+        self.builder_kwargs = {'ensemble': False}
 
         for model in self.expt.models:
             if model.model_type == 'cice' or model.model_type == 'cice5':
@@ -339,31 +342,3 @@ class AccessEsm1p6(Model):
 
     def collate(self):
         pass
-
-    def make_intake_datastore(self, expt_name, expt_uuid, datastore_path):
-        """Generate an intake-esm datastore for the experiment output.
-        Parameters:
-        expt_name : str
-            The name of the experiment.
-        expt_uuid : str
-            The UUID of the experiment.
-        datastore_path : pathlib.Path | str
-            The path to the directory where the datastore should be created.
-        """
-        try:
-            from access_nri_intake.source import builders as builders
-            from access_nri_intake.experiment import use_datastore
-        except ImportError:
-            warnings.warn("access_nri_intake not found, skip datastore generation.")
-            return
-        
-        description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
-
-        use_datastore(
-                    experiment_dir=datastore_path,
-                    description=description,
-                    builder=builders.AccessEsm16Builder,
-                    builder_kwargs={"ensemble": False},
-                )
-        
-
