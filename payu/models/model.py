@@ -5,6 +5,7 @@
 """
 
 import os
+from pathlib import Path
 import shutil
 import shlex
 import sys
@@ -13,6 +14,7 @@ import subprocess as sp
 from payu import envmod
 from payu.fsops import required_libs
 import payu.errors as errors
+from payu.addmeta import AddMeta
 
 class Model(object):
     """Abstract model class."""
