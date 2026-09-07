@@ -75,66 +75,30 @@ class AddMeta:
         'datafiles': [],
         'fnregex': '',
     }
-    submodel_options = set('metafiles', 'fnregex')
 
-    def __init__(self, options, submodel_options=None):
+    def __init__(self, options):
         self.options = SimpleNamespace(**options)
-        self.submodels = {}
-        if submodel_options:
-            for submodel, options in submodel_options.items():
-                self.submodels[submodel] = SimpleNamespace(**options)
 
     @classmethod
     def from_config(cls, config):
         """Create an AddMeta instance from a configuration dictionary"""
-        options = cls.default_options.copy()
-        options.update(config)
+        return cls(cls.default_options | config)
 
-        submodel_options = {}
-        for submodel, submodel_config in config.get('submodel', {}).items():
-            if submodel_config.get('enable', True):
-                for key in cls.submodel_options:
-                    if key in submodel_config:
-                        submodel_options[key] = submodel_config[key]
+    def update(self, namespace):
+        """Update the AddMeta instance from a namespace. This is useful for 
+           updating the instance with model specific arguments."""
 
-        return cls(options, submodel_options)
+        # Default to overwriting the options with the new values from the 
+        # namespace except for metafiles and data, which should be combined 
+        # with the existing values.
+        for key, value in vars(namespace).items():
+            if key == 'metafiles':
+                value = self.options.metafiles + value
+            if key == 'data':
+                value = self.options.data | value
+        setattr(self.options, key, value)
 
-    def run(self, submodel):
+    def run(self):
         """Run the addmeta tool with the specified configuration"""
 
-        if submodel in self.submodels:
-            for submodel in self.submodels:
-                submodel_options = self.submodels[submodel]
-                options = vars(self.options) | vars(submodel_options)
-
-                addmeta.find_and_add_meta(
-                    files=self.options.files,
-                    metafiles=self.options.metafiles,
-                    data=self.options.data,
-                    fnregex=self.options.fnregex,
-                    sort_attrs=self.options.sort,
-                    history=self.options.history,
-                    verbose=self.options.verbose,
-                )
-            
-        else if self.options.files:
-            addmeta.find_and_add_meta(
-                files=self.options.files,
-                metafiles=self.options.metafiles,
-                data=self.options.data,
-                fnregex=self.options.fnregex,
-                sort_attrs=self.options.sort,
-                history=self.options.history,
-                verbose=self.options.verbose,
-            )
-        
-
-def add_meta_data(expt, config):
-    """Add metadata to model output directories using the addmeta tool"""
-
-    for submodel, submodel_config in config.get('submodel', {}).items():
-        if submodel_config.get('enable', True):
-            addmeta_instance = AddMeta.from_config(submodel_config)
-            addmeta_instance.run()  
-    addmeta_instance = AddMeta.from_config(config)
-    addmeta_instance.run()
+        addmeta.main(self.options.files)

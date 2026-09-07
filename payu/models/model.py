@@ -487,3 +487,25 @@ class Model(object):
             f'{", ".join(model_types)}. '
             'to determine current experiment time.'
         )
+
+    def add_file_metadata(self):
+        """Add metadata to model output files using the addmeta tool"""
+
+        add_meta_config = self.expt.config.get('addmeta', {})
+
+        # Add default files glob. Not supported to define in config.yaml, but can be 
+        # overridden by model-specific addmeta configuration in the model control directory
+        add_meta_config['files'] = f'{self.output_path}/*.nc'
+
+        # Create an AddMeta instance from the configuration dictionary
+        addmeta_instance = AddMeta.from_config(add_meta_config)
+
+        if addmeta_instance.enable:
+
+            # Support model specific addmeta configuration in the model control directory
+            cmdfilepath = Path(self.control_path / 'addmeta.cmd')
+            if cmdfilepath.exists():
+                model_options = addmeta.main_parse_args(['-c',str(cmdfilepath)])
+                addmeta_instance = AddMeta.update(model_options)
+
+            addmeta_instance.run()
