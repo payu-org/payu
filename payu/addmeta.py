@@ -6,7 +6,7 @@ addmeta tool
 """
 from types import SimpleNamespace
 
-import addmeta
+import addmeta as addmeta_lib
 
 class AddMeta:
     """Add metadata to model output directories using the addmeta tool"""
@@ -46,4 +46,4 @@ class AddMeta:
     def run(self):
         """Run the addmeta tool with the specified configuration"""
 
-        addmeta.main(self.options.files)
+        addmeta_lib.cli.main(self.options.files)
