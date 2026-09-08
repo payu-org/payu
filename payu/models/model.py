@@ -514,7 +514,7 @@ class Model(object):
             # Support model specific addmeta configuration in the model control directory
             cmdfilepath = Path(self.control_path / 'addmeta.cmd')
             if cmdfilepath.exists():
-                model_options = addmeta_lib.main_parse_args(['-c', str(cmdfilepath)])
+                model_options = addmeta_lib.cli.main_parse_args(['-c', str(cmdfilepath)])
                 addmeta_instance.update(model_options)
 
             addmeta_instance.run()
