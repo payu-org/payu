@@ -41,9 +41,9 @@ class AddMeta:
                 value = self.options.metafiles + value
             if key == 'data':
                 value = self.options.data | value
-        setattr(self.options, key, value)
+            self.options.__setattr__(key, value)
 
     def run(self):
         """Run the addmeta tool with the specified configuration"""
 
-        addmeta_lib.cli.main(self.options.files)
+        addmeta_lib.cli.main(self.options)
