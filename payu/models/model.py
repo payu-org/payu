@@ -515,6 +515,6 @@ class Model(object):
             cmdfilepath = Path(self.control_path / 'addmeta.cmd')
             if cmdfilepath.exists():
                 model_options = addmeta_lib.main_parse_args(['-c', str(cmdfilepath)])
-                addmeta_instance = AddMeta.update(model_options)
+                addmeta_instance.update(model_options)
 
             addmeta_instance.run()
