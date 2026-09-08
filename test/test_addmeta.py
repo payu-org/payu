@@ -16,7 +16,7 @@ from payu.addmeta import AddMeta
          "restart/*.nc", False, False, []),
         ({
             "files": "diagnostics/*.nc",
-            "data": {"model": "mom6"},
+            "datavar": {"model": "mom6"},
             "metafiles": ["model.yaml"],
             "fnregex": r".*\\.nc$",
         }, "diagnostics/*.nc", True, False, ["model.yaml"]),
@@ -34,21 +34,21 @@ def test_from_config_merges_with_default_options(
     assert addmeta_obj.options.metafiles == expected_metafiles
 
 
-def test_update_combines_data_and_metafiles_and_replaces_other_options():
+def test_update_combines_datavar_and_metafiles_and_replaces_other_options():
     addmeta_obj = AddMeta.from_config({
-        "data": {"experiment": "base"},
+        "datavar": {"experiment": "base"},
         "metafiles": ["base.yaml"],
         "verbose": False,
     })
 
     addmeta_obj.update(SimpleNamespace(
-        data={"model": "mom6"},
+        datavar={"model": "mom6"},
         metafiles=["model.yaml"],
         verbose=True,
         files="output/*.nc",
     ))
 
-    assert addmeta_obj.options.data == {"experiment": "base", "model": "mom6"}
+    assert addmeta_obj.options.datavar == {"experiment": "base", "model": "mom6"}
     assert addmeta_obj.options.metafiles == ["base.yaml", "model.yaml"]
     assert addmeta_obj.options.verbose is True
     assert addmeta_obj.options.files == "output/*.nc"
@@ -56,15 +56,17 @@ def test_update_combines_data_and_metafiles_and_replaces_other_options():
 
 def test_run_passes_configured_files_to_addmeta(monkeypatch):
     addmeta_obj = AddMeta.from_config({"files": "output/*.nc"})
-    main = MagicMock()
-    monkeypatch.setattr("addmeta.cli.main", main)
+    find_and_add_meta = MagicMock()
+    monkeypatch.setattr("addmeta.find_and_add_meta", find_and_add_meta)
+
+    # import pdb; pdb.set_trace()
 
     addmeta_obj.run()
 
     expected_options = {'enable': True, 
                        'verbose': False, 
                        'update-history': False, 
-                       'data': {}, 
+                       'datavar': {}, 
                        'metafiles': [], 
                        'datafiles': [], 
                         'fnregex': '', 
@@ -72,4 +74,4 @@ def test_run_passes_configured_files_to_addmeta(monkeypatch):
 
     expected_options = SimpleNamespace(**expected_options)
 
-    main.assert_called_once_with(expected_options)
+    find_and_add_meta.assert_called_once_with(**vars(expected_options))
