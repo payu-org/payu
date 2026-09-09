@@ -18,23 +18,27 @@ import sys
 
 # Extensions
 import f90nml
-from datetime import date, timedelta, datetime
+from datetime import datetime
 
 # Local
 from payu.fsops import make_symlink
-from payu.models.model import Model
+from payu.models.model import Model, IntakeMixin
 import payu.calendar as cal
 
 INIT_DATE = 10101 #aka 0001/01/01
 # this is the reference date for time calculations in CICE5, 
 # see https://github.com/ACCESS-NRI/cice5/issues/25
 
-class AccessEsm1p6(Model):
+class AccessEsm1p6(IntakeMixin, Model):
 
     def __init__(self, expt, name, config):
         super(AccessEsm1p6, self).__init__(expt, name, config)
 
         self.model_type = 'access-esm1.6'
+
+        # Configure the intake-esm datastore builder
+        self.intake_builder = 'AccessEsm16Builder'
+        self.builder_kwargs = {'ensemble': False}
 
         for model in self.expt.models:
             if model.model_type == 'cice' or model.model_type == 'cice5':

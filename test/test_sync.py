@@ -7,6 +7,7 @@ import pytest
 
 import payu
 import payu.errors as errors
+import payu.sync
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, expt_archive_dir
@@ -295,6 +296,15 @@ def test_check_uuid_value_error(monkeypatch):
     with pytest.raises(errors.PayuRuntimeError, match="Mismatched experiment UUIDs in sync destination."):
         sync.set_destination_path()
 
+# A datastore in the archive directory is always excluded from sync - it's
+# stale/irrelevant once syncing is enabled, since the datastore is instead
+# (re)built at the sync destination.
+DATASTORE_EXCLUDES = (
+    f"--exclude {payu.sync.DATASTORE_NAME}* "
+    f"--exclude .{payu.sync.DATASTORE_NAME}*"
+)
+
+
 @pytest.mark.parametrize(
     "add_config, expected_excludes",
     [
@@ -303,21 +313,22 @@ def test_check_uuid_value_error(monkeypatch):
                 "sync": {
                     "exclude": ["iceh.????-??-??.nc", "*-DEPRECATED"]
                 },
-            }, ("--exclude iceh.????-??-??.nc --exclude *-DEPRECATED")
+            }, (f"--exclude iceh.????-??-??.nc --exclude *-DEPRECATED "
+               f"{DATASTORE_EXCLUDES}")
         ),
         (
             {
                 "sync": {
                     "exclude_uncollated": False
                 },
-            }, ""
+            }, DATASTORE_EXCLUDES
         ),
         (
             {
                 "sync": {
                     "exclude_uncollated": True,
                 },
-            }, "--exclude *.nc.*"
+            }, f"{DATASTORE_EXCLUDES} --exclude *.nc.*"
         ),
         (
             {
@@ -325,7 +336,8 @@ def test_check_uuid_value_error(monkeypatch):
                     "exclude_uncollated": True,
                     "exclude": ["iceh.????-??-??.nc"]
                 },
-            }, "--exclude iceh.????-??-??.nc --exclude *.nc.*"
+            }, (f"--exclude iceh.????-??-??.nc {DATASTORE_EXCLUDES} "
+               f"--exclude *.nc.*")
         ),
         (
             {
@@ -333,7 +345,8 @@ def test_check_uuid_value_error(monkeypatch):
                     "exclude_uncollated": True,
                     "exclude": ["iceh.????-??-??.nc", "*.nc.*"]
                 },
-            }, "--exclude iceh.????-??-??.nc --exclude *.nc.*"
+            }, (f"--exclude iceh.????-??-??.nc --exclude *.nc.* "
+               f"{DATASTORE_EXCLUDES}")
         ),
         (
             {
@@ -341,7 +354,18 @@ def test_check_uuid_value_error(monkeypatch):
                     "rsync_flags": ["--exclude *.nc.*"],
                     "exclude_uncollated": True,
                 },
-            }, ""
+            }, DATASTORE_EXCLUDES
+        ),
+        (
+            # Datastore excludes are always added, regardless of rsync_flags
+            {
+                "sync": {
+                    "rsync_flags": [
+                        f"--exclude {payu.sync.DATASTORE_NAME}*",
+                        f"--exclude .{payu.sync.DATASTORE_NAME}*",
+                    ],
+                },
+            }, DATASTORE_EXCLUDES
         )
     ])
 def test_set_excludes_flags(monkeypatch, add_config, expected_excludes):

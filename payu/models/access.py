@@ -11,7 +11,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 from __future__ import print_function
 
 # Standard Library
-import errno
 import os
 import re
 import shutil
@@ -22,16 +21,20 @@ import f90nml
 
 # Local
 from payu.fsops import make_symlink
-from payu.models.model import Model
+from payu.models.model import Model, IntakeMixin
 import payu.calendar as cal
 
 
-class Access(Model):
+class Access(IntakeMixin, Model):
 
     def __init__(self, expt, name, config):
         super(Access, self).__init__(expt, name, config)
 
         self.model_type = 'access'
+
+        # Configure the intake-esm datastore builder
+        self.intake_builder = "AccessEsm15Builder"
+        self.builder_kwargs = {'ensemble': False}
 
         for model in self.expt.models:
             if model.model_type == 'cice':

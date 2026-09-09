@@ -718,7 +718,7 @@ def test_status_cmd(tmp_path, capsys):
     output = capsys.readouterr().out
     assert output.strip() == '{}'
 
-@freeze_time("2026-02-10 15:05:00")
+@freeze_time("2026-02-10 15:05:00", ignore=["intake"])
 @pytest.mark.parametrize(
     "job_stage, qtime, stime, time_label, time_message",
     [   

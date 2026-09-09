@@ -4,10 +4,6 @@
 :license: Apache License, Version 2.0, see LICENSE for details
 """
 import os
-import shlex
-import shutil
-import subprocess
-
 import f90nml
 
 from payu.models.fms import Fms

@@ -358,6 +358,9 @@ def parse_profile():
 def parse_sync():
     _parse_runscript("sync")
 
+def parse_catalog():
+    _parse_runscript("catalog")
+
 
 def _parse_runscript(cmd_name):
     """

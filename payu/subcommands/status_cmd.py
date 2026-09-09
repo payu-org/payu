@@ -33,7 +33,7 @@ def runcmd(lab_path, config_path, json_output,
            update_jobs, all_runs, run_number, show_expt_paths=False):
 
     # Suppress output to os.devnull
-    with redirect_stdout(open(os.devnull, 'w')):
+    with open(os.devnull, 'w') as devnull, redirect_stdout(devnull):
         # Determine archive path
         lab = Laboratory(config_path=config_path, lab_path=lab_path)
         warnings.filterwarnings("error", category=MetadataWarning)
