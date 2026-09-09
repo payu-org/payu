@@ -77,7 +77,7 @@ jobs:
           cache: 'pip' # caching pip dependencies
 
       - name: Install payu and test dependencies
-        run: python3 -m pip install '.[test]'
+        run: python3 -m pip install '.[test, docs]'
 
       - name: Check payu installed correctly
         run: payu list
