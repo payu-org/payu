@@ -1017,14 +1017,14 @@ class Experiment(object):
         """Build an intake-esm datastore for the experiment output.
         The datastore is built in the sync destination if syncing is
         enabled, otherwise it is built in the archive directory."""
-        datastore_path = self.archive_path
+        self.datastore_path = self.archive_path
 
         # If syncing is enabled, use the sync destination path to build the datastore
         if self.config.get('sync', {}).get('enable', False):
             sync_path = self.get_sync_destination()
 
             if sync_path is not None:
-                datastore_path = sync_path
+                self.datastore_path = sync_path
                 remove_datastore(self.archive_path)
             else:
                 warnings.warn(
@@ -1032,11 +1032,7 @@ class Experiment(object):
                     "Datastore will be built in the local archive directory."
                 )
                 
-        self.model.make_intake_datastore(
-            expt_name=self.name,
-            expt_uuid=self.metadata.uuid,
-            datastore_path=datastore_path,
-        )
+        self.model.make_intake_datastore()
     
 
     @timeit("payu_sync_duration_seconds")

@@ -55,10 +55,11 @@ def setup_experiment(additional_config=None, model=None):
         return expt
 
 
-def mock_make_intake_datastore(expt_name, expt_uuid, datastore_path):
+def mock_make_intake_datastore(self):
     """Write a mock datastore description in the destination directory."""
-    description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
-    datastore_file = Path(datastore_path) / 'test_datastore.txt'
+    description = f"Intake-ESM datastores for experiment {self.expt.name} ({self.expt.metadata.uuid})"
+    datastore_path = Path(self.expt.datastore_path)
+    datastore_file = datastore_path / 'test_datastore.txt'
     with open(datastore_file, 'w') as f:
         f.write(description)
 
@@ -94,7 +95,7 @@ def test_expt_make_datastore(monkeypatch, sync_config, sync):
     expt = setup_experiment(sync_config)
 
     # Mock the model.make_intake_datastore method
-    expt.model.make_intake_datastore = MagicMock(side_effect=mock_make_intake_datastore)
+    expt.model.make_intake_datastore = MagicMock(side_effect=lambda: mock_make_intake_datastore(expt.model))
 
     # Mock the remove_datastore function
     remove_datastore = MagicMock()
