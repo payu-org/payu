@@ -45,6 +45,7 @@ def runcmd(model_type=None, config_path=None, init_run=None, lab_path=None, dry_
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab)
     expt.set_counters(keep_run_number=True)
+    expt.set_output_paths() # Reset the output path after resetting the run number
     
     # Submit through HPCpy
     # Job name is set to "payu_postscript"
