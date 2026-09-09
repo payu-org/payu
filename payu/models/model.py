@@ -488,7 +488,7 @@ class Model(object):
             'to determine current experiment time.'
         )
 
-    def make_intake_datastore(self, expt_name, expt_uuid, datastore_path):
+    def make_intake_datastore(self):
         """For model not implemented to generate an intake-esm datastore, raise an error.
         """
         raise NotImplementedError(
@@ -501,15 +501,8 @@ class IntakeMixin:
     intake_builder = None
     builder_kwargs = None
 
-    def make_intake_datastore(self, expt_name, expt_uuid, datastore_path):
+    def make_intake_datastore(self):
         """Generate an intake-esm datastore for the experiment output.
-        Parameters:
-        expt_name : str
-            The name of the experiment.
-        expt_uuid : str
-            The UUID of the experiment.
-        datastore_path : pathlib.Path | str
-            The path to the directory where the datastore should be created.
         """
         try:
             from access_nri_intake.source import builders as builders
@@ -521,10 +514,10 @@ class IntakeMixin:
         # Dynamically get the builder using getattr()
         builder = getattr(builders, self.intake_builder)
 
-        description = f"Intake-ESM datastores for experiment {expt_name} ({expt_uuid})"
+        description = f"Intake-ESM datastores for experiment {self.expt.name} ({self.expt.metadata.uuid})"
 
         use_datastore(
-                    experiment_dir=datastore_path,
+                    experiment_dir=self.expt.datastore_path,
                     description=description,
                     builder=builder,
                     builder_kwargs=self.builder_kwargs if self.builder_kwargs is not None else {},
