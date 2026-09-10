@@ -499,10 +499,11 @@ class Model(object):
 
         # Add default files glob. Not supported to define in config.yaml, but can be 
         # overridden by model-specific addmeta configuration in the model control directory
-        add_meta_config['files'] = f'{self.output_path}/*.nc'
+        add_meta_config['files'] = [ f'{self.output_path}/*.nc' ]
 
         # Add the top level metadata.yaml and local env.yaml files to the datafiles list
         # to give the addmeta tool access to the metadata and environment information for the experiment
+        # TBD: not sure we need to support 'datafiles' in config.yaml ...
         add_meta_config['datafiles'] = add_meta_config.get('datafiles', [])
         for file in [f'{self.expt.archive_path}/env.yaml', f'{self.expt.control_path}/metadata.yaml']:
             if os.path.exists(file) and file not in add_meta_config['datafiles']:
