@@ -6,7 +6,7 @@ addmeta tool
 """
 from types import SimpleNamespace
 
-import addmeta as addmeta_lib
+from addmeta import cli as addmeta_cli
 from addmeta import combine_meta, dict_merge, load_data_files, find_and_add_meta
 
 class AddMeta:
@@ -14,14 +14,17 @@ class AddMeta:
 
     default_options = {
         'enable': True,
+    default_options = {
+        'enable': True,
         'verbose': False,
-        'sort': False,
-        'update-history': False,
-        'datavar': {},
+        'update_history': False,
+        'data': {},
         'metafiles': [],
-        'metalist': [],
         'datafiles': [],
         'fnregex': '',
+        'datavar': [],
+        'metalist': '',
+        'sort': True,
     }
 
     def __init__(self, options):
