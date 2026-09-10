@@ -14,8 +14,6 @@ class AddMeta:
 
     default_options = {
         'enable': True,
-    default_options = {
-        'enable': True,
         'verbose': False,
         'update_history': False,
         'data': {},
@@ -52,7 +50,7 @@ class AddMeta:
     def run(self):
         """Run the addmeta tool with the specified configuration"""
 
-        # addmeta_lib.cli.main(self.options)
+        # addmeta_cli.main(self.options)
 
         # Below is a copy of the main routine above to inject default metadata
         # until the addmeta tool is updated to support default metadata. 
