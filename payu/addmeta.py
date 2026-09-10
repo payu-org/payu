@@ -7,7 +7,8 @@ addmeta tool
 from types import SimpleNamespace
 
 from addmeta import cli as addmeta_cli
-from addmeta import combine_meta, dict_merge, load_data_files, find_and_add_meta
+from addmeta import combine_meta, dict_merge, load_data_files
+from addmeta import find_and_add_meta, list_from_file, build_history
 
 class AddMeta:
     """Add metadata to model output directories using the addmeta tool"""
@@ -66,7 +67,7 @@ class AddMeta:
         if self.options.datavar:
             if verbose: print("datavar: "," ".join([str(v) for v in self.options.datavar]))
             try:
-                datavar_dict = addmeta.cli.parse_key_value_pairs(self.options.datavar)
+                datavar_dict = addmeta_cli.parse_key_value_pairs(self.options.datavar)
                 # Add to kwdata under 'datavar' namespace
                 kwdata['__argdata__'] = datavar_dict
             except ValueError as e:
@@ -89,14 +90,15 @@ class AddMeta:
 
         # Default to always inject the experiment_uuid and run_id metadata into 
         # the output files
-        metafile_default = {
+        meta_dict = {
             'global': {
                 'experiment_uuid': "{{ metadata.experiment_uuid }}",
                 'run_id': "{{ env.PAYU_RUN_ID}}",
             },
         }
 
-        meta_dict = dict_merge(metafile_default, combine_meta(metafiles))
+        # Merge the default metadata with the metadata from the metafiles
+        dict_merge(meta_dict, combine_meta(metafiles))
 
         find_and_add_meta(
             self.options.files,
