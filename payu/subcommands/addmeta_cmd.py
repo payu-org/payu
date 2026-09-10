@@ -46,14 +46,14 @@ def runcmd(model_type=None, config_path=None, init_run=None, lab_path=None, dir_
 
     addmeta_config = pbs_config.get('addmeta', {})
 
-    pbs_config = {
+    pbs_config.update({
         'ncpus': 1,
         'queue': 'copyq',
         'mem': '2GB',
         'walltime': '0:30:00',
         'qsub_flags': '',
         'jobname': f'{base_dir[:13]}_a' if dir_path else "addmeta_job",
-    }
+    })
     pbs_config = pbs_config | addmeta_config.get('pbs', {})
 
     # Initialise experiment to determine archive path and run number (which is needed to write job file)
