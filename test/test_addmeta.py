@@ -3,7 +3,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import addmeta
 from payu.addmeta import AddMeta
 
 
@@ -57,9 +56,7 @@ def test_update_combines_datavar_and_metafiles_and_replaces_other_options():
 def test_run_passes_configured_files_to_addmeta(monkeypatch):
     addmeta_obj = AddMeta.from_config({"files": "output/*.nc"})
     find_and_add_meta = MagicMock()
-    monkeypatch.setattr("addmeta.find_and_add_meta", find_and_add_meta)
-
-    # import pdb; pdb.set_trace()
+    monkeypatch.setattr("payu.addmeta.find_and_add_meta", find_and_add_meta)
 
     addmeta_obj.run()
 
