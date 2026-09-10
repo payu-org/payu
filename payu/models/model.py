@@ -11,7 +11,7 @@ import shlex
 import sys
 import subprocess as sp
 
-import addmeta as addmeta_lib
+from addmeta import cli as addmeta_cli
 
 from payu import envmod
 from payu.fsops import required_libs
@@ -503,8 +503,10 @@ class Model(object):
 
         # Add the top level metadata.yaml and local env.yaml files to the datafiles list
         # to give the addmeta tool access to the metadata and environment information for the experiment
-        add_meta_config['datafiles'].append(f'{self.expt.archive_path}/env.yaml')
-        add_meta_config['datafiles'].append(f'{self.expt.control_path}/metadata.yaml')
+        add_meta_config['datafiles'] = add_meta_config.get('datafiles', [])
+        for file in [f'{self.expt.archive_path}/env.yaml', f'{self.expt.control_path}/metadata.yaml']:
+            if os.path.exists(file) and file not in add_meta_config['datafiles']:
+                add_meta_config['datafiles'].append(file)
 
         # Create an AddMeta instance from the configuration dictionary
         addmeta_instance = AddMeta.from_config(add_meta_config)
@@ -512,9 +514,9 @@ class Model(object):
         if addmeta_instance.options.enable:
 
             # Support model specific addmeta configuration in the model control directory
-            cmdfilepath = Path(self.control_path / 'addmeta.cmd')
+            cmdfilepath = Path(self.control_path) / 'addmeta.cmd'
             if cmdfilepath.exists():
-                model_options = addmeta_lib.cli.main_parse_args(['-c', str(cmdfilepath)])
+                model_options = addmeta_cli.main_parse_args(['-c', str(cmdfilepath)])
                 addmeta_instance.update(model_options)
 
             addmeta_instance.run()
