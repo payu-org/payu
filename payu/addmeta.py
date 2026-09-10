@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 from addmeta import cli as addmeta_cli
 from addmeta import combine_meta, dict_merge, load_data_files
-from addmeta import find_and_add_meta, list_from_file, build_history
+from addmeta import find_and_add_meta, list_from_file
 
 class AddMeta:
     """Add metadata to model output directories using the addmeta tool"""
@@ -84,7 +84,7 @@ class AddMeta:
         if verbose: print("metafiles: "," ".join([str(f) for f in metafiles]))
         
         if getattr(self.options, 'update-history', False):
-            history = build_history(self.options.files)
+            history = addmeta_cli.build_history(self.options.files)
         else:
             history = None
 
