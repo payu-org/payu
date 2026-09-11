@@ -5,14 +5,18 @@
 """
 
 import os
+from pathlib import Path
 import shutil
 import shlex
 import sys
 import subprocess as sp
 
+from addmeta import cli as addmeta_cli
+
 from payu import envmod
 from payu.fsops import required_libs
 import payu.errors as errors
+from payu.addmeta import AddMeta
 
 class Model(object):
     """Abstract model class."""
@@ -487,3 +491,33 @@ class Model(object):
             f'{", ".join(model_types)}. '
             'to determine current experiment time.'
         )
+
+    def add_file_metadata(self):
+        """Add metadata to model output files using the addmeta tool"""
+
+        add_meta_config = self.expt.config.get('addmeta', {})
+
+        # Add default files glob. Not supported to define in config.yaml, but can be 
+        # overridden by model-specific addmeta configuration in the model control directory
+        add_meta_config['files'] = [ f'{self.output_path}/*.nc' ]
+
+        # Add the top level metadata.yaml and local env.yaml files to the datafiles list
+        # to give the addmeta tool access to the metadata and environment information for the experiment
+        # TBD: not sure we need to support 'datafiles' in config.yaml ...
+        add_meta_config['datafiles'] = add_meta_config.get('datafiles', [])
+        for file in [f'{self.expt.archive_path}/env.yaml', f'{self.expt.control_path}/metadata.yaml']:
+            if os.path.exists(file) and file not in add_meta_config['datafiles']:
+                add_meta_config['datafiles'].append(file)
+
+        # Create an AddMeta instance from the configuration dictionary
+        addmeta_instance = AddMeta.from_config(add_meta_config)
+
+        if addmeta_instance.options.enable:
+
+            # Support model specific addmeta configuration in the model control directory
+            cmdfilepath = Path(self.control_path) / 'addmeta.cmd'
+            if cmdfilepath.exists():
+                model_options = addmeta_cli.main_parse_args(['-c', str(cmdfilepath)])
+                addmeta_instance.update(model_options)
+
+            addmeta_instance.run()
