@@ -65,11 +65,11 @@ A table of the required and optional configuration files for each submodel is sh
    * - ACCESS-OM2
      - - accessom2.nml
        - namcouple
-     - -
+     -
    * - YATM
      - - atm.nml
        - forcing.json
-     - -
+     -
    * - MOM5
      - - data_table
        - diag_table
@@ -83,7 +83,7 @@ A table of the required and optional configuration files for each submodel is sh
        - input_ice.nml
        - input_ice_gfdl.nml
        - input_ice_monin.nml
-     - -
+     -
 
 Directory structure 
 ^^^^^^^^^^^^^^^^^^^^
