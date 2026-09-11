@@ -5,7 +5,7 @@ Model Drivers
 ==============
 
 This section describes the model drivers that are currently supported by payu. 
-Each model driver is built based on the common model driver class and customises the model-specific configuration and file paths.
+Each model driver is based on the common model driver class and customises the model-specific configuration and file paths.
 
 The model driver is called in various steps of the payu experiment workflow (see :ref:`experiment-steps`).
 It is responsible for the following common tasks:
@@ -40,12 +40,13 @@ Submodels:
   `CICE5 user's guide <https://cesmcice.readthedocs.io/en/latest/>`_ 
   for more technical details and the physics of the model.
 
-This section introduces necessary information of how ACCESS-OM2 model driver organises the workflow and file paths,
+This section introduces necessary information of how the ACCESS-OM2 model driver organises the workflow and file paths,
 in the order of setup, running and archiving an experiment.
 Technical details about how to configure the ACCESS-OM2 model and how the physics 
 is modelled are available on the 
 `COSIMA website <https://cosima.org.au/index.php/models/access-om2/>`_.
-
+Instructions  for running ACCESS-NRI supported ACCESS-OM2 configurations are also 
+available on `ACCESS-Hive <https://docs.access-hive.org.au/models/run_a_model/run_access-om2/>`_.
 
 Setup
 ------
@@ -132,8 +133,10 @@ ACCESS-OM2
 
 ``accessom2_restart.nml`` is linked to the restart namelist file in the previous run, if it exists.
 This file captures the forcing current date and experiment current date.
-``namcouple`` is a configuration file for the OASIS coupler.
-**__FIX_ME__: provide more details about how the coupling configuration file works.**
+``namcouple`` is a configuration file for the OASIS coupler. 
+Please refer to the 
+`OASIS documentation <https://oasis.cerfacs.fr/wp-content/uploads/sites/114/2021/02/GLOBC-TR-oasis3mct_UserGuide3.0_052015.pdf>`_ 
+for more technical information.
 The input and restart file locations are defined as below:
 
 .. list-table::
@@ -213,7 +216,7 @@ Set model run length
 The model run length is managed by `libaccessom2 <https://github.com/ACCESS-NRI/libaccessom2>`_ 
 through the ``accessom2.nml`` configuration file.
 In ``date_manager_nml`` section of ``accessom2.nml``, the run length is
-configured in years, months, and days. 
+configured in years, months, and seconds. 
 Two of these values must be set to zero.
 
 
@@ -221,11 +224,13 @@ Running
 ---------
 
 ACCESS-OM2 requires three executables to run, each for the atmosphere, ocean and sea ice submodels.
-The model driver reads the modules specified in the config file and use them for loading model executables.
-A symlink is created for each executable inside the work directory, 
-pointing to the actual executable file defined in the config file.
-Users can specify the name of executable for each submodel in the config file.
-An example of each executable name is shown below.
+Users can specify the executable for each submodel in the configuration file. 
+If a full path to an executable is specified, payu uses that executable directly. 
+If only the excusable name is specified, payu loads the environment modules specified 
+in the configuration file, and searches the paths provided by those modules for a matching executable..
+A symlink is created for each executable inside the work directory, pointing to the actual 
+executable file used for the model run.
+An example of the executable names for each submodel is shown below.
 
 .. list-table::
    :header-rows: 1
@@ -255,9 +260,7 @@ During the model run, the output files of each submodel are stored under differe
      - - Output files: ``${WORK}/ice/OUTPUT/``
        - Restart files: ``${WORK}/ice/RESTART/``
 
-The current model time is tracked in file ${WORK}/atmosphere/log/matmxx.pe00000.log by key ``cur_exp-datetime``.
-
-**__ASK_AIDAN__: I am not sure if there is any model-specific checks.**
+The current model time is tracked in file ``${WORK}/atmosphere/log/matmxx.pe00000.log`` by key ``cur_exp-datetime``.
 
 
 Archive
@@ -265,8 +268,10 @@ Archive
 
 When the model run is completed and archive is set to true, 
 the model driver will move files from the work directory to the archive directory 
-(e.g., /scratch/${PROJECT}/${USER}/archive/${CONTROL-Branch-UUID}).
+(e.g., ``/scratch/${PROJECT}/${USER}/archive/${CONTROL-Branch-UUID}``).
 Meanwhile, the work directory and symlink are removed.
+For ACCESS-OM2-specific cases, payu also copies the ocean-to-ice coupler file ``o2i.nc`` 
+from the ocean work directory to the sea-ice restart directory.
 The table below shows the source files and their corresponding archive locations.
 
 .. list-table::
