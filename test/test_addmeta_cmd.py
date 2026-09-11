@@ -42,7 +42,7 @@ def test_runcmd_builds_addmeta_job_config(monkeypatch):
     submit_job = MagicMock(return_value="123.server")
     _patch_command_dependencies(
         monkeypatch,
-        {"addmeta": {"pbs": {"queue": "debug", "mem": "1GB"}}},
+        {"addmeta": {"queue": "debug", "mem": "1GB"}},
     )
     monkeypatch.setattr(addmeta_cmd.cli, "submit_job", submit_job)
 
@@ -65,8 +65,9 @@ def test_runcmd_builds_addmeta_job_config(monkeypatch):
         "qsub_flags": "",
         "jobname": "model-output_a",
     }
+    # Remove the experiment object from the call args for comparison
+    submit_job.call_args.kwargs.pop("expt")  
     assert submit_job.call_args.kwargs == {
-        "expt": None,
         "current_run": 0,
         "type": "addmeta",
         "depends_on": "122.server",

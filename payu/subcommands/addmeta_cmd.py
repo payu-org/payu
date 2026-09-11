@@ -36,7 +36,7 @@ def submit_addmeta(counter, depends_on=None, config=None):
 def runcmd(model_type=None, config_path=None, init_run=None, lab_path=None, dir_path=None, 
            depends_on=None):
 
-    pbs_config = read_config(config_path)
+    config = read_config(config_path)
 
     pbs_vars = cli.set_env_vars(init_run=init_run,
                                 lab_path=lab_path,
@@ -44,17 +44,22 @@ def runcmd(model_type=None, config_path=None, init_run=None, lab_path=None, dir_
 
     base_dir = os.path.basename(dir_path if dir_path else os.getcwd())
 
-    addmeta_config = pbs_config.get('addmeta', {})
+    addmeta_config = config.get('addmeta', {})
 
-    pbs_config.update({
+    # Set sensible defaults
+    pbs_config = {
         'ncpus': 1,
         'queue': 'copyq',
         'mem': '2GB',
         'walltime': '0:30:00',
         'qsub_flags': '',
         'jobname': f'{base_dir[:13]}_a' if dir_path else "addmeta_job",
-    })
-    pbs_config = pbs_config | addmeta_config.get('pbs', {})
+    }
+
+    # Pull out queue specifications from addmeta config and override the defaults
+    for key, value in addmeta_config.items():
+        if key in pbs_config:
+            pbs_config[key] = value
 
     # Initialise experiment to determine archive path and run number (which is needed to write job file)
     lab = Laboratory(model_type, config_path, lab_path)
