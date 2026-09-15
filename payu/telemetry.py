@@ -587,7 +587,13 @@ def record_run(
     # Query the scheduler just before recording the run information to
     # try get the most up-to-date information of the usage statistics
     # as they only get updated periodically
-    run_info.update(get_scheduler_run_info(scheduler))
+    try:
+        run_info.update(get_scheduler_run_info(scheduler))
+    except Exception as e:
+        warnings.warn(
+            f"Failed to query scheduler for job info: {e}. "
+            "Run job info will not be updated."
+        )
 
     # Add timings to the run info and add end time and total run duration
     run_info.update(get_finished_timings(timings))

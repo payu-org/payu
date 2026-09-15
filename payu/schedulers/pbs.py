@@ -18,7 +18,7 @@ from collections import Counter
 import grp
 
 import json
-from tenacity import retry, stop_after_delay
+from tenacity import retry, stop_after_attempt, retry_if_exception_type
 from datetime import datetime, timedelta
 from filelock import SoftFileLock, Timeout
 import hpcpy
@@ -551,19 +551,22 @@ class PBS(Scheduler):
         return result
 
 
-@retry(stop=stop_after_delay(10), retry_error_callback=lambda a: None)
+@retry(retry=retry_if_exception_type(subprocess.TimeoutExpired), 
+       stop=stop_after_attempt(3), 
+       retry_error_callback=lambda a: None)
 def get_job_info_json(
             job_id: Optional[str] = None
         ) -> Optional[Dict[str, Any]]:
     """
-    Get full job information in JSON format from qstat. It is wrapped in retry
-    with timeout to allow for PBS server to be slow to respond.
+    Get full job information in JSON format from qstat. 
     If job_id is provided, get info for that job; otherwise, get info for
     all jobs.
-    If timeout occurs or invalid json, return None
+    The qstat command is retried up to three times if it times out.
+    If all attempts time out, return None. 
+    Invalid JSON and subprocess errors are not retried and are raised after a warning.
     """
     # Ensure pbs module is loaded to get qstat in PATH
-    envmod.setup()
+    envmod.setup(verbose=False)
     envmod.module('load', 'pbs')
 
     cmd = ["qstat", "-xf", "-F", "json"]
@@ -573,21 +576,31 @@ def get_job_info_json(
     # Parse the JSON output
     try:
         qstat_output = subprocess.run(
-            cmd, capture_output=True, text=True, check=True,
+            cmd, capture_output=True, text=True, check=True, timeout=5
         )
         return json.loads(qstat_output.stdout)
-    except json.JSONDecodeError as e:
+
+    except subprocess.TimeoutExpired:
+        # Retry if timeout
         warnings.warn(
+            f"qstat command timed out: {' '.join(cmd)}. Retrying..."
+        )
+        raise
+
+    except subprocess.CalledProcessError as e:
+        # If qstat fails (e.g., job not found), warn and raise the error
+        raise RuntimeError(
+            f"Failed to query the scheduler: {' '.join(cmd)}"
+            f"\nReturn code: {e.returncode}"
+            f"\nstdout: {e.stdout}"
+            f"\nstderr: {e.stderr}"
+        )
+    
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
             f"Failed to decode JSON output from qstat command: {' '.join(cmd)}"
             f"\n Error: {e}"
         )
-        raise
-    except subprocess.CalledProcessError as e:
-        warnings.warn(
-            f"Failed to run qstat command: {' '.join(cmd)}"
-            f"\n Error: {e}"
-        )
-        raise
 
 def encode_mount(mount):
     """

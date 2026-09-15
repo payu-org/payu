@@ -84,11 +84,13 @@ def get_job_file_list(
             archive_path: Path,
             run_number: Optional[int] = None,
             all_runs: Optional[bool] = False,
-            type: str = "run"
+            type: str = "run",
+            latest_num_only: Optional[bool] = False
         ) -> list[Path]:
     """
     Generate a list of run job files for the specified run number, all runs,
-    or the latest run.
+    or the latest run. 
+    If latest_num_only is True, return the latest run number instead of the list of files.
 
     Filtering the files here, reduces the number of files to read and parse
     later on
@@ -110,6 +112,11 @@ def get_job_file_list(
     if not run_dirs:
         return []
     latest_run = max(run_dirs, key=lambda d: int(d.name))
+
+    # If latest_num_only is True, return the latest run number instead of the list of files
+    if latest_num_only:
+        return int(latest_run.name)
+
     return list(latest_run.glob(f"{type}/*.json"))
 
 def display_wait_time(qtime, stime) -> Optional[str]:
@@ -368,7 +375,7 @@ def display_log_job_files(run_info: dict[str, Any]) -> None:
     print_line("Job File", "job_file", run_info)
    
 
-def display_job_info(data: dict[str, Any]) -> None:
+def display_job_info(data: dict[str, Any], archive_path: Path) -> None:
     """
     Display the job information in a human-readable way
     """
@@ -380,7 +387,10 @@ def display_job_info(data: dict[str, Any]) -> None:
 
     for run_number, jobs in runs.items():
         print("=" * line_width)
-        print(f"Run: {run_number}")
+
+        # Get the latest run number as divider for display, could be [] if archive not found
+        latest_run_num = get_job_file_list(archive_path, latest_num_only=True)
+        print(f"Run: {run_number}" + (f" of {latest_run_num}" if isinstance(latest_run_num, int) else ""))
 
         # Loop through the job types (run and collate) for the current run
         for job_type, job_list in jobs.items():
@@ -493,11 +503,16 @@ def update_postscript_job_file(data, scheduler, job_file, stdout, stderr):
     if stdout and stderr and stdout.exists() and stderr.exists():
         data["stage"] = "exited"
 
-        # Update the scheduler info by querying the scheduler
         exit_status = None
         if job_id and scheduler:
-            scheduler_info = scheduler.get_job_info(job_id)
-
+            # Update the scheduler info by querying the scheduler
+            try:
+                scheduler_info = scheduler.get_job_info(job_id)
+            except Exception as e:
+                # This job may never be executed
+                logger.debug(f"Failed to query job info for job {job_id} from scheduler: {e}")
+                scheduler_info = None
+    
             if scheduler_info:
                 # Job still in scheduler - get exit status from scheduler
                 data["scheduler_job_info"] = scheduler_info

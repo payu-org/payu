@@ -78,6 +78,6 @@ def runcmd(lab_path, config_path, json_output,
     if json_output:
         print(json.dumps(data, indent=4))
     else:
-        display_job_info(data)
+        display_job_info(data, archive_path)
 
 runscript = runcmd

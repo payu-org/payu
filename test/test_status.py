@@ -380,6 +380,28 @@ def test_get_job_file_list_selected_run(tmp_path, queued_job, running_job,
     assert files == [base_path / file for file in expected_file]
 
 
+@pytest.mark.parametrize(
+    "archive_jobs, queued_job, latest_num",
+    [
+        # Archive jobs up to run 2
+        (
+            True, False, 2
+        ),
+        # Archive jobs up to run 2, with a queued job for run 3
+        (
+            True, True, 3
+        ),
+        # No archive jobs or queue jobs, should return []
+        (
+            False, False, []
+        )
+    ],
+    indirect=["archive_jobs", "queued_job"]
+)
+def test_get_job_file_list_latest_num_only(tmp_path, archive_jobs, queued_job, latest_num):
+    result = get_job_file_list(tmp_path / "archive", latest_num_only=True)
+    assert result == latest_num
+
 def expected_archive_job_info(run_number):
     return {
         'depends_on': None,
@@ -930,7 +952,7 @@ def test_display_job_info(tmp_path, capsys, archive_jobs, running_job, queued_jo
     """ Test that job info is displayed correctly for different stages and available information."""
     job_info['job_file'] = str(tmp_path / "payu_jobs" / "3" / "run" / "test-job-id-3.json")
     data = {'runs': {3: {'run': [job_info]}}}
-    display_job_info(data)
+    display_job_info(data, tmp_path)
 
     captured = capsys.readouterr().out
 
