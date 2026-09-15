@@ -506,7 +506,12 @@ def update_postscript_job_file(data, scheduler, job_file, stdout, stderr):
         exit_status = None
         if job_id and scheduler:
             # Update the scheduler info by querying the scheduler
-            scheduler_info = scheduler.get_job_info(job_id)
+            try:
+                scheduler_info = scheduler.get_job_info(job_id)
+            except Exception as e:
+                # This job may never be executed
+                logger.debug(f"Failed to query job info for job {job_id} from scheduler: {e}")
+                scheduler_info = None
     
             if scheduler_info:
                 # Job still in scheduler - get exit status from scheduler

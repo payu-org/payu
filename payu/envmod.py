@@ -34,7 +34,7 @@ commands, e.g.:
 """
 
 
-def setup(basepath=DEFAULT_BASEPATH):
+def setup(basepath=DEFAULT_BASEPATH, verbose=True):
     """Set the environment modules used by the Environment Module system."""
 
     module_version = os.environ.get('MODULE_VERSION', DEFAULT_VERSION)
@@ -54,7 +54,8 @@ def setup(basepath=DEFAULT_BASEPATH):
             pass
         return
     else:
-        print('payu: Found modules in {}'.format(moduleshome))
+        if verbose:
+            print('payu: Found modules in {}'.format(moduleshome))
 
     os.environ['MODULE_VERSION'] = module_version
     os.environ['MODULE_VERSION_STACK'] = module_version
