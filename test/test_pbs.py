@@ -3,7 +3,7 @@ import copy
 from pathlib import Path
 import re
 import shutil
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -452,10 +452,38 @@ def test_submit_launcher_script_setting(
     assert cmd.strip() == expected_cmd.format(tmp_path=tmp_path)
 
 
-def test_tenacity():
+@patch("payu.schedulers.pbs.subprocess.run")
+def test_tenacity(mock_run):
+    """Test that get_job_info_json retries on timeout and returns None after exhausting retries."""
+    mock_run.side_effect = pbs.subprocess.TimeoutExpired(cmd="qstat", timeout=5)
+    
+    # Should return None after 3 failed attempts due to the retry decorator's callback
+    result = pbs.get_job_info_json()
+    assert result is None
+    # Verify subprocess.run was called 3 times (retry up to 3 attempts)
+    assert mock_run.call_count == 3
 
-    # This should fail and do nothing
-    pbs.get_job_info_json()
+@patch("payu.schedulers.pbs.subprocess.run")
+def test_tenacity_call_error(mock_run):
+    """Test that get_job_info_json raises an error on non-timeout exceptions."""
+    mock_run.side_effect = pbs.subprocess.CalledProcessError(
+        returncode=153, cmd="qstat", output="Error", stderr="Some error"
+    )
+    
+    with pytest.raises(RuntimeError, match="Failed to query the scheduler"):
+        pbs.get_job_info_json()
+    # Verify subprocess.run was called only once (no retry)
+    assert mock_run.call_count == 1
+
+@patch("payu.schedulers.pbs.subprocess.run")
+def test_tenacity_json_error(mock_run):
+    """Test that get_job_info_json raises an error on non-timeout exceptions."""
+    mock_run.return_value = Mock(stdout="This is not a JSON format")
+    
+    with pytest.raises(RuntimeError, match="Failed to decode JSON output from qstat command"):
+        pbs.get_job_info_json()
+    # Verify subprocess.run was called only once (no retry
+    assert mock_run.call_count == 1
 
 def test_get_all_job_info(monkeypatch):
     """Test that get_all_job_info correctly parses the results."""
