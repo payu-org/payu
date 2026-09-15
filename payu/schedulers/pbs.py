@@ -573,7 +573,7 @@ def get_job_info_json(
     # Parse the JSON output
     try:
         qstat_output = subprocess.run(
-            cmd, capture_output=True, text=True, check=True,
+            cmd, capture_output=True, text=True, check=True, timeout=10
         )
         return json.loads(qstat_output.stdout)
     except json.JSONDecodeError as e:
@@ -582,12 +582,21 @@ def get_job_info_json(
             f"\n Error: {e}"
         )
         raise
-    except subprocess.CalledProcessError as e:
+    except subprocess.TimeoutExpired:
+        # Retry if timeout
         warnings.warn(
-            f"Failed to run qstat command: {' '.join(cmd)}"
-            f"\n Error: {e}"
+            f"qstat command timed out: {' '.join(cmd)}. Retrying..."
         )
         raise
+    except subprocess.CalledProcessError as e:
+        # If qstat fails (e.g., job not found), return None and warn
+        warnings.warn(
+            f"Failed to run qstat command: {' '.join(cmd)}"
+            f"\nReturn code: {e.returncode}"
+            f"\nstdout: {e.stdout}"
+            f"\nstderr: {e.stderr}"
+        )
+        return None
 
 def encode_mount(mount):
     """
