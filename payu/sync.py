@@ -12,7 +12,6 @@ import shutil
 import subprocess
 from ruamel.yaml import YAML
 from pathlib import Path
-import time
 
 
 # Local

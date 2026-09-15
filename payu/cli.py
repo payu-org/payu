@@ -8,7 +8,6 @@
 """
 # Standard imports
 import argparse
-import json
 import sysconfig
 import importlib
 import os

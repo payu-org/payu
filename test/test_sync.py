@@ -296,9 +296,11 @@ def test_check_uuid_value_error(monkeypatch):
     with pytest.raises(errors.PayuRuntimeError, match="Mismatched experiment UUIDs in sync destination."):
         sync.set_destination_path()
 
-# A datastore in the archive directory is always excluded from sync - it's
-# stale/irrelevant once syncing is enabled, since the datastore is instead
-# (re)built at the sync destination.
+# Always exclude the datastore from sync. The archive copy is stale or
+# irrelevant once syncing is enabled because the datastore is (re)built
+# at the sync destination.
+# Syncing the catalogue from the archive would also be incorrect because
+# it references data in the archive location, not the sync destination.
 DATASTORE_EXCLUDES = (
     f"--exclude {payu.sync.DATASTORE_NAME}* "
     f"--exclude .{payu.sync.DATASTORE_NAME}*"

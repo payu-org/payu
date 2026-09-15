@@ -13,7 +13,7 @@ from payu import fsops
 import payu.errors as errors
 
 title = 'catalog'
-parameters = {'description': 'Generate an intake-esm datastore for the '
+parameters = {'description': 'Generate an intake-esm datastore catalog for the '
                               'experiment output'}
 
 arguments = [args.model, args.config, args.initial, args.laboratory,
@@ -45,10 +45,10 @@ def runcmd(model_type=None, config_path=None, init_run=None, lab_path=None, dir_
 
     catalog_config = pbs_config.get('catalog', {})
 
-    default_ncpus = 104
+    default_ncpus = 2
     default_queue = 'normalsr'
-    default_mem = '500GB'
-    default_walltime = '01:00:00'
+    default_mem = '50GB'
+    default_walltime = '0:15:00'
 
     pbs_config['queue'] = catalog_config.get('queue', default_queue)
 

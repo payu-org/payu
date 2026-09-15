@@ -1030,10 +1030,12 @@ class Experiment(object):
 
             if sync_path is not None:
                 self.datastore_path = sync_path
+                print(f"Sync is enabled. Building datastore in sync destination: {self.datastore_path}")
+                # Remove any existing datastore in the archive to avoid duplication/confusion
                 remove_datastore(self.archive_path)
             else:
                 warnings.warn(
-                    "Sync is enabled but the sync destination is unconfigured. "
+                    "Sync is enabled but the sync destination is unconfigured or is a remote path. "
                     "Datastore will be built in the local archive directory."
                 )
                 
@@ -1058,15 +1060,22 @@ class Experiment(object):
         SyncToRemoteArchive(self).run()
 
     def get_sync_destination(self):
-        """Get the destination path for syncing based on path/base_path/remote in config.yaml.
-        If the destination path is not defined, return None."""
+        """Return the local sync destination path.
+        Returns None when syncing is unconfigured or set as a remote destination.
+        """
         try:
             syncer = SyncToRemoteArchive(self)
             syncer.set_destination_path(verbose=False)
-            
+            dest_path = syncer.destination_path
+
+            if os.path.isdir(dest_path):
+                return str(dest_path)
+
+            # Destination is rsync remote path
+            return None
+        
         except (ValueError, errors.PayuConfigError):
             return None
-        return str(syncer.destination_path)
 
     def resubmit(self):
         next_run = self.counter + 1

@@ -73,14 +73,17 @@ def check_intake_datastore_contents(datastore_path, expt_name, expt_uuid):
         assert content == expected_description
 
 
-@pytest.mark.parametrize("sync_config, sync", [
+@pytest.mark.parametrize("sync_config, datastore_in_sync", [
+    # Create datastore in archive when sync is disabled
     (None, False),
+    # Sync is enabled with a valid path, should create datastore in sync destination
     ({
         'sync': {
             'enable': True,
             'path': str(tmpdir / "sync_path"),
         }
     }, True),
+    # Sync is enabled but no path is provided, should create datastore in archive
     ({
         'sync': {
             'enable': True,
@@ -88,8 +91,16 @@ def check_intake_datastore_contents(datastore_path, expt_name, expt_uuid):
             'path': None,
         }
     }, False),
+    # Sync is enabled with a remote URL, should create datastore in archive
+    ({
+        'sync': {
+            "url": "test.domain",
+            "user": "test-usr",
+            "path": str(tmpdir / "sync_path"),
+        }
+    }, False),
 ])
-def test_expt_make_datastore(monkeypatch, sync_config, sync):
+def test_expt_make_datastore(monkeypatch, sync_config, datastore_in_sync):
     """Test the make_datastore choose sync path when sync is enabled, 
     and choose archive path when sync is disabled or unconfigured."""
     expt = setup_experiment(sync_config)
@@ -103,7 +114,7 @@ def test_expt_make_datastore(monkeypatch, sync_config, sync):
 
     expt.make_datastore()
 
-    if sync:
+    if datastore_in_sync:
         check_intake_datastore_contents(
             sync_config['sync']['path'], expt.name, expt.metadata.uuid)
     
