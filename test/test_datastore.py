@@ -134,20 +134,20 @@ def test_datastore_raises_error_for_unsupported_model():
 
 
 @pytest.mark.parametrize(
-    "model_type, builder, builder_kwargs",
+    "model_type, builder",
     [
         ('access', 
-        builders.AccessEsm15Builder, {'ensemble': False}),
+        builders.AccessEsm15Builder),
         ('access-esm1.6', 
-         builders.AccessEsm16Builder, {'ensemble': False}),
+         builders.AccessEsm16Builder),
         ('access-om2', 
-        builders.AccessOm2Builder, {}),
+        builders.AccessOm2Builder),
         ('mom6', 
-         builders.Mom6Builder, {}),
+         builders.Mom6Builder),
     ]
 )
 def test_datastore_generation_uses_correct_builder(
-        monkeypatch, model_type, builder, builder_kwargs):
+        monkeypatch, model_type, builder):
     """Test each supported model calls use_datastore with its builder."""
     expt = setup_experiment(model=model_type)
     use_datastore = MagicMock()
@@ -163,7 +163,6 @@ def test_datastore_generation_uses_correct_builder(
             f'({expt.metadata.uuid})'
         ),
         builder=builder,
-        builder_kwargs=builder_kwargs,
     )
 
 

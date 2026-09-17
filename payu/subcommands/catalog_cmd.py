@@ -45,10 +45,10 @@ def runcmd(model_type=None, config_path=None, init_run=None, lab_path=None, dir_
 
     catalog_config = pbs_config.get('catalog', {})
 
-    default_ncpus = 2
-    default_queue = 'normalsr'
+    default_ncpus = 8
+    default_queue = 'normal'
     default_mem = '50GB'
-    default_walltime = '0:15:00'
+    default_walltime = '0:05:00'
 
     pbs_config['queue'] = catalog_config.get('queue', default_queue)
 

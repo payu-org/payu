@@ -499,7 +499,6 @@ class Model(object):
 class IntakeMixin:
     """Mixin class for models that support intake-esm datastore generation."""
     intake_builder = None
-    builder_kwargs = None
 
     def make_intake_datastore(self):
         """Generate an intake-esm datastore for the experiment output.
@@ -520,5 +519,5 @@ class IntakeMixin:
                     experiment_dir=self.expt.datastore_path,
                     description=description,
                     builder=builder,
-                    builder_kwargs=self.builder_kwargs if self.builder_kwargs is not None else {},
+                    builder_kwargs={},
                 )

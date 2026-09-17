@@ -34,7 +34,6 @@ class Access(IntakeMixin, Model):
 
         # Configure the intake-esm datastore builder
         self.intake_builder = "AccessEsm15Builder"
-        self.builder_kwargs = {'ensemble': False}
 
         for model in self.expt.models:
             if model.model_type == 'cice':
