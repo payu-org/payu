@@ -10,7 +10,6 @@ import warnings
 from datetime import datetime
 import json
 import logging
-from itertools import zip_longest
 
 from payu.schedulers import Scheduler
 from payu.telemetry import (
@@ -18,8 +17,6 @@ from payu.telemetry import (
     update_job_file,
     remove_job_file
 )
-from payu.sync import SyncToRemoteArchive
-import payu.errors as errors 
 
 logger = logging.getLogger(__name__)
 
@@ -434,13 +431,8 @@ def collect_expt_paths(expt):
             "archive_path": expt.archive_path
         }
 
-        try:
-            syncer = SyncToRemoteArchive(expt)
-            syncer.set_destination_path(verbose=False)
-            sync_path = syncer.destination_path
-            expt_paths["sync_path"] = str(sync_path)
-        except (ValueError, errors.PayuConfigError):
-            expt_paths["sync_path"] = "Unconfigured"
+        sync_path = expt.get_sync_destination()
+        expt_paths["sync_path"] = sync_path if sync_path is not None else "Unconfigured"
 
     except Exception as e:
         warnings.warn(f"Failed to collect experiment paths: {e}")

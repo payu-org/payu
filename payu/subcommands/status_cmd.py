@@ -5,13 +5,10 @@ from pathlib import Path
 import warnings
 import json
 
-from payu import cli
-from payu.fsops import read_config
-from payu.metadata import MetadataWarning, Metadata
+from payu.metadata import MetadataWarning
 from payu.laboratory import Laboratory
 from payu.experiment import Experiment
 import payu.subcommands.args as args
-import payu.errors as errors
 from payu.status import (
     build_job_info,
     display_job_info,
@@ -19,7 +16,6 @@ from payu.status import (
     collect_expt_paths,
     display_expt_paths,
 )
-from payu.schedulers import index as scheduler_index, DEFAULT_SCHEDULER_CONFIG
 
 title = 'status'
 parameters = {'description': 'Display payu run information'}
@@ -33,7 +29,7 @@ def runcmd(lab_path, config_path, json_output,
            update_jobs, all_runs, run_number, show_expt_paths=False):
 
     # Suppress output to os.devnull
-    with redirect_stdout(open(os.devnull, 'w')):
+    with open(os.devnull, 'w') as devnull, redirect_stdout(devnull):
         # Determine archive path
         lab = Laboratory(config_path=config_path, lab_path=lab_path)
         warnings.filterwarnings("error", category=MetadataWarning)
