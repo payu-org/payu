@@ -468,7 +468,7 @@ def test_set_prior_restart_path_no_restarts_in_archive():
     assert expt.prior_restart_path is None
 
 
-def test_set_prior_restart_path_with_restart_in_archive(tmp_path):
+def test_set_prior_restart_path_with_restart_in_archive(tmp_path, monkeypatch):
     """Test prior restart path is set to restart directory in archive"""
     # Create an external restart directory
     user_restart = tmp_path / "external_restart"
@@ -481,6 +481,7 @@ def test_set_prior_restart_path_with_restart_in_archive(tmp_path):
     # Make an archive directory with a restart
     make_expt_archive_dir(type='restart', index=9)
 
+    monkeypatch.setenv('PAYU_CURRENT_RUN', '10')
     expt = init_experiment(config)
     assert expt.prior_restart_path == os.path.join(expt.archive_path, 'restart009')
 
