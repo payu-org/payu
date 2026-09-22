@@ -175,7 +175,7 @@ class Access(Model):
                 cpl_group[model.runtime_key] = int(run_runtime)
 
                 if model.model_type == 'cice':
-                    if self.expt.counter and not self.expt.repeat_run:
+                    if self.expt.counter and not self.expt.repeat:
                         cpl_group['jobnum'] = (
                             1 + self.expt.counter
                         )
