@@ -5,10 +5,11 @@ addmeta tool
 :license: Apache License, Version 2.0, see LICENSE for details.
 """
 from types import SimpleNamespace
+from pathlib import Path
 
 from addmeta import cli as addmeta_cli
-from addmeta import combine_meta, dict_merge, load_data_files
-from addmeta import find_and_add_meta, list_from_file
+from addmeta.cli import resolve_relative_paths
+
 
 class AddMeta:
     """Add metadata to model output directories using the addmeta tool"""
@@ -21,7 +22,7 @@ class AddMeta:
         'metafiles': [],
         'datafiles': [],
         'fnregex': '',
-        'datavar': [],
+        'datavar': {},
         'metalist': '',
         'sort': True,
     }
@@ -48,64 +49,16 @@ class AddMeta:
                 value = self.options.datavar | value
             self.options.__setattr__(key, value)
 
-    def run(self):
-        """Run the addmeta tool with the specified configuration"""
 
-        # addmeta_cli.main(self.options)
+    def run(self, meta_dict=None, output_path=None):
+        """Run the addmeta tool with the specified configuration. Pass through
+          any additional metadata to be added to the output files via the 
+          meta_dict argument."""
 
-        # Below is a copy of the main routine above to inject default metadata
-        # until the addmeta tool is updated to support default metadata. 
-        metafiles = []
-        verbose = self.options.verbose
-        kwdata = {}
+        if output_path is None:
+            output_path = Path.cwd()
 
-        if (self.options.datafiles is not None):
-            if verbose: print("datafiles: "," ".join([str(f) for f in self.options.datafiles]))
-            kwdata = load_data_files(self.options.datafiles)
+        # Expand globs in the files option
+        self.options.files = resolve_relative_paths(self.options.files, output_path)
 
-        # Process keyword --datavar command line arguments
-        if self.options.datavar:
-            if verbose: print("datavar: "," ".join([str(v) for v in self.options.datavar]))
-            try:
-                datavar_dict = addmeta_cli.parse_key_value_pairs(self.options.datavar)
-                # Add to kwdata under 'datavar' namespace
-                kwdata['__argdata__'] = datavar_dict
-            except ValueError as e:
-                if verbose: print(f"Error parsing datavar: {e}")
-                raise
-
-        if (self.options.metalist is not None):
-            for line in self.options.metalist:
-                metafiles.extend(list_from_file(line))
-
-        if (self.options.metafiles is not None):
-            metafiles.extend(self.options.metafiles)
-
-        if verbose: print("metafiles: "," ".join([str(f) for f in metafiles]))
-        
-        if getattr(self.options, 'update-history', False):
-            history = addmeta_cli.build_history(self.options.files)
-        else:
-            history = None
-
-        # Default to always inject the experiment_uuid and run_id metadata into 
-        # the output files
-        meta_dict = {
-            'global': {
-                'experiment_uuid': "{{ metadata.experiment_uuid }}",
-                'run_id': "{{ env.PAYU_RUN_ID}}",
-            },
-        }
-
-        # Merge the default metadata with the metadata from the metafiles
-        dict_merge(meta_dict, combine_meta(metafiles))
-
-        find_and_add_meta(
-            self.options.files,
-            meta_dict,
-            kwdata,
-            self.options.fnregex,
-            sort_attrs=self.options.sort,
-            history=history,
-            verbose=verbose,
-        )
+        addmeta_cli.main(self.options, meta_dict)
