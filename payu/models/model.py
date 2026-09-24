@@ -495,29 +495,61 @@ class Model(object):
     def add_file_metadata(self):
         """Add metadata to model output files using the addmeta tool"""
 
+        if self.output_path is None:
+            print("payu: warning: output_path is None, skipping addmeta")
+            return
+
         add_meta_config = self.expt.config.get('addmeta', {})
 
         # Add default files glob. Not supported to define in config.yaml, but can be 
         # overridden by model-specific addmeta configuration in the model control directory
-        add_meta_config['files'] = [ f'{self.output_path}/*.nc' ]
+        add_meta_config['files'] = [ '*.nc', '*.nc.*' ]
 
-        # Add the top level metadata.yaml and local env.yaml files to the datafiles list
-        # to give the addmeta tool access to the metadata and environment information for the experiment
-        # TBD: not sure we need to support 'datafiles' in config.yaml ...
+        # Add the metadata.yaml and env.yaml files to the datafiles list to give the addmeta 
+        # tool access to the metadata and environment information for the experiment. Default 
+        # is to use the metadata.yaml and env.yaml files in the output directory, but if they 
+        # are not present, use available ones in the control directory otherwise warn user.
         add_meta_config['datafiles'] = add_meta_config.get('datafiles', [])
-        for file in [f'{self.expt.archive_path}/env.yaml', f'{self.expt.control_path}/metadata.yaml']:
+        for file in [f'{self.expt.output_path}/env.yaml', 
+                     f'{self.expt.output_path}/metadata.yaml',
+                     f'{self.expt.control_path}/metadata.yaml']:
             if os.path.exists(file) and file not in add_meta_config['datafiles']:
                 add_meta_config['datafiles'].append(file)
+
+        # Default to always inject the experiment_uuid and run_id metadata
+        global_meta = dict()
+
+        # Add the run_id to the metadata if env.yaml is present
+        if f'{self.expt.output_path}/env.yaml' in add_meta_config['datafiles']:
+            global_meta['run_id'] = "{{ env.PAYU_RUN_ID}}" 
+        else:
+            print(f"payu: warning: {self.expt.output_path}/env.yaml not found, run_id will not be added to output files")
+
+        # Add the experiment_uuid to the metadata if metadata.yaml is present
+        for f in add_meta_config['datafiles']:
+            if Path(f).name == 'metadata.yaml':
+                global_meta['experiment_uuid'] = "{{ metadata.experiment_uuid }}" 
+                break
+        else:
+            # Falls through to here if no metadata.yaml file is found in the datafiles list
+            print(f"payu: warning: metadata.yaml not found, experiment_uuid will not be added to output files")
 
         # Create an AddMeta instance from the configuration dictionary
         addmeta_instance = AddMeta.from_config(add_meta_config)
 
         if addmeta_instance.options.enable:
 
-            # Support model specific addmeta configuration in the model control directory
-            cmdfilepath = Path(self.control_path) / 'addmeta.cmd'
-            if cmdfilepath.exists():
-                model_options = addmeta_cli.main_parse_args(['-c', str(cmdfilepath)])
-                addmeta_instance.update(model_options)
+            meta_dict = None
+            if global_meta:
+                meta_dict = {'global': global_meta}
 
-            addmeta_instance.run()
+            try:
+                # Support model specific addmeta configuration in the model control directory
+                cmdfilepath = Path(self.control_path) / 'addmeta.cmd'
+                if cmdfilepath.exists():
+                    model_options = addmeta_cli.main_parse_args(['-c', str(cmdfilepath)])
+                    addmeta_instance.update(model_options)
+            except Exception as e:
+                print(f"payu: warning: Failed to read model-specific addmeta.cmd file: {e}")
+
+            addmeta_instance.run(meta_dict=meta_dict, output_path=Path(self.output_path))
