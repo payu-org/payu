@@ -38,6 +38,7 @@ dependencies = [
     "questionary",
     "pint",
     "hpcpy >=0.9.0",
+    "addmeta",
 ]
 
 [project.optional-dependencies]
@@ -58,6 +59,7 @@ payu-run = "payu.cli:parse_run"
 payu-collate = "payu.cli:parse_collate"
 payu-profile = "payu.cli:parse_profile"
 payu-sync = "payu.cli:parse_sync"
+payu-addmeta = "payu.cli:parse_addmeta"
 
 [build-system]
 build-backend = "setuptools.build_meta"
