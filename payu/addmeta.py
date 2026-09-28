@@ -4,6 +4,7 @@ addmeta tool
 :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details.
 :license: Apache License, Version 2.0, see LICENSE for details.
 """
+from copy import deepcopy
 from types import SimpleNamespace
 from pathlib import Path
 
@@ -33,7 +34,7 @@ class AddMeta:
     @classmethod
     def from_config(cls, config):
         """Create an AddMeta instance from a configuration dictionary"""
-        return cls(cls.default_options | config)
+        return cls(deepcopy(cls.default_options | config))
 
     def update(self, namespace):
         """Update the AddMeta instance from a namespace. This is useful for 

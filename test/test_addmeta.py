@@ -33,6 +33,21 @@ def test_from_config_merges_with_default_options(
     assert addmeta_obj.options.metafiles == expected_metafiles
 
 
+def test_from_config_creates_independent_mutable_defaults():
+    first = AddMeta.from_config({})
+    second = AddMeta.from_config({})
+
+    first.options.metafiles.append("base.yaml")
+    first.options.datafiles.append("output.nc")
+    first.options.data["model"] = "mom6"
+    first.options.datavar["experiment"] = "base"
+
+    assert second.options.metafiles == []
+    assert second.options.datafiles == []
+    assert second.options.data == {}
+    assert second.options.datavar == {}
+
+
 def test_update_combines_datavar_and_metafiles_and_replaces_other_options():
     addmeta_obj = AddMeta.from_config({
         "datavar": {"experiment": "base"},
