@@ -53,6 +53,24 @@ def test_update_combines_datavar_and_metafiles_and_replaces_other_options():
     assert addmeta_obj.options.files == "output/*.nc"
 
 
+def test_update_ignores_none_metafiles_and_datavar():
+    addmeta_obj = AddMeta.from_config({
+        "datavar": {"experiment": "base"},
+        "metafiles": ["base.yaml"],
+        "verbose": False,
+    })
+
+    addmeta_obj.update(SimpleNamespace(
+        datavar=None,
+        metafiles=None,
+        verbose=True,
+    ))
+
+    assert addmeta_obj.options.datavar == {"experiment": "base"}
+    assert addmeta_obj.options.metafiles == ["base.yaml"]
+    assert addmeta_obj.options.verbose is True
+
+
 EXPECTED_META_DICT = {
     'global': {
         'experiment_uuid': "{{ metadata.experiment_uuid }}",

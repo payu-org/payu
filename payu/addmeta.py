@@ -1,4 +1,4 @@
-"""Tooling to add metata to model output directories using the
+"""Tooling to add metadata to model output directories using the
 addmeta tool
 
 :copyright: Copyright 2011 Marshall Ward, see AUTHORS for details.
@@ -44,8 +44,12 @@ class AddMeta:
         # with the existing values.
         for key, value in vars(namespace).items():
             if key == 'metafiles':
+                if value is None:
+                    continue
                 value = self.options.metafiles + value
             if key == 'datavar':
+                if value is None:
+                    continue
                 value = self.options.datavar | value
             self.options.__setattr__(key, value)
 
