@@ -58,7 +58,15 @@ class AddMeta:
         if output_path is None:
             output_path = Path.cwd()
 
-        # Expand globs in the files option
-        self.options.files = resolve_relative_paths(self.options.files, output_path)
+        # Expand globs in the files option. The addmeta helper expects an
+        # iterable of patterns, but payu configuration may provide a single
+        # glob string or omit the option entirely.
+        files = self.options.files
+        if isinstance(files, str):
+            files = [files]
+        elif files is None:
+            files = []
+
+        self.options.files = resolve_relative_paths(files, output_path)
 
         addmeta_cli.main(self.options, meta_dict)
