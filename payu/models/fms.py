@@ -263,7 +263,7 @@ def fms_collate(model):
     uncollate_hashes_dict = get_restart_uncollated_hashes(mnc_tiles, model)
 
     if mpi and collate_config.get('glob', True):
-        for t_base, file_dict in mnc_tiles.items():
+        for t_dir, file_dict in mnc_tiles.items():
             for t_base, tiles in file_dict.items():
                 globstr = f"{t_base}.*"
 
