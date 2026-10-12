@@ -301,11 +301,16 @@ class Cice(Model):
             with open(res_ptr_path) as f:
                 res_name = os.path.basename(f.read()).strip()
 
-            assert os.path.exists(os.path.join(self.restart_path, res_name))
+            if not os.path.exists(os.path.join(self.restart_path, res_name)):
+                raise FileNotFoundError(
+                    f"CICE restart file {res_name}, named in {res_ptr_path}, "
+                    f"not found in {self.restart_path}."
+                )
 
             # Delete the old restart file (keep the one in ice.restart_file)
+            prefix = self.get_restart_file_prefix()
             for f in self.get_prior_restart_files():
-                if f.startswith('iced.'):
+                if f.startswith(f'{prefix}.'):
                     if f == res_name:
                         continue
                     os.remove(os.path.join(self.restart_path, f))
@@ -451,6 +456,13 @@ class Cice(Model):
                    f"file {iced_path}: {cice_iced_runtime}.")
             raise RuntimeError(msg)
 
+    def get_restart_file_prefix(self):
+        """
+        Return the restart file name prefix, from setup_nml:restart_file
+        in the ice namelist. Defaults to 'iced' if not set.
+        """
+        return self.ice_in['setup_nml'].get('restart_file', 'iced')
+
     def find_matching_iced(self, dir_path, date):
         """
         Check a directory for an iced.YYYYMMDD restart file matching a
@@ -472,7 +484,7 @@ class Cice(Model):
         """
         # Expected iced restart file name
         date_int = cal.date_to_int(date)
-        iced_restart_file = f"iced.{date_int:08d}"
+        iced_restart_file = f"{self.get_restart_file_prefix()}.{date_int:08d}"
 
         dir_files = [f for f in os.listdir(dir_path)
                      if os.path.isfile(os.path.join(dir_path, f))]

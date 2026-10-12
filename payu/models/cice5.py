@@ -91,8 +91,7 @@ class Cice5(Cice):
         """
         # CICE5 restart files are named <restart_file>.YYYY-MM-DD-SSSSS, with
         # a '.nc' suffix for netCDF restarts, e.g. iced.2145-01-01-00000.nc
-        prefix = self.ice_in['setup_nml'].get('restart_file',
-                                              'iced')
+        prefix = self.get_restart_file_prefix()
         pattern = re.compile(
             rf'^{re.escape(prefix)}\.\d{{4}}-\d{{2}}-\d{{2}}-\d{{5}}(\.nc)?$'
         )

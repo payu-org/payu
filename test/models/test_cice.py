@@ -2,6 +2,7 @@ import datetime
 import os
 import shutil
 import struct
+from copy import deepcopy
 
 import pytest
 import f90nml
@@ -312,8 +313,10 @@ def write_iced_header(iced_path, bint, istep0, time, time_forc):
         (datetime.datetime(9999, 12, 31), 315537811200)
      ]
 )
+@pytest.mark.parametrize("restart_file", [None, "myice"])
 def test_overwrite_restart_ptr(config,
                                cice_nml,
+                               restart_file,
                                run_start_date,
                                previous_runtime,
                                prior_restart_dir,
@@ -331,9 +334,14 @@ def test_overwrite_restart_ptr(config,
         expt = payu.experiment.Experiment(lab, reproduce=False)
         cice_model = expt.models[0]
 
+    prefix = "iced"
+    if restart_file:
+        cice_model.ice_in["setup_nml"]["restart_file"] = restart_file
+        prefix = restart_file
+
     # Create iced restart with the specified date and runtime
     run_start_date_int = payu.calendar.date_to_int(run_start_date)
-    iced_name = f"iced.{run_start_date_int:08d}"
+    iced_name = f"{prefix}.{run_start_date_int:08d}"
     iced_path = prior_restart_dir / iced_name
     write_iced_header(iced_path,
                       bint=0,
@@ -343,7 +351,7 @@ def test_overwrite_restart_ptr(config,
 
     # Create an iced restart with different date, to check
     # that payu ignores it
-    wrong_iced_name = "iced.01010101"
+    wrong_iced_name = f"{prefix}.01010101"
     wrong_runtime = 1000
     wrong_iced_path = prior_restart_dir / wrong_iced_name
     write_iced_header(wrong_iced_path,
@@ -597,3 +605,65 @@ def dir_contents_and_dates(dir_path):
     """
     return {name: os.path.getmtime(os.path.join(dir_path, name))
             for name in os.listdir(dir_path)}
+
+
+@pytest.mark.parametrize("config", [CONFIG_WITH_RESTART], indirect=True)
+@pytest.mark.parametrize("restart_file", [None, "myice"])
+def test_archive_deletes_old_restart(config, prior_restart_dir, restart_file):
+    """
+    Test that archive deletes the old restart file, keeps the one in the
+    restart pointer, and uses the prefix from setup_nml:restart_file
+    """
+    cice_nml = deepcopy(DEFAULT_CICE_NML)
+    if restart_file:
+        cice_nml["setup_nml"]["restart_file"] = restart_file
+    prefix = restart_file or "iced"
+    f90nml.write(cice_nml, os.path.join(ctrldir, CICE_NML_NAME))
+
+    old_restart = f"{prefix}.18510101"
+    new_restart = f"{prefix}.18520101"
+    # Not a restart file when using a non-default prefix
+    other_file = "other.18510101"
+
+    (prior_restart_dir / old_restart).write_text("old")
+    (prior_restart_dir / other_file).write_text("other")
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        os.makedirs(model.work_restart_path)
+        for f in [old_restart, new_restart, other_file]:
+            Path(model.work_restart_path, f).write_text(f)
+        Path(model.work_restart_path, RESTART_POINTER_NAME).write_text(
+            f"./RESTART/{new_restart}")
+
+        # Function to test
+        model.archive()
+
+    restart_files = os.listdir(model.restart_path)
+    assert old_restart not in restart_files
+    assert new_restart in restart_files
+    assert other_file in restart_files
+
+    os.remove(os.path.join(ctrldir, CICE_NML_NAME))
+
+
+@pytest.mark.parametrize("config", [CONFIG_WITH_RESTART], indirect=True)
+def test_archive_missing_restart(config, cice_nml, prior_restart_dir):
+    """
+    Test that archive raises an error if the restart file named in the
+    restart pointer does not exist
+    """
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+
+        os.makedirs(model.work_restart_path)
+        Path(model.work_restart_path, RESTART_POINTER_NAME).write_text(
+            "./RESTART/iced.18520101")
+
+        with pytest.raises(FileNotFoundError, match="iced.18520101"):
+            model.archive()
