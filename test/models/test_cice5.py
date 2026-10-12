@@ -213,7 +213,7 @@ def make_cice5_restart_dir(start_date,
                                          index=restart_index,
                                          additional_path=additional_path)
 
-    rdate = f"{year:04d}{month:02d}{day:02d}"
+    rdate = f"{year:04d}-{month:02d}-{day:02d}-{seconds:05d}.nc"
 
     # Restart files required by CICE5 setup
     ncfile = Dataset(
@@ -229,15 +229,17 @@ def make_cice5_restart_dir(start_date,
     with open(os.path.join(restart_path, RESTART_POINTER_NAME), 'w') as rpointer:
         rpointer.write(f"{ICED_RESTART_NAME}{rdate}")
 
+    return restart_path
+
 
 @pytest.mark.parametrize("config", [CONFIG_WITH_RESTART], indirect=True)
 @pytest.mark.parametrize("cice_config_files", [DEFAULT_CICE_NML], indirect=True)
 @pytest.mark.parametrize("start_date, expected_date",
                          [
                             (cftime.datetime(1, 1, 1, calendar="proleptic_gregorian"), #first valid date
-                             "00010101"),
+                             "0001-01-01-00000.nc"),
                             (cftime.datetime(9999, 12, 31, calendar="proleptic_gregorian"), #last date
-                             "99991231")
+                             "9999-12-31-00000.nc")
                          ]
                         )
 def test_restart_setup(
@@ -264,7 +266,7 @@ def test_restart_setup(
     for file in [ICED_RESTART_NAME+expected_date, RESTART_POINTER_NAME]:
         assert file in cice_work_restart_files
 
-    assert model.get_restart_datetime(model.prior_restart_path).strftime("%Y%m%d") == expected_date
+    assert model.get_restart_datetime(model.prior_restart_path).strftime("%Y-%m-%d-00000.nc") == expected_date
 
 @pytest.mark.parametrize("config", [CONFIG_WITH_RESTART], indirect=True)
 @pytest.mark.parametrize("cice_config_files", [DEFAULT_CICE_NML], indirect=True)
@@ -289,3 +291,29 @@ def test_bad_rdate(
 
     with pytest.raises(ValueError, match="Restart attribute sec"):
         model.get_restart_datetime(model.prior_restart_path)
+
+
+@pytest.mark.parametrize("config", [CONFIG_WITH_RESTART], indirect=True)
+@pytest.mark.parametrize("cice_config_files", [DEFAULT_CICE_NML], indirect=True)
+def test_restart_ptr_ignores_extra_files(config, cice_config_files):
+    """
+    Test that stray files starting with 'iced.' (e.g. backups) in the
+    prior restart directory are not picked up as the restart file.
+    See https://github.com/payu-org/payu/issues/642
+    """
+    start_date = cftime.datetime(2145, 1, 1, calendar="proleptic_gregorian")
+    restart_path = make_cice5_restart_dir(start_date)
+    iced_name = f"{ICED_RESTART_NAME}2145-01-01-00000.nc"
+    for extra in [".back", ".back2", ".tmp"]:
+        shutil.copy(os.path.join(restart_path, iced_name),
+                    os.path.join(restart_path, iced_name + extra))
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+        model.setup()
+
+    assert model.get_latest_restart_file(model.prior_restart_path) == iced_name
+    with open(os.path.join(model.work_init_path, RESTART_POINTER_NAME)) as f:
+        assert os.path.basename(f.read().strip()) == iced_name

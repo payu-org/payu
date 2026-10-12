@@ -11,11 +11,17 @@ http://www.apache.org/licenses/LICENSE-2.0
 from __future__ import print_function
 
 import os
+import re
 
 from payu.models.cice import Cice
 import payu.calendar as cal
 from netCDF4 import Dataset
 import cftime
+
+# CICE5 restart files are named <restart_file>.YYYY-MM-DD-SSSSS, with a
+# '.nc' suffix for netCDF restarts, e.g. iced.2145-01-01-00000.nc
+ICED_RESTART_PATTERN = re.compile(r'^iced\.\d{4}-\d{2}-\d{2}-\d{5}(\.nc)?$')
+
 
 class Cice5(Cice):
 
@@ -89,7 +95,8 @@ class Cice5(Cice):
         should work in other drivers.
         """
         iced_restart_file = None
-        iced_restart_files = [f for f in os.listdir(restart_path) if f.startswith('iced.')]
+        iced_restart_files = [f for f in os.listdir(restart_path)
+                              if ICED_RESTART_PATTERN.match(f)]
 
         if len(iced_restart_files) > 0:
             iced_restart_file = sorted(iced_restart_files)[-1]
