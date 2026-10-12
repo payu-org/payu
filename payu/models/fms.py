@@ -108,9 +108,9 @@ def get_restart_uncollated_hashes(mnc_tiles, model):
 
     for path, file_dict in mnc_tiles.items():
         # Get the relative path from the archive dir to the targeted restart dir
-        # e.g., /restart001/ocean/, then use 'restart001' as base_directory
+        # Support both flat (restart001/) and nested (restart001/ocean/) layouts.
         rel_path = os.path.relpath(os.path.realpath(path), start=model.expt.archive_path)
-        base_directory = os.path.split(rel_path)[0]
+        base_directory = rel_path.split(os.sep, 1)[0]
 
         # Only consider base_directory that matches the restart directory pattern, e.g., restart001
         if re.match(r'^restart\d+$', base_directory):

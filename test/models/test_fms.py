@@ -252,3 +252,50 @@ def test_restart_mapping_log(mock_hash):
     
     # Confirm only restart collation are recorded in the mapping (but not output collation)
     assert mapping_collate_dict == expected_mapping
+
+
+@pytest.mark.parametrize(
+    "subdir",
+    [
+        None,  # flat directory - restart000
+        "ocean",  # subdirectory - restart000/ocean
+    ],
+)
+@patch("payu.models.fms.hash")
+def test_restart_hash_directory_layout(mock_hash, tmp_path, subdir):
+    """
+    Test restart hash mapping for flat and nested directory layouts.
+    """
+    archive = tmp_path / "archive"
+    restart = archive / "restart000"
+
+    if subdir:
+        restart = restart / subdir
+
+    # Set up the restart test tiles
+    base = "access-mom6.r.nc"
+    tiles = [f"{base}.{i:04d}" for i in range(3)]
+
+    # Include output tiles to verify they are excluded
+    mnc_tiles = {
+        str(archive / "output000"): {
+            "access-mom6.out.nc": [f"access-mom6.out.nc.{i:04d}" for i in range(3)]
+        },
+        str(restart): {
+            base: tiles
+        },
+    }
+
+    # Return filenames as fake hashes
+    mock_hash.side_effect = lambda file_path, hashfn: f"{os.path.basename(file_path)}"
+
+    model = MagicMock()
+    model.expt.archive_path = str(archive)
+
+    mapping = get_restart_uncollated_hashes(mnc_tiles, model)
+
+    assert mapping == {
+        "restart000": {
+            str(restart / base): tiles
+        }
+    }
