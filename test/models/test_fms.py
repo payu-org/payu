@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from payu.models.fms import get_uncollated_files, get_avail_collate_flags, restart_mapping_log, get_restart_uncollated_hashes
+from payu.models.fms import fms_collate, get_uncollated_files, get_avail_collate_flags, restart_mapping_log, get_restart_uncollated_hashes
 
 from test.common import tmpdir
 
@@ -297,5 +297,121 @@ def test_restart_hash_directory_layout(mock_hash, tmp_path, subdir):
     assert mapping == {
         "restart000": {
             str(restart / base): tiles
+        }
+    }
+
+
+@pytest.mark.parametrize("use_glob,extra_file_location",
+    [
+        (True, None),  # glob matching all tiles for both output and restart directories
+        (True, "output"),  # glob matches an extra file in the output directory so fall back
+        (True, "restart"),  # glob matches an extra file in the restart directory so fall back
+        (False, False),  # glob is disabled so both directories fall back to explicit tile listing
+    ]
+)
+def test_fms_collate_mpi_glob(tmp_path, monkeypatch, use_glob, extra_file_location):
+    """
+    Test MPI glob handling and restart hashing in fms_collate.
+    """
+    archive = tmp_path / "archive"
+    output = archive / "output000"
+    restart = archive / "restart000"
+
+    output_base = "access-om3.mom6.out.nc"
+    restart_base = "access-om3.mom6.r.nc"
+
+    for d, base in ((output, output_base), (restart, restart_base)):
+        d.mkdir(parents=True)
+        for n in range(3):
+            (d / f"{base}.{n:04d}").write_text(f"tile {n}")
+
+    # Add an extra file that matches the glob but is not a valid tile.
+    # This should prevent the glob optimisation
+    if extra_file_location == "output":
+        (output / "access-om3.mom6.out.nc.bk").write_text("bk")
+    elif extra_file_location == "restart":
+        (restart/"access-om3.mom6.r.nc.bk").write_text("bk")
+
+    # mock the model with MPI collation enabled
+    model = MagicMock()
+    model.expt.config = {
+        "collate": {
+            "mpi": True,
+            "glob": use_glob,
+            "restart": True,
+            "exe": "mppnccombine-fast",
+            "ncpus": 4,
+        }
+    }
+
+    model.expt.archive_path = str(archive)
+    model.output_path = str(output)
+    model.prior_restart_path = str(restart)
+    model.expand_executable_path.return_value = "mppnccombine-fast"
+
+    # capture collation commands without actually running MPI
+    commands = {}
+    pool = MagicMock()
+
+    def mock_apply_async(func, args):
+        command, directory = args
+        commands[directory] = command
+
+        # simulate successful collation
+        result = MagicMock()
+        result.get.return_value = (None, b"")
+        return result
+
+    pool.apply_async.side_effect = mock_apply_async
+
+    # mock multiprocessing and env operations
+    monkeypatch.setattr("payu.models.fms.multiprocessing.Pool", lambda **kwargs: pool)
+    monkeypatch.setattr("payu.models.fms.res.setrlimit", lambda *args: None)
+    monkeypatch.setattr("payu.models.fms.required_libs", lambda *args: [])
+    monkeypatch.setattr("payu.models.fms.envmod.lib_update", lambda *args: None)
+    monkeypatch.setattr("payu.models.fms.envmod.module", lambda *args: None)
+
+    # ensure hashing uses actual files
+    def mock_hash(path, hashfn):
+        assert os.path.isfile(path)  # never hash a glob pattern
+        return os.path.basename(path)
+
+    monkeypatch.setattr("payu.models.fms.hash", mock_hash)
+
+    # skip hashing collated files since no real collated files in this test
+    monkeypatch.setattr("payu.models.fms.restart_mapping_log", lambda hashes: hashes)
+
+    mapping = fms_collate(model)
+
+    # Expected tile names when glob optimisation is not used
+    output_explicit = " ".join(
+        f"{output_base}.{i:04d}" for i in range(3)
+    )
+    restart_explicit = " ".join(
+        f"{restart_base}.{i:04d}" for i in range(3)
+    )
+
+    # check output glob handling
+    expected_output = (
+        f"{output_base}.*"
+        if use_glob and extra_file_location != "output"
+        else output_explicit
+    )
+    assert commands[str(output)].endswith(expected_output)
+
+    # check restart glob handling
+    expected_restart = (
+        f"{restart_base}.*"
+        if use_glob and extra_file_location != "restart"
+        else restart_explicit
+    )
+    assert commands[str(restart)].endswith(expected_restart)
+
+    # verify restart hashes were calculated from individual tiles
+    assert mapping == {
+        "restart000": {
+            str(restart / restart_base): [
+                f"{restart_base}.{i:04d}" for i in range(3)
+            ]
         }
     }
