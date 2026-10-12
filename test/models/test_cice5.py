@@ -199,7 +199,8 @@ def test_setup(config, cice_config_files, expected_cal):
 
 def make_cice5_restart_dir(start_date,
                            restart_index=0,
-                           additional_path=None):
+                           additional_path=None,
+                           restart_name=ICED_RESTART_NAME):
     """
     Create fake prior restart files (at rdate) required by CICE5's setup.
     """
@@ -217,7 +218,7 @@ def make_cice5_restart_dir(start_date,
 
     # Restart files required by CICE5 setup
     ncfile = Dataset(
-        os.path.join(restart_path, f"{ICED_RESTART_NAME}{rdate}"),
+        os.path.join(restart_path, f"{restart_name}{rdate}"),
         mode='w', format='NETCDF4')
     # set restart time
     ncfile.setncattr("year",year)
@@ -227,7 +228,7 @@ def make_cice5_restart_dir(start_date,
     ncfile.close()
 
     with open(os.path.join(restart_path, RESTART_POINTER_NAME), 'w') as rpointer:
-        rpointer.write(f"{ICED_RESTART_NAME}{rdate}")
+        rpointer.write(f"{restart_name}{rdate}")
 
     return restart_path
 
@@ -317,3 +318,30 @@ def test_restart_ptr_ignores_extra_files(config, cice_config_files):
     assert model.get_latest_restart_file(model.prior_restart_path) == iced_name
     with open(os.path.join(model.work_init_path, RESTART_POINTER_NAME)) as f:
         assert os.path.basename(f.read().strip()) == iced_name
+
+
+CUSTOM_PREFIX_CICE_NML = deepcopy(DEFAULT_CICE_NML)
+CUSTOM_PREFIX_CICE_NML["setup_nml"].update(restart_file="myice")
+
+
+@pytest.mark.parametrize("config", [CONFIG_WITH_RESTART], indirect=True)
+@pytest.mark.parametrize("cice_config_files", [CUSTOM_PREFIX_CICE_NML],
+                         indirect=True)
+def test_restart_file_prefix_from_namelist(config, cice_config_files):
+    """
+    Test that the restart file prefix is read from setup_nml:restart_file
+    """
+    start_date = cftime.datetime(2145, 1, 1, calendar="proleptic_gregorian")
+    restart_path = make_cice5_restart_dir(start_date, restart_name="myice.")
+    # A default-prefix restart with a later date should be ignored
+    shutil.copy(os.path.join(restart_path, "myice.2145-01-01-00000.nc"),
+                os.path.join(restart_path, "iced.2146-01-01-00000.nc"))
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+        model = expt.models[0]
+        model.setup()
+
+    assert (model.get_latest_restart_file(model.prior_restart_path)
+            == "myice.2145-01-01-00000.nc")
