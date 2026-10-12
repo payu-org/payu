@@ -288,7 +288,8 @@ def submit_job(script, config, vars=None, expt=None, current_run=None,
             scheduler=expt.scheduler,
             metadata=expt.metadata,
             current_run=current_run,
-            depends_on=depends_on
+            depends_on=depends_on,
+            n_runs=int(vars.get('PAYU_N_RUNS', None)),
         )
 
     return job_id
