@@ -268,7 +268,7 @@ def fms_collate(model):
                 globstr = f"{t_base}.*"
 
                 # Try an equivalent glob and check the same files are returned
-                mnc_glob = fnmatch.filter(os.listdir(model.output_path), globstr)
+                mnc_glob = fnmatch.filter(os.listdir(t_dir), globstr)
 
                 if sorted(tiles) == sorted(mnc_glob):
                     file_dict[t_base] = [globstr, ]
