@@ -2,6 +2,7 @@ import copy
 import os
 import shutil
 import pytest
+from unittest.mock import patch
 
 import payu
 import cftime
@@ -610,3 +611,19 @@ def test_get_cur_expt_time_no_date(cmeps_model_log):
 
     with pytest.raises(ValueError, match="Key string 'memory_write: model date' not found in"):
         cur_expt_time = model.get_cur_expt_time()
+
+
+@pytest.mark.parametrize("cmeps_model", [1], indirect=True)
+def test_collate_returns_mapping(cmeps_model):
+    model, _ = cmeps_model
+    expected_mapping = {"restart000": {"collated_hash": ["tile_hash_1", "tile_hash_2"]}}
+
+    with patch.object(model, "get_runconfig"), \
+         patch.object(model, "get_components"), \
+         patch("payu.models.cesm_cmeps.fms_collate", return_value=expected_mapping) as mock_collate:
+
+        model.components = {"ocn": "mom"}
+        result = model.collate()
+
+    assert result == expected_mapping
+    mock_collate.assert_called_once_with(model)
