@@ -300,7 +300,6 @@ def test_restart_ptr_ignores_extra_files(config, cice_config_files):
     """
     Test that stray files starting with 'iced.' (e.g. backups) in the
     prior restart directory are not picked up as the restart file.
-    See https://github.com/payu-org/payu/issues/642
     """
     start_date = cftime.datetime(2145, 1, 1, calendar="proleptic_gregorian")
     restart_path = make_cice5_restart_dir(start_date)
