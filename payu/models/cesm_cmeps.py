@@ -381,7 +381,7 @@ class CesmCmeps(Model):
         self.get_components()
 
         if "mom" in self.components.values():
-            fms_collate(self)
+            return fms_collate(self)
         else:
             super().collate()
 
