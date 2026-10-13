@@ -11,6 +11,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 from __future__ import print_function
 
 import os
+import re
 
 from payu.models.cice import Cice
 import payu.calendar as cal
@@ -88,8 +89,16 @@ class Cice5(Cice):
         that folder. Only used by esm1.6 driver but
         should work in other drivers.
         """
+        # CICE5 restart files are named <restart_file>.YYYY-MM-DD-SSSSS, with
+        # a '.nc' suffix for netCDF restarts, e.g. iced.2145-01-01-00000.nc
+        prefix = self.get_restart_file_prefix()
+        pattern = re.compile(
+            rf'^{re.escape(prefix)}\.\d{{4}}-\d{{2}}-\d{{2}}-\d{{5}}(\.nc)?$'
+        )
+
         iced_restart_file = None
-        iced_restart_files = [f for f in os.listdir(restart_path) if f.startswith('iced.')]
+        iced_restart_files = [f for f in os.listdir(restart_path)
+                              if pattern.match(f)]
 
         if len(iced_restart_files) > 0:
             iced_restart_file = sorted(iced_restart_files)[-1]
