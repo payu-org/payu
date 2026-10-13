@@ -15,6 +15,7 @@ from payu.status import (
     get_job_file_list,
     build_job_info,
     display_job_info,
+    display_remaining_runs,
     collect_expt_paths,
     display_expt_paths,
     parse_exit_status_from_logs,
@@ -1265,13 +1266,13 @@ def test_update_postscript_job_file(tmp_path, stdout_exists, scheduler_has_info,
 @pytest.mark.parametrize(
     "archive_jobs, queued_job, running_job, expected_output",
     [
-        (True, False, False, "Run: 2 of 2 (1 remaining to be submitted)"),
-        (True, True, False, "Run: 3 of 3\n"),
-        (True, False, True, "Run: 3 of 3\n"),
+        (True, False, False, "Remaining runs to be submitted: 1\n"),
+        (True, True, False, "Run: 3\n"),
+        (True, False, True, "Run: 3\n"),
     ],
     indirect=["archive_jobs", "queued_job", "running_job"]
 )
-def test_display_total_and_remain_run_suffix(tmp_path, capsys, archive_jobs, queued_job, running_job, expected_output):
+def test_display_remaining_runs(tmp_path, capsys, archive_jobs, queued_job, running_job, expected_output):
     """Test that the total run number and remaining run suffixes are correctly displayed."""
     mock_expt = MagicMock()
     mock_expt.get_model_cur_expt_time.return_value = cftime.datetime(1901, 1, 15, 0, 30, 0)
@@ -1286,3 +1287,63 @@ def test_display_total_and_remain_run_suffix(tmp_path, capsys, archive_jobs, que
 
     captured = capsys.readouterr().out
     assert expected_output in captured
+
+
+@pytest.mark.parametrize(
+    "archive_jobs, data",
+    [
+        (False, {'runs': {0: {'run': [expected_archive_job_info(0)]}}}), 
+        (True, {})],
+    indirect=["archive_jobs"]
+)
+def test_display_remaining_runs_no_run_info(tmp_path, capsys, archive_jobs, data):
+    """Test that the display_remaining_runs does not print anything if 
+    - no job file is found,
+    - no run info is found for the latest run number."""
+    display_remaining_runs(tmp_path / "archive", data, 40)
+    assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize(
+    "archive_jobs",
+    [(True)],
+    indirect=["archive_jobs"]
+)
+def test_display_remaining_runs_equal_to_one(tmp_path, capsys, archive_jobs):
+    """Test that the display_remaining_runs does not print anything if 
+    payu_n_runs is 1."""
+    # Create a mock data with payu_n_runs = 1 for the latest run
+    data = {'runs': 
+            {   
+                0: {'run': [expected_archive_job_info(0)]},
+                1: {'run': [expected_archive_job_info(1)]},
+                2: {'run': [expected_archive_job_info(2)]}
+            }
+    }
+    data["runs"][2]["run"][0]["payu_n_runs"] = 1
+
+    display_remaining_runs(tmp_path / "archive", data, 40)
+    assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize(
+    "archive_jobs",
+    [(True)],
+    indirect=["archive_jobs"]
+)
+def test_display_remaining_runs_failed_job(tmp_path, capsys, archive_jobs):
+    """Test that the display_remaining_runs does not print anything if 
+    the latest job failed."""
+    # Create a mock data with payu_n_runs = 3 but failed in the latest run
+    data = {'runs': 
+            {   
+                0: {'run': [expected_archive_job_info(0)]},
+                1: {'run': [expected_archive_job_info(1)]},
+                2: {'run': [expected_failed_job_info()]}
+            }
+    }
+    data["runs"][2]["run"][0]["payu_n_runs"] = 3
+
+    # Should not display remaining runs
+    display_remaining_runs(tmp_path / "archive", data, 40)
+    assert capsys.readouterr().out == ""

@@ -384,31 +384,11 @@ def display_job_info(data: dict[str, Any], archive_path: Path) -> None:
     runs = data.get("runs", {})
     if not runs:
         print("No run information available.")
-        return
-
-    total_run_suffix = ""
-    remaining_run_suffix = ""
-
-    # Get the latest run number for "Run: X of Y" display, could be [] if archive not found
-    latest_run_num = get_job_file_list(archive_path, latest_num_only=True)
-    if isinstance(latest_run_num, int):
-        total_run_suffix = f" of {latest_run_num}" 
-
-        # Get any runs waiting to be submitted 
-        latest_run_info = runs.get(latest_run_num, {}).get("run", [])
-        if latest_run_info:
-            remaining_run_ct = int(latest_run_info[-1].get("payu_n_runs", 1)) - 1
-            
-            remaining_run_suffix = (
-                f" ({remaining_run_ct} remaining to be submitted)" 
-                if remaining_run_ct > 0 
-                else ""
-            )
-        
+        return    
 
     for run_number, jobs in runs.items():
         print("=" * line_width)
-        print(f"Run: {run_number}{total_run_suffix}{remaining_run_suffix}")
+        print(f"Run: {run_number}")
 
         # Loop through the job types (run and collate) for the current run
         for job_type, job_list in jobs.items():
@@ -437,6 +417,39 @@ def display_job_info(data: dict[str, Any], archive_path: Path) -> None:
                 display_log_job_files(job_info)
 
     print("=" * line_width)
+
+    # Display the number of remaining runs to be submitted
+    display_remaining_runs(archive_path, runs, line_width)
+
+
+def display_remaining_runs(archive_path: Path, 
+                        runs: dict[int, dict[str, list]],
+                        line_width: int) -> None:
+    """
+    Display the number of remaining runs to be submitted.
+    This is determined by checking the payu_n_runs value in the latest run job file.
+    """
+    # Get the latest run number, could be [] if archive not found
+    latest_run_num = get_job_file_list(archive_path, latest_num_only=True)
+    if isinstance(latest_run_num, int):
+
+        # Read the run_info of the last run
+        latest_run_info = runs.get(latest_run_num, {}).get("run", [])
+        if latest_run_info:
+            latest_run_info = latest_run_info[-1]
+
+            # If the exit status is ready and is non-zero,
+            # Don't display the remaining runs
+            exit_status = latest_run_info.get("exit_status")
+            if exit_status is not None and exit_status != 0:
+                return
+
+            # Fetch remaining runs (payu_n_runs - 1)
+            remaining_run_ct = int(latest_run_info.get("payu_n_runs", 1)) - 1
+            
+            if remaining_run_ct > 0:
+                print(f"Remaining runs to be submitted: {remaining_run_ct}")
+                print("=" * line_width)
 
 
 def collect_expt_paths(expt):
