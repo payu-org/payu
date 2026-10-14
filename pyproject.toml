@@ -48,11 +48,11 @@ test = [
     "Sphinx",
     "mnctools",
     "freezegun",
-    "access-nri-intake",
+    "access-nri-intake>=1.8.0",
 ]
 mitgcm = ["mnctools>=0.2"] 
 docs = ["furo"]
-intake = ["access-nri-intake"]
+intake = ["access-nri-intake>=1.8.0"]
 
 [project.scripts]
 payu = "payu.cli:parse"

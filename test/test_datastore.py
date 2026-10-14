@@ -99,6 +99,11 @@ def check_intake_datastore_contents(datastore_path, expt_name, expt_uuid):
             "path": str(tmpdir / "sync_path"),
         }
     }, False),
+    ({
+            'sync': {
+                "path": "server.domain:/path/on/remote",
+            }
+        }, False),
 ])
 def test_expt_make_datastore(monkeypatch, sync_config, datastore_in_sync):
     """Test the make_datastore choose sync path when sync is enabled, 
@@ -163,6 +168,7 @@ def test_datastore_generation_uses_correct_builder(
             f'({expt.metadata.uuid})'
         ),
         builder=builder,
+        builder_kwargs={},
     )
 
 
