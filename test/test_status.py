@@ -15,6 +15,7 @@ from payu.status import (
     get_job_file_list,
     build_job_info,
     display_job_info,
+    display_remaining_runs,
     collect_expt_paths,
     display_expt_paths,
     parse_exit_status_from_logs,
@@ -136,6 +137,7 @@ def queued_job(tmp_path, request):
                 "scheduler_type": "pbs",
                 "metadata": {"uuid": "test-uuid"},
                 "payu_current_run": 3,
+                "payu_n_runs": 1,
                 "stage": "queued"
             }
         )
@@ -154,6 +156,7 @@ def running_job(tmp_path, request):
                 "scheduler_type": "pbs",
                 "metadata": {"uuid": "test-uuid"},
                 "payu_current_run": 3,
+                "payu_n_runs": 1,
                 "payu_run_id": "commit-hash3",
                 "stage": "model-run",
                 "timings": {
@@ -180,6 +183,7 @@ def archive_jobs(tmp_path, request):
                         "metadata": {"uuid": "test-uuid"},
                         "payu_current_run": i,
                         "payu_run_id": f"commit-hash{i}",
+                        "payu_n_runs": 4 - i, # Mock user called "payu run -n 4"
                         "stage": "archive",
                         "model_finish_time": "1901-03-15T00:30:00",
                         "payu_run_status": 0,
@@ -206,6 +210,7 @@ def failed_job(tmp_path, request):
                 "scheduler_type": "pbs",
                 "metadata": {"uuid": "test-uuid"},
                 "payu_current_run": 3,
+                "payu_n_runs": 1,
                 "payu_run_id": "commit-hash-failed",
                 "stage": "setup",
                 "payu_run_status": 1,
@@ -404,6 +409,7 @@ def test_get_job_file_list_latest_num_only(tmp_path, archive_jobs, queued_job, l
 
 def expected_archive_job_info(run_number):
     return {
+        'payu_n_runs': 4 - run_number,
         'depends_on': None,
         'exit_status': 0,
         'job_id': f'test-job-id-{run_number}',
@@ -419,6 +425,7 @@ def expected_archive_job_info(run_number):
 
 def expected_running_job_info():
     return {
+        'payu_n_runs': 1,
         'depends_on': None,
         'exit_status': None,
         'job_id': 'test-job-id-3',
@@ -435,6 +442,7 @@ def expected_running_job_info():
 
 def expected_queued_job_info():
     return {
+        'payu_n_runs': 1,
         'depends_on': None,
         'exit_status': None,
         'job_id': 'test-job-id-3',
@@ -450,6 +458,7 @@ def expected_queued_job_info():
 
 def expected_failed_job_info():
     return {
+        "payu_n_runs": 1,
         'depends_on': None,
         'exit_status': 1,
         'job_id': 'test-job-id-0failed',
@@ -1253,3 +1262,88 @@ def test_update_postscript_job_file(tmp_path, stdout_exists, scheduler_has_info,
     if expected_stage == "queued/running":
         assert not job_file.exists()
         assert data["stage"] == "queued/running"
+
+@pytest.mark.parametrize(
+    "archive_jobs, queued_job, running_job, expected_output",
+    [
+        (True, False, False, "Remaining runs to be submitted: 1\n"),
+        (True, True, False, "Run: 3\n"),
+        (True, False, True, "Run: 3\n"),
+    ],
+    indirect=["archive_jobs", "queued_job", "running_job"]
+)
+def test_display_remaining_runs(tmp_path, capsys, archive_jobs, queued_job, running_job, expected_output):
+    """Test that the total run number and remaining run suffixes are correctly displayed."""
+    mock_expt = MagicMock()
+    mock_expt.get_model_cur_expt_time.return_value = cftime.datetime(1901, 1, 15, 0, 30, 0)
+
+    data = build_job_info(
+        control_path=tmp_path / "control",
+        archive_path=tmp_path / "archive",
+        all_runs=False,
+        expt=mock_expt
+    )
+    display_job_info(data, tmp_path / "archive")
+
+    captured = capsys.readouterr().out
+    assert expected_output in captured
+
+
+@pytest.mark.parametrize(
+    "archive_jobs, data",
+    [
+        (False, {'runs': {0: {'run': [expected_archive_job_info(0)]}}}), 
+        (True, {})],
+    indirect=["archive_jobs"]
+)
+def test_display_remaining_runs_no_run_info(tmp_path, capsys, archive_jobs, data):
+    """Test that the display_remaining_runs does not print anything if 
+    - no job file is found,
+    - no run info is found for the latest run number."""
+    display_remaining_runs(tmp_path / "archive", data, 40)
+    assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize(
+    "archive_jobs",
+    [(True)],
+    indirect=["archive_jobs"]
+)
+def test_display_remaining_runs_equal_to_one(tmp_path, capsys, archive_jobs):
+    """Test that the display_remaining_runs does not print anything if 
+    payu_n_runs is 1."""
+    # Create a mock data with payu_n_runs = 1 for the latest run
+    data = {'runs': 
+            {   
+                0: {'run': [expected_archive_job_info(0)]},
+                1: {'run': [expected_archive_job_info(1)]},
+                2: {'run': [expected_archive_job_info(2)]}
+            }
+    }
+    data["runs"][2]["run"][0]["payu_n_runs"] = 1
+
+    display_remaining_runs(tmp_path / "archive", data, 40)
+    assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize(
+    "archive_jobs",
+    [(True)],
+    indirect=["archive_jobs"]
+)
+def test_display_remaining_runs_failed_job(tmp_path, capsys, archive_jobs):
+    """Test that the display_remaining_runs does not print anything if 
+    the latest job failed."""
+    # Create a mock data with payu_n_runs = 3 but failed in the latest run
+    data = {'runs': 
+            {   
+                0: {'run': [expected_archive_job_info(0)]},
+                1: {'run': [expected_archive_job_info(1)]},
+                2: {'run': [expected_failed_job_info()]}
+            }
+    }
+    data["runs"][2]["run"][0]["payu_n_runs"] = 3
+
+    # Should not display remaining runs
+    display_remaining_runs(tmp_path / "archive", data, 40)
+    assert capsys.readouterr().out == ""

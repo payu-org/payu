@@ -368,6 +368,7 @@ def write_queued_job_file(
             metadata: Metadata,
             current_run: int,
             depends_on: Optional[list[str]] = None,
+            n_runs: Optional[int] = None,
         ) -> None:
     """Initialise the queued job file in the control path with the job ID
 
@@ -385,6 +386,10 @@ def write_queued_job_file(
         Metadata object for the run - used to get uuid if it exists
     current_run: int
         Current run number for the queued job
+    depends_on: Optional[list[str]], default None
+        List of job IDs that the queued job depends on
+    n_runs: Optional[int], default None
+        The number of remaining runs for the current job, e.g., payu run -n N is called
     """
     job_file_path = get_job_file_path_with_id(
         archive_path,
@@ -400,6 +405,10 @@ def write_queued_job_file(
         "payu_current_run": current_run,
         "depends_on": depends_on,
     }
+
+    if type == "run" and n_runs is not None:
+        data["payu_n_runs"] = n_runs
+        
     data.update(get_metadata(metadata))
     update_job_file(file_path=job_file_path, data=data)
 
