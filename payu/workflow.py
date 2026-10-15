@@ -19,6 +19,8 @@ class Workflow:
             workflow_steps['postscript'] = None
         if skip_step != 'sync' and config.get('sync', {}).get('enable', False):
             workflow_steps['sync'] = None
+        if skip_step != 'catalog' and config.get('catalog', {}).get('enable', False):
+            workflow_steps['catalog'] = None
 
         return cls(workflow_steps, run_number)
 
@@ -42,12 +44,14 @@ class Workflow:
         from payu.subcommands.collate_cmd import submit_collate
         from payu.subcommands.postscript_cmd import submit_postscript
         from payu.subcommands.sync_cmd import submit_sync
+        from payu.subcommands.catalog_cmd import submit_catalog
 
         # Build a function lookup dictionary
         return {
             "collate": submit_collate,
             "postscript": submit_postscript,
-            "sync": submit_sync
+            "sync": submit_sync,
+            "catalog": submit_catalog,
         }
     
 
