@@ -422,3 +422,13 @@ repeat = {
         'help': 'Remove any archived restart files and repeat the initial run upon resubmission'
     }
 }
+
+script_template = {
+    'flags': ['--script-template', '-t'],
+    'parameters': {
+        'dest': 'script_template',
+        'action': 'store',
+        'default': None,
+        'help': 'Specify a job script template to use for this run'
+    }
+}
