@@ -25,7 +25,7 @@ verbose = True
 config = copy.deepcopy(original_config)
 
 test_storage_groups = ['x00', 'xyz999', 'y00', 'c000', 'mm02', 'm000', 'mm01', 'a000', 'tm70', 'aa30']
-
+mock_job_script_path = Path("/mock/path/to/job_script.sh")
 
 def _fake_pbsnodes_dict(nodes):
     """Build a pbsnodes -F json compatible payload."""
@@ -357,7 +357,9 @@ def test_find_mounts():
     assert(pbs.find_mounts(paths, mounts) == set(['fdata/x00', ]))
 
 @patch("payu.schedulers.pbs.get_user_groups", return_value=test_storage_groups)
-def test_run(mock_get_user_groups):
+@patch("hpcpy.client.base.BaseClient._render_job_script")
+@patch("hpcpy.client.base.BaseClient._clean_rendered_job_scripts")
+def test_run(mock_clean_rendered_job_scripts, mock_job_script, mock_get_user_groups):
 
     # Use new mechanism to return a scheduler
     sched_name = config.get('scheduler', 'pbs')
@@ -388,10 +390,11 @@ def test_run(mock_get_user_groups):
         config['modules'] = {}
         config['modules']['use'] = ['/f/data/mm01', '/f/data/mm02/test/modules']
 
+        mock_job_script.return_value = mock_job_script_path
         cmd = sched.submit(payu_cmd, config, pbs_vars, python_exe, dry_run=True)
         print(f"Generated PBS command: {cmd}")
 
-        assert "payu-run" in cmd
+        assert f"{mock_job_script_path}" in cmd
         assert f"-q {config['queue']}" in cmd
     
         assert f"-N {config['jobname']}" in cmd
@@ -407,9 +410,6 @@ def test_run(mock_get_user_groups):
         storage_in_cmd = re.search(f"storage=([^\s]+)", cmd).group(1).split('+')
         assert sorted(expected_storage) == sorted(storage_in_cmd)
 
-        assert f" -v PAYU_PATH={payu_path}" in cmd
-        assert f" -- {python_exe}" in cmd
-
 
 @patch("payu.schedulers.pbs.check_exe_path", side_effect=lambda x, y: y)
 @patch("payu.schedulers.pbs.get_user_groups", return_value=test_storage_groups)
@@ -423,15 +423,15 @@ def test_run(mock_get_user_groups):
         # With launch script env and file exists
         (True, True, False, "/path/to/python payu-run"),
         # With launch script env, file exists, and file is executable
-        (True, True, True, "{tmp_path}/launcher.sh /path/to/python payu-run")
+        (True, True, True, None)
     ],
 )
 def test_submit_launcher_script_setting(
-    mock_check_exe_path, mock_get_user_groups,
+    mock_get_user_groups, mock_check_exe_path, 
     env_exists, file_exists, file_exe, expected_cmd, tmp_path, monkeypatch
 ):
     config = {
-        "control_path": "/path/to/experiment"
+        "control_path": f"{tmp_path}/control",
     }
 
     # Setup based on test parameters
@@ -444,12 +444,17 @@ def test_submit_launcher_script_setting(
         if file_exe:
             launcher_script_path.chmod(0o755)
 
-    # Generate the qsub command
-    pbs_cmd = pbs.PBS().submit("payu-run", config,
+    # Render the script
+    pbs.PBS().submit("payu-run", config,
                                python_exe="/path/to/python", dry_run=True)
 
-    _, cmd = pbs_cmd.split("--")
-    assert cmd.strip() == expected_cmd.format(tmp_path=tmp_path)
+    script_dir = Path(tmp_path) / "control" / ".hpcpy" / "job_scripts"
+    script_files = list(script_dir.glob("*"))
+    assert len(script_files) == 1, f"Expected 1 file, found {len(script_files)}"
+
+    if file_exe:
+        expected_cmd = f"{tmp_path}/launcher.sh /path/to/python payu-run"
+    assert f"{expected_cmd}" in script_files[0].read_text()
 
 
 @patch("payu.schedulers.pbs.subprocess.run")
