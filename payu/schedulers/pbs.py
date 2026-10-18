@@ -33,6 +33,8 @@ PBSNODE_TIMEOUT = 60
 LOCK_TIMEOUT = 5
 LOCK_LIFETIME = 8
 
+SCRIPT_TEMPLATE = Path(__file__).parent / "payu-pbs-script.sh"
+
 ureg = UnitRegistry()
 
 client = hpcpy.client.pbs.PBSClient()
@@ -429,9 +431,12 @@ class PBS(Scheduler):
         if pbs_flags_extend:
             pbs_flags.append(pbs_flags_extend)
 
-        payu_path = pbs_vars.get('PAYU_PATH', os.path.dirname(sys.argv[0]))
+        payu_path = pbs_vars.pop('PAYU_PATH', os.path.dirname(sys.argv[0]))
         pbs_script = check_exe_path(payu_path, pbs_script)
         ctrl_path = pbs_config.get('control_path')
+        # Configure the job script directory to use the control path if exists
+        if ctrl_path is not None:
+            hpcpy.constants.JOB_SCRIPT_DIR = Path(ctrl_path) / ".hpcpy" / "job_scripts"
 
         # Check for storage paths that might need to be mounted in the
         # python and script paths
@@ -477,15 +482,31 @@ class PBS(Scheduler):
         # Set up environment modules here for PBS.
         envmod.setup()
 
+        # Pop PAYU_JOB_SCRIPT from pbs_vars if it exists
+        job_script_template = pbs_vars.pop('PAYU_JOB_SCRIPT_TEMPLATE', SCRIPT_TEMPLATE)  
+
         # Submit with HPCpy PBSClient
-        job_or_cmd = client.submit(job_script = f"-- {python_exe} {pbs_script}",
+        job_or_cmd = client.submit(
                       directives = pbs_flags,
                       dry_run = dry_run,
                       queue = pbs_config.get('queue', 'normal'),
                       storage = list(storages) if storages else None,
                       variables = pbs_vars,
                       depends_on = depends_on,
+                      # Override the job script template if specified in environment variable
+                      job_script = job_script_template,
+                      render = True,
+                      python_exe = python_exe,
+                      payu_exe = pbs_script,
+                      module_purge = True,
+                      module_use = module_use_paths,
+                      modules = ['pbs'] + (module_names if module_names else []),
                       )
+
+
+        # Clean up old job scripts (older than 48 hours)
+        client.job_script_expiry = '48H'
+        client._clean_rendered_job_scripts()
 
         return job_or_cmd
 
