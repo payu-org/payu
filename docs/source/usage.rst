@@ -416,14 +416,12 @@ Other experiment runs will not be harmed by this command.
 Postprocessing
 ==============
 
-By default, payu submits all enabled postprocessing jobs automatically after the model run has completed.
-Postprocessing includes:
-
-- collate,
-- postscript,
-- sync, and
-- sync,
-- intake-catalog generation (default to be disabled)
+By default, payu submits all *enabled* postprocessing jobs automatically after the model 
+run has completed. Postprocessing includes:
+* collate
+* postscript
+* sync
+* intake-catalog generation
 
 These jobs can also be run manually if required.
 When payu submits postprocessing jobs, it adds job dependencies to ensure that they run in the correct order:: 
