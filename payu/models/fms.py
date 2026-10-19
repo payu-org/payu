@@ -353,7 +353,6 @@ def fms_collate(model):
         model.model_type in ("mom6", "cesm-cmeps")
         and restart_dir is not None
         and mnc_tiles.get(restart_dir)
-        and not mapping_collate_dict.get(restart_dir)
     ):
         restart_root = Path(restart_dir)
 
