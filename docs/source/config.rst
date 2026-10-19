@@ -502,14 +502,14 @@ User Processing
       ``git-runlog``, in the remote archive directory.
 
 .. _config-catalog:
-``catalog``
+Intake-catalog Generation
+-------------------------
    Configure the job that generates an intake-esm datastore for experiment
-   output. Catalog generation is available only for supported model drivers
-   (see :ref:`Postprocessing`) and requires ``access_nri_intake`` in the job
-   environment.
+   output. This step is disabled by default and can be executed manually using 
+   `payu catalog` (see :ref:`Postprocessing`).
 
    ``enable`` (*Default:* ``False``)
-      Submit catalog generation automatically after the other enabled
+      Submit catalog generation automatically after other enabled
       postprocessing jobs.
 
    ``queue`` (*Default:* ``normal``)
@@ -526,7 +526,7 @@ User Processing
 
    ``jobname``
       Override the catalog job name. By default, payu derives it from the
-      experiment job name.
+      experiment job name and appends `_i` to it.
 
    ``qsub_flags``
       Additional PBS submission flags for the catalog job.
