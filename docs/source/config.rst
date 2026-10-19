@@ -501,6 +501,36 @@ User Processing
       Create or update a bare git repository clone of the run history, called 
       ``git-runlog``, in the remote archive directory.
 
+.. _config-catalog:
+``catalog``
+   Configure the job that generates an intake-esm datastore for experiment
+   output. Catalog generation is available only for supported model drivers
+   (see :ref:`Postprocessing`) and requires ``access_nri_intake`` in the job
+   environment.
+
+   ``enable`` (*Default:* ``False``)
+      Submit catalog generation automatically after the other enabled
+      postprocessing jobs.
+
+   ``queue`` (*Default:* ``normal``)
+      PBS queue used for the catalog job.
+
+   ``ncpus`` (*Default:* ``8``)
+      Number of CPUs requested by the catalog job.
+
+   ``mem`` (*Default:* ``50GB``)
+      Memory requested by the catalog job.
+
+   ``walltime`` (*Default:* ``0:05:00``)
+      Walltime requested by the catalog job.
+
+   ``jobname``
+      Override the catalog job name. By default, payu derives it from the
+      experiment job name.
+
+   ``qsub_flags``
+      Additional PBS submission flags for the catalog job.
+
 Experiment Tracking
 -------------------
 
