@@ -48,6 +48,7 @@ from payu.metadata import Metadata
 import payu.telemetry as telemetry
 from payu.git_utils import get_git_repository
 import payu.errors as errors
+from payu.models.mom6 import get_mom6_restart_decomposition
 
 
 # Setup logger
@@ -932,6 +933,15 @@ class Experiment(object):
 
         movetree(self.work_path, self.output_path)
 
+        mom6_restart = next(
+            (
+                get_mom6_restart_decomposition(model)
+                for model in self.models
+                if model.model_type in ("mom6", "cesm-cmeps") # in cesm-cmeps, mom6 will be registered as "mom"
+            ),
+            None,
+        )
+
         # Remove any outdated restart files
         try:
             restarts_to_prune = self.get_restarts_to_prune(
@@ -954,6 +964,7 @@ class Experiment(object):
             self.run_id, 
             self.counter,
             model_restart_datetimes.get("model_finish_time", None),
+            mom6_restart=mom6_restart,
         )
 
         # Ensure dynamic library support for subsequent python calls
