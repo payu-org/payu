@@ -309,7 +309,7 @@ def test_restart_hash_directory_layout(mock_hash, tmp_path, subdir):
         (False, False),  # glob is disabled so both directories fall back to explicit tile listing
     ]
 )
-def test_fms_collate_mpi_glob(tmp_path, monkeypatch, use_glob, extra_file_location):
+def test_fms_collate_mpi_glob(tmp_path, monkeypatch, capsys, use_glob, extra_file_location):
     """
     Test MPI glob handling and restart hashing in fms_collate.
     """
@@ -381,7 +381,18 @@ def test_fms_collate_mpi_glob(tmp_path, monkeypatch, use_glob, extra_file_locati
     # skip hashing collated files since no real collated files in this test
     monkeypatch.setattr("payu.models.fms.restart_mapping_log", lambda hashes: hashes)
 
+    # Exercise the large-tile warning when glob matching fails
+    if use_glob and extra_file_location == "output":
+        monkeypatch.setattr(
+            "payu.models.fms.MPI_FORK_MAX_FILE_LIMIT", 2
+        )
+
     mapping = fms_collate(model)
+
+    if use_glob and extra_file_location == "output":
+        stdout = capsys.readouterr().out
+        assert "Warning: large number of tiles: 3" in stdout
+        assert "Warning: collation will be slow and may fail" in stdout
 
     # Expected tile names when glob optimisation is not used
     output_explicit = " ".join(
