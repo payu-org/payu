@@ -599,6 +599,28 @@ Some common metadata fields are shown in the table below, with their definitions
    |                  |                                        | schema used for this experiment.         |
    +------------------+----------------------------------------+------------------------------------------+
 
+Restart metadata
+----------------
+
+Payu writes ``restart_metadata.yaml`` to each archived restart directory to record run provenance.
+
+For MOM6 experiments, Payu records the effective restart decomposition in ``restart_metadata.yaml`` using information from the runtime-generated ``MOM_parameter_doc.layout`` file. For example::
+
+   mom6_restart:
+     layout:
+     - 22
+     - 15
+     io_layout:
+     - 1
+     - 1
+     representation: collated
+
+The ``layout`` and ``io_layout`` fields record the MOM6 processor and I/O layouts, respectively. When ``IO_LAYOUT = 0,0``, the effective I/O layout is recorded as ``LAYOUT``.
+
+The ``representation`` field indicates whether restart files are ``tiled`` or ``collated``. It is updated after successful restart collation, including when collating a restart directory explicitly using ``payu collate -d archive/restartXXX``. The original decomposition is preserved.
+
+If the runtime layout information is unavailable, ``mom6_restart`` is omitted.
+
 .. _schema: https://github.com/ACCESS-NRI/schema/blob/main/experiment_asset.json
 
 .. _experiment_names:
