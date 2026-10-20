@@ -48,7 +48,6 @@ from payu.metadata import Metadata
 import payu.telemetry as telemetry
 from payu.git_utils import get_git_repository
 import payu.errors as errors
-from payu.models.mom6 import get_mom6_restart_decomposition
 
 
 # Setup logger
@@ -933,14 +932,10 @@ class Experiment(object):
 
         movetree(self.work_path, self.output_path)
 
-        mom6_restart = next(
-            (
-                get_mom6_restart_decomposition(model)
-                for model in self.models
-                if model.model_type in ("mom6", "cesm-cmeps") # in cesm-cmeps, mom6 will be registered as "mom"
-            ),
-            None,
-        )
+        # Collect model-specific restart metadata after archiving.
+        restart_metadata = {}
+        for model in self.models:
+            restart_metadata.update(model.get_restart_metadata())
 
         # Remove any outdated restart files
         try:
@@ -964,7 +959,7 @@ class Experiment(object):
             self.run_id, 
             self.counter,
             model_restart_datetimes.get("model_finish_time", None),
-            mom6_restart=mom6_restart,
+            extra_restart_metadata=restart_metadata,
         )
 
         # Ensure dynamic library support for subsequent python calls

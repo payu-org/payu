@@ -505,7 +505,7 @@ class Metadata:
                                 run_id: str,
                                 run_number: int,
                                 model_finish_time: datetime,
-                                mom6_restart: dict | None = None) -> None:
+                                extra_restart_metadata: dict | None = None) -> None:
         """Write provenance information to the restart directory"""
         # Check if restart_path exists
         if not restart_path.is_dir():
@@ -531,15 +531,14 @@ class Metadata:
         if parent_uuid:
             restart_metadata[PARENT_UUID_FIELD] = parent_uuid
 
-        # Add MOM6 restart information
-        if mom6_restart:
-            restart_metadata["mom6_restart"] = mom6_restart
+        if extra_restart_metadata:
+            restart_metadata.update(extra_restart_metadata)
 
         # Write restart metadata file to restart directory
         restart_metadata_path = restart_path / f"restart_{METADATA_FILENAME}"
         YAML().dump(restart_metadata, restart_metadata_path)
         print(f"Provenance information is written to restarts: {restart_metadata_path}")
-        
+
 
 def get_schema_from_github():
     """Retrieve metadata schema from github"""

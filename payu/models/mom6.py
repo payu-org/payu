@@ -144,6 +144,17 @@ class Mom6(IntakeMixin, MomMixin, Fms):
 
         super().archive()
 
+    def get_restart_metadata(self):
+        """
+        Return MOM6 restart decomposition metadata.
+        """
+        decomposition = get_mom6_restart_decomposition(self)
+
+        if decomposition is None:
+            return {}
+
+        return {"mom6_restart": decomposition}
+
     def read_start_date(self, input_path, calendar):
         """Read the start date from input.nml."""
         input_nml = f90nml.read(input_path)
