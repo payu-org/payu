@@ -519,7 +519,7 @@ Datastore files are excluded from the normal sync transfer.
 Automatic catalog generation is disabled by default. To enable it, in
 ``config.yaml`` (see :ref:`config-catalog`) set::
    catalog:
-       enabled: true
+       enable: true
 
 The catalog job will be submitted as part of the postprocessing workflow.
 Catalog generation is supported by ACCESS-ESM1.5, ACCESS-ESM1.6, ACCESS-OM2,
