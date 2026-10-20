@@ -17,8 +17,8 @@ class Scheduler(object):
     """Abstract scheduler class."""
 
     def __init__(self):
-        # TODO
-        pass
+        # Default to clean up old job scripts (older than 48 hours)
+        self.job_script_expiry = '48h'
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
         raise NotImplementedError
