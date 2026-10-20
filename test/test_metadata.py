@@ -759,6 +759,63 @@ def test_write_restart_provenance(init_metadata, parent_info):
 
 
 @pytest.mark.parametrize(
+    "mom6_restart",
+    [
+        pytest.param(
+            {"layout": [72, 48], "io_layout": [72, 48], "representation": "tiled"},
+            id="with-decomposition",
+        ),
+        pytest.param(None, id="without-decomposition"),
+    ],
+)
+@pytest.mark.parametrize("parent_uuid", [None, TEST_UUID])
+def test_write_restart_provenance_with_mom6_restart(init_metadata, tmp_path, mom6_restart, parent_uuid):
+    """
+    Include MOM6 restart details without changing existing provenance fields
+    """
+    original_metadata = {
+        "payu_current_run": 0,
+        "name": (
+            "MC_100km_jra_iaf-"
+            "MC_100km_jra_iaf-abc123"
+        ),
+        "experiment_uuid": "abc123-xxxx",
+        "payu_run_id": "4274502xxxx",
+        "model_finish_time": "1959-01-01T00:00:00",
+    }
+
+    metadata = init_metadata(
+        experiment_name=original_metadata["name"],
+        uuid=original_metadata["experiment_uuid"],
+    )
+    metadata.read_file = lambda: {}
+
+    restart_path = tmp_path / "restart000"
+    restart_path.mkdir()
+
+    metadata.write_restart_provenance(
+        restart_path,
+        original_metadata["payu_run_id"],
+        original_metadata["payu_current_run"],
+        datetime(1959, 1, 1),
+        mom6_restart=mom6_restart,
+    )
+
+    restart_metadata_path = restart_path / "restart_metadata.yaml"
+    assert restart_metadata_path.exists()
+
+    with open(restart_metadata_path) as file:
+        restart_metadata = YAML().load(file)
+
+    expected_metadata = original_metadata.copy()
+
+    if mom6_restart is not None:
+        expected_metadata["mom6_restart"] = mom6_restart
+
+    assert restart_metadata == expected_metadata
+
+
+@pytest.mark.parametrize(
     "value, expected_value",
     [
         # Test with a non-None value
