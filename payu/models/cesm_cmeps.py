@@ -20,7 +20,7 @@ from warnings import warn
 from payu.fsops import make_symlink
 from payu.models.model import Model, IntakeMixin
 from payu.models.fms import fms_collate
-from payu.models.mom6 import mom6_add_parameter_files, mom6_save_docs_files
+from payu.models.mom6 import mom6_add_parameter_files, mom6_save_docs_files, get_mom6_restart_decomposition
 
 NUOPC_CONFIG = "nuopc.runconfig"
 NUOPC_RUNSEQ = "nuopc.runseq"
@@ -427,6 +427,20 @@ class CesmCmeps(IntakeMixin, Model):
             calendar  = cf_cal
         )
 
+    def get_restart_metadata(self):
+        """
+        Return MOM6 restart metadata when MOM is a CMEPS component.
+        """
+        decomposition = get_mom6_restart_decomposition(self)
+        if "mom" not in self.components.values():
+            return {}
+
+        decomposition = get_mom6_restart_decomposition(self)
+
+        if decomposition is None:
+            return {}
+
+        return {"mom6_restart": decomposition}
 
 class AccessOm3(CesmCmeps):
     intake_builder = "AccessOm3Builder"
