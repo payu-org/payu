@@ -374,6 +374,36 @@ FMS based model only options:
    by specifying this option. The number of cpus used for each collation thread
    is then ``ncpus / nthreads``
 
+.. _config-catalog:
+Intake-catalog Generation
+-------------------------
+   Configure the job that generates an intake-esm datastore for experiment
+   output. This step is disabled by default and can be executed manually using 
+   `payu catalog` (see :ref:`Postprocessing`).
+
+   ``enable`` (*Default:* ``False``)
+      Submit catalog generation automatically after other enabled
+      postprocessing jobs.
+
+   ``queue`` (*Default:* ``normal``)
+      PBS queue used for the catalog job.
+
+   ``ncpus`` (*Default:* ``8``)
+      Number of CPUs requested by the catalog job.
+
+   ``mem`` (*Default:* ``50GB``)
+      Memory requested by the catalog job.
+
+   ``walltime`` (*Default:* ``0:05:00``)
+      Walltime requested by the catalog job.
+
+   ``jobname``
+      Override the catalog job name. By default, payu derives it from the
+      experiment job name and appends `_i` to it.
+
+   ``qsub_flags``
+      Additional PBS submission flags for the catalog job.
+
 
 .. _User_processing:
 
@@ -500,36 +530,6 @@ User Processing
    ``runlog`` (*Default:* ``True``)
       Create or update a bare git repository clone of the run history, called 
       ``git-runlog``, in the remote archive directory.
-
-.. _config-catalog:
-Intake-catalog Generation
--------------------------
-   Configure the job that generates an intake-esm datastore for experiment
-   output. This step is disabled by default and can be executed manually using 
-   `payu catalog` (see :ref:`Postprocessing`).
-
-   ``enable`` (*Default:* ``False``)
-      Submit catalog generation automatically after other enabled
-      postprocessing jobs.
-
-   ``queue`` (*Default:* ``normal``)
-      PBS queue used for the catalog job.
-
-   ``ncpus`` (*Default:* ``8``)
-      Number of CPUs requested by the catalog job.
-
-   ``mem`` (*Default:* ``50GB``)
-      Memory requested by the catalog job.
-
-   ``walltime`` (*Default:* ``0:05:00``)
-      Walltime requested by the catalog job.
-
-   ``jobname``
-      Override the catalog job name. By default, payu derives it from the
-      experiment job name and appends `_i` to it.
-
-   ``qsub_flags``
-      Additional PBS submission flags for the catalog job.
 
 Experiment Tracking
 -------------------
