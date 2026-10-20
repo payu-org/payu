@@ -346,22 +346,16 @@ def fms_collate(model):
     # Get full hash for collated files and write collate mapping into job file
     mapping_collate_dict = restart_mapping_log(uncollate_hashes_dict)
 
-    # Update metadata only when MOM6 restart tiles were collated.
-    restart_dir = model.prior_restart_path
+    # Update metadata for successfully collated MOM6 restart directories.
+    if model.model_type in ("mom6", "cesm-cmeps"):
+        for tiled_dir, tiled_files in mnc_tiles.items():
+            if not tiled_files:
+                continue
 
-    if (
-        model.model_type in ("mom6", "cesm-cmeps")
-        and restart_dir is not None
-        and mnc_tiles.get(restart_dir)
-    ):
-        restart_root = Path(restart_dir)
+            metadata_path = Path(tiled_dir) / "restart_metadata.yaml"
+            if not metadata_path.is_file():
+                continue
 
-        if len(model.expt.models) > 1:
-            restart_root = restart_root.parent
-
-        metadata_path = restart_root / "restart_metadata.yaml"
-
-        if metadata_path.exists():
             yaml = YAML()
             metadata = yaml.load(metadata_path)
 
