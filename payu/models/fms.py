@@ -357,6 +357,7 @@ def fms_collate(model):
                 continue
 
             yaml = YAML()
+            yaml.default_flow_style = None
             metadata = yaml.load(metadata_path)
 
             if metadata and "mom6_restart" in metadata:

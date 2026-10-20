@@ -526,7 +526,9 @@ class Metadata:
 
         # Write restart metadata file to restart directory
         restart_metadata_path = restart_path / f"restart_{METADATA_FILENAME}"
-        YAML().dump(restart_metadata, restart_metadata_path)
+        yaml = YAML()
+        yaml.default_flow_style = None
+        yaml.dump(restart_metadata, restart_metadata_path)
         print(f"Provenance information is written to restarts: {restart_metadata_path}")
 
 
