@@ -505,7 +505,7 @@ class PBS(Scheduler):
 
 
         # Clean up old job scripts (older than 48 hours)
-        client.job_script_expiry = '48H'
+        client.job_script_expiry = self.job_script_expiry
         client._clean_rendered_job_scripts()
 
         return job_or_cmd
