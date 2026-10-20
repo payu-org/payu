@@ -611,3 +611,40 @@ def test_failed_collation_preserves_tiled_representation(mom6_collate_case):
         fms_collate(model)
 
     assert _read_restart_yaml(metadata_path) == original
+
+
+def test_collate_explicit_restart_directory_updates_metadata(mom6_collate_case):
+    """
+    Update MOM6 restart metadata when collating a restart directory using -d.
+    """
+    model, _ = mom6_collate_case
+
+    restart = Path(model.prior_restart_path)
+
+    # Simulate `payu collate -d archive/restart000`.
+    model.output_path = str(restart)
+    model.prior_restart_path = None
+
+    (restart / "access-om3.mom6.r.nc.0000").touch()
+    (restart / "access-om3.mom6.r.nc.0001").touch()
+
+    original = {
+        "mom6_restart": {
+            "layout": [24, 18],
+            "io_layout": [4, 3],
+            "representation": "tiled",
+        }
+    }
+
+    metadata_path = restart / "restart_metadata.yaml"
+    _write_restart_yaml(metadata_path, original)
+
+    fms_collate(model)
+
+    updated = _read_restart_yaml(metadata_path)
+
+    assert updated["mom6_restart"] == {
+        "layout": [24, 18],
+        "io_layout": [4, 3],
+        "representation": "collated",
+    }
