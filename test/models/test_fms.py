@@ -328,9 +328,9 @@ def test_fms_collate_mpi_glob(tmp_path, monkeypatch, capsys, use_glob, extra_fil
     # Add an extra file that matches the glob but is not a valid tile.
     # This should prevent the glob optimisation
     if extra_file_location == "output":
-        (output / "access-om3.mom6.out.nc.bk").write_text("bk")
+        (output / f"{output_base}.bk").write_text("bk")
     elif extra_file_location == "restart":
-        (restart/"access-om3.mom6.r.nc.bk").write_text("bk")
+        (restart / f"{restart_base}.bk").write_text("bk")
 
     # mock the model with MPI collation enabled
     model = MagicMock()
@@ -387,12 +387,29 @@ def test_fms_collate_mpi_glob(tmp_path, monkeypatch, capsys, use_glob, extra_fil
             "payu.models.fms.MPI_FORK_MAX_FILE_LIMIT", 2
         )
 
-    mapping = fms_collate(model)
+    # Verify the expected warnings when glob matching fails
+    if use_glob and extra_file_location is not None:
+        with pytest.warns(UserWarning) as recorded_warnings:
+            mapping = fms_collate(model)
 
-    if use_glob and extra_file_location == "output":
-        stdout = capsys.readouterr().out
-        assert "Warning: large number of tiles: 3" in stdout
-        assert "Warning: collation will be slow and may fail" in stdout
+        messages = [str(w.message) for w in recorded_warnings]
+
+        affected_base = (
+            output_base
+            if extra_file_location == "output"
+            else restart_base
+        )
+
+        assert (
+            f"Cannot use globstr {affected_base}.* to collate {affected_base}. "
+            "Falling back to listing tiles individually."
+        ) in messages
+
+        if extra_file_location == "output":
+            assert "Large number of tiles: 3" in messages
+            assert "Collation will be slow and may fail" in messages
+    else:
+        mapping = fms_collate(model)
 
     # Expected tile names when glob optimisation is not used
     output_explicit = " ".join(

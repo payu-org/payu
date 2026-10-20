@@ -18,6 +18,7 @@ from itertools import count
 import fnmatch
 import re
 import warnings
+import logging
 
 from yamanifest.hashing import hash
 
@@ -30,6 +31,7 @@ import payu.errors as errors
 # Only need one hashfn in the list of full_hashes to calculate the collate mapping.
 full_hashes = full_hashes[0]
 
+logger = logging.getLogger(__name__)
 
 # There is a limit on the number of command line arguments in a forked
 # MPI process. This applies only to mppnccombine-fast. The limit is higher
@@ -272,12 +274,15 @@ def fms_collate(model):
 
                 if sorted(tiles) == sorted(mnc_glob):
                     file_dict[t_base] = [globstr, ]
-                    print(f"Note: using globstr ({globstr}) for collating {t_base}")
+                    logger.debug("Using glob pattern %s for collating %s", globstr, t_base)
                 else:
-                    print(f"Warning: cannot use globstr {globstr} to collate {t_base}")
+                    warnings.warn(
+                        f"Cannot use globstr {globstr} to collate {t_base}. "
+                        "Falling back to listing tiles individually."
+                    )
                     if len(tiles) > MPI_FORK_MAX_FILE_LIMIT:
-                        print(f"Warning: large number of tiles: {len(tiles)}")
-                        print("Warning: collation will be slow and may fail")
+                        warnings.warn(f"Large number of tiles: {len(tiles)}")
+                        warnings.warn("Collation will be slow and may fail")
 
     cpucount = int(collate_config.get('ncpus',
                    multiprocessing.cpu_count()))
