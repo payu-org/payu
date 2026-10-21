@@ -416,15 +416,18 @@ Other experiment runs will not be harmed by this command.
 Postprocessing
 ==============
 
-By default, payu submits all enabled postprocessing jobs automatically after the model run has completed.
-Postprocessing includes 
-- collate, 
-- postscript, 
-- sync. 
+By default, payu submits all *enabled* postprocessing jobs automatically after the model 
+run has completed. Postprocessing includes:
+
+- collate
+- postscript
+- sync
+- intake-catalog generation
+
 These jobs can also be run manually if required.
 When payu submits postprocessing jobs, it adds job dependencies to ensure that they run in the correct order:: 
 
-   collate -> postscript -> sync
+   collate -> postscript -> sync -> catalog
 
 If a postprocessing job failed, any subsequent job(s) will be terminated and removed from the queue.
 You can use ``payu status`` to check the status of all postprocessing jobs.
@@ -492,6 +495,37 @@ at a later date. To sync all restarts including the latest restarts, use the
 ``--sync-restarts`` flag::
 
    payu sync  --sync-restarts
+
+Intake-catalog generation
+-------
+
+Payu can build an `intake-esm` datastore catalog for supported model output.
+To generate a catalog manually use::
+
+   payu catalog
+
+The command also accepts ``--model``, ``--config``, and ``--laboratory`` to
+select the model, configuration file, or laboratory. Use ``--directory`` to
+override the output directory, or ``--dry-run`` to print the scheduler
+submission command without submitting it.
+
+By default, the datastore is written to the experiment's ``archive`` directory.
+When syncing is enabled and its destination is a local directory, the datastore
+is written there instead; any existing datastore in the archive is removed to
+avoid leaving a duplicate. If syncing is configured to a remote destination or
+has no usable destination, the datastore is still written to the local archive.
+Datastore files are excluded from the normal sync transfer.
+
+Automatic catalog generation is disabled by default. To enable it, in
+``config.yaml`` (see :ref:`config-catalog`) set::
+   catalog:
+       enable: true
+
+The catalog job will be submitted as part of the postprocessing workflow.
+Catalog generation is supported by ACCESS-ESM1.5, ACCESS-ESM1.6, ACCESS-OM2,
+ACCESS-OM3, and MOM6 model drivers. The ``access_nri_intake`` package must be
+available in the job environment; if it is not installed, payu warns and skips
+catalog generation.
 
 .. _usage-metadata:
 
