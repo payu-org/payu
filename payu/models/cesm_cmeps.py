@@ -431,7 +431,6 @@ class CesmCmeps(IntakeMixin, Model):
         """
         Return MOM6 restart metadata when MOM is a CMEPS component.
         """
-        decomposition = get_mom6_restart_decomposition(self)
         if "mom" not in self.components.values():
             return {}
 
