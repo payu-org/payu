@@ -18,6 +18,7 @@ from itertools import count
 import fnmatch
 import re
 import warnings
+import logging
 
 from yamanifest.hashing import hash
 
@@ -30,6 +31,7 @@ import payu.errors as errors
 # Only need one hashfn in the list of full_hashes to calculate the collate mapping.
 full_hashes = full_hashes[0]
 
+logger = logging.getLogger(__name__)
 
 # There is a limit on the number of command line arguments in a forked
 # MPI process. This applies only to mppnccombine-fast. The limit is higher
@@ -259,26 +261,28 @@ def fms_collate(model):
 
     # print(mnc_tiles)
 
-    if mpi and collate_config.get('glob', True):
-        for t_base in mnc_tiles:
-            globstr = "{}.*".format(t_base)
-            # Try an equivalent glob and check the same files are returned
-            mnc_glob = fnmatch.filter(os.listdir(model.output_path),
-                                      globstr)
-            if mnc_tiles[t_base] == sorted(mnc_glob):
-                mnc_tiles[t_base] = [globstr, ]
-                print("Note: using globstr ({}) for collating {}"
-                      .format(globstr, t_base))
-            else:
-                print("Warning: cannot use globstr {} to collate {}"
-                      .format(globstr, t_base))
-                if len(mnc_tiles[t_base]) > MPI_FORK_MAX_FILE_LIMIT:
-                    print("Warning: large number of tiles: {} "
-                          .format(len(mnc_tiles[t_base])))
-                    print("Warning: collation will be slow and may fail")
-
     # generate a dictionary of full hashes for uncollated tile files
     uncollate_hashes_dict = get_restart_uncollated_hashes(mnc_tiles, model)
+
+    if mpi and collate_config.get('glob', True):
+        for t_dir, file_dict in mnc_tiles.items():
+            for t_base, tiles in file_dict.items():
+                globstr = f"{t_base}.*"
+
+                # Try an equivalent glob and check the same files are returned
+                mnc_glob = fnmatch.filter(os.listdir(t_dir), globstr)
+
+                if sorted(tiles) == sorted(mnc_glob):
+                    file_dict[t_base] = [globstr, ]
+                    logger.debug("Using glob pattern %s for collating %s", globstr, t_base)
+                else:
+                    warnings.warn(
+                        f"Cannot use globstr {globstr} to collate {t_base}. "
+                        "Falling back to listing tiles individually."
+                    )
+                    if len(tiles) > MPI_FORK_MAX_FILE_LIMIT:
+                        warnings.warn(f"Large number of tiles: {len(tiles)}")
+                        warnings.warn("Collation will be slow and may fail")
 
     cpucount = int(collate_config.get('ncpus',
                    multiprocessing.cpu_count()))
