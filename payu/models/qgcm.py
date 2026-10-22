@@ -66,5 +66,5 @@ class Qgcm(Model):
             f_src = os.path.join(self.work_path, f)
             shutil.move(f_src, self.restart_path)
 
-    def collate(self):
+    def postarchive(self):
         pass

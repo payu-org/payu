@@ -357,7 +357,10 @@ class Cice(Model):
         for file in log_files:
             os.remove(file)
 
-    def collate(self):
+    def postarchive(self):
+        # split cice files into per month files
+        print("Splitting CICE files into per month")
+        print("This needs to be implemented.")
         pass
 
     def link_restart(self, fpath):

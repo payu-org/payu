@@ -110,7 +110,10 @@ class UnifiedModel(Model):
         for f_path in glob.glob(os.path.join(self.work_path, 'aiihca.da*')):
             os.remove(f_path)
 
-    def collate(self):
+    def postarchive(self):
+        # convert um to netcdf
+        print("Converting UM restart files to netcdf")
+        print("This needs to be implemented.")
         pass
 
     def setup(self):

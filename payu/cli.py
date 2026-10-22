@@ -352,6 +352,9 @@ def parse_run():
 def parse_collate():
     _parse_runscript("collate")
 
+def parse_postarchive():
+    _parse_runscript("postarchive")
+
 def parse_profile():
     _parse_runscript("profile")
 

@@ -165,7 +165,14 @@ def fms_collate(model):
     # Set the stacksize to be unlimited
     res.setrlimit(res.RLIMIT_STACK, (res.RLIM_INFINITY, res.RLIM_INFINITY))
 
-    collate_config = model.expt.config.get('collate', {})
+    if 'collate' in model.expt.config:
+        collate_config = model.expt.config.get('collate', {})
+        cpucount = int(collate_config.get('ncpus',
+                    multiprocessing.cpu_count()))
+    else:
+        collate_config = model.expt.config.get('postarchive', {}).get('mom', {})
+        cpucount = int(model.expt.config.get('postarchive', {}).get('ncpus',
+                    multiprocessing.cpu_count()))
 
     # The mpi flag implies using mppnccombine-fast
     mpi = collate_config.get('mpi', False)
@@ -284,8 +291,6 @@ def fms_collate(model):
                         warnings.warn(f"Large number of tiles: {len(tiles)}")
                         warnings.warn("Collation will be slow and may fail")
 
-    cpucount = int(collate_config.get('ncpus',
-                   multiprocessing.cpu_count()))
 
     if mpi:
         # Default to one for mpi
@@ -373,6 +378,6 @@ class Fms(Model):
 
         shutil.move(self.work_restart_path, self.restart_path)
 
-    def collate(self):
+    def postarchive(self):
         mapping_collate_dict = fms_collate(self)
         return mapping_collate_dict

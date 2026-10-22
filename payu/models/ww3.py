@@ -35,5 +35,5 @@ class WW3(Model):
             if os.path.islink(f_path):
                 os.remove(f_path)
 
-    def collate(self):
+    def postarchive(self):
         pass

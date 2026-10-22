@@ -38,7 +38,7 @@ class Yatm(Model):
     def archive(self):
         shutil.rmtree(self.work_input_path)
 
-    def collate(self):
+    def postarchive(self):
         pass
 
     def get_prior_restart_files(self):

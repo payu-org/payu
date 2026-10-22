@@ -361,7 +361,7 @@ class Model(object):
             if len(os.listdir(path)) == 0:
                 os.rmdir(path)
 
-    def collate(self):
+    def postarchive(self):
         """Collate any tiled output into a single file."""
         raise NotImplementedError
 
