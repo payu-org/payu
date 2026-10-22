@@ -20,6 +20,9 @@ import payu.envmod
 from .common import tmpdir, cd
 from payu.fsops import duplicate_key_warning
 import payu.errors as errors
+from payu.models.model import Model
+from payu.models.mom6 import Mom6
+from payu.models.cesm_cmeps import CesmCmeps
 
 
 sys.path.insert(1, '../')
@@ -453,7 +456,15 @@ def test_archive_records_mom6_restart_decomposition(
         output_path=output_path,
         restart_path=restart_path,
         archive=MagicMock(),
+        components={"ocn": "mom"} if model_type == "cesm-cmeps" else {},
     )
+    metadata_getter = {
+        "mom6": Mom6.get_restart_metadata,
+        "cesm-cmeps": CesmCmeps.get_restart_metadata,
+    }.get(model_type, Model.get_restart_metadata)
+
+    model.get_restart_metadata = lambda: metadata_getter(model)
+
     metadata = MagicMock()
 
     expt = SimpleNamespace(
@@ -505,6 +516,8 @@ def test_archive_records_mom6_restart_decomposition(
         "test-run-id",
         0,
         None,
-        mom6_restart=expected_mom6_restart,
+        extra_restart_metadata=(
+            {"mom6_restart": expected_mom6_restart}
+            if expected_mom6_restart is not None else {}
+        ),
     )
- 
