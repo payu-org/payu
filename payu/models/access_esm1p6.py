@@ -339,5 +339,5 @@ class AccessEsm1p6(IntakeMixin, Model):
     def set_model_output_paths(self):
         pass
 
-    def collate(self):
+    def postarchive(self):
         pass

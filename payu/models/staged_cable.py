@@ -280,7 +280,7 @@ configuration log."""
 
         super(StagedCable, self).archive()
 
-    def collate(self):
+    def postarchive(self):
         pass
 
     def _save_configuration_log(self):

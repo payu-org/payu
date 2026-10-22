@@ -302,5 +302,5 @@ class Access(IntakeMixin, Model):
     def set_model_output_paths(self):
         pass
 
-    def collate(self):
+    def postarchive(self):
         pass
