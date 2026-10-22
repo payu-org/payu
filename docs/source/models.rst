@@ -135,7 +135,7 @@ ACCESS-OM2
 This file captures the forcing current date and experiment current date, which are read by 
 `libaccessom2 <https://github.com/ACCESS-NRI/libaccessom2>`_.
 ``namcouple`` is a configuration file for the OASIS coupler, as described in the 
-`OASIS documentation <https://oasis.cerfacs.fr/wp-content/uploads/sites/114/2021/02/GLOBC-TR-oasis3mct_UserGuide3.0_052015.pdf>`.
+`OASIS documentation <https://github.com/ACCESS-NRI/oasis3-mct/blob/master/doc/oasis3mct_UserGuide.pdf>`_.
 The input and restart file locations are defined as below:
 
 .. list-table::
