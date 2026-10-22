@@ -16,8 +16,8 @@ from test.common import make_random_file, make_inputs, make_exe
 from test.test_git_utils import create_new_repo
 
 from types import SimpleNamespace
-from payu.models.mom6 import get_mom6_restart_decomposition
-
+from payu.models.mom6 import Mom6, get_mom6_restart_decomposition
+from payu.models.cesm_cmeps import CesmCmeps
 
 @pytest.fixture(autouse=True)
 def setup_module(setup_test_dir, empty_workdir):
@@ -481,3 +481,33 @@ def test_get_mom6_restart_decomposition_missing_document(tmp_path):
     )
 
     assert get_mom6_restart_decomposition(model) is None
+
+
+@pytest.mark.parametrize(
+    "driver,components,document",
+    [
+        pytest.param(Mom6, {}, False, id="mom6-missing-document"),
+        pytest.param(CesmCmeps, {"ocn": "mom"}, False, id="cmeps-missing-document"),
+        pytest.param(CesmCmeps, {"ocn": "docn"}, True, id="cmeps-without-mom6"),
+    ],
+)
+def test_get_restart_metadata_returns_empty(
+    tmp_path, driver, components, document
+):
+    output_path = tmp_path / "output000"
+    restart_path = tmp_path / "restart000"
+    output_path.mkdir()
+    restart_path.mkdir()
+
+    if document:
+        (output_path / "MOM_parameter_doc.layout").write_text(
+            "LAYOUT = 24,18\nIO_LAYOUT = 4,3\n"
+        )
+
+    model = SimpleNamespace(
+        output_path=output_path,
+        restart_path=restart_path,
+        components=components,
+    )
+
+    assert driver.get_restart_metadata(model) == {}

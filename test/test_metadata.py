@@ -788,7 +788,11 @@ def test_write_restart_provenance_with_mom6_restart(init_metadata, tmp_path, mom
         experiment_name=original_metadata["name"],
         uuid=original_metadata["experiment_uuid"],
     )
-    metadata.read_file = lambda: {}
+    metadata.read_file = lambda: (
+        {
+            PARENT_UUID_FIELD: parent_uuid
+        } if parent_uuid else {}
+    )
 
     restart_path = tmp_path / "restart000"
     restart_path.mkdir()
@@ -798,7 +802,10 @@ def test_write_restart_provenance_with_mom6_restart(init_metadata, tmp_path, mom
         original_metadata["payu_run_id"],
         original_metadata["payu_current_run"],
         datetime(1959, 1, 1),
-        mom6_restart=mom6_restart,
+        extra_restart_metadata=(
+            {"mom6_restart": mom6_restart}
+            if mom6_restart is not None else None
+        ),
     )
 
     restart_metadata_path = restart_path / "restart_metadata.yaml"
@@ -812,7 +819,15 @@ def test_write_restart_provenance_with_mom6_restart(init_metadata, tmp_path, mom
     if mom6_restart is not None:
         expected_metadata["mom6_restart"] = mom6_restart
 
+    if parent_uuid:
+        expected_metadata[PARENT_UUID_FIELD] = parent_uuid
+
     assert restart_metadata == expected_metadata
+
+    if mom6_restart is not None:
+        content = restart_metadata_path.read_text()
+        assert "layout: [72, 48]" in content
+        assert "io_layout: [72, 48]" in content
 
 
 @pytest.mark.parametrize(
