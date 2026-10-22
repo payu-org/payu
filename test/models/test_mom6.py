@@ -1,6 +1,7 @@
 import os
 import shutil
 from pathlib import Path
+from xml.parsers.expat import model
 import pytest
 
 import pytest
@@ -14,6 +15,9 @@ from test.common import write_config, write_metadata
 from test.common import make_random_file, make_inputs, make_exe
 from test.test_git_utils import create_new_repo
 
+from types import SimpleNamespace
+from payu.models.mom6 import Mom6, get_mom6_restart_decomposition
+from payu.models.cesm_cmeps import CesmCmeps
 
 @pytest.fixture(autouse=True)
 def setup_module(setup_test_dir, empty_workdir):
@@ -397,3 +401,113 @@ def test_get_calendar():
 
     with pytest.raises(IndexError):
         calendar = expt.model.get_calendar(ocean_solo_path)
+
+@pytest.mark.parametrize(
+    "document,tiles,expected",
+    [
+        pytest.param(
+            "LAYOUT = 72,48\nIO_LAYOUT = 0,0\n",
+            True,
+            {"layout": [72, 48], "io_layout": [72, 48], "representation": "tiled"},
+            id="default-io-layout-with-tiled-restart",
+        ),
+        pytest.param(
+            "LAYOUT = 72,48\nIO_LAYOUT = 6,4\n",
+            False,
+            {"layout": [72, 48], "io_layout": [6, 4], "representation": "collated"},
+            id="explicit-io-layout-with-collated-restart",
+        ),
+        pytest.param(
+            "LAYOUT = 40,70\nIO_LAYOUT = 0,0\n",
+            False,
+            {"layout": [40, 70], "io_layout": [40, 70], "representation": "collated"},
+            id="default-io-layout-with-collated-restart",
+        ),
+    ],
+)
+def test_get_mom6_restart_decomposition(tmp_path, document, tiles, expected):
+    """
+    Read effective runtime layouts and detect the restart file reprensentation.
+    """
+    output_path = tmp_path / "output000"
+    restart_path = tmp_path / "restart000"
+    output_path.mkdir()
+    restart_path.mkdir()
+
+    (output_path / "MOM_parameter_doc.layout").write_text(document)
+
+    if tiles:
+        (restart_path / "access-om3.mom6.r.nc.0000").touch()
+        (restart_path / "access-om3.mom6.r.nc.0001").touch()
+
+    model = SimpleNamespace(
+        output_path=str(output_path),
+        restart_path=str(restart_path)
+    )
+
+    assert get_mom6_restart_decomposition(model) == expected
+
+@pytest.mark.parametrize(
+    "document",
+    [
+        "LAYOUT = 72, 48\n",
+        "IO_LAYOUT = 0, 0\n",
+        "LAYOUT = invalid\nIO_LAYOUT = 0, 0\n",
+        "LAYOUT = 72, 48\nIO_LAYOUT = invalid\n",
+    ],
+)
+def test_get_mom6_restart_decomposition_missing_layout(tmp_path, document):
+    """
+    Omit decomposition metadata if either runtime layout cannot be parsed
+    """
+    output_path = tmp_path / "output000"
+    output_path.mkdir()
+    (output_path / "MOM_parameter_doc.layout").write_text(document)
+
+    model = SimpleNamespace(
+        output_path=str(output_path),
+        restart_path=tmp_path / "restart000",
+    )
+
+    assert get_mom6_restart_decomposition(model) is None
+
+def test_get_mom6_restart_decomposition_missing_document(tmp_path):
+    """
+    Omit decomposition metadata when MOM6 did not produce a layout document
+    """
+    model = SimpleNamespace(
+        output_path=tmp_path / "output000",
+        restart_path=tmp_path / "restart000",
+    )
+
+    assert get_mom6_restart_decomposition(model) is None
+
+
+@pytest.mark.parametrize(
+    "driver,components,document",
+    [
+        pytest.param(Mom6, {}, False, id="mom6-missing-document"),
+        pytest.param(CesmCmeps, {"ocn": "mom"}, False, id="cmeps-missing-document"),
+        pytest.param(CesmCmeps, {"ocn": "docn"}, True, id="cmeps-without-mom6"),
+    ],
+)
+def test_get_restart_metadata_returns_empty(
+    tmp_path, driver, components, document
+):
+    output_path = tmp_path / "output000"
+    restart_path = tmp_path / "restart000"
+    output_path.mkdir()
+    restart_path.mkdir()
+
+    if document:
+        (output_path / "MOM_parameter_doc.layout").write_text(
+            "LAYOUT = 24,18\nIO_LAYOUT = 4,3\n"
+        )
+
+    model = SimpleNamespace(
+        output_path=output_path,
+        restart_path=restart_path,
+        components=components,
+    )
+
+    assert driver.get_restart_metadata(model) == {}
