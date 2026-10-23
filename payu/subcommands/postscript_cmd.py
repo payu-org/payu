@@ -41,6 +41,9 @@ def runcmd(model_type=None, config_path=None, init_run=None, lab_path=None, dry_
         print("No postscript commands found in config.yaml. Skipping postscript submission.")
         return None
 
+    if init_run is not None:
+        os.environ['PAYU_CURRENT_RUN'] = str(init_run)
+
     # Initialise experiment to determine archive path and run number (which is needed to write job file)
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab)
