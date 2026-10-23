@@ -25,7 +25,7 @@ Coupled models contain multiple submodels, and each submodel is configured indiv
 ACCESS-OM2 
 ============
 
-Type: Ocean and sea ice coupled model
+Type: Coupled ocean-sea ice model
 
 Submodels: 
 
@@ -302,7 +302,7 @@ The table below shows the source files and their corresponding archive locations
 ACCESS-OM3 (AI-drafted)
 ============
 
-Type: Coupled model
+Type: Coupled ocean-sea ice model
 
 Submodels:
 
@@ -464,7 +464,7 @@ The table below shows the source files and their corresponding archive locations
 ACCESS-ESM1.5 (AI-drafted)
 ==============
 
-Type: Coupled model
+Type: Coupled atmosphere-ocean-sea ice model
 
 Submodels:
 
@@ -670,7 +670,7 @@ The table below shows the source files and their corresponding archive locations
 ACCESS-ESM1.6 (AI-drafted)
 ==============
 
-Type: Coupled model
+Type: Coupled atmosphere-ocean-sea ice model
 
 Submodels:
 
