@@ -23,7 +23,7 @@ parameters = {'description': 'Run the model experiment'}
 arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory, args.reproduce, args.force,
              args.force_prune_restarts, args.is_new_experiment, args.dry_run,
-             args.runlog_off, args.repeat]
+             args.runlog_off, args.repeat, args.script_template]
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ def validate_platform_node(platform, queue, get_queue_node_shape):
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
            reproduce=None, force=False, force_prune_restarts=False,
            is_new_experiment=False, dry_run=False, runlog_off=False, 
-           repeat=False):
+           repeat=False, script_template=None):
 
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
@@ -61,7 +61,8 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
                                 force=force,
                                 force_prune_restarts=force_prune_restarts,
                                 runlog_off=runlog_off,
-                                repeat=repeat)
+                                repeat=repeat,
+                                script_template=script_template)
 
     # Initialise Experiment early so we can detect scheduler
     # Run experiment initialisation to update metadata,
