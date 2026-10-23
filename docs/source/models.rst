@@ -314,8 +314,12 @@ Submodels:
   for more technical details.
 - CICE-Consortium Sea Ice Model, version 6 (CICE). The sea ice component uses CICE6. Please see the
   `CICE documentation <https://cice-consortium-cice.readthedocs.io>`_ for more technical details.
+- Optional WAVEWATCH III (WW3) Surface Wave Model. This is a third-generation wave model developed at
+  NOAA/NCEP for simulating the wind-generated wave and their dynamics.
+  Please see the `WW3 documentation <https://polar.ncep.noaa.gov/waves/wavewatch/>`_ 
+  for more technical details.
 
-ACCESS-OM3 uses the CMEPS (Community Earth System Model Common Modeling Infrastructure Project System) framework,
+ACCESS-OM3 uses the CMEPS (The Community Mediator for Earth Prediction Systems) framework,
 which provides a standardized approach to coupled modeling. This section introduces necessary information about how the 
 ACCESS-OM3 model driver organizes the workflow and file paths.
 Technical details about how to configure the ACCESS-OM3 model are available on the 
@@ -366,7 +370,7 @@ Directory structure
 An expected control directory structure for ACCESS-OM3 is shown as below.
 ::
 
-    access-om3/
+    <control-directory>/
     ├── drv_in
     ├── fd.yaml
     ├── nuopc.runconfig
@@ -411,7 +415,7 @@ Set model run length
 ^^^^^^^^^^^^^^^^^^^^
 
 The model run length is configured through ``stop_option`` and ``stop_n`` 
-in the ``CLOCK_attributes`` section of ``nuopc.runconfig.``
+in the ``CLOCK_attributes`` section of ``nuopc.runconfig``.
 
 
 Running
@@ -530,7 +534,7 @@ Directory structure
 An expected control directory structure for ACCESS-ESM1.5 is shown as below.
 ::
 
-    access-esm1.5/
+    <control-directory>/
     ├── atm/
     │   ├── errflag
     │   ├── hnlist
@@ -745,7 +749,7 @@ Directory structure
 An expected control directory structure for ACCESS-ESM1.6 is shown as below.
 ::
 
-    access-esm1.6/
+    <control-directory>/
     ├── atm/
     │   ├── errflag
     │   ├── hnlist
