@@ -109,5 +109,5 @@ class Oasis(Model):
             if os.path.exists(f_src):
                 shutil.move(f_src, f_dst)
 
-    def collate(self):
+    def postarchive(self):
         pass
