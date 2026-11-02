@@ -136,7 +136,23 @@ def read_config(config_fname=None):
     if type(modules_config) is list:
         modules_config = {'load': modules_config}
     config['modules'] = modules_config
-     
+
+    # Transform submodels dict (keyed by name) into list format
+    submodels_config = config.get('submodels')
+    if isinstance(submodels_config, dict):
+        submodels = []
+        for name, submodel_config in submodels_config.items():
+            if not isinstance(submodel_config, dict):
+                raise errors.PayuConfigError(
+                    f"Configuration of submodel '{name}' must be a mapping "
+                    "of options in config.yaml")
+            if submodel_config.get('name', name) != name:
+                raise errors.PayuConfigError(
+                    f"Submodel key '{name}' does not match its 'name' "
+                    f"field '{submodel_config['name']}' in config.yaml")
+            submodels.append({'name': name, **submodel_config})
+        config['submodels'] = submodels
+
     # Local "control" path. Must be set here so it can be
     # scanned for storage points
     config["control_path"] = config.get('control',
