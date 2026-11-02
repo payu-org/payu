@@ -338,7 +338,7 @@ A table of the required and optional configuration files for the coupled model a
 
    * - Component
      - Required config files
-     - Optional config files
+     - Optional config files [*]_
    * - Coupler/Driver
      - - drv_in
        - fd.yaml
@@ -363,6 +363,12 @@ A table of the required and optional configuration files for the coupled model a
    * - CICE
      - - ice_in
      -
+
+.. [*] Additional configuration or input files used by the model are stored 
+    in the ``auxiliary_inputs`` folder, such as ``MOM mask_table``, and ``channel_list``. 
+    Auxiliary input files are optional text file inputs to the model. 
+    This allows for easier tracking of these additional input files in git, 
+    rather than as inputs listed in ``config.yaml``.
 
 Directory structure
 ^^^^^^^^^^^^^^^^^^^^
@@ -404,10 +410,11 @@ The input and restart file locations are defined as below:
 
    * - File type
      - Location
-   * - Input files
+   * - Input files, auxiliary input files
      - ``${WORK}/INPUT/``
    * - Restart files
-     - Tracked via rpointer files (``rpointer.cpl``, ``rpointer.ocn``, ``rpointer.ice``, etc.)
+     - Symlinked into ``${WORK}/`` and referenced by ``rpointer.*`` files 
+       (e.g., ``rpointer.cpl``, ``rpointer.ocn``, ``rpointer.ice``, etc.)
    * - Additional restart files
      - ``${WORK}/RESTART/``
 
@@ -416,6 +423,9 @@ Set model run length
 
 The model run length is configured through ``stop_option`` and ``stop_n`` 
 in the ``CLOCK_attributes`` section of ``nuopc.runconfig``.
+In the same section, ``restart_n`` and ``restart_option`` also need to be configured
+to speicfy the frequency at which restart files are written. 
+This can be set to either the full run length or a fraction of it.
 
 
 Running
@@ -468,15 +478,15 @@ Type: Coupled atmosphere-ocean-sea ice model
 
 Submodels:
 
-- Unified Model (UM). The atmospheric component. The UM is a flexible modelling system capable of representing
+- Unified Model (UM). The atmospheric component. The UM is an atmosphere model capable of representing
   weather and climate at a wide range of scales. Technical details are available on the
   `UK Met Office UM Documentation <https://code.metoffice.gov.uk/doc/um/>`_.
 - Modular Ocean Model, version 5 (MOM5). The ocean component. Please see the
   `Modular Ocean Model website <https://mom-ocean.github.io>`_ for technical details.
 - Los Alamos Sea Ice Model, version 4 (CICE). The sea ice component. Please see the
-  `CICE documentation <https://cice-consortium.github.io/cice/>`_ for more technical details.
+  `CICE documentation <https://github.com/ACCESS-NRI/cice4/blob/access-esm1.5/doc/cicedoc.pdf>`_ for more technical details.
 
-ACCESS-ESM1.5 is a fully-coupled global climate model that integrates a spectral atmospheric model (UM) with
+ACCESS-ESM1.5 is a fully-coupled global climate model that integrates a finite difference atmospheric model (UM) with
 an ocean model (MOM5) and a sea ice model (CICE). The components communicate through the OASIS coupler.
 This section introduces necessary information about how the ACCESS-ESM1.5 model driver organizes the workflow
 and file paths. Technical details about how to configure the ACCESS-ESM1.5 model and how the physics is
@@ -497,7 +507,6 @@ A table of the required and optional configuration files for each component is s
      - Required config files
      - Optional config files
    * - ACCESS-ESM1.5
-     - - oasis_in (UM)
        - namcouple
      -
    * - UM
@@ -535,7 +544,7 @@ An expected control directory structure for ACCESS-ESM1.5 is shown as below.
 ::
 
     <control-directory>/
-    ├── atm/
+    ├── atmosphere/
     │   ├── errflag
     │   ├── hnlist
     │   ├── ihist
@@ -553,17 +562,15 @@ An expected control directory structure for ACCESS-ESM1.5 is shown as below.
     │   └── input.nml
     ├── ice/
     │   ├── cice_in.nml
-    │   ├── input_ice.nml
-    │   ├── input_ice_gfdl.nml
-    │   ├── input_ice_monin.nml
-    │   └── restart_date.nml
-    ├── namcouple
+    │   └── input_ice.nml
+    ├── coupler/
+    │   └── namcouple
     └── manifests/
         ├── exe.yaml
         ├── input.yaml
         └── restart.yaml
 
-
+.. _esm1.5workdir:
 Setting up work directory
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -586,7 +593,10 @@ The input and restart file locations are defined as below:
      - Location
    * - UM
      - Input files
-     - ``${WORK}/atm/INPUT/``
+     - ``${WORK}/atmosphere/INPUT/``
+   * -
+     - Output files
+     - ``${WORK}/atmosphere/``
    * - MOM5
      - Input files
      - ``${WORK}/ocean/INPUT/``
@@ -606,9 +616,7 @@ The input and restart file locations are defined as below:
 Set model run length
 ^^^^^^^^^^^^^^^^^^^^
 
-The model run length is configured through the CICE coupling namelist (``input_ice.nml``).
-The run length is specified in the ``coupling`` section using the ``runtime`` field,
-which is specified in seconds.
+The model run length is configured through the ``calendar: runtime:`` options in the ``config.yaml`` file.
 
 
 Running
@@ -622,19 +630,9 @@ in the configuration file and searches for a matching executable.
 
 The OASIS coupler handles the communication between the three components and manages the model timing.
 
-During the model run, the output files of each component are stored under different subdirectories:
-
-.. list-table::
-   :header-rows: 1
-
-   * - Component
-     - Output Location
-   * - Atmosphere
-     - Standard output and log files in work directory
-   * - Ocean
-     - ``${WORK}/ocean/`` for output, ``${WORK}/ocean/RESTART/`` for restarts
-   * - Sea ice
-     - ``${WORK}/ice/OUTPUT/`` for output, ``${WORK}/ice/RESTART/`` for restarts
+During the model run, each component writes its output and restart files to the locations described in 
+the :ref:`esm1.5workdir` section. The atmosphere component also produces standard output and log files 
+in its work directory.
 
 
 Archive
@@ -653,8 +651,8 @@ The table below shows the source files and their corresponding archive locations
      - File Source
      - Archive Location
    * - Atmosphere
-     - ``${WORK}/atm/``
-     - ``${ARCHIVE}/output00N/atm/``
+     - ``${WORK}/atmosphere/``
+     - ``${ARCHIVE}/output00N/atmosphere/``
    * - Ocean
      - Output files in ``${WORK}/ocean/``
        ``${WORK}/ocean/RESTART/``
@@ -674,18 +672,20 @@ Type: Coupled atmosphere-ocean-sea ice model
 
 Submodels:
 
-- Unified Model (UM). The atmospheric component with improved physics compared to ACCESS-ESM1.5.
-  Technical details are available on the `UK Met Office UM Documentation <https://code.metoffice.gov.uk/doc/um/>`_.
-- Modular Ocean Model (MOM). The ocean component. Can use MOM5 or MOM6 depending on configuration.
+- Unified Model (UM). The atmospheric component, with changes compared to ACCESS-ESM1.5 
+  which integrate the CABLE3 land surface model.nTechnical details are available on the 
+  `UK Met Office UM Documentation <https://code.metoffice.gov.uk/doc/um/>`_.
+- Modular Ocean Model version 5 (MOM5). The ocean component.
   Please see the relevant `Modular Ocean Model documentation <https://mom-ocean.github.io>`_ for technical details.
-- Los Alamos Sea Ice Model (CICE). The sea ice component can use CICE4 or CICE5. Please see the
-  `CICE documentation <https://cice-consortium.github.io/cice/>`_ for more technical details.
+- CICE Sea Ice Model, version 5 (CICE5). Please see the 
+  `CICE5 user's guide <https://github.com/ACCESS-NRI/cice5/blob/master/doc/cicedoc.pdf>`_
+  for more technical details and the physics of the model.
 
-ACCESS-ESM1.6 is an improved version of ACCESS-ESM1.5 with updated atmospheric physics, optional CICE5 support,
-and support for MOM6 as an optional ocean model component. The components communicate through the OASIS coupler.
+ACCESS-ESM1.6 builds on ESM1.5 with significant changes to the land surface model, ocean biogeochemistry, 
+and sea ice models. The components communicate through the OASIS coupler.
 This section introduces necessary information about how the ACCESS-ESM1.6 model driver organizes the workflow
-and file paths. Technical details about how to configure the ACCESS-ESM1.6 model are available on the
-**XX website**.
+and file paths. Technical details about how to configure and run the ACCESS-ESM1.6 model are available on the
+`ACCESS-ESM1.6 Documentation <https://docs.access-hive.org.au/models/run_a_model/run_access-esm1p6/>`_.
 
 Setup
 ------
@@ -727,17 +727,6 @@ A table of the required and optional configuration files for each component is s
      - - blob_diag_table
        - mask_table
        - ocean_mask_table
-   * - MOM6
-     - - input.nml
-       - diag_table
-     - - field_table
-       - data_table
-   * - CICE4
-     - - cice_in.nml
-       - input_ice.nml
-     - - input_ice_gfdl.nml
-       - input_ice_monin.nml
-       - restart_date.nml
    * - CICE5
      - - cice_in.nml
        - input_ice.nml
@@ -750,7 +739,7 @@ An expected control directory structure for ACCESS-ESM1.6 is shown as below.
 ::
 
     <control-directory>/
-    ├── atm/
+    ├── atmosphere/
     │   ├── errflag
     │   ├── hnlist
     │   ├── ihist
@@ -771,13 +760,14 @@ An expected control directory structure for ACCESS-ESM1.6 is shown as below.
     ├── ice/
     │   ├── cice_in.nml
     │   └── input_ice.nml
-    ├── namcouple
+    ├── coupler/
+    │   └── namcouple
     └── manifests/
         ├── exe.yaml
         ├── input.yaml
         └── restart.yaml
 
-
+.. _esm1.6workdir:
 Setting up work directory
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -800,8 +790,8 @@ The input and restart file locations are defined as below:
      - Location
    * - UM
      - Input files
-     - ``${WORK}/atm/INPUT/``
-   * - MOM (MOM5/MOM6)
+     - ``${WORK}/atmosphere/INPUT/``
+   * - MOM5
      - Input files
      - ``${WORK}/ocean/INPUT/``
    * -
@@ -810,7 +800,7 @@ The input and restart file locations are defined as below:
    * -
      - Restart files
      - ``${WORK}/ocean/RESTART/``
-   * - CICE (CICE4/CICE5)
+   * - CICE5
      - Input/Restart files
      - ``${WORK}/ice/RESTART/``
    * -
@@ -820,9 +810,7 @@ The input and restart file locations are defined as below:
 Set model run length
 ^^^^^^^^^^^^^^^^^^^^
 
-The model run length is configured through the CICE coupling namelist (``input_ice.nml``).
-The run length is specified in the ``coupling`` section using the ``runtime`` field,
-which is specified in seconds.
+The model run length is configured through the ``calendar: runtime:`` options in the ``config.yaml`` file.
 
 
 Running
@@ -836,19 +824,9 @@ in the configuration file and searches for a matching executable.
 
 The OASIS coupler handles the communication between the three components and manages the model timing.
 
-During the model run, the output files of each component are stored under different subdirectories:
-
-.. list-table::
-   :header-rows: 1
-
-   * - Component
-     - Output Location
-   * - Atmosphere
-     - Standard output and log files in work directory
-   * - Ocean
-     - ``${WORK}/ocean/`` for output, ``${WORK}/ocean/RESTART/`` for restarts
-   * - Sea ice
-     - ``${WORK}/ice/OUTPUT/`` for output, ``${WORK}/ice/RESTART/`` for restarts
+During the model run, each component writes its output and restart files to the locations described in 
+the :ref:`esm1.6workdir` section. The atmosphere component also produces standard output and log files 
+in its work directory.
 
 
 Archive
@@ -867,8 +845,8 @@ The table below shows the source files and their corresponding archive locations
      - File Source
      - Archive Location
    * - Atmosphere
-     - ``${WORK}/atm/``
-     - ``${ARCHIVE}/output00N/atm/``
+     - ``${WORK}/atmosphere/``
+     - ``${ARCHIVE}/output00N/atmosphere/``
    * - Ocean
      - Output files in ``${WORK}/ocean/``
        ``${WORK}/ocean/RESTART/``
