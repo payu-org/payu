@@ -101,7 +101,6 @@ submodels:
     model: mom
     ncpus: 180
   coupler:
-    name: coupler
     model: oasis
     ncpus: 0
 """,
@@ -140,9 +139,15 @@ submodels:
     ("""
 submodels:
   ocean:
+    name: ocean
+    model: mom
+""", "Submodel 'ocean' must not have a 'name' field"),
+    ("""
+submodels:
+  ocean:
     name: ice
     model: mom
-""", "Submodel key 'ocean' does not match its 'name' field 'ice'"),
+""", "Submodel 'ocean' must not have a 'name' field"),
 ])
 def test_read_config_submodels_invalid(setup_test_dir, config_content,
                                        error_msg):

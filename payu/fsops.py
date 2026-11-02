@@ -146,10 +146,10 @@ def read_config(config_fname=None):
                 raise errors.PayuConfigError(
                     f"Configuration of submodel '{name}' must be a mapping "
                     "of options in config.yaml")
-            if submodel_config.get('name', name) != name:
+            if 'name' in submodel_config:
                 raise errors.PayuConfigError(
-                    f"Submodel key '{name}' does not match its 'name' "
-                    f"field '{submodel_config['name']}' in config.yaml")
+                    f"Submodel '{name}' must not have a 'name' field in "
+                    "config.yaml, as the name is given by its key")
             submodels.append({'name': name, **submodel_config})
         config['submodels'] = submodels
 

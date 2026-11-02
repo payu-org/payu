@@ -181,7 +181,8 @@ configuration.
 ``submodels``
    If one is running a coupled model containing several submodels, then each
    model is configured individually within a ``submodels`` namespace, keyed by
-   the submodel name, such as in the example below for the ACCESS driver::
+   the submodel name (a ``name`` field is therefore not allowed), such as in
+   the example below for the ACCESS driver::
 
       model: access
       submodels:
