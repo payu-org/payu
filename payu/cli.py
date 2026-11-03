@@ -229,13 +229,25 @@ def submit_job(script, config, vars=None, expt=None, current_run=None,
             # Use HPCpy to submit the job in PBS
             if dry_run:
                 # If dry_run is True, print out the submission command and exit
-                cmd = sched.submit(script, config, vars, dry_run=dry_run, depends_on=depends_on, postscript=postscript)
+                cmd = sched.submit(script, 
+                                   config, 
+                                   vars, 
+                                   dry_run=dry_run, 
+                                   depends_on=depends_on, 
+                                   postscript=postscript,
+                                   archive_path=Path(expt.archive_path) if expt is not None else None)
                 print(f"---- Dry run (submission skipped) -----\n"
                     f"Generated command: {cmd}")
                 return None
             else:
                 # Print the job ID and command after submission 
-                job = sched.submit(script, config, vars, dry_run=dry_run, depends_on=depends_on, postscript=postscript)
+                job = sched.submit(script, 
+                                   config, 
+                                   vars, 
+                                   dry_run=dry_run, 
+                                   depends_on=depends_on, 
+                                   postscript=postscript,
+                                   archive_path=Path(expt.archive_path) if expt is not None else None)
                 print(f"------ Job submitted ------\n"
                     f"Submitted command: {job.history[-1]}")
                 job_id = job.id

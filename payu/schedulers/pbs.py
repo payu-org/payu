@@ -33,7 +33,7 @@ PBSNODE_TIMEOUT = 60
 LOCK_TIMEOUT = 5
 LOCK_LIFETIME = 8
 
-SCRIPT_TEMPLATE = Path(__file__).parent / "payu-pbs-script.sh"
+SCRIPT_TEMPLATE = Path(__file__).parent / "pbs-template.sh"
 
 ureg = UnitRegistry()
 
@@ -355,7 +355,8 @@ class PBS(Scheduler):
             )
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None, 
-               dry_run=False, depends_on=None, postscript=False):
+               dry_run=False, depends_on=None, postscript=False,
+               archive_path=None):
         """Prepare a correct PBS command string"""
         # Initialisation
         if pbs_vars is None:
@@ -434,9 +435,11 @@ class PBS(Scheduler):
         payu_path = pbs_vars.pop('PAYU_PATH', os.path.dirname(sys.argv[0]))
         pbs_script = check_exe_path(payu_path, pbs_script)
         ctrl_path = pbs_config.get('control_path')
-        # Configure the job script directory to use the control path if exists
-        if ctrl_path is not None:
-            hpcpy.constants.JOB_SCRIPT_DIR = Path(ctrl_path) / ".hpcpy" / "job_scripts"
+
+        # Configure the job script directory to use the archive path if exists
+        # Otherwise, use the default home/.hpcpy/job_scripts directory
+        if archive_path is not None:
+            hpcpy.constants.JOB_SCRIPT_DIR = Path(archive_path) / ".hpcpy" / "job_scripts"
 
         # Check for storage paths that might need to be mounted in the
         # python and script paths
@@ -502,11 +505,6 @@ class PBS(Scheduler):
                       module_use = module_use_paths,
                       modules = ['pbs'] + (module_names if module_names else []),
                       )
-
-
-        # Clean up old job scripts (older than 48 hours)
-        client.job_script_expiry = self.job_script_expiry
-        client._clean_rendered_job_scripts()
 
         return job_or_cmd
 

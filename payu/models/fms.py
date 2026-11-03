@@ -169,8 +169,6 @@ def fms_collate(model):
     mpi = collate_config.get('mpi', False)
 
     if mpi:
-        # Load mpi modules for collation
-        model.expt.load_modules()
         default_exe = 'mppnccombine-fast'
     else:
         default_exe = 'mppnccombine'
