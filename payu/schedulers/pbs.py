@@ -22,6 +22,7 @@ from tenacity import retry, stop_after_attempt, retry_if_exception_type
 from datetime import datetime, timedelta
 from filelock import SoftFileLock, Timeout
 import hpcpy
+import hpcpy.templates as ht
 
 import payu.envmod as envmod
 from payu.fsops import check_exe_path, atomic_write_file
@@ -33,11 +34,10 @@ PBSNODE_TIMEOUT = 60
 LOCK_TIMEOUT = 5
 LOCK_LIFETIME = 8
 
-SCRIPT_TEMPLATE = Path(__file__).parent / "pbs-template.sh"
+# SCRIPT_TEMPLATE = Path(__file__).parent / "pbs-template.sh"
+SCRIPT_TEMPLATE = ht.PAYU_SIMPLE
 
 ureg = UnitRegistry()
-
-client = hpcpy.client.pbs.PBSClient()
 
 def get_pbsnodes_cache_path() -> Path:
     """Get the path of pbsnodes.json cache file, 
@@ -356,11 +356,22 @@ class PBS(Scheduler):
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None, 
                dry_run=False, depends_on=None, postscript=False,
-               archive_path=None):
+               archive_path=None, current_run=None):
         """Prepare a correct PBS command string"""
         # Initialisation
         if pbs_vars is None:
             pbs_vars = {}
+
+        # Configure where rendered job script is written to,
+        # Use the archive path if exists, otherwise use home directory
+        base = Path(archive_path) if archive_path is not None else Path.home()
+        job_script_dir = base / ".hpcpy" / "job_scripts"
+
+        if current_run is not None:
+            job_script_dir = job_script_dir / f"{current_run}"
+
+        # Initialise the PBSClient object
+        client = hpcpy.client.pbs.PBSClient(job_script_dir = job_script_dir)
 
         if postscript:
             # Directly submit the postscript, no configuring the environment variables
@@ -436,11 +447,6 @@ class PBS(Scheduler):
         pbs_script = check_exe_path(payu_path, pbs_script)
         ctrl_path = pbs_config.get('control_path')
 
-        # Configure the job script directory to use the archive path if exists
-        # Otherwise, use the default home/.hpcpy/job_scripts directory
-        if archive_path is not None:
-            hpcpy.constants.JOB_SCRIPT_DIR = Path(archive_path) / ".hpcpy" / "job_scripts"
-
         # Check for storage paths that might need to be mounted in the
         # python and script paths
         extra_search_paths = [python_exe, payu_path, pbs_script, ctrl_path]
@@ -485,7 +491,7 @@ class PBS(Scheduler):
         # Set up environment modules here for PBS.
         envmod.setup()
 
-        # Pop PAYU_JOB_SCRIPT from pbs_vars if it exists
+        # Pop PAYU_JOB_SCRIPT_TEMPLATE from pbs_vars if user has set it
         job_script_template = pbs_vars.pop('PAYU_JOB_SCRIPT_TEMPLATE', SCRIPT_TEMPLATE)  
 
         # Submit with HPCpy PBSClient
@@ -500,7 +506,7 @@ class PBS(Scheduler):
                       job_script = job_script_template,
                       render = True,
                       python_exe = python_exe,
-                      payu_exe = pbs_script,
+                      executable = pbs_script,
                       module_purge = True,
                       module_use = module_use_paths,
                       modules = ['pbs'] + (module_names if module_names else []),
