@@ -414,21 +414,23 @@ def test_run(mock_clean_rendered_job_scripts, mock_job_script, mock_get_user_gro
 @patch("payu.schedulers.pbs.check_exe_path", side_effect=lambda x, y: y)
 @patch("payu.schedulers.pbs.get_user_groups", return_value=test_storage_groups)
 @pytest.mark.parametrize(
-    "env_exists,file_exists,file_exe,expected_cmd",
+    "env_exists,file_exists,file_exe, current_run, expected_cmd",
     [
         # Test backwards compatibility with no launcher script
-        (False, False, False, "/path/to/python payu-run"),
+        (False, False, False, 30, "/path/to/python payu-run"),
         # With only launcher script env set
-        (True, False, False, "/path/to/python payu-run"),
+        (True, False, False, 30, "/path/to/python payu-run"),
         # With launch script env and file exists
-        (True, True, False, "/path/to/python payu-run"),
+        (True, True, False, 30, "/path/to/python payu-run"),
+        # With launch script env and file exists, but no current_run provided
+        (True, True, False, None, "/path/to/python payu-run"),
         # With launch script env, file exists, and file is executable
-        (True, True, True, None)
+        (True, True, True, 30, None)
     ],
 )
 def test_submit_launcher_script_setting(
     mock_get_user_groups, mock_check_exe_path, 
-    env_exists, file_exists, file_exe, expected_cmd, tmp_path, monkeypatch
+    env_exists, file_exists, file_exe, current_run, expected_cmd, tmp_path, monkeypatch
 ):
     config = {
         "control_path": f"{tmp_path}/control",
@@ -449,9 +451,13 @@ def test_submit_launcher_script_setting(
                     config,
                     python_exe="/path/to/python", 
                     dry_run=True,
-                    archive_path=Path(tmp_path) / "archive")
+                    archive_path=Path(tmp_path) / "archive",
+                    current_run=current_run
+                    )
 
-    script_dir = Path(tmp_path) / "archive" / ".hpcpy" / "job_scripts"
+    # Assert the script is rendered into correct directory
+    base_dir = Path(tmp_path) / "archive" / ".hpcpy" / "job_scripts"
+    script_dir = base_dir / f"{current_run}" if current_run is not None else base_dir
     script_files = list(script_dir.glob("*"))
     assert len(script_files) == 1, f"Expected 1 file, found {len(script_files)}"
 
