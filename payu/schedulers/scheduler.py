@@ -9,16 +9,13 @@
 
 
 from typing import Any, Dict, Optional
-from pathlib import Path
-
 
 
 class Scheduler(object):
     """Abstract scheduler class."""
 
     def __init__(self):
-        # Default to clean up old job scripts (older than 48 hours)
-        self.job_script_expiry = '48h'
+        pass
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):
         raise NotImplementedError
