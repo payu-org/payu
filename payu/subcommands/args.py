@@ -429,6 +429,6 @@ script_template = {
         'dest': 'script_template',
         'action': 'store',
         'default': None,
-        'help': 'Specify a job script template to use for this run'
+        'help': 'Specify a job script template to use for this run and subsequent collate/sync/catalog jobs.'
     }
 }

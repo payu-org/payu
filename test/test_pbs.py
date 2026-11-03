@@ -445,10 +445,13 @@ def test_submit_launcher_script_setting(
             launcher_script_path.chmod(0o755)
 
     # Render the script
-    pbs.PBS().submit("payu-run", config,
-                               python_exe="/path/to/python", dry_run=True)
+    pbs.PBS().submit("payu-run", 
+                    config,
+                    python_exe="/path/to/python", 
+                    dry_run=True,
+                    archive_path=Path(tmp_path) / "archive")
 
-    script_dir = Path(tmp_path) / "control" / ".hpcpy" / "job_scripts"
+    script_dir = Path(tmp_path) / "archive" / ".hpcpy" / "job_scripts"
     script_files = list(script_dir.glob("*"))
     assert len(script_files) == 1, f"Expected 1 file, found {len(script_files)}"
 

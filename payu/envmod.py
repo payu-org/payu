@@ -150,8 +150,9 @@ def get_modules_and_paths(cmd):
 
     # Prepare a command to load the module and print the PATH variable
     moduleshome = os.environ['MODULESHOME']
-    cmd = (
-        f"source {moduleshome}/init/bash && {cmd} >/dev/null && "
+    cmd = (# Test without the init/bash but only the cmd, because we don't like moduleshome anymore
+        #f"source {moduleshome}/init/bash &&"
+        f"{cmd} >/dev/null && "
         "printf '%s\\0%s' \"$LOADEDMODULES\" \"$PATH\""
     )
 
@@ -193,6 +194,9 @@ def check_user_modulepaths(user_modules, user_modulepaths):
                 "\n Check paths listed under `modules: use:` in config.yaml")
 
     for modulefile in user_modules:
+        # Skip checking the auto-added 'openmpi' modulefile
+        if modulefile == 'openmpi':
+            continue
         # Check modulefile exists and is unique or has an exact match
         # Pass modulepaths so the check uses the correct search paths
         check_modulefile(modulefile, modulepaths=user_modulepaths)
