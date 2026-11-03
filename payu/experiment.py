@@ -327,6 +327,9 @@ class Experiment(object):
         # Store the path added by user modules, later used in model calss to determine executable paths
         self.user_modules_paths = added_paths
 
+        # # Check if mpi command in any of the added_paths, if not raise error
+        envmod.check_for_mpirun(added_paths)
+
     def set_expt_pathnames(self):
 
         # Local "control" path default used to be applied here,
@@ -544,7 +547,6 @@ class Experiment(object):
 
     @timeit("payu_run_duration_seconds")
     def run(self, *user_flags):
-
         f_out = open(self.stdout_fname, 'w')
         f_err = open(self.stderr_fname, 'w')
 
@@ -601,16 +603,6 @@ class Experiment(object):
             if not model.exec_path_local:
                 continue
 
-            mpi_config = self.config.get('mpi', {})
-            mpi_module = mpi_config.get('module', None)
-
-            # Update MPI library module (if not explicitly set)
-            if mpi_module is None and model.required_libs is not None:
-                envmod.lib_update(
-                    model.required_libs,
-                    'libmpi.so'
-                )
-
             model_prog = []
 
             wdir_arg = '-wdir'
@@ -657,9 +649,6 @@ class Experiment(object):
                 model_prog.append(model.exec_postfix)
 
             mpi_progs.append(' '.join(model_prog))
-
-        # List all loaded environment modules
-        envmod.module("list")
 
         cmd = '{runcmd} {flags} {exes}'.format(
             runcmd=mpi_runcmd,

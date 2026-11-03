@@ -175,7 +175,10 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
             'Work path already exists. Please use `payu sweep` or use `payu run -f`.')
 
     current_run = int(init_run) if init_run is not None else expt.counter
-
+    
+    # Check if mpirun command is available in any PATH added by user modules
+    expt.setup_modules()
+    
     cli.submit_job('payu-run', pbs_config, pbs_vars, expt, 
                    current_run, type='run', 
                    dry_run=dry_run)
