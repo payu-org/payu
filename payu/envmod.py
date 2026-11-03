@@ -124,8 +124,10 @@ def lib_update(required_libs, lib_name):
             # Load nci's /apps/ version of module if required 
             # pylint: disable=unbalanced-tuple-unpacking
             mod_name, mod_version = fsops.splitpath(lib_path)[2:4]
+            print(f"--- debug: unloading {mod_name} --- ")
 
             module('unload', mod_name)
+            print(f"--- debug: loading {mod_name}/{mod_version} --- ")
             module('load', os.path.join(mod_name, mod_version))
             return '{0}/{1}'.format(mod_name, mod_version)
 

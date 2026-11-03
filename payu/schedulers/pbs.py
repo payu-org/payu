@@ -22,6 +22,7 @@ from tenacity import retry, stop_after_attempt, retry_if_exception_type
 from datetime import datetime, timedelta
 from filelock import SoftFileLock, Timeout
 import hpcpy
+import hpcpy.templates as ht
 
 import payu.envmod as envmod
 from payu.fsops import check_exe_path, atomic_write_file
@@ -33,7 +34,8 @@ PBSNODE_TIMEOUT = 60
 LOCK_TIMEOUT = 5
 LOCK_LIFETIME = 8
 
-SCRIPT_TEMPLATE = Path(__file__).parent / "pbs-template.sh"
+# SCRIPT_TEMPLATE = Path(__file__).parent / "pbs-template.sh"
+SCRIPT_TEMPLATE = ht.PAYU_SIMPLE
 
 ureg = UnitRegistry()
 
@@ -500,7 +502,7 @@ class PBS(Scheduler):
                       job_script = job_script_template,
                       render = True,
                       python_exe = python_exe,
-                      payu_exe = pbs_script,
+                      executable = pbs_script,
                       module_purge = True,
                       module_use = module_use_paths,
                       modules = ['pbs'] + (module_names if module_names else []),
