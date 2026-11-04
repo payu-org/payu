@@ -57,7 +57,7 @@ Configuration files
 A table of the required and optional configuration files for the top-level model driver 
 and each submodel is shown below.
 
-.. list-table:: Configuration Files for top-level model driver and submodels
+.. list-table:: Configuration files for top-level model driver and submodels
    :header-rows: 1
 
    * - Component
@@ -334,7 +334,7 @@ Configuration files
 
 A table of the required and optional configuration files for the coupled model and each component is shown below.
 
-.. list-table:: Model Configuration Files
+.. list-table:: Configuration files for coupled model and each component
    :header-rows: 1
 
    * - Component
@@ -501,7 +501,7 @@ Configuration files
 
 A table of the required and optional configuration files for each component is shown below.
 
-.. list-table:: Model Configuration Files
+.. list-table:: Configuration files for top-level model driver and each submodel
    :header-rows: 1
 
    * - Component
@@ -696,7 +696,7 @@ Configuration files
 
 A table of the required and optional configuration files for each component is shown below.
 
-.. list-table:: Model Configuration Files
+.. list-table:: Configuration files for top-level model and each submodel
    :header-rows: 1
 
    * - Component
