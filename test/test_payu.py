@@ -131,11 +131,11 @@ def test_read_config_submodels(setup_test_dir, config_content):
 submodels:
   ocean:
     - model: mom
-""", "Configuration of submodel 'ocean' must be a mapping"),
+""", "Submodel 'ocean' must be configured as a mapping of options"),
     ("""
 submodels:
   ocean:
-""", "Configuration of submodel 'ocean' must be a mapping"),
+""", "Submodel 'ocean' must be configured as a mapping of options"),
     ("""
 submodels:
   ocean:

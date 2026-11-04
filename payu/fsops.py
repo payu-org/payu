@@ -141,16 +141,20 @@ def read_config(config_fname=None):
     submodels_config = config.get('submodels')
     if isinstance(submodels_config, dict):
         submodels = []
-        for name, submodel_config in submodels_config.items():
+        for submodel_name, submodel_config in submodels_config.items():
             if not isinstance(submodel_config, dict):
                 raise errors.PayuConfigError(
-                    f"Configuration of submodel '{name}' must be a mapping "
-                    "of options in config.yaml")
+                    f"Submodel '{submodel_name}' must be configured as a "
+                    "mapping of options. For example:\n"
+                    "submodels:\n"
+                    "    atmosphere:\n"
+                    "        model: um\n"
+                    "        # other submodel configurations")
             if 'name' in submodel_config:
                 raise errors.PayuConfigError(
-                    f"Submodel '{name}' must not have a 'name' field in "
-                    "config.yaml, as the name is given by its key")
-            submodels.append({'name': name, **submodel_config})
+                    f"Submodel '{submodel_name}' must not have a 'name' "
+                    "field, as the name is given by the dictionary key")
+            submodels.append({'name': submodel_name, **submodel_config})
         config['submodels'] = submodels
 
     # Local "control" path. Must be set here so it can be
