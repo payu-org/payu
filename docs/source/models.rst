@@ -10,7 +10,7 @@ Each model driver is based on the common model driver class and customises the m
 The model driver is called in various steps of the payu experiment workflow (see :ref:`experiment-steps`).
 It is responsible for the following common tasks:
 
-- setting up the directory structures for the experiment,
+- setting up the subdirectory structures for the experiment in the temporary work directory,
 - linking the model executable, input and restart files to the work directory,
 - defining the required and optional configuration files for the model, which will be copied into the work directory,
 - modifying the configuration files as required,
@@ -30,7 +30,7 @@ Type: Coupled ocean-sea ice model
 Submodels: 
 
 - Yet another data-driven atmosphere model (YATM). It keeps track of the current model time, 
-  read current atmospheric forcing data and deliver it to the rest of the model via the coupler.
+  reads current atmospheric forcing data and delivers it to the rest of the model via the coupler.
   Technical details and source code are available in the
   `libaccessom2 GitHub repository <https://github.com/ACCESS-NRI/libaccessom2>`_.
 - Modular Ocean Model, version 5 (MOM5). Technical details about how to configure the model and 
@@ -54,12 +54,13 @@ Setup
 Configuration files
 ^^^^^^^^^^^^^^^^^^^
 
-A table of the required and optional configuration files for each submodel is shown below. 
+A table of the required and optional configuration files for the top-level model driver 
+and each submodel is shown below.
 
-.. list-table:: Model Configuration Files
+.. list-table:: Configuration Files for top-level model driver and submodels
    :header-rows: 1
 
-   * - Model
+   * - Component
      - Required config files
      - Optional config files
    * - ACCESS-OM2
@@ -115,17 +116,17 @@ An expected control directory structure for access-om2 is shown as below.
 Setting up work directory
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The model driver will create a work directory with subdirectories for each submodel. 
-The configuration files mentioned above will be copied into the corresponding subdirectories in the work directory, 
-and the model driver will modify the configuration files as required.
-The model executable, input and restart files will be linked into the work subdirectories.
+The model driver creates subdirectories within the temporary work directory for each submodel. 
+The configuration files mentioned above are copied into the corresponding subdirectories in the work directory, 
+and the model driver modifies the configuration files as required.
+The model executable, input and restart files are linked into the work subdirectories.
 
 The details vary between submodels and coupled model drivers.
 In general, input, output and restart locations are defined for each submodel.
-Input files are static files that are independent of the model run and restart files, if they are available.
+Input files are static files that are independent of the model run.
 Output files are the files that are generated during the model run, and will be archived after the run.
-Restart files are the files that capture the model state at a particular time, 
-and can be used to restart the model run from that time.
+Restart files capture the model state at a particular time, are written out by the model
+and can be read in by the model to restart from that time.
 
 
 ACCESS-OM2
@@ -266,7 +267,7 @@ Archive
 -------
 
 When the model run is completed and archive is set to true, 
-the model driver will move files from the work directory to the archive directory 
+the model driver moves files from the work directory to the archive directory 
 (e.g., ``/scratch/${PROJECT}/${USER}/${model}/archive/${CONTROL-Branch-UUID}``).
 Meanwhile, the work directory and symlink are removed.
 For ACCESS-OM2-specific cases, payu also copies the ocean-to-ice coupler file ``o2i.nc`` 
@@ -299,7 +300,7 @@ The table below shows the source files and their corresponding archive locations
        - ``${ARCHIVE}/restart00N/ice/``
 
 
-ACCESS-OM3 (AI-drafted)
+ACCESS-OM3
 ============
 
 Type: Coupled ocean-sea ice model
@@ -365,7 +366,7 @@ A table of the required and optional configuration files for the coupled model a
      -
 
 .. [*] Additional configuration or input files used by the model are stored 
-    in the ``auxiliary_inputs`` folder, such as ``MOM mask_table``, and ``channel_list``. 
+    in the ``auxiliary_inputs`` folder, such as ``mask_table``, and ``MOM_channel_list``. 
     Auxiliary input files are optional text file inputs to the model. 
     This allows for easier tracking of these additional input files in git, 
     rather than as inputs listed in ``config.yaml``.
@@ -397,7 +398,7 @@ An expected control directory structure for ACCESS-OM3 is shown as below.
 Setting up work directory
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The model driver will create a work directory with an INPUT subdirectory for input files.
+The model driver creates subdirectories within the temporary work directory for each component.
 Configuration files are copied into the work directory, and the model driver modifies them as required.
 Model executables, input and restart files are linked into the work directory.
 
@@ -424,7 +425,7 @@ Set model run length
 The model run length is configured through ``stop_option`` and ``stop_n`` 
 in the ``CLOCK_attributes`` section of ``nuopc.runconfig``.
 In the same section, ``restart_n`` and ``restart_option`` also need to be configured
-to speicfy the frequency at which restart files are written. 
+to specify the frequency at which restart files are written. 
 This can be set to either the full run length or a fraction of it.
 
 
@@ -448,7 +449,7 @@ Archive
 -------
 
 When the model run is completed and archive is set to true,
-the model driver will move files from the work directory to the archive directory.
+the model driver moves files from the work directory to the archive directory.
 This includes the restart pointer (``rpointer.*``) files and any additional restart files.
 At the start of the next run, during ``setup()``, the driver replaces the symlinks to
 restart pointer files with the actual copies. This is because the model overwrites 
@@ -471,7 +472,7 @@ The table below shows the source files and their corresponding archive locations
      - ``${ARCHIVE}/restart00N/``
 
 
-ACCESS-ESM1.5 (AI-drafted)
+ACCESS-ESM1.5
 ==============
 
 Type: Coupled atmosphere-ocean-sea ice model
@@ -480,7 +481,7 @@ Submodels:
 
 - Unified Model (UM). The atmospheric component. The UM is an atmosphere model capable of representing
   weather and climate at a wide range of scales. Technical details are available on the
-  `UK Met Office UM Documentation <https://code.metoffice.gov.uk/doc/um/>`_.
+  `UK Met Office UM website <https://www.metoffice.gov.uk/research/approach/modelling-systems/unified-model>`_.
 - Modular Ocean Model, version 5 (MOM5). The ocean component. Please see the
   `Modular Ocean Model website <https://mom-ocean.github.io>`_ for technical details.
 - Los Alamos Sea Ice Model, version 4 (CICE). The sea ice component. Please see the
@@ -574,7 +575,7 @@ An expected control directory structure for ACCESS-ESM1.5 is shown as below.
 Setting up work directory
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The model driver will create a work directory with subdirectories for each component.
+The model driver creates subdirectories within the temporary work directory for each component.
 Configuration files are copied into the corresponding subdirectories in the work directory,
 and the model driver modifies them as required.
 The model executable, input and restart files are linked into the work subdirectories.
@@ -639,7 +640,7 @@ Archive
 -------
 
 When the model run is completed and archive is set to true,
-the model driver will move files from the work directory to the archive directory.
+the model driver moves files from the work directory to the archive directory.
 For ACCESS-ESM1.5, the ocean-to-ice coupler file ``o2i.nc`` is copied from the ocean work
 directory to the sea-ice restart directory before archiving.
 The table below shows the source files and their corresponding archive locations.
@@ -665,7 +666,7 @@ The table below shows the source files and their corresponding archive locations
        ``${ARCHIVE}/restart00N/ice/``
 
 
-ACCESS-ESM1.6 (AI-drafted)
+ACCESS-ESM1.6
 ==============
 
 Type: Coupled atmosphere-ocean-sea ice model
@@ -673,8 +674,8 @@ Type: Coupled atmosphere-ocean-sea ice model
 Submodels:
 
 - Unified Model (UM). The atmospheric component, with changes compared to ACCESS-ESM1.5 
-  which integrate the CABLE3 land surface model.nTechnical details are available on the 
-  `UK Met Office UM Documentation <https://code.metoffice.gov.uk/doc/um/>`_.
+  which integrate the CABLE3 land surface model. Technical details are available on the 
+  `UK Met Office UM website <https://www.metoffice.gov.uk/research/approach/modelling-systems/unified-model>`_.
 - Modular Ocean Model version 5 (MOM5). The ocean component.
   Please see the relevant `Modular Ocean Model documentation <https://mom-ocean.github.io>`_ for technical details.
 - CICE Sea Ice Model, version 5 (CICE5). Please see the 
@@ -771,7 +772,7 @@ An expected control directory structure for ACCESS-ESM1.6 is shown as below.
 Setting up work directory
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The model driver will create a work directory with subdirectories for each component.
+The model driver creates subdirectories within the temporary work directory for each component.
 Configuration files are copied into the corresponding subdirectories in the work directory,
 and the model driver modifies them as required.
 The model executable, input and restart files are linked into the work subdirectories.
@@ -833,7 +834,7 @@ Archive
 -------
 
 When the model run is completed and archive is set to true,
-the model driver will move files from the work directory to the archive directory.
+the model driver moves files from the work directory to the archive directory.
 For ACCESS-ESM1.6, the ocean-to-ice coupler file ``o2i.nc`` is copied from the ocean work
 directory to the sea-ice restart directory before archiving.
 The table below shows the source files and their corresponding archive locations.
