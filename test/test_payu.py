@@ -76,6 +76,87 @@ def test_read_config_modules_option():
     assert(modules_config.get('use', []) == ['path/to/module/dir/1', 'path/to/module/dir/2'])
 
 
+SUBMODELS_EXPECTED = [
+    {'name': 'atmosphere', 'model': 'um', 'ncpus': 192},
+    {'name': 'ocean', 'model': 'mom', 'ncpus': 180},
+    {'name': 'coupler', 'model': 'oasis', 'ncpus': 0},
+]
+
+
+def write_test_config(config_content):
+    config_path = tmpdir / "config.yaml"
+    with config_path.open("w") as file:
+        file.write(config_content)
+    return config_path
+
+
+@pytest.mark.parametrize("config_content", [
+    # Dict format
+    """
+submodels:
+  atmosphere:
+    model: um
+    ncpus: 192
+  ocean:
+    model: mom
+    ncpus: 180
+  coupler:
+    model: oasis
+    ncpus: 0
+""",
+    # Legacy list format
+    """
+submodels:
+  - name: atmosphere
+    model: um
+    ncpus: 192
+  - name: ocean
+    model: mom
+    ncpus: 180
+  - name: coupler
+    model: oasis
+    ncpus: 0
+""",
+])
+def test_read_config_submodels(setup_test_dir, config_content):
+    config_path = write_test_config(config_content)
+
+    config = payu.fsops.read_config(config_path)
+
+    assert config['submodels'] == SUBMODELS_EXPECTED
+
+
+@pytest.mark.parametrize("config_content, error_msg", [
+    ("""
+submodels:
+  ocean:
+    - model: mom
+""", "Submodel 'ocean' must be configured as a mapping of options"),
+    ("""
+submodels:
+  ocean:
+""", "Submodel 'ocean' must be configured as a mapping of options"),
+    ("""
+submodels:
+  ocean:
+    name: ocean
+    model: mom
+""", "Submodel 'ocean' must not have a 'name' field"),
+    ("""
+submodels:
+  ocean:
+    name: ice
+    model: mom
+""", "Submodel 'ocean' must not have a 'name' field"),
+])
+def test_read_config_submodels_invalid(setup_test_dir, config_content,
+                                       error_msg):
+    config_path = write_test_config(config_content)
+
+    with pytest.raises(errors.PayuConfigError, match=error_msg):
+        payu.fsops.read_config(config_path)
+
+
 def test_make_symlink():
     tmp_path = 'tmp_file'
     tmp_sym = 'tmp_sym'

@@ -180,30 +180,43 @@ configuration.
 
 ``submodels``
    If one is running a coupled model containing several submodels, then each
-   model is configured individually within a ``submodel`` namespace, such as in
-   the example below for the ACCESS driver::
+   model is configured individually under the ``submodels`` dictionary.
+   The submodel name is used as the dictionary key, so a separate name field
+   must not be specified. For example, in the ACCESS driver::
 
       model: access
       submodels:
-         -  name: atmosphere
+         atmosphere:
             model: um
             ncpus: 192
             exe: um_hg3.exe
             input: /g/data/vk83/configurations/inputs/atmosphere
-         - name: ocean
+         ocean:
             model: mom
             ncpus: 180
             exe: fms_ACCESS-ESM.x
             input: /g/data/vk83/configurations/inputs/ocean
-         - name: ice
+         ice:
             model: cice5
             ncpus: 12
             exe: cice_access-esm1.6_360x300_12x1_12p.exe
             input: /g/data/vk83/configurations/inputs/ice
-         - name: coupler
+         coupler:
             model: oasis
             ncpus: 0
             input: /g/data/vk83/configurations/inputs/oasis
+
+   The order of the submodels is preserved. For backward compatibility,
+   ``submodels`` can also be given as a list, where each submodel has a
+   ``name`` field::
+
+      submodels:
+         - name: atmosphere
+           model: um
+           ncpus: 192
+         - name: ocean
+           model: mom
+           ncpus: 180
 
 
 ``restart_freq`` (*Default:* ``5``)
