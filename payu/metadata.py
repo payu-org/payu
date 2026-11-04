@@ -499,7 +499,8 @@ class Metadata:
                                 restart_path: Path, 
                                 run_id: str,
                                 run_number: int,
-                                model_finish_time: datetime,) -> None:
+                                model_finish_time: datetime,
+                                extra_restart_metadata: dict | None = None) -> None:
         """Write provenance information to the restart directory"""
         # Read the existing metadata file from control directory
         metadata = self.read_file()
@@ -520,11 +521,16 @@ class Metadata:
         if parent_uuid:
             restart_metadata[PARENT_UUID_FIELD] = parent_uuid
 
+        if extra_restart_metadata:
+            restart_metadata.update(extra_restart_metadata)
+
         # Write restart metadata file to restart directory
         restart_metadata_path = restart_path / f"restart_{METADATA_FILENAME}"
-        YAML().dump(restart_metadata, restart_metadata_path)
+        yaml = YAML()
+        yaml.default_flow_style = None
+        yaml.dump(restart_metadata, restart_metadata_path)
         print(f"Provenance information is written to restarts: {restart_metadata_path}")
-        
+
 
 def get_schema_from_github():
     """Retrieve metadata schema from github"""

@@ -20,6 +20,8 @@ import re
 import warnings
 import logging
 
+from ruamel.yaml import YAML
+
 from yamanifest.hashing import hash
 
 from payu.models.model import Model
@@ -343,6 +345,25 @@ def fms_collate(model):
 
     # Get full hash for collated files and write collate mapping into job file
     mapping_collate_dict = restart_mapping_log(uncollate_hashes_dict)
+
+    # Update metadata for successfully collated MOM6 restart directories.
+    if model.model_type in ("mom6", "cesm-cmeps"):
+        for tiled_dir, tiled_files in mnc_tiles.items():
+            if not tiled_files:
+                continue
+
+            metadata_path = Path(tiled_dir) / "restart_metadata.yaml"
+            if not metadata_path.is_file():
+                continue
+
+            yaml = YAML()
+            yaml.default_flow_style = None
+            metadata = yaml.load(metadata_path)
+
+            if metadata and "mom6_restart" in metadata:
+                metadata["mom6_restart"]["representation"] = "collated"
+                yaml.dump(metadata, metadata_path)
+
     return mapping_collate_dict
 
 class Fms(Model):

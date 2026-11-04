@@ -1,4 +1,7 @@
 from io import StringIO
+import shutil
+from pathlib import Path
+from types import SimpleNamespace
 import os
 import payu.branch
 import pytest
@@ -17,6 +20,9 @@ import payu.envmod
 from .common import tmpdir, cd
 from payu.fsops import duplicate_key_warning
 import payu.errors as errors
+from payu.models.model import Model
+from payu.models.mom6 import Mom6
+from payu.models.cesm_cmeps import CesmCmeps
 
 
 sys.path.insert(1, '../')
@@ -414,3 +420,104 @@ def test_get_parent_branch_time_supressed(capsys):
     assert result is None
     msg = "'record_parent_branch_time' is set to False in config. Skip adding parent branch time to metadata."
     assert msg in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "model_type,has_tiles,expected_representation",
+    [
+        pytest.param("mom6", True, "tiled", id="mom6-tiled"),
+        pytest.param("cesm-cmeps", False, "collated", id="cmeps-collated"),
+        pytest.param("access", True, None, id="other-model"),
+    ],
+)
+def test_archive_records_mom6_restart_decomposition(
+    tmp_path, monkeypatch, model_type, has_tiles, expected_representation
+):
+    """
+    Pass the archived MOM6 runtime layout to restart provenance writing.
+    """
+    archive_path = tmp_path / "archive"
+    work = tmp_path / "lab" / "work" / "experiment"
+    work.mkdir(parents=True)
+    (work / "MOM_parameter_doc.layout").write_text(
+        "LAYOUT = 40,70\nIO_LAYOUT = 0,0\n"
+    )
+
+    control_path = tmp_path / "control"
+    control_path.mkdir()
+
+    work_link = control_path / "work"
+    work_link.symlink_to(work, target_is_directory=True)
+
+    output_path = archive_path / "output000"
+    restart_path = archive_path / "restart000"
+    model = SimpleNamespace(
+        model_type=model_type,
+        output_path=output_path,
+        restart_path=restart_path,
+        archive=MagicMock(),
+        components={"ocn": "mom"} if model_type == "cesm-cmeps" else {},
+    )
+    metadata_getter = {
+        "mom6": Mom6.get_restart_metadata,
+        "cesm-cmeps": CesmCmeps.get_restart_metadata,
+    }.get(model_type, Model.get_restart_metadata)
+
+    model.get_restart_metadata = lambda: metadata_getter(model)
+
+    metadata = MagicMock()
+
+    expt = SimpleNamespace(
+        archiving=lambda: True,
+        job_file=tmp_path / "job.json",
+        timings={},
+        work_sym_path=str(work_link),
+        archive_path=str(archive_path),
+        archive_sym_path=str(tmp_path / "archive-link"),
+        work_path=str(work),
+        output_path=str(output_path),
+        restart_path=str(restart_path),
+        models=[model],
+        get_restarts_to_prune=lambda force=False: [],
+        metadata=metadata,
+        run_id="test-run-id",
+        counter=0,
+        get_model_restart_datetimes=lambda: {"model_finish_time": None},
+        userscripts={},
+        config={},
+    )
+
+    monkeypatch.setattr(
+        payu.experiment.telemetry,
+        "update_run_job_file",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(payu.experiment, "make_symlink", lambda *args: None)
+    monkeypatch.setattr(payu.experiment, "get_size", lambda path: 0)
+    monkeypatch.setattr(payu.experiment, "movetree", shutil.move)
+
+    if has_tiles:
+        restart_path.mkdir(parents=True)
+        (restart_path / "access-om3.mom6.r.nc.0000").touch()
+
+    payu.experiment.Experiment.archive(expt)
+
+    expected_mom6_restart = None
+    if expected_representation is not None:
+        expected_mom6_restart = {
+            "layout": [40, 70],
+            "io_layout": [40, 70],
+            "representation": expected_representation,
+        }
+
+    assert (output_path / "MOM_parameter_doc.layout").exists()
+    metadata.write_restart_provenance.assert_called_once_with(
+        Path(restart_path),
+        "test-run-id",
+        0,
+        None,
+        extra_restart_metadata=(
+            {"mom6_restart": expected_mom6_restart}
+            if expected_mom6_restart is not None else {}
+        ),
+    )

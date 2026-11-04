@@ -932,6 +932,11 @@ class Experiment(object):
 
         movetree(self.work_path, self.output_path)
 
+        # Collect model-specific restart metadata after archiving.
+        restart_metadata = {}
+        for model in self.models:
+            restart_metadata.update(model.get_restart_metadata())
+
         # Remove any outdated restart files
         try:
             restarts_to_prune = self.get_restarts_to_prune(
@@ -954,6 +959,7 @@ class Experiment(object):
             self.run_id, 
             self.counter,
             model_restart_datetimes.get("model_finish_time", None),
+            extra_restart_metadata=restart_metadata,
         )
 
         # Ensure dynamic library support for subsequent python calls

@@ -10,6 +10,8 @@
 
 # Standard library
 import os
+import re
+from pathlib import Path
 from datetime import timedelta
 import cftime
 from collections import deque
@@ -25,6 +27,8 @@ from payu.models.fms import Fms
 from payu.models.mom_mixin import MomMixin
 from payu.git_utils import GitRepository
 from payu.models.model import IntakeMixin
+from payu.models.fms import get_uncollated_files
+
 
 MOM6_DOCS = ["MOM_parameter_doc.*","available_diags.*"]
 
@@ -140,6 +144,17 @@ class Mom6(IntakeMixin, MomMixin, Fms):
 
         super().archive()
 
+    def get_restart_metadata(self):
+        """
+        Return MOM6 restart decomposition metadata.
+        """
+        decomposition = get_mom6_restart_decomposition(self)
+
+        if decomposition is None:
+            return {}
+
+        return {"mom6_restart": decomposition}
+
     def read_start_date(self, input_path, calendar):
         """Read the start date from input.nml."""
         input_nml = f90nml.read(input_path)
@@ -172,4 +187,37 @@ class Mom6(IntakeMixin, MomMixin, Fms):
 
         cur_expt_time = start_date + timedelta(days=timestep)
         return cur_expt_time
-    
+
+
+def get_mom6_restart_decomposition(model):
+    """
+    Read the effective MOM6 layout recorded at runtime
+    """
+    doc = Path(model.output_path) / "MOM_parameter_doc.layout"
+    if not doc.exists():
+        return None
+
+    content = doc.read_text()
+
+    def get_layout(name):
+        match = re.search(
+            rf"(?m)^{name}\s*=\s*(\d+)\s*,\s*(\d+)",
+            content,
+        )
+        return list(map(int, match.groups())) if match else None
+
+    layout = get_layout("LAYOUT")
+    io_layout = get_layout("IO_LAYOUT")
+
+    if layout is None or io_layout is None:
+        return None
+
+    # MOM6 uses LAYOUT when IO_LAYOUT = 0,0
+    if io_layout == [0, 0]:
+        io_layout = layout.copy()
+
+    return {
+        "layout": layout,
+        "io_layout": io_layout,
+        "representation": "tiled" if get_uncollated_files(model.restart_path) else "collated",
+    }
