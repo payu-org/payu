@@ -20,7 +20,7 @@ import grp
 import json
 from tenacity import retry, stop_after_attempt, retry_if_exception_type
 from datetime import datetime, timedelta
-from filelock import SoftFileLock, Timeout
+from filelock import SoftFileLease, Timeout
 import hpcpy
 
 import payu.envmod as envmod
@@ -81,7 +81,11 @@ def check_pbsnode_file(pbsnodes_json_path):
         new_pbsnodes_json = _run_pbsnodes_json(timeout=PBSNODE_TIMEOUT)
 
         pbsnodes_json_path.parent.mkdir(parents=True, exist_ok=True)
-        lock = SoftFileLock(str(pbsnodes_json_path) + ".lock", lifetime=LOCK_LIFETIME, timeout=LOCK_TIMEOUT)
+        lock = SoftFileLease(
+                str(pbsnodes_json_path) + ".lock", 
+                lease_duration=LOCK_LIFETIME, 
+                timeout=LOCK_TIMEOUT
+                )
         try:
             with lock:
                 atomic_write_file(pbsnodes_json_path, new_pbsnodes_json)
