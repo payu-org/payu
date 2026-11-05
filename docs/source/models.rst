@@ -416,8 +416,6 @@ The input and restart file locations are defined as below:
    * - Restart files
      - Symlinked into ``${WORK}/`` and referenced by ``rpointer.*`` files 
        (e.g., ``rpointer.cpl``, ``rpointer.ocn``, ``rpointer.ice``, etc.)
-   * - Additional restart files
-     - ``${WORK}/RESTART/``
 
 Set model run length
 ^^^^^^^^^^^^^^^^^^^^
@@ -641,8 +639,11 @@ Archive
 
 When the model run is completed and archive is set to true,
 the model driver moves files from the work directory to the archive directory.
-For ACCESS-ESM1.5, the ocean-to-ice coupler file ``o2i.nc`` is copied from the ocean work
-directory to the sea-ice restart directory before archiving.
+For ACCESS-ESM1.5, the OASIS driver copies ``o2i.nc`` from ``restartNNN/coupler/`` to 
+``work/coupler/`` during setup and symlinks it into each submodel's work directory. 
+The ESM driver also links it into ``work/ice/RESTART/`` for CICE. 
+At the end of the run, MOM updates the file through the ocean work-directory symlink, 
+and the OASIS driver archives it back to ``restartNNN/coupler/``.
 The table below shows the source files and their corresponding archive locations.
 
 .. list-table::
@@ -835,8 +836,11 @@ Archive
 
 When the model run is completed and archive is set to true,
 the model driver moves files from the work directory to the archive directory.
-For ACCESS-ESM1.6, the ocean-to-ice coupler file ``o2i.nc`` is copied from the ocean work
-directory to the sea-ice restart directory before archiving.
+For ACCESS-ESM1.6, the OASIS driver copies ``o2i.nc`` from ``restartNNN/coupler/`` to 
+``work/coupler/`` during setup and symlinks it into each submodel's work directory. 
+The ESM driver also links it into ``work/ice/RESTART/`` for CICE. 
+At the end of the run, MOM updates the file through the ocean work-directory symlink, 
+and the OASIS driver archives it back to ``restartNNN/coupler/``.
 The table below shows the source files and their corresponding archive locations.
 
 .. list-table::
