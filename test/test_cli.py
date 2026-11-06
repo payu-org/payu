@@ -147,6 +147,7 @@ def test_parse_run(parser):
     assert args.pop('dry_run') is False
     assert args.pop('runlog_off') is False
     assert args.pop('repeat') is False
+    assert args.pop('script_template') is None
 
     assert len(args) == 0
 
@@ -165,6 +166,7 @@ def test_parse_run(parser):
             "--dry-run "
             "--runlog-off "
             "--repeat "
+            "--script-template path/to/script.sh"
             )
 
     run_cmd, args = parse_args(parser, long_cmd)
@@ -183,6 +185,7 @@ def test_parse_run(parser):
     assert args.pop('dry_run') is True
     assert args.pop('runlog_off') is True
     assert args.pop('repeat') is True
+    assert args.pop('script_template') == 'path/to/script.sh'
 
     assert len(args) == 0
 
@@ -214,6 +217,7 @@ def test_parse_run(parser):
     assert args.pop('dry_run') is False
     assert args.pop('runlog_off') is False
     assert args.pop('repeat') is False
+    assert args.pop('script_template') is None
 
     assert len(args) == 0
 

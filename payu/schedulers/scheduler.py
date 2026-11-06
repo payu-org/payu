@@ -15,7 +15,6 @@ class Scheduler(object):
     """Abstract scheduler class."""
 
     def __init__(self):
-        # TODO
         pass
 
     def submit(self, pbs_script, pbs_config, pbs_vars=None, python_exe=None):

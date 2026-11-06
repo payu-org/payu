@@ -171,8 +171,6 @@ def fms_collate(model):
     mpi = collate_config.get('mpi', False)
 
     if mpi:
-        # Load mpi modules for collation
-        model.expt.load_modules()
         default_exe = 'mppnccombine-fast'
     else:
         default_exe = 'mppnccombine'
@@ -222,9 +220,6 @@ def fms_collate(model):
         # and mppnccombine-fast uses an explicit -o flag to specify
         # the output
         collate_flags = " ".join([collate_flags, '-o'])
-        envmod.lib_update(required_libs(mppnc_path), 'libmpi.so')
-        # List all loaded environment modules
-        envmod.module("list")
 
     # Import list of collated files to ignore
     collate_ignore = collate_config.get('ignore')

@@ -27,9 +27,6 @@ import logging
 # Extensions
 from ruamel.yaml import YAML
 from packaging import version
-import hpcpy
-
-client = hpcpy.client.pbs.PBSClient()
 
 # Local
 import payu
@@ -95,6 +92,7 @@ class Experiment(object):
         self.metadata.setup(is_new_experiment=is_new_experiment, keep_uuid=keep_uuid)
 
         self.modules = set()
+        self.user_modules_paths = set()
 
         self.config = read_config(config_path)
 
@@ -175,8 +173,6 @@ class Experiment(object):
         self.payu_path = os.path.join(payu_bin, 'payu')
 
         self.run_id = None
-
-        self.user_modules_paths = None
 
         # Initialize scheduler instance
         self.scheduler_name = self.config.get('scheduler',
@@ -317,69 +313,22 @@ class Experiment(object):
                            (stacksize, resource.RLIM_INFINITY))
 
     def setup_modules(self):
-        """Setup modules and get paths added to $PATH by user-modules"""
-        envmod.setup()
+        """Set up modules and collect paths added by user-specified modules."""
 
         # Get user modules info from config
-        user_modulepaths = self.config.get('modules', {}).get('use', [])
-        user_modules = self.config.get('modules', {}).get('load', [])
+        modules_config = self.config.get('modules', {})
+        modulepaths =  set(modules_config.get('use', []))
+        modules = set(modules_config.get('load', []))
 
         # Run module use + load commands for user-defined modules, and
-        # get a set of paths and loaded modules added by loading the modules
-        loaded_mods, paths = envmod.setup_user_modules(user_modules,
-                                                       user_modulepaths)
-        self.user_modules_paths = paths
-        self.loaded_user_modules = [] if loaded_mods is None else loaded_mods
+        # get a set of paths and loaded modules added by loading the modules in a separate shell
+        loaded_mods, added_paths = envmod.check_user_modulepaths(modules, modulepaths)
 
-    def load_modules(self):
-        # Scheduler
-        sched_modname = self.config.get('scheduler', 'pbs')
-        self.modules.add(sched_modname)
+        # Store the path added by user modules, later used in model calss to determine executable paths
+        self.user_modules_paths = added_paths
 
-        # MPI library
-        mpi_config = self.config.get('mpi', {})
-
-        # Assign MPI module paths
-        mpi_modpath = mpi_config.get('modulepath', None)
-        if mpi_modpath:
-            envmod.module('use', mpi_modpath)
-
-        mpi_modname = mpi_config.get('module', 'openmpi')
-        self.modules.add(mpi_modname)
-
-        # Unload non-essential modules
-        loaded_mods = os.environ.get('LOADEDMODULES', '').split(':')
-
-        for mod in loaded_mods:
-            if len(mod) > 0:
-                print('mod '+mod)
-                mod_base = mod.split('/')[0]
-                if (mod_base not in core_modules and
-                        mod not in self.loaded_user_modules):
-                    envmod.module('unload', mod)
-
-        # Now load model-dependent modules
-        for mod in self.modules:
-            envmod.module('load', mod)
-
-        c_ipm = self.config.get('ipm', False)
-        if c_ipm:
-            if isinstance(c_ipm, str):
-                ipm_mod = os.path.join('ipm', c_ipm)
-            else:
-                ipm_mod = 'ipm/2.0.2'
-
-            envmod.module('load', ipm_mod)
-            os.environ['IPM_LOGDIR'] = self.work_path
-
-        if self.config.get('mpiP', False):
-            envmod.module('load', 'mpiP')
-
-        if self.config.get('hpctoolkit', False):
-            envmod.module('load', 'hpctoolkit')
-
-        if self.debug:
-            envmod.module('load', 'totalview')
+        # # Check if mpi command in any of the added_paths, if not raise error
+        envmod.check_for_mpirun(added_paths)
 
     def set_expt_pathnames(self):
 
@@ -598,8 +547,6 @@ class Experiment(object):
 
     @timeit("payu_run_duration_seconds")
     def run(self, *user_flags):
-        self.load_modules()
-
         f_out = open(self.stdout_fname, 'w')
         f_err = open(self.stderr_fname, 'w')
 
@@ -656,16 +603,6 @@ class Experiment(object):
             if not model.exec_path_local:
                 continue
 
-            mpi_config = self.config.get('mpi', {})
-            mpi_module = mpi_config.get('module', None)
-
-            # Update MPI library module (if not explicitly set)
-            if mpi_module is None and model.required_libs is not None:
-                envmod.lib_update(
-                    model.required_libs,
-                    'libmpi.so'
-                )
-
             model_prog = []
 
             wdir_arg = '-wdir'
@@ -712,9 +649,6 @@ class Experiment(object):
                 model_prog.append(model.exec_postfix)
 
             mpi_progs.append(' '.join(model_prog))
-
-        # List all loaded environment modules
-        envmod.module("list")
 
         cmd = '{runcmd} {flags} {exes}'.format(
             runcmd=mpi_runcmd,
@@ -1051,7 +985,7 @@ class Experiment(object):
         )
 
         # RUN any user scripts before syncing archive
-        envmod.setup()
+        # envmod.setup()
         pre_sync_script = self.userscripts.get('sync')
         if pre_sync_script:
             self.run_userscript(pre_sync_script, 'sync')
