@@ -8,6 +8,8 @@
 import os
 import shlex
 import subprocess
+import shutil
+import payu.errors as errors
 
 # Python 2.6 subprocess.check_output support
 if not hasattr(subprocess, 'check_output'):
@@ -114,25 +116,28 @@ def module(command, *args):
     exec(envs)
 
 
-def lib_update(required_libs, lib_name):
-    # Local import to avoid reversion interference
-    # NOTE: We may be able to move this now that reversion is going away
-    from payu import fsops
+def check_for_mpirun(user_added_paths):
+    """Check if mpirun is available in the PATH."""
+    exe_paths = []
 
-    for lib_filename, lib_path in required_libs.items():
-        if lib_filename.startswith(lib_name) and lib_path.startswith('/apps/'): 
-            # Load nci's /apps/ version of module if required 
-            # pylint: disable=unbalanced-tuple-unpacking
-            mod_name, mod_version = fsops.splitpath(lib_path)[2:4]
-            print(f"--- debug: unloading {mod_name} --- ")
+    # collect all mpirun paths from the user added PATH
+    for path in user_added_paths:
+        exe_paths.append(shutil.which('mpirun', path=path))
 
-            module('unload', mod_name)
-            print(f"--- debug: loading {mod_name}/{mod_version} --- ")
-            module('load', os.path.join(mod_name, mod_version))
-            return '{0}/{1}'.format(mod_name, mod_version)
+    # If mpirun paths are all None, raise error
+    if not any(exe_paths):
+        raise errors.PayuConfigError(
+            f"'mpirun' command not found in PATH.\n"
+            f"Since payu 1.4.1, payu no longer automatically loads OpenMPI.\n"
+            f"Please add the appropriate OpenMPI module to your config, for example:\n"
+            f"  modules:\n"
+            f"    load:\n"
+            f"      - openmpi/<version>\n"
+            f"You can use `module avail openmpi` to check available versions."
+            )
 
-    # If there are no libraries, return an empty string
-    return ''
+    found_paths = [path for path in exe_paths if path is not None]
+    print(f'payu: Found mpirun executable at {found_paths}.')
 
 def cmd_to_load_module(modulepaths=None, module=None):
     """Return a string of commands required to load a module from the specified paths.

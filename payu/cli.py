@@ -235,7 +235,8 @@ def submit_job(script, config, vars=None, expt=None, current_run=None,
                                    dry_run=dry_run, 
                                    depends_on=depends_on, 
                                    postscript=postscript,
-                                   archive_path=Path(expt.archive_path) if expt is not None else None)
+                                   archive_path=Path(expt.archive_path) if expt is not None else None,
+                                   current_run=current_run)
                 print(f"---- Dry run (submission skipped) -----\n"
                     f"Generated command: {cmd}")
                 return None
@@ -247,7 +248,8 @@ def submit_job(script, config, vars=None, expt=None, current_run=None,
                                    dry_run=dry_run, 
                                    depends_on=depends_on, 
                                    postscript=postscript,
-                                   archive_path=Path(expt.archive_path) if expt is not None else None)
+                                   archive_path=Path(expt.archive_path) if expt is not None else None,
+                                   current_run=current_run)
                 print(f"------ Job submitted ------\n"
                     f"Submitted command: {job.history[-1]}")
                 job_id = job.id
