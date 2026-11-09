@@ -268,7 +268,7 @@ reason need to stop a run after the current run has completed create a file
 called ``stop_run`` in the control directory. 
 
 You may require a run to reproduce an existing run using the ``-r/--reproduce`` flag, 
-which overrides the reproduce setting in the configuration file.:
+which overrides the reproduce setting in the configuration file::
 
    payu run -r
 
@@ -293,10 +293,46 @@ from a previous matching experiment.
 
 If restart pruning configuration has changed, there may be warnings if 
 many restarts will be pruned as a result. If this is desired, at the next 
-run use ``-F/--force-prune-restarts`` flag:
+run use ``-F/--force-prune-restarts`` flag::
 
    payu run --force-prune-restarts
 
+
+Job script templates
+--------------------
+
+Payu submits each run, collate, sync, and catalog job to the scheduler by rendering a job script template.
+The default template purges any currently loaded modules, loads the modules specified in the configuration file, 
+and runs the appropriate payu command. The default template is::
+
+   #!/bin/bash
+
+   {{ modules_head }}
+
+   {{ python_exe }} {{ payu_exe }}
+
+For example, a rendered job script for a run job would be similar to::
+
+   #!/bin/bash
+
+   module purge
+   module use /path/to/modules
+   module load pbs
+   module load A_module_name/1.0
+   module load B_module_name/2.0
+
+   /path/to/payu/bin/python3 /path/to/payu/bin/payu-run
+
+You can run `payu run --dry-run` to generate the job script without submitting it to the scheduler.
+Rendered job scripts are saved in ``.hpcpy/job_scripts`` inside the experiment's archive directory, 
+or in ``$HOME/.hpcpy/job_scripts`` if there is no archive directory. 
+
+To override the default job script template, please use the ``--script-template/-t`` option::
+
+   payu run -t /path/to/my_template.sh 
+
+A custom template should retain the ``{{ modules_head }}``, ``{{ python_exe }}``
++and ``{{ payu_exe }}`` placeholders. 
 
 Monitoring payu jobs
 ====================
