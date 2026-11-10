@@ -148,12 +148,7 @@ class Mom6(IntakeMixin, MomMixin, Fms):
         """
         Return MOM6 restart decomposition metadata.
         """
-        decomposition = get_mom6_restart_decomposition(self)
-
-        if decomposition is None:
-            return {}
-
-        return {"mom6_restart": decomposition}
+        return get_mom6_restart_metadata(self)
 
     def read_start_date(self, input_path, calendar):
         """Read the start date from input.nml."""
@@ -189,13 +184,15 @@ class Mom6(IntakeMixin, MomMixin, Fms):
         return cur_expt_time
 
 
-def get_mom6_restart_decomposition(model):
+def get_mom6_restart_metadata(model):
     """
-    Read the effective MOM6 layout recorded at runtime
+    Return the MOM6 restart metadata entry, {"mom6_restart": {...}}, using the
+    effective layout recorded at runtime in MOM_parameter_doc.layout.
+    Return {} if the layout cannot be read.
     """
     doc = Path(model.output_path) / "MOM_parameter_doc.layout"
     if not doc.exists():
-        return None
+        return {}
 
     content = doc.read_text()
 
@@ -210,14 +207,16 @@ def get_mom6_restart_decomposition(model):
     io_layout = get_layout("IO_LAYOUT")
 
     if layout is None or io_layout is None:
-        return None
+        return {}
 
     # MOM6 uses LAYOUT when IO_LAYOUT = 0,0
     if io_layout == [0, 0]:
         io_layout = layout.copy()
 
     return {
-        "layout": layout,
-        "io_layout": io_layout,
-        "representation": "tiled" if get_uncollated_files(model.restart_path) else "collated",
+        "mom6_restart": {
+            "layout": layout,
+            "io_layout": io_layout,
+            "representation": "tiled" if get_uncollated_files(model.restart_path) else "collated",
+        }
     }
