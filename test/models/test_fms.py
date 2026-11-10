@@ -1,6 +1,7 @@
+import fnmatch
 import os
 import shutil
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, DEFAULT
 
 import pytest
 
@@ -485,7 +486,6 @@ def mom6_collate_case(tmp_path, monkeypatch):
     )
 
     model = SimpleNamespace(
-        model_type="mom6",
         output_path=str(output_path),
         prior_restart_path=str(restart_path),
         expt=expt,
@@ -495,6 +495,22 @@ def mom6_collate_case(tmp_path, monkeypatch):
 
     pool = MagicMock()
     pool.apply_async.return_value.get.return_value = (None, b"")
+
+    def emulate_mppnccombine(func, args):
+        """
+        Emulate a successful `mppnccombine -r`, which removes the input tiles
+        """
+        cmd, t_dir = args
+        rc, _ = pool.apply_async.return_value.get.return_value
+        tokens = cmd.split()
+        if rc is None and "-r" in tokens:
+            tiles = get_uncollated_files(t_dir)
+            for token in tokens:
+                for tile in fnmatch.filter(tiles, token):
+                    (Path(t_dir) / tile).unlink(missing_ok=True)
+        return DEFAULT
+
+    pool.apply_async.side_effect = emulate_mppnccombine
     monkeypatch.setattr(fms_module.multiprocessing, "Pool", lambda **kwargs: pool)
     monkeypatch.setattr(fms_module, "hash", lambda filename, hashfn=None: f"hash:{Path(filename).name}")
 
@@ -649,3 +665,36 @@ def test_collate_explicit_restart_directory_updates_metadata(mom6_collate_case):
         "io_layout": [4, 3],
         "representation": "collated",
     }
+
+
+def test_collate_with_ignored_restart_files_stays_tiled(mom6_collate_case):
+    """
+    Keep the restart representation tiled when some restart files are listed
+    in collate: ignore and so remain uncollated
+    """
+    model, _ = mom6_collate_case
+    model.expt.config["collate"]["ignore"] = "access-om3.mom6.r_1.nc"
+    restart = Path(model.prior_restart_path)
+
+    for i in range(2):
+        (restart / f"access-om3.mom6.r.nc.{i:04d}").touch()
+        (restart / f"access-om3.mom6.r_1.nc.{i:04d}").touch()
+
+    original = {
+        "mom6_restart": {
+            "layout": [24, 18],
+            "io_layout": [4, 3],
+            "representation": "tiled",
+        }
+    }
+    metadata_path = restart / RESTART_METADATA_FILENAME
+    _write_restart_yaml(metadata_path, original)
+
+    fms_collate(model)
+
+    # The collated restart's tiles were removed, the ignored tiles remain
+    assert get_uncollated_files(restart) == [
+        "access-om3.mom6.r_1.nc.0000",
+        "access-om3.mom6.r_1.nc.0001",
+    ]
+    assert _read_restart_yaml(metadata_path) == original
