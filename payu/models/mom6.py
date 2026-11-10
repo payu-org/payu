@@ -10,6 +10,8 @@
 
 # Standard library
 import os
+import re
+from pathlib import Path
 from datetime import timedelta
 import cftime
 from collections import deque
@@ -25,6 +27,8 @@ from payu.models.fms import Fms
 from payu.models.mom_mixin import MomMixin
 from payu.git_utils import GitRepository
 from payu.models.model import IntakeMixin
+from payu.models.fms import get_uncollated_files
+
 
 MOM6_DOCS = ["MOM_parameter_doc.*","available_diags.*"]
 
@@ -140,6 +144,12 @@ class Mom6(IntakeMixin, MomMixin, Fms):
 
         super().archive()
 
+    def get_restart_metadata(self):
+        """
+        Return MOM6 restart decomposition metadata.
+        """
+        return get_mom6_restart_metadata(self)
+
     def read_start_date(self, input_path, calendar):
         """Read the start date from input.nml."""
         input_nml = f90nml.read(input_path)
@@ -172,4 +182,41 @@ class Mom6(IntakeMixin, MomMixin, Fms):
 
         cur_expt_time = start_date + timedelta(days=timestep)
         return cur_expt_time
-    
+
+
+def get_mom6_restart_metadata(model):
+    """
+    Return the MOM6 restart metadata entry, {"mom6_restart": {...}}, using the
+    effective layout recorded at runtime in MOM_parameter_doc.layout.
+    Return {} if the layout cannot be read.
+    """
+    doc = Path(model.output_path) / "MOM_parameter_doc.layout"
+    if not doc.exists():
+        return {}
+
+    content = doc.read_text()
+
+    def get_layout(name):
+        match = re.search(
+            rf"(?m)^{name}\s*=\s*(\d+)\s*,\s*(\d+)",
+            content,
+        )
+        return list(map(int, match.groups())) if match else None
+
+    layout = get_layout("LAYOUT")
+    io_layout = get_layout("IO_LAYOUT")
+
+    if layout is None or io_layout is None:
+        return {}
+
+    # MOM6 uses LAYOUT when IO_LAYOUT = 0,0
+    if io_layout == [0, 0]:
+        io_layout = layout.copy()
+
+    return {
+        "mom6_restart": {
+            "layout": layout,
+            "io_layout": io_layout,
+            "representation": "tiled" if get_uncollated_files(model.restart_path) else "collated",
+        }
+    }

@@ -20,6 +20,8 @@ import re
 import warnings
 import logging
 
+from ruamel.yaml import YAML
+
 from yamanifest.hashing import hash
 
 from payu.models.model import Model
@@ -27,6 +29,7 @@ from payu import envmod
 from payu.fsops import required_libs
 from payu.manifest import full_hashes
 import payu.errors as errors
+from payu.metadata import RESTART_METADATA_FILENAME
 
 # Only need one hashfn in the list of full_hashes to calculate the collate mapping.
 full_hashes = full_hashes[0]
@@ -343,6 +346,22 @@ def fms_collate(model):
 
     # Get full hash for collated files and write collate mapping into job file
     mapping_collate_dict = restart_mapping_log(uncollate_hashes_dict)
+
+    # Update metadata after successful collation.
+    for tiled_dir in mnc_tiles:
+        metadata_path = Path(tiled_dir) / RESTART_METADATA_FILENAME
+        if not metadata_path.is_file():
+            continue
+
+        yaml = YAML()
+        yaml.default_flow_style = None
+        metadata = yaml.load(metadata_path)
+
+        if metadata and "mom6_restart" in metadata:
+            tiled = bool(get_uncollated_files(tiled_dir))
+            metadata["mom6_restart"]["representation"] = "tiled" if tiled else "collated"
+            yaml.dump(metadata, metadata_path)
+
     return mapping_collate_dict
 
 class Fms(Model):

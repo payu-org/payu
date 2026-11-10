@@ -15,7 +15,7 @@ import payu.errors as errors
 from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT
 from payu.metadata import PARENT_UUID_FIELD, PARENT_BRANCH_TIME_FIELD, PARENT_HASH_FIELD, UUID_FIELD, HARD_SWEPT_UUID
 from payu.metadata import arrange_metadata, add_template_metadata_values, add_restart_field
-from payu.metadata import NAME_FIELD, EXPERIMENT_TIME_FIELD, RUN_ID_FIELD, RUN_NUMBER_FIELD, missing_text
+from payu.metadata import NAME_FIELD, EXPERIMENT_TIME_FIELD, RUN_ID_FIELD, RUN_NUMBER_FIELD, missing_text, RESTART_METADATA_FILENAME
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -133,7 +133,7 @@ def set_up_restart_metadata():
     """A fixture to set up a restart directory outside archive, with restart_metadata inside"""
     restart_path = archive_dir / "restart000"
     restart_path.mkdir(parents=True, exist_ok=True)
-    with open(restart_path / 'restart_metadata.yaml', 'w') as file:
+    with open(restart_path / RESTART_METADATA_FILENAME, 'w') as file:
         YAML().dump({UUID_FIELD: RESTART_METADATA_UUID}, file)
 
     yield
@@ -740,7 +740,7 @@ def test_write_restart_provenance(init_metadata, parent_info):
     metadata.write_restart_provenance(restart_path, run_id, run_number, cur_expt_time)
 
     # Confirm the restart metadata file is created and contains the correct information
-    restart_metadata_path = restart_path / f"restart_metadata.yaml"
+    restart_metadata_path = restart_path / RESTART_METADATA_FILENAME
     assert restart_metadata_path.exists()
 
     with open(restart_metadata_path, 'r') as file:
@@ -756,6 +756,78 @@ def test_write_restart_provenance(init_metadata, parent_info):
         assert PARENT_UUID_FIELD not in restart_metadata
     else:
         assert restart_metadata[PARENT_UUID_FIELD] == parent_info["parent_experiment"]
+
+
+@pytest.mark.parametrize(
+    "mom6_restart",
+    [
+        pytest.param(
+            {"layout": [72, 48], "io_layout": [72, 48], "representation": "tiled"},
+            id="with-decomposition",
+        ),
+        pytest.param(None, id="without-decomposition"),
+    ],
+)
+@pytest.mark.parametrize("parent_uuid", [None, TEST_UUID])
+def test_write_restart_provenance_with_mom6_restart(init_metadata, tmp_path, mom6_restart, parent_uuid):
+    """
+    Include MOM6 restart details without changing existing provenance fields
+    """
+    original_metadata = {
+        "payu_current_run": 0,
+        "name": (
+            "MC_100km_jra_iaf-"
+            "MC_100km_jra_iaf-abc123"
+        ),
+        "experiment_uuid": "abc123-xxxx",
+        "payu_run_id": "4274502xxxx",
+        "model_finish_time": "1959-01-01T00:00:00",
+    }
+
+    metadata = init_metadata(
+        experiment_name=original_metadata["name"],
+        uuid=original_metadata["experiment_uuid"],
+    )
+    metadata.read_file = lambda: (
+        {
+            PARENT_UUID_FIELD: parent_uuid
+        } if parent_uuid else {}
+    )
+
+    restart_path = tmp_path / "restart000"
+    restart_path.mkdir()
+
+    metadata.write_restart_provenance(
+        restart_path,
+        original_metadata["payu_run_id"],
+        original_metadata["payu_current_run"],
+        datetime(1959, 1, 1),
+        extra_restart_metadata=(
+            {"mom6_restart": mom6_restart}
+            if mom6_restart is not None else None
+        ),
+    )
+
+    restart_metadata_path = restart_path / RESTART_METADATA_FILENAME
+    assert restart_metadata_path.exists()
+
+    with open(restart_metadata_path) as file:
+        restart_metadata = YAML().load(file)
+
+    expected_metadata = original_metadata.copy()
+
+    if mom6_restart is not None:
+        expected_metadata["mom6_restart"] = mom6_restart
+
+    if parent_uuid:
+        expected_metadata[PARENT_UUID_FIELD] = parent_uuid
+
+    assert restart_metadata == expected_metadata
+
+    if mom6_restart is not None:
+        content = restart_metadata_path.read_text()
+        assert "layout: [72, 48]" in content
+        assert "io_layout: [72, 48]" in content
 
 
 @pytest.mark.parametrize(

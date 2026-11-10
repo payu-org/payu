@@ -1,12 +1,22 @@
+import fnmatch
 import os
 import shutil
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, DEFAULT
 
 import pytest
 
-from payu.models.fms import fms_collate, get_uncollated_files, get_avail_collate_flags, restart_mapping_log, get_restart_uncollated_hashes
+import payu.models.fms as fms_module
+from payu.models.fms import get_uncollated_files, get_avail_collate_flags, restart_mapping_log, get_restart_uncollated_hashes
+from payu.models.fms import fms_collate
+from payu.errors import PayuRuntimeError
+from payu.metadata import RESTART_METADATA_FILENAME
 
 from test.common import tmpdir
+
+from pathlib import Path
+from types import SimpleNamespace
+from ruamel.yaml import YAML
+
 
 verbose = False
 
@@ -443,3 +453,248 @@ def test_fms_collate_mpi_glob(tmp_path, monkeypatch, capsys, use_glob, extra_fil
             ]
         }
     }
+def _read_restart_yaml(path):
+    return YAML().load(path)
+
+
+def _write_restart_yaml(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    YAML().dump(data, path)
+
+
+@pytest.fixture
+def mom6_collate_case(tmp_path, monkeypatch):
+    """
+    Use real restart directories but mock out the external collate process and hashing
+    """
+    archive_path = tmp_path / "archive"
+    output_path = archive_path / "output000"
+    restart_path = archive_path / "restart000"
+    output_path.mkdir(parents=True)
+    restart_path.mkdir(parents=True)
+
+    expt = SimpleNamespace(
+        archive_path=str(archive_path),
+        config={
+            "collate": {
+                "exe": "mppnccombine",
+                "flags": "-r",
+                "restart": True,
+                "ncpus": 2,
+            }
+        }
+    )
+
+    model = SimpleNamespace(
+        output_path=str(output_path),
+        prior_restart_path=str(restart_path),
+        expt=expt,
+        expand_executable_path=lambda path: path,
+    )
+    expt.models = [model]
+
+    pool = MagicMock()
+    pool.apply_async.return_value.get.return_value = (None, b"")
+
+    def emulate_mppnccombine(func, args):
+        """
+        Emulate a successful `mppnccombine -r`, which removes the input tiles
+        """
+        cmd, t_dir = args
+        rc, _ = pool.apply_async.return_value.get.return_value
+        tokens = cmd.split()
+        if rc is None and "-r" in tokens:
+            tiles = get_uncollated_files(t_dir)
+            for token in tokens:
+                for tile in fnmatch.filter(tiles, token):
+                    (Path(t_dir) / tile).unlink(missing_ok=True)
+        return DEFAULT
+
+    pool.apply_async.side_effect = emulate_mppnccombine
+    monkeypatch.setattr(fms_module.multiprocessing, "Pool", lambda **kwargs: pool)
+    monkeypatch.setattr(fms_module, "hash", lambda filename, hashfn=None: f"hash:{Path(filename).name}")
+
+    return model, pool
+
+
+def test_collate_updates_only_restart_representation(mom6_collate_case):
+    """
+    Test that fms_collate updates the restart mapping but does not collate output files
+    """
+    model, _ = mom6_collate_case
+    restart = Path(model.prior_restart_path)
+
+    # Create tiled MOM6 restart files
+    (restart / "MOM.res.nc.0000").touch()
+    (restart / "MOM.res.nc.0001").touch()
+
+    original = {
+        "payu_current_run": 0,
+        "name": "test_experiment-uuid-123",
+        "experiment_uuid": "uuid-123",
+        "model_finish_time": '1959-01-01T00:00:00',
+        "mom6_restart": {
+            "layout": [72, 48],
+            "io_layout": [72, 48],
+            "representation": "tiled",
+        },
+    }
+    metadata_path = restart / RESTART_METADATA_FILENAME
+    _write_restart_yaml(metadata_path, original)
+
+    mapping = fms_collate(model)
+
+    assert "restart000" in mapping
+
+    updated = _read_restart_yaml(metadata_path)
+
+    assert updated == {
+        **original,
+        "mom6_restart": {
+            **original["mom6_restart"],
+            "representation": "collated",
+        },
+    }
+
+
+@pytest.mark.parametrize("missing_restart_path", [False, True])
+def test_collate_without_restart_tiles_does_not_update_metadata(mom6_collate_case, missing_restart_path):
+    """
+    Leave restart provenance tiled if no restart files were collated
+    """
+    model, _ = mom6_collate_case
+    restart = Path(model.prior_restart_path)
+    metadata_path = restart / RESTART_METADATA_FILENAME
+
+    original = {
+        "mom6_restart": {
+            "layout": [8, 8],
+            "io_layout": [8, 8],
+            "representation": "tiled",
+        }
+    }
+    _write_restart_yaml(metadata_path, original)
+    (Path(model.output_path) / "ocean.stats.nc.0000").touch()
+
+    if missing_restart_path:
+        model.prior_restart_path = None
+
+    fms_collate(model)
+
+    assert _read_restart_yaml(metadata_path) == original
+
+
+@pytest.mark.parametrize("metadata", [None, {"payu_current_run": 0}, {}])
+def test_collate_handles_missing_or_legacy_metadata(mom6_collate_case, metadata):
+    """
+    Support older or missing metadata files without adding MOM6 fields
+    """
+    model, _ = mom6_collate_case
+    restart = Path(model.prior_restart_path)
+    (restart / "access-om3.mom6.r.nc.0000").touch()
+    metadata_path = restart / RESTART_METADATA_FILENAME
+
+    if metadata is not None:
+        _write_restart_yaml(metadata_path, metadata)
+
+    fms_collate(model)
+
+    if metadata is None:
+        assert not metadata_path.exists()
+    else:
+        assert _read_restart_yaml(metadata_path) == metadata
+
+
+def test_failed_collation_preserves_tiled_representation(mom6_collate_case):
+    """
+    Preserve tiled provenance when an external collation command fails.
+    """
+    model, pool = mom6_collate_case
+    restart = Path(model.prior_restart_path)
+    (restart / "access-om3.mom6.r.nc.0000").touch()
+    metadata_path = restart / RESTART_METADATA_FILENAME
+
+    original = {
+        "mom6_restart": {
+            "layout": [4, 4],
+            "io_layout": [4, 4],
+            "representation": "tiled",
+        }
+    }
+    _write_restart_yaml(metadata_path, original)
+    pool.apply_async.return_value.get.return_value = (1, b"mock collate failure")
+
+    with pytest.raises(PayuRuntimeError, match="mock collate failure"):
+        fms_collate(model)
+
+    assert _read_restart_yaml(metadata_path) == original
+
+
+def test_collate_explicit_restart_directory_updates_metadata(mom6_collate_case):
+    """
+    Update MOM6 restart metadata when collating a restart directory using -d.
+    """
+    model, _ = mom6_collate_case
+
+    restart = Path(model.prior_restart_path)
+
+    # Simulate `payu collate -d archive/restart000`.
+    model.output_path = str(restart)
+    model.prior_restart_path = None
+
+    (restart / "access-om3.mom6.r.nc.0000").touch()
+    (restart / "access-om3.mom6.r.nc.0001").touch()
+
+    original = {
+        "mom6_restart": {
+            "layout": [24, 18],
+            "io_layout": [4, 3],
+            "representation": "tiled",
+        }
+    }
+
+    metadata_path = restart / RESTART_METADATA_FILENAME
+    _write_restart_yaml(metadata_path, original)
+
+    fms_collate(model)
+
+    updated = _read_restart_yaml(metadata_path)
+
+    assert updated["mom6_restart"] == {
+        "layout": [24, 18],
+        "io_layout": [4, 3],
+        "representation": "collated",
+    }
+
+
+def test_collate_with_ignored_restart_files_stays_tiled(mom6_collate_case):
+    """
+    Keep the restart representation tiled when some restart files are listed
+    in collate: ignore and so remain uncollated
+    """
+    model, _ = mom6_collate_case
+    model.expt.config["collate"]["ignore"] = "access-om3.mom6.r_1.nc"
+    restart = Path(model.prior_restart_path)
+
+    for i in range(2):
+        (restart / f"access-om3.mom6.r.nc.{i:04d}").touch()
+        (restart / f"access-om3.mom6.r_1.nc.{i:04d}").touch()
+
+    original = {
+        "mom6_restart": {
+            "layout": [24, 18],
+            "io_layout": [4, 3],
+            "representation": "tiled",
+        }
+    }
+    metadata_path = restart / RESTART_METADATA_FILENAME
+    _write_restart_yaml(metadata_path, original)
+
+    fms_collate(model)
+
+    # The collated restart's tiles were removed, the ignored tiles remain
+    assert get_uncollated_files(restart) == [
+        "access-om3.mom6.r_1.nc.0000",
+        "access-om3.mom6.r_1.nc.0001",
+    ]
+    assert _read_restart_yaml(metadata_path) == original
