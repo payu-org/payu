@@ -1,7 +1,6 @@
 import os
 import shutil
 from pathlib import Path
-from xml.parsers.expat import model
 import pytest
 
 import pytest
