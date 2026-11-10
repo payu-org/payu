@@ -38,6 +38,7 @@ GIT_URL_FIELD = "url"
 CREATED_FIELD = "created"
 MODEL_FIELD = "model"
 METADATA_FILENAME = "metadata.yaml"
+RESTART_METADATA_FILENAME = f"restart_{METADATA_FILENAME}"
 PARENT_BRANCH_TIME_FIELD = "parent_experiment_branch_time"
 PARENT_HASH_FIELD = "parent_experiment_branch_commit"
 
@@ -390,7 +391,7 @@ class Metadata:
         prior_restart_path = prior_restart_path.resolve()
 
         # Check for restart_metadata.yaml in the restart directory
-        metadata_filepath = prior_restart_path / f"restart_{METADATA_FILENAME}"
+        metadata_filepath = prior_restart_path / RESTART_METADATA_FILENAME
 
         if not metadata_filepath.exists():
             # Check for metadata file in the archive of the restart directory

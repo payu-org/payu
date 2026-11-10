@@ -29,6 +29,7 @@ from payu import envmod
 from payu.fsops import required_libs
 from payu.manifest import full_hashes
 import payu.errors as errors
+from payu.metadata import RESTART_METADATA_FILENAME
 
 # Only need one hashfn in the list of full_hashes to calculate the collate mapping.
 full_hashes = full_hashes[0]
@@ -348,7 +349,7 @@ def fms_collate(model):
 
     # Update metadata after successful collation.
     for tiled_dir in mnc_tiles:
-        metadata_path = Path(tiled_dir) / "restart_metadata.yaml"
+        metadata_path = Path(tiled_dir) / RESTART_METADATA_FILENAME
         if not metadata_path.is_file():
             continue
 

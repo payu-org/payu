@@ -15,7 +15,7 @@ import payu.errors as errors
 from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_COMMENT
 from payu.metadata import PARENT_UUID_FIELD, PARENT_BRANCH_TIME_FIELD, PARENT_HASH_FIELD, UUID_FIELD, HARD_SWEPT_UUID
 from payu.metadata import arrange_metadata, add_template_metadata_values, add_restart_field
-from payu.metadata import NAME_FIELD, EXPERIMENT_TIME_FIELD, RUN_ID_FIELD, RUN_NUMBER_FIELD, missing_text
+from payu.metadata import NAME_FIELD, EXPERIMENT_TIME_FIELD, RUN_ID_FIELD, RUN_NUMBER_FIELD, missing_text, RESTART_METADATA_FILENAME
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -133,7 +133,7 @@ def set_up_restart_metadata():
     """A fixture to set up a restart directory outside archive, with restart_metadata inside"""
     restart_path = archive_dir / "restart000"
     restart_path.mkdir(parents=True, exist_ok=True)
-    with open(restart_path / 'restart_metadata.yaml', 'w') as file:
+    with open(restart_path / RESTART_METADATA_FILENAME, 'w') as file:
         YAML().dump({UUID_FIELD: RESTART_METADATA_UUID}, file)
 
     yield
@@ -740,7 +740,7 @@ def test_write_restart_provenance(init_metadata, parent_info):
     metadata.write_restart_provenance(restart_path, run_id, run_number, cur_expt_time)
 
     # Confirm the restart metadata file is created and contains the correct information
-    restart_metadata_path = restart_path / f"restart_metadata.yaml"
+    restart_metadata_path = restart_path / RESTART_METADATA_FILENAME
     assert restart_metadata_path.exists()
 
     with open(restart_metadata_path, 'r') as file:
@@ -808,7 +808,7 @@ def test_write_restart_provenance_with_mom6_restart(init_metadata, tmp_path, mom
         ),
     )
 
-    restart_metadata_path = restart_path / "restart_metadata.yaml"
+    restart_metadata_path = restart_path / RESTART_METADATA_FILENAME
     assert restart_metadata_path.exists()
 
     with open(restart_metadata_path) as file:
