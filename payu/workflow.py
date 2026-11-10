@@ -1,7 +1,7 @@
 # --- Build a Workflow class to manage the workflow of collate, postscript, sync jobs ---
 
 class Workflow:
-    """Class to manage the workflow of run, collate, postscript, sync jobs."""
+    """Class to manage the workflow of run, postarchive, postscript, sync, catalog jobs."""
     
     def __init__(self, workflow_steps, run_number=None):
         self.workflow_steps = workflow_steps
@@ -13,8 +13,10 @@ class Workflow:
         If skip_step is provided, that step will be skipped in the workflow."""
         workflow_steps = dict()
 
-        if skip_step != 'collate' and config.get('collate', {}).get('enable', True):
-            workflow_steps['collate'] = None
+        if skip_step != 'postarchive' and all(
+            config.get('postarchive', {}).get('enable', True),
+            config.get('collate', {}).get('enable', True)):
+            workflow_steps['postarchive'] = None
         if skip_step != 'postscript' and config.get('postscript', None):
             workflow_steps['postscript'] = None
         if skip_step != 'sync' and config.get('sync', {}).get('enable', False):
@@ -41,14 +43,14 @@ class Workflow:
     @staticmethod
     def import_subcommands():
         # Local imports for subcommand job submission
-        from payu.subcommands.collate_cmd import submit_collate
+        from payu.subcommands.postarchive_cmd import submit_postarchive
         from payu.subcommands.postscript_cmd import submit_postscript
         from payu.subcommands.sync_cmd import submit_sync
         from payu.subcommands.catalog_cmd import submit_catalog
 
         # Build a function lookup dictionary
         return {
-            "collate": submit_collate,
+            "postarchive": submit_postarchive,
             "postscript": submit_postscript,
             "sync": submit_sync,
             "catalog": submit_catalog,

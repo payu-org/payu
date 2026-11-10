@@ -79,5 +79,5 @@ class Roms(Model):
             f_src = os.path.join(self.work_path, frst)
             shutil.move(f_src, self.restart_path)
 
-    def collate(self):
+    def postarchive(self):
         pass
