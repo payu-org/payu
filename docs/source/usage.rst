@@ -607,12 +607,8 @@ Payu writes ``restart_metadata.yaml`` to each archived restart directory to reco
 For MOM6 experiments, Payu records the effective restart decomposition in ``restart_metadata.yaml`` using information from the runtime-generated ``MOM_parameter_doc.layout`` file. For example::
 
    mom6_restart:
-     layout:
-     - 22
-     - 15
-     io_layout:
-     - 1
-     - 1
+     layout: [22, 15]
+     io_layout: [1, 1]
      representation: collated
 
 The ``layout`` and ``io_layout`` fields record the MOM6 processor and I/O layouts, respectively. When ``IO_LAYOUT = 0,0``, the effective I/O layout is recorded as ``LAYOUT``.
