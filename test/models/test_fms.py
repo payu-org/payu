@@ -8,6 +8,7 @@ import payu.models.fms as fms_module
 from payu.models.fms import get_uncollated_files, get_avail_collate_flags, restart_mapping_log, get_restart_uncollated_hashes
 from payu.models.fms import fms_collate
 from payu.errors import PayuRuntimeError
+from payu.metadata import RESTART_METADATA_FILENAME
 
 from test.common import tmpdir
 
@@ -522,7 +523,7 @@ def test_collate_updates_only_restart_representation(mom6_collate_case):
             "representation": "tiled",
         },
     }
-    metadata_path = restart / "restart_metadata.yaml"
+    metadata_path = restart / RESTART_METADATA_FILENAME
     _write_restart_yaml(metadata_path, original)
 
     mapping = fms_collate(model)
@@ -547,7 +548,7 @@ def test_collate_without_restart_tiles_does_not_update_metadata(mom6_collate_cas
     """
     model, _ = mom6_collate_case
     restart = Path(model.prior_restart_path)
-    metadata_path = restart / "restart_metadata.yaml"
+    metadata_path = restart / RESTART_METADATA_FILENAME
 
     original = {
         "mom6_restart": {
@@ -575,7 +576,7 @@ def test_collate_handles_missing_or_legacy_metadata(mom6_collate_case, metadata)
     model, _ = mom6_collate_case
     restart = Path(model.prior_restart_path)
     (restart / "access-om3.mom6.r.nc.0000").touch()
-    metadata_path = restart / "restart_metadata.yaml"
+    metadata_path = restart / RESTART_METADATA_FILENAME
 
     if metadata is not None:
         _write_restart_yaml(metadata_path, metadata)
@@ -595,7 +596,7 @@ def test_failed_collation_preserves_tiled_representation(mom6_collate_case):
     model, pool = mom6_collate_case
     restart = Path(model.prior_restart_path)
     (restart / "access-om3.mom6.r.nc.0000").touch()
-    metadata_path = restart / "restart_metadata.yaml"
+    metadata_path = restart / RESTART_METADATA_FILENAME
 
     original = {
         "mom6_restart": {
@@ -636,7 +637,7 @@ def test_collate_explicit_restart_directory_updates_metadata(mom6_collate_case):
         }
     }
 
-    metadata_path = restart / "restart_metadata.yaml"
+    metadata_path = restart / RESTART_METADATA_FILENAME
     _write_restart_yaml(metadata_path, original)
 
     fms_collate(model)
