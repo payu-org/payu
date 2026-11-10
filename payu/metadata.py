@@ -526,7 +526,7 @@ class Metadata:
             restart_metadata.update(extra_restart_metadata)
 
         # Write restart metadata file to restart directory
-        restart_metadata_path = restart_path / f"restart_{METADATA_FILENAME}"
+        restart_metadata_path = restart_path / RESTART_METADATA_FILENAME
         yaml = YAML()
         yaml.default_flow_style = None
         yaml.dump(restart_metadata, restart_metadata_path)
