@@ -15,7 +15,7 @@ from test.common import make_random_file, make_inputs, make_exe
 from test.test_git_utils import create_new_repo
 
 from types import SimpleNamespace
-from payu.models.mom6 import Mom6, get_mom6_restart_decomposition
+from payu.models.mom6 import Mom6, get_mom6_restart_metadata
 from payu.models.cesm_cmeps import CesmCmeps
 
 @pytest.fixture(autouse=True)
@@ -424,7 +424,7 @@ def test_get_calendar():
         ),
     ],
 )
-def test_get_mom6_restart_decomposition(tmp_path, document, tiles, expected):
+def test_get_mom6_restart_metadata(tmp_path, document, tiles, expected):
     """
     Read effective runtime layouts and detect the restart file reprensentation.
     """
@@ -444,7 +444,7 @@ def test_get_mom6_restart_decomposition(tmp_path, document, tiles, expected):
         restart_path=str(restart_path)
     )
 
-    assert get_mom6_restart_decomposition(model) == expected
+    assert get_mom6_restart_metadata(model) == {"mom6_restart": expected}
 
 @pytest.mark.parametrize(
     "document",
@@ -455,7 +455,7 @@ def test_get_mom6_restart_decomposition(tmp_path, document, tiles, expected):
         "LAYOUT = 72, 48\nIO_LAYOUT = invalid\n",
     ],
 )
-def test_get_mom6_restart_decomposition_missing_layout(tmp_path, document):
+def test_get_mom6_restart_metadata_missing_layout(tmp_path, document):
     """
     Omit decomposition metadata if either runtime layout cannot be parsed
     """
@@ -468,9 +468,9 @@ def test_get_mom6_restart_decomposition_missing_layout(tmp_path, document):
         restart_path=tmp_path / "restart000",
     )
 
-    assert get_mom6_restart_decomposition(model) is None
+    assert get_mom6_restart_metadata(model) == {}
 
-def test_get_mom6_restart_decomposition_missing_document(tmp_path):
+def test_get_mom6_restart_metadata_missing_document(tmp_path):
     """
     Omit decomposition metadata when MOM6 did not produce a layout document
     """
@@ -479,7 +479,7 @@ def test_get_mom6_restart_decomposition_missing_document(tmp_path):
         restart_path=tmp_path / "restart000",
     )
 
-    assert get_mom6_restart_decomposition(model) is None
+    assert get_mom6_restart_metadata(model) == {}
 
 
 @pytest.mark.parametrize(
