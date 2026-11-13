@@ -25,7 +25,9 @@ Coupled models contain multiple submodels, and each submodel is configured indiv
 ACCESS-OM2 
 ============
 
-Type: Coupled ocean-sea ice model
+Model Type: Coupled ocean-sea ice model
+
+Driver Type: Coupled driver run as payu submodels
 
 Submodels: 
 
@@ -94,6 +96,7 @@ An expected control directory structure for access-om2 is shown as below.
     
     <control-directory>/
     ├── accessom2.nml
+    ├── namcouple
     ├── atmosphere/
     │   ├── atm.nml
     │   └── forcing.json
@@ -194,7 +197,7 @@ CICE5
 The restart files are copied (instead of linked) into the work directory, from the previous run, if it exists.
 This is because the CICE5 model will overwrite some restart files at the end of the run, 
 and we want to keep the original restart files unchanged for the previous runs. 
-The input, output and restart file locations are defined in the ``cice_in.nml`` file and typicall set as follows:
+The input, output and restart file locations are defined in the ``cice_in.nml`` file and typically set as follows:
 
 .. list-table::
    :header-rows: 1
@@ -281,7 +284,7 @@ The table below shows the source files and their corresponding archive locations
      - File Source
      - Archive Location
    * - Global
-     - - ``${WORK}/accessom2_restart.nml``
+     - - ``${WORK}/RESTART/accessom2_restart.nml``
        - ``${WORK}/${submodel}/INPUT/``
      - - ``${ARCHIVE}/restart00N/accessom2_restart.nml``
        - Removed
@@ -303,7 +306,9 @@ The table below shows the source files and their corresponding archive locations
 ACCESS-OM3
 ============
 
-Type: Coupled ocean-sea ice model
+Model Type: Coupled ocean-sea ice model
+
+Driver Type: Single executable (without payu submodels)
 
 Submodels:
 
@@ -366,7 +371,7 @@ A table of the required and optional configuration files for the coupled model a
      -
 
 .. [*] Additional configuration or input files used by the model are stored 
-    in the ``auxiliary_inputs`` folder, such as ``mask_table``, and ``MOM_channel_list``. 
+    in the ``auxiliary_input`` folder, such as ``mask_table``, and ``MOM_channel_list``. 
     Auxiliary input files are optional text file inputs to the model. 
     This allows for easier tracking of these additional input files in git, 
     rather than as inputs listed in ``config.yaml``.
@@ -378,29 +383,29 @@ An expected control directory structure for ACCESS-OM3 is shown as below.
 ::
 
     <control-directory>/
+    ├── auxiliary_input/
+    │   └── (optional text file inputs)
+    ├── config.yaml
+    ├── datm.streams.xml
+    ├── datm_in
+    ├── diag_table
+    ├── drof.streams.xml
+    ├── drof_in
     ├── drv_in
     ├── fd.yaml
-    ├── nuopc.runconfig
-    ├── nuopc.runseq
-    ├── datm_in
-    ├── datm.streams.xml
-    ├── drof_in
-    ├── drof.streams.xml
-    ├── input.nml
-    ├── diag_table
     ├── ice_in
-    └── INPUT/
-        ├── (atmosphere forcing data)
-        ├── (ocean input data)
-        └── (ice input data)
+    ├── input.nml
+    ├── MOM_input
+    ├── MOM_override
+    ├── nuopc.runconfig
+    └── nuopc.runseq
 
 
 Setting up work directory
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The model driver creates subdirectories within the temporary work directory for each component.
-Configuration files are copied into the work directory, and the model driver modifies them as required.
-Model executables, input and restart files are linked into the work directory.
+The model driver copies configuration files into the work directory, and modifies them as required.
+The model executable, input and restart files are linked into the work directory.
 
 ACCESS-OM3 uses pointer files (rpointer.*) to track restart files for each component.
 These pointer files are automatically managed by the CMEPS coupler framework.
@@ -411,11 +416,18 @@ The input and restart file locations are defined as below:
 
    * - File type
      - Location
-   * - Input files, auxiliary input files
+   * - Input files
      - ``${WORK}/INPUT/``
+   * - Auxiliary input files
+     - ``${WORK}/auxiliary_input/``
    * - Restart files
      - Symlinked into ``${WORK}/`` and referenced by ``rpointer.*`` files 
        (e.g., ``rpointer.cpl``, ``rpointer.ocn``, ``rpointer.ice``, etc.)
+
+When a run starts from a restart, ``setup()`` replaces the symlinked ``rpointer.*``
+files with real copies. This is necessary because the model overwrites the pointer
+files in place as it runs; if they remained symlinks, those updates would overwrite
+the archived copies and break the ability to restart from earlier runs.
 
 Set model run length
 ^^^^^^^^^^^^^^^^^^^^
@@ -448,11 +460,7 @@ Archive
 
 When the model run is completed and archive is set to true,
 the model driver moves files from the work directory to the archive directory.
-This includes the restart pointer (``rpointer.*``) files and any additional restart files.
-At the start of the next run, during ``setup()``, the driver replaces the symlinks to
-restart pointer files with the actual copies. This is because the model overwrites 
-the pointer files in place as it runs. A symlink would cause those updates to overwrite 
-the archived copies and break the ability to restart from earlier runs.
+This includes the restart pointer (``rpointer.*``) files and the restart files they point to.
 The table below shows the source files and their corresponding archive locations.
 
 .. list-table::
@@ -462,18 +470,21 @@ The table below shows the source files and their corresponding archive locations
      - File Source
      - Archive Location
    * - Global
-     - ``${WORK}/*.log``
-       ``${WORK}/timing/``
+     - - ``${WORK}/*.log``
+       - ``${WORK}/timing/``
      - ``${ARCHIVE}/output00N/``
    * - Restart
-     - ``${WORK}/rpointer.*``
+     - - ``${WORK}/rpointer.*``
+       - Restart files named in each ``rpointer.*`` file
      - ``${ARCHIVE}/restart00N/``
 
 
 ACCESS-ESM1.5
 ==============
 
-Type: Coupled atmosphere-ocean-sea ice model
+Model Type: Coupled atmosphere-ocean-sea ice model
+
+Driver Type: Coupled driver run as payu submodels
 
 Submodels:
 
@@ -670,7 +681,9 @@ The table below shows the source files and their corresponding archive locations
 ACCESS-ESM1.6
 ==============
 
-Type: Coupled atmosphere-ocean-sea ice model
+Model Type: Coupled atmosphere-ocean-sea ice model
+
+Driver Type: Coupled driver run as payu submodels
 
 Submodels:
 
