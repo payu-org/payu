@@ -1,0 +1,881 @@
+.. _models:
+
+==============
+Model Drivers
+==============
+
+This section describes some of the model drivers that are currently supported by payu. 
+Each model driver is based on the common model driver class and customises the model-specific configuration and file paths.
+
+The model driver is called in various steps of the payu experiment workflow (see :ref:`experiment-steps`).
+It is responsible for the following common tasks:
+
+- setting up the subdirectory structures for the experiment in the temporary work directory,
+- linking the model executable, input and restart files to the work directory,
+- defining the required and optional configuration files for the model, which will be copied into the work directory,
+- modifying the configuration files as required,
+- carrying out model-specific checks before the run,
+- identifying the files to be archived and where they should be archived.
+
+There are two categories of model drivers: solo models and coupled models.
+Coupled models contain multiple submodels, and each submodel is configured individually in the model driver. 
+
+
+
+ACCESS-OM2 
+============
+
+Model Type: Coupled ocean-sea ice model
+
+Driver Type: Coupled driver run as payu submodels
+
+Submodels: 
+
+- Yet another data-driven atmosphere model (YATM). It keeps track of the current model time, 
+  reads current atmospheric forcing data and delivers it to the rest of the model via the coupler.
+  Technical details and source code are available in the
+  `libaccessom2 GitHub repository <https://github.com/ACCESS-NRI/libaccessom2>`_.
+- Modular Ocean Model, version 5 (MOM5). Technical details about how to configure the model and 
+  how the physics is modelled are available on the 
+  `Modular Ocean Model website <https://mom-ocean.github.io>`_.
+- CICE Sea Ice Model, version 5 (CICE5). Please see the 
+  `CICE5 user's guide <https://github.com/ACCESS-NRI/cice5/blob/master/doc/cicedoc.pdf>`_
+  for more technical details and the physics of the model.
+
+This section introduces necessary information of how the ACCESS-OM2 model driver organises the workflow and file paths,
+in the order of setup, running and archiving an experiment.
+Technical details about how to configure the ACCESS-OM2 model and how the physics 
+is modelled are available on the 
+`COSIMA website <https://cosima.org.au/index.php/models/access-om2/>`_.
+Instructions  for running ACCESS-NRI supported ACCESS-OM2 configurations are also 
+available on `ACCESS-Hive <https://docs.access-hive.org.au/models/run_a_model/run_access-om2/>`_.
+
+Setup
+------
+
+Configuration files
+^^^^^^^^^^^^^^^^^^^
+
+A table of the required and optional configuration files for the top-level model driver 
+and each submodel is shown below.
+
+.. list-table:: Configuration files for top-level model driver and submodels
+   :header-rows: 1
+
+   * - Component
+     - Required config files
+     - Optional config files
+   * - ACCESS-OM2
+     - - accessom2.nml
+       - namcouple
+     -
+   * - YATM
+     - - atm.nml
+       - forcing.json
+     -
+   * - MOM5
+     - - data_table
+       - diag_table
+       - field_table
+       - input.nml
+     - - blob_diag_table
+       - mask_table
+       - ocean_mask_table
+   * - CICE5
+     - - cice_in.nml
+       - input_ice.nml
+       - input_ice_gfdl.nml
+       - input_ice_monin.nml
+     -
+
+Directory structure 
+^^^^^^^^^^^^^^^^^^^^
+
+An expected control directory structure for access-om2 is shown as below.
+::
+    
+    <control-directory>/
+    ├── accessom2.nml
+    ├── namcouple
+    ├── atmosphere/
+    │   ├── atm.nml
+    │   └── forcing.json
+    ├── ocean/
+    │   ├── data_table
+    │   ├── diag_table
+    │   ├── field_table
+    │   └── input.nml
+    ├── ice/
+    │   ├── cice_in.nml
+    │   ├── input_ice_gfdl.nml
+    │   ├── input_ice_monin.nml
+    │   └── input_ice.nml
+    └── manifests/
+        ├── exe.yaml
+        ├── input.yaml
+        └── restart.yaml
+
+
+Setting up work directory
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The model driver creates subdirectories within the temporary work directory for each submodel. 
+The configuration files mentioned above are copied into the corresponding subdirectories in the work directory, 
+and the model driver modifies the configuration files as required.
+The model executable, input and restart files are linked into the work subdirectories.
+
+The details vary between submodels and coupled model drivers.
+In general, input, output and restart locations are defined for each submodel.
+Input files are static files that are independent of the model run.
+Output files are the files that are generated during the model run, and will be archived after the run.
+Restart files capture the model state at a particular time, are written out by the model
+and can be read in by the model to restart from that time.
+
+
+ACCESS-OM2
+""""""""""
+
+``accessom2_restart.nml`` is linked to the restart namelist file in the previous run, if it exists.
+This file captures the forcing current date and experiment current date, which are read by 
+`libaccessom2 <https://github.com/ACCESS-NRI/libaccessom2>`_.
+``namcouple`` is a configuration file for the OASIS coupler, as described in the 
+`OASIS documentation <https://github.com/ACCESS-NRI/oasis3-mct/blob/master/doc/oasis3mct_UserGuide.pdf>`_.
+The input and restart file locations are defined as below:
+
+.. list-table::
+   :header-rows: 1
+
+   * - File type
+     - Location
+   * - Input files
+     - ``${WORK}/INPUT/``
+   * - Restart files
+     - ``${WORK}/RESTART/``
+
+
+
+YATM
+"""""""
+
+The file-based atmosphere is provided by ``libaccessOM2``
+and configured through the ``forcing.json`` file.
+Input files are linked to static data files from previous model outputs.
+
+The input files are located as below:
+
+.. list-table::
+   :header-rows: 1
+
+   * - File type
+     - Location
+   * - Input files
+     - ``${WORK}/atmosphere/INPUT/``
+
+
+
+MOM5
+"""""""
+
+The input, output and restart file locations are defined as below:
+
+.. list-table::
+   :header-rows: 1
+
+   * - File type
+     - Location
+   * - Input files
+     - ``${WORK}/ocean/INPUT/``
+   * - Output files
+     - ``${WORK}/ocean/``
+   * - Restart files
+     - ``${WORK}/ocean/RESTART/``
+
+
+CICE5
+"""""""
+
+The restart files are copied (instead of linked) into the work directory, from the previous run, if it exists.
+This is because the CICE5 model will overwrite some restart files at the end of the run, 
+and we want to keep the original restart files unchanged for the previous runs. 
+The input, output and restart file locations are defined in the ``cice_in.nml`` file and typically set as follows:
+
+.. list-table::
+   :header-rows: 1
+
+   * - File type
+     - Location
+   * - Input files
+     - ``${WORK}/ice/``
+   * - Output files
+     - ``${WORK}/ice/OUTPUT/``
+   * - Restart files
+     - ``${WORK}/ice/RESTART/``
+
+
+
+Set model run length
+^^^^^^^^^^^^^^^^^^^^
+
+The model run length is managed by `libaccessom2 <https://github.com/ACCESS-NRI/libaccessom2>`_ 
+through the ``accessom2.nml`` configuration file.
+In ``date_manager_nml`` section of ``accessom2.nml``, the run length is
+configured in years, months, and seconds. 
+Two of these values must be set to zero.
+
+
+Running
+---------
+
+ACCESS-OM2 requires three executables to run, each for the atmosphere, ocean and sea ice submodels.
+Users can specify the executable for each submodel in the configuration file. 
+If a full path to an executable is specified, payu uses that executable directly. 
+If only the executable name is specified, payu loads the environment modules specified 
+in the configuration file, and searches the paths provided by those modules for a matching executable.
+A symlink is created for each executable inside the work directory, pointing to the actual 
+executable file used for the model run.
+An example of the executable names for each submodel is shown below.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Submodel
+     - Executable
+   * - Atmosphere
+     - ``yatm.exe``
+   * - Ocean
+     - ``mom5_access_om``
+   * - Sea ice
+     - ``cice_auscom_360x300_24x1_24p.exe``
+
+During the model run, the output files of each submodel are stored under different subdirectories of the work directory.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Submodel
+     - File type: Store location during run
+   * - Atmosphere
+     - *Typically none*
+   * - Ocean
+     - - Output files: ``${WORK}/ocean/``
+       - Restart files: ``${WORK}/ocean/RESTART/``
+   * - Sea ice
+     - - Output files: ``${WORK}/ice/OUTPUT/``
+       - Restart files: ``${WORK}/ice/RESTART/``
+
+The current model time is logged in file ``${WORK}/atmosphere/log/matmxx.pe00000.log`` by key ``cur_exp-datetime``.
+
+
+Archive
+-------
+
+When the model run is completed and archive is set to true, 
+the model driver moves files from the work directory to the archive directory 
+(e.g., ``/scratch/${PROJECT}/${USER}/${model}/archive/${CONTROL-Branch-UUID}``).
+Meanwhile, the work directory and symlink are removed.
+For ACCESS-OM2-specific cases, payu also copies the ocean-to-ice coupler file ``o2i.nc`` 
+from the ocean work directory to the sea-ice restart directory.
+The table below shows the source files and their corresponding archive locations.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Submodel
+     - File Source
+     - Archive Location
+   * - Global
+     - - ``${WORK}/RESTART/accessom2_restart.nml``
+       - ``${WORK}/${submodel}/INPUT/``
+     - - ``${ARCHIVE}/restart00N/accessom2_restart.nml``
+       - Removed
+   * - Atmosphere
+     - - ``${WORK}/atmosphere/``
+     - - ``${ARCHIVE}/output00N/atmosphere/``
+   * - Ocean
+     - - Output files in ``${WORK}/ocean/``
+       - ``${WORK}/ocean/RESTART/``
+     - - ``${ARCHIVE}/output00N/ocean/``
+       - ``${ARCHIVE}/restart00N/ocean/``
+   * - Sea ice
+     - - ``${WORK}/ice/OUTPUT/``
+       - ``${WORK}/ice/RESTART/``
+     - - ``${ARCHIVE}/output00N/ice/``
+       - ``${ARCHIVE}/restart00N/ice/``
+
+
+ACCESS-OM3
+============
+
+Model Type: Coupled ocean-sea ice model
+
+Driver Type: Single executable (without payu submodels)
+
+Submodels:
+
+- Data Atmosphere Model (DATM). A prescribed atmospheric data model that reads atmospheric forcing data
+  and passes it to the ocean and ice models via the coupler.
+- Data Runoff Model (DROF). A data-driven runoff model that provides river discharge to the ocean model.
+- Modular Ocean Model, version 6 (MOM). The ocean component uses MOM6, which is the next-generation ocean model
+  from GFDL. Please see the `MOM6 documentation <https://github.com/GFDL/MOM6>`_ 
+  for more technical details.
+- CICE-Consortium Sea Ice Model, version 6 (CICE). The sea ice component uses CICE6. Please see the
+  `CICE documentation <https://cice-consortium-cice.readthedocs.io>`_ for more technical details.
+- Optional WAVEWATCH III (WW3) Surface Wave Model. This is a third-generation wave model developed at
+  NOAA/NCEP for simulating the wind-generated wave and their dynamics.
+  Please see the `WW3 documentation <https://polar.ncep.noaa.gov/waves/wavewatch/>`_ 
+  for more technical details.
+
+ACCESS-OM3 uses the CMEPS (The Community Mediator for Earth Prediction Systems) framework,
+which provides a standardized approach to coupled modeling. This section introduces necessary information about how the 
+ACCESS-OM3 model driver organizes the workflow and file paths.
+Technical details about how to configure the ACCESS-OM3 model are available on the 
+`configuration documentation <https://access-om3-configs.access-hive.org.au/>`_.
+
+Setup
+------
+
+Configuration files
+^^^^^^^^^^^^^^^^^^^
+
+A table of the required and optional configuration files for the coupled model and each component is shown below.
+
+.. list-table:: Configuration files for coupled model and each component
+   :header-rows: 1
+
+   * - Component
+     - Required config files
+     - Optional config files [*]_
+   * - Coupler/Driver
+     - - drv_in
+       - fd.yaml
+       - nuopc.runconfig
+       - nuopc.runseq
+     -
+   * - DATM
+     - - datm_in
+       - datm.streams.xml
+     -
+   * - DROF
+     - - drof_in
+       - drof.streams.xml
+     -
+   * - MOM
+     - - input.nml
+       - diag_table
+       - MOM_input
+       - MOM_override
+     - - field_table
+       - data_table
+   * - CICE
+     - - ice_in
+     -
+
+.. [*] Additional configuration or input files used by the model are stored 
+    in the ``auxiliary_input`` folder, such as ``mask_table``, and ``MOM_channel_list``. 
+    Auxiliary input files are optional text file inputs to the model. 
+    This allows for easier tracking of these additional input files in git, 
+    rather than as inputs listed in ``config.yaml``.
+
+Directory structure
+^^^^^^^^^^^^^^^^^^^^
+
+An expected control directory structure for ACCESS-OM3 is shown as below.
+::
+
+    <control-directory>/
+    ├── auxiliary_input/
+    │   └── (optional text file inputs)
+    ├── config.yaml
+    ├── datm.streams.xml
+    ├── datm_in
+    ├── diag_table
+    ├── drof.streams.xml
+    ├── drof_in
+    ├── drv_in
+    ├── fd.yaml
+    ├── ice_in
+    ├── input.nml
+    ├── MOM_input
+    ├── MOM_override
+    ├── nuopc.runconfig
+    └── nuopc.runseq
+
+
+Setting up work directory
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The model driver copies configuration files into the work directory, and modifies them as required.
+The model executable, input and restart files are linked into the work directory.
+
+ACCESS-OM3 uses pointer files (rpointer.*) to track restart files for each component.
+These pointer files are automatically managed by the CMEPS coupler framework.
+The input and restart file locations are defined as below:
+
+.. list-table::
+   :header-rows: 1
+
+   * - File type
+     - Location
+   * - Input files
+     - ``${WORK}/INPUT/``
+   * - Auxiliary input files
+     - ``${WORK}/auxiliary_input/``
+   * - Restart files
+     - Symlinked into ``${WORK}/`` and referenced by ``rpointer.*`` files 
+       (e.g., ``rpointer.cpl``, ``rpointer.ocn``, ``rpointer.ice``, etc.)
+
+When a run starts from a restart, ``setup()`` replaces the symlinked ``rpointer.*``
+files with real copies. This is necessary because the model overwrites the pointer
+files in place as it runs; if they remained symlinks, those updates would overwrite
+the archived copies and break the ability to restart from earlier runs.
+
+Set model run length
+^^^^^^^^^^^^^^^^^^^^
+
+The model run length is configured through ``stop_option`` and ``stop_n`` 
+in the ``CLOCK_attributes`` section of ``nuopc.runconfig``.
+In the same section, ``restart_n`` and ``restart_option`` also need to be configured
+to specify the frequency at which restart files are written. 
+This can be set to either the full run length or a fraction of it.
+
+
+Running
+---------
+
+ACCESS-OM3 requires one executable (the CESM driver) that manages all components.
+Users can specify the executable in the configuration file.
+If a full path to an executable is specified, payu uses that executable directly.
+If only the executable name is specified, payu loads the environment modules specified
+in the configuration file and searches for a matching executable.
+
+The CMEPS coupler automatically manages the exchange of information between components
+through the coupling timestep specified in the run sequence (nuopc.runseq).
+
+The current model time is tracked in the file ``${WORK}/log/med.log`` by the CMEPS coupler.
+The CMEPS system writes timing and progress information to the log directory.
+
+
+Archive
+-------
+
+When the model run is completed and archive is set to true,
+the model driver moves files from the work directory to the archive directory.
+This includes the restart pointer (``rpointer.*``) files and the restart files they point to.
+The table below shows the source files and their corresponding archive locations.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Component
+     - File Source
+     - Archive Location
+   * - Global
+     - - ``${WORK}/*.log``
+       - ``${WORK}/timing/``
+     - ``${ARCHIVE}/output00N/``
+   * - Restart
+     - - ``${WORK}/rpointer.*``
+       - Restart files named in each ``rpointer.*`` file
+     - ``${ARCHIVE}/restart00N/``
+
+
+ACCESS-ESM1.5
+==============
+
+Model Type: Coupled atmosphere-ocean-sea ice model
+
+Driver Type: Coupled driver run as payu submodels
+
+Submodels:
+
+- Unified Model (UM). The atmospheric component. The UM is an atmosphere model capable of representing
+  weather and climate at a wide range of scales. Technical details are available on the
+  `UK Met Office UM website <https://www.metoffice.gov.uk/research/approach/modelling-systems/unified-model>`_.
+- Modular Ocean Model, version 5 (MOM5). The ocean component. Please see the
+  `Modular Ocean Model website <https://mom-ocean.github.io>`_ for technical details.
+- Los Alamos Sea Ice Model, version 4 (CICE). The sea ice component. Please see the
+  `CICE documentation <https://github.com/ACCESS-NRI/cice4/blob/access-esm1.5/doc/cicedoc.pdf>`_ for more technical details.
+
+ACCESS-ESM1.5 is a fully-coupled global climate model that integrates a finite difference atmospheric model (UM) with
+an ocean model (MOM5) and a sea ice model (CICE). The components communicate through the OASIS coupler.
+This section introduces necessary information about how the ACCESS-ESM1.5 model driver organizes the workflow
+and file paths. Technical details about how to configure the ACCESS-ESM1.5 model and how the physics is
+modelled are available on the `ACCESS website <https://www.access-nri.org.au/models/earth-system-model-esm//>`_.
+
+Setup
+------
+
+Configuration files
+^^^^^^^^^^^^^^^^^^^
+
+A table of the required and optional configuration files for each component is shown below.
+
+.. list-table:: Configuration files for top-level model driver and each submodel
+   :header-rows: 1
+
+   * - Component
+     - Required config files
+     - Optional config files
+   * - ACCESS-ESM1.5
+       - namcouple
+     -
+   * - UM
+     - - errflag
+       - hnlist
+       - ihist
+       - namelists
+       - prefix.PRESM_A
+       - STASHC
+       - UAFILES_A
+       - UAFLDS_A
+       - cable.nml
+       - um_env.yaml
+     - - input_atm.nml
+       - parexe
+   * - MOM5
+     - - data_table
+       - diag_table
+       - field_table
+       - input.nml
+     - - blob_diag_table
+       - mask_table
+       - ocean_mask_table
+   * - CICE
+     - - cice_in.nml
+       - input_ice.nml
+     - - input_ice_gfdl.nml
+       - input_ice_monin.nml
+       - restart_date.nml
+
+Directory structure
+^^^^^^^^^^^^^^^^^^^^
+
+An expected control directory structure for ACCESS-ESM1.5 is shown as below.
+::
+
+    <control-directory>/
+    ├── atmosphere/
+    │   ├── errflag
+    │   ├── hnlist
+    │   ├── ihist
+    │   ├── namelists
+    │   ├── prefix.PRESM_A
+    │   ├── STASHC
+    │   ├── UAFILES_A
+    │   ├── UAFLDS_A
+    │   ├── cable.nml
+    │   └── um_env.yaml
+    ├── ocean/
+    │   ├── data_table
+    │   ├── diag_table
+    │   ├── field_table
+    │   └── input.nml
+    ├── ice/
+    │   ├── cice_in.nml
+    │   └── input_ice.nml
+    ├── coupler/
+    │   └── namcouple
+    └── manifests/
+        ├── exe.yaml
+        ├── input.yaml
+        └── restart.yaml
+
+.. _esm1.5workdir:
+Setting up work directory
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The model driver creates subdirectories within the temporary work directory for each component.
+Configuration files are copied into the corresponding subdirectories in the work directory,
+and the model driver modifies them as required.
+The model executable, input and restart files are linked into the work subdirectories.
+
+For CICE in ACCESS-ESM1.5, restart files are handled specifically because the model writes its own
+restart information. The coupler file ``o2i.nc`` (ocean-to-ice) is linked from the ocean work
+directory to the ice restart directory.
+
+The input and restart file locations are defined as below:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Component
+     - File type
+     - Location
+   * - UM
+     - Input files
+     - ``${WORK}/atmosphere/INPUT/``
+   * -
+     - Output files
+     - ``${WORK}/atmosphere/``
+   * - MOM5
+     - Input files
+     - ``${WORK}/ocean/INPUT/``
+   * -
+     - Output files
+     - ``${WORK}/ocean/``
+   * -
+     - Restart files
+     - ``${WORK}/ocean/RESTART/``
+   * - CICE
+     - Input/Restart files
+     - ``${WORK}/ice/RESTART/``
+   * -
+     - Output files
+     - ``${WORK}/ice/OUTPUT/``
+
+Set model run length
+^^^^^^^^^^^^^^^^^^^^
+
+The model run length is configured through the ``calendar: runtime:`` options in the ``config.yaml`` file.
+
+
+Running
+---------
+
+ACCESS-ESM1.5 requires three executables to run: one for the atmosphere (UM), one for the ocean (MOM5),
+and one for the sea ice (CICE). Users can specify the executable for each component in the configuration file.
+If a full path to an executable is specified, payu uses that executable directly.
+If only the executable name is specified, payu loads the environment modules specified
+in the configuration file and searches for a matching executable.
+
+The OASIS coupler handles the communication between the three components and manages the model timing.
+
+During the model run, each component writes its output and restart files to the locations described in 
+the :ref:`esm1.5workdir` section. The atmosphere component also produces standard output and log files 
+in its work directory.
+
+
+Archive
+-------
+
+When the model run is completed and archive is set to true,
+the model driver moves files from the work directory to the archive directory.
+For ACCESS-ESM1.5, the OASIS driver copies ``o2i.nc`` from ``restartNNN/coupler/`` to 
+``work/coupler/`` during setup and symlinks it into each submodel's work directory. 
+The ESM driver also links it into ``work/ice/RESTART/`` for CICE. 
+At the end of the run, MOM updates the file through the ocean work-directory symlink, 
+and the OASIS driver archives it back to ``restartNNN/coupler/``.
+The table below shows the source files and their corresponding archive locations.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Component
+     - File Source
+     - Archive Location
+   * - Atmosphere
+     - ``${WORK}/atmosphere/``
+     - ``${ARCHIVE}/output00N/atmosphere/``
+   * - Ocean
+     - Output files in ``${WORK}/ocean/``
+       ``${WORK}/ocean/RESTART/``
+     - ``${ARCHIVE}/output00N/ocean/``
+       ``${ARCHIVE}/restart00N/ocean/``
+   * - Sea ice
+     - ``${WORK}/ice/OUTPUT/``
+       ``${WORK}/ice/RESTART/``
+     - ``${ARCHIVE}/output00N/ice/``
+       ``${ARCHIVE}/restart00N/ice/``
+
+
+ACCESS-ESM1.6
+==============
+
+Model Type: Coupled atmosphere-ocean-sea ice model
+
+Driver Type: Coupled driver run as payu submodels
+
+Submodels:
+
+- Unified Model (UM). The atmospheric component, with changes compared to ACCESS-ESM1.5 
+  which integrate the CABLE3 land surface model. Technical details are available on the 
+  `UK Met Office UM website <https://www.metoffice.gov.uk/research/approach/modelling-systems/unified-model>`_.
+- Modular Ocean Model version 5 (MOM5). The ocean component.
+  Please see the relevant `Modular Ocean Model documentation <https://mom-ocean.github.io>`_ for technical details.
+- CICE Sea Ice Model, version 5 (CICE5). Please see the 
+  `CICE5 user's guide <https://github.com/ACCESS-NRI/cice5/blob/master/doc/cicedoc.pdf>`_
+  for more technical details and the physics of the model.
+
+ACCESS-ESM1.6 builds on ESM1.5 with significant changes to the land surface model, ocean biogeochemistry, 
+and sea ice models. The components communicate through the OASIS coupler.
+This section introduces necessary information about how the ACCESS-ESM1.6 model driver organizes the workflow
+and file paths. Technical details about how to configure and run the ACCESS-ESM1.6 model are available on the
+`ACCESS-ESM1.6 Documentation <https://docs.access-hive.org.au/models/run_a_model/run_access-esm1p6/>`_.
+
+Setup
+------
+
+Configuration files
+^^^^^^^^^^^^^^^^^^^
+
+A table of the required and optional configuration files for each component is shown below.
+
+.. list-table:: Configuration files for top-level model and each submodel
+   :header-rows: 1
+
+   * - Component
+     - Required config files
+     - Optional config files
+   * - ACCESS-ESM1.6
+     - - namcouple
+     -
+   * - UM
+     - - errflag
+       - hnlist
+       - ihist
+       - namelists
+       - prefix.PRESM_A
+       - STASHC
+       - UAFILES_A
+       - UAFLDS_A
+       - cable.nml
+       - um_env.yaml
+     - - input_atm.nml
+       - parexe
+       - pft_params.nml
+       - soil.nml
+   * - MOM5
+     - - data_table
+       - diag_table
+       - field_table
+       - input.nml
+     - - blob_diag_table
+       - mask_table
+       - ocean_mask_table
+   * - CICE5
+     - - cice_in.nml
+       - input_ice.nml
+     -
+
+Directory structure
+^^^^^^^^^^^^^^^^^^^^
+
+An expected control directory structure for ACCESS-ESM1.6 is shown as below.
+::
+
+    <control-directory>/
+    ├── atmosphere/
+    │   ├── errflag
+    │   ├── hnlist
+    │   ├── ihist
+    │   ├── namelists
+    │   ├── prefix.PRESM_A
+    │   ├── STASHC
+    │   ├── UAFILES_A
+    │   ├── UAFLDS_A
+    │   ├── cable.nml
+    │   ├── um_env.yaml
+    │   ├── pft_params.nml
+    │   └── soil.nml
+    ├── ocean/
+    │   ├── data_table
+    │   ├── diag_table
+    │   ├── field_table
+    │   └── input.nml
+    ├── ice/
+    │   ├── cice_in.nml
+    │   └── input_ice.nml
+    ├── coupler/
+    │   └── namcouple
+    └── manifests/
+        ├── exe.yaml
+        ├── input.yaml
+        └── restart.yaml
+
+.. _esm1.6workdir:
+Setting up work directory
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The model driver creates subdirectories within the temporary work directory for each component.
+Configuration files are copied into the corresponding subdirectories in the work directory,
+and the model driver modifies them as required.
+The model executable, input and restart files are linked into the work subdirectories.
+
+ACCESS-ESM1.6 includes improvements for CICE5 support. Unlike ACCESS-OM2, CICE5 inputs are not copied
+but symlinked to support efficient restart handling. The coupler file ``o2i.nc`` (ocean-to-ice) is linked
+from the ocean work directory to the ice restart directory.
+
+The input and restart file locations are defined as below:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Component
+     - File type
+     - Location
+   * - UM
+     - Input files
+     - ``${WORK}/atmosphere/INPUT/``
+   * - MOM5
+     - Input files
+     - ``${WORK}/ocean/INPUT/``
+   * -
+     - Output files
+     - ``${WORK}/ocean/``
+   * -
+     - Restart files
+     - ``${WORK}/ocean/RESTART/``
+   * - CICE5
+     - Input/Restart files
+     - ``${WORK}/ice/RESTART/``
+   * -
+     - Output files
+     - ``${WORK}/ice/OUTPUT/``
+
+Set model run length
+^^^^^^^^^^^^^^^^^^^^
+
+The model run length is configured through the ``calendar: runtime:`` options in the ``config.yaml`` file.
+
+
+Running
+---------
+
+ACCESS-ESM1.6 requires three executables to run: one for the atmosphere (UM), one for the ocean (MOM),
+and one for the sea ice (CICE). Users can specify the executable for each component in the configuration file.
+If a full path to an executable is specified, payu uses that executable directly.
+If only the executable name is specified, payu loads the environment modules specified
+in the configuration file and searches for a matching executable.
+
+The OASIS coupler handles the communication between the three components and manages the model timing.
+
+During the model run, each component writes its output and restart files to the locations described in 
+the :ref:`esm1.6workdir` section. The atmosphere component also produces standard output and log files 
+in its work directory.
+
+
+Archive
+-------
+
+When the model run is completed and archive is set to true,
+the model driver moves files from the work directory to the archive directory.
+For ACCESS-ESM1.6, the OASIS driver copies ``o2i.nc`` from ``restartNNN/coupler/`` to 
+``work/coupler/`` during setup and symlinks it into each submodel's work directory. 
+The ESM driver also links it into ``work/ice/RESTART/`` for CICE. 
+At the end of the run, MOM updates the file through the ocean work-directory symlink, 
+and the OASIS driver archives it back to ``restartNNN/coupler/``.
+The table below shows the source files and their corresponding archive locations.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Component
+     - File Source
+     - Archive Location
+   * - Atmosphere
+     - ``${WORK}/atmosphere/``
+     - ``${ARCHIVE}/output00N/atmosphere/``
+   * - Ocean
+     - Output files in ``${WORK}/ocean/``
+       ``${WORK}/ocean/RESTART/``
+     - ``${ARCHIVE}/output00N/ocean/``
+       ``${ARCHIVE}/restart00N/ocean/``
+   * - Sea ice
+     - ``${WORK}/ice/OUTPUT/``
+       ``${WORK}/ice/RESTART/``
+     - ``${ARCHIVE}/output00N/ice/``
+       ``${ARCHIVE}/restart00N/ice/``
+
+
+
+
