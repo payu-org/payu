@@ -367,9 +367,6 @@ def test_fms_collate_mpi_glob(tmp_path, monkeypatch, capsys, use_glob, extra_fil
     # mock multiprocessing and env operations
     monkeypatch.setattr("payu.models.fms.multiprocessing.Pool", lambda **kwargs: pool)
     monkeypatch.setattr("payu.models.fms.res.setrlimit", lambda *args: None)
-    monkeypatch.setattr("payu.models.fms.required_libs", lambda *args: [])
-    monkeypatch.setattr("payu.models.fms.envmod.lib_update", lambda *args: None)
-    monkeypatch.setattr("payu.models.fms.envmod.module", lambda *args: None)
 
     # ensure hashing uses actual files
     def mock_hash(path, hashfn):

@@ -13,7 +13,6 @@ import resource as res
 import shlex
 import shutil
 import subprocess as sp
-import sys
 from itertools import count
 import fnmatch
 import re
@@ -23,8 +22,6 @@ import logging
 from yamanifest.hashing import hash
 
 from payu.models.model import Model
-from payu import envmod
-from payu.fsops import required_libs
 from payu.manifest import full_hashes
 import payu.errors as errors
 
