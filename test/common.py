@@ -133,7 +133,8 @@ def payu_setup(model_type=None,
                            lab_path,
                            reproduce,
                            force,
-                           metadata_off=False)
+                           metadata_off=False,
+                           mpi_check=False)
 
 
 def write_config(config, path=config_path):
