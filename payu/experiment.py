@@ -74,12 +74,13 @@ def timeit(time_name):
 class Experiment(object):
     def __init__(self, lab, reproduce=None, force=False, metadata_off=False, config_path=None, 
                  is_new_experiment=False, keep_uuid=False, set_template_values=False, parent_info=None,
-                 runlog_off=False, repeat=False):
+                 runlog_off=False, repeat=False, mpi_check=True):
         self.init_timings()
         self.lab = lab
         self.config_path = config_path
         # Check laboratory directories are writable
         self.lab.initialize()
+        self.mpi_check = mpi_check
 
         if not force:
             # check environment for force flag under PBS
@@ -328,7 +329,8 @@ class Experiment(object):
         self.user_modules_paths = added_paths
 
         # # Check if mpi command in any of the added_paths, if not raise error
-        envmod.check_for_mpirun(added_paths)
+        if self.mpi_check:
+            envmod.check_for_mpirun(added_paths)
 
     def set_expt_pathnames(self):
 

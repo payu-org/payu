@@ -15,16 +15,19 @@ arguments = [
     args.force,
     args.metadata_off,
     args.is_new_experiment,
+    args.mpi_check,
 ]
 
 
 def runcmd(model_type, config_path, lab_path,
-           reproduce=None, force=False, metadata_off=False, is_new_experiment=False):
+           reproduce=None, force=False, metadata_off=False, 
+           is_new_experiment=False, mpi_check=True):
 
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab, reproduce=reproduce, force=force,
                       metadata_off=metadata_off,
-                      is_new_experiment=is_new_experiment)
+                      is_new_experiment=is_new_experiment,
+                      mpi_check=mpi_check)
 
     expt.setup()
 

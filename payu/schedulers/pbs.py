@@ -22,7 +22,7 @@ from tenacity import retry, stop_after_attempt, retry_if_exception_type
 from datetime import datetime, timedelta
 from filelock import SoftFileLease, Timeout
 import hpcpy
-from hpcpy.constants import TEMPLATE_ROOT
+import hpcpy.templates as ht
 
 import payu.envmod as envmod
 from payu.fsops import check_exe_path, atomic_write_file
@@ -34,7 +34,7 @@ PBSNODE_TIMEOUT = 60
 LOCK_TIMEOUT = 5
 LOCK_LIFETIME = 8
 
-SCRIPT_TEMPLATE = TEMPLATE_ROOT / "payu_simple.sh"
+SCRIPT_TEMPLATE = ht.PAYU_SIMPLE # pylint: disable=no-member
 
 ureg = UnitRegistry()
 

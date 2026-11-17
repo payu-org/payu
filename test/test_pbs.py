@@ -358,8 +358,7 @@ def test_find_mounts():
 
 @patch("payu.schedulers.pbs.get_user_groups", return_value=test_storage_groups)
 @patch("hpcpy.client.base.BaseClient._render_job_script")
-@patch("hpcpy.client.base.BaseClient._clean_rendered_job_scripts")
-def test_run(mock_clean_rendered_job_scripts, mock_job_script, mock_get_user_groups):
+def test_run(mock_job_script, mock_get_user_groups):
 
     # Use new mechanism to return a scheduler
     sched_name = config.get('scheduler', 'pbs')
