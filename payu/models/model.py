@@ -201,14 +201,14 @@ class Model(object):
         # Search for exe inside paths added to $PATH by user-defined modules
         exec_paths = []
         for path in module_added_paths:
-            exec_path = os.path.join(path, exec)
-            if os.path.exists(exec_path) and os.access(exec_path, os.X_OK):
+            exec_path = shutil.which(exec, path=path)
+            if exec_path and os.path.exists(exec_path) and os.access(exec_path, os.X_OK):
                 exec_paths.append(exec_path)
 
         if len(exec_paths) > 1:
             raise ValueError(
                 f"Executable {exec} found in multiple $PATH paths added by " +
-                f"user-defined modules in `config.yaml`. Paths: {exec_paths}")
+                f"user-defined modules in config. \nPaths: {exec_paths}")
         elif len(exec_paths) == 1:
             return exec_paths[0]
 

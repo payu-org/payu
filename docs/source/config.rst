@@ -645,17 +645,25 @@ Miscellaneous
             - netcdf-c-4.9.0
             - parallel-netcdf-1.12.3
             - xerces-c-3.2.3
+            - openmpi/5.0.8
 
    As environment modules can be used to determine model executable paths,
    the modules loaded are required to be unique. This means modules should be
    specified with a version, and modules of the same name and version
    should not be found in multiple module directories.
-   If the modules require `module use` in order to be found, this command can also be run
-   prior to `payu run` instead of listing the directory under the `use` option,
-   e.g.::
+   
+   Each job starts with a clean environment. The job script runs
+   ``module purge``, then use the specifed path(s) to load the scheduler module (e.g. pbs), 
+   and each module listed under ``load`` (see :ref:`job-script-templates`).
+   Modules loaded in the shell before ``payu run`` are not carried into the job.
+   Therefore, all required modules and module directories
+   must be explicitly specified in this configuration.
 
-      module use /path/to/module/directory
-      payu run
+   Before submitting a job, payu checks that the ``mpirun`` command is found
+   in a ``$PATH`` directory added by the listed modules. 
+   Otherwise, a ``PayuConfigError`` will be raised. 
+   To skip this check, use the ``--mpicheck-off`` flag with
+   ``payu run`` or ``payu setup``.
 
 ``payu_minimum_version``
    Specify the minimum version of payu required to run the configuration.

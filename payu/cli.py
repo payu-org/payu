@@ -134,7 +134,7 @@ def get_model_type(model_type, config):
 def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
                  reproduce=None, force=False, force_prune_restarts=False,
                  sync_restarts=False, sync_ignore_last=False, runlog_off=False,
-                 repeat=False, exist_workflow=False):
+                 repeat=False, script_template=None, exist_workflow=False):
     """Construct the environment variables used by payu for resubmissions."""
     payu_env_vars = {}
 
@@ -200,15 +200,12 @@ def set_env_vars(init_run=None, n_runs=None, lab_path=None, dir_path=None,
 
     if repeat:
         payu_env_vars['PAYU_REPEAT'] = repeat
+
+    if script_template:
+        payu_env_vars['PAYU_JOB_SCRIPT_TEMPLATE'] = script_template
         
     if exist_workflow:
        payu_env_vars['PAYU_EXIST_WORKFLOW'] = exist_workflow
-
-    # Pass through important module related environment variables
-    module_env_vars = ['MODULESHOME', 'MODULES_CMD', 'MODULEPATH', 'MODULEV']
-    for var in module_env_vars:
-        if var in os.environ:
-            payu_env_vars[var] = os.environ[var]
 
     # Pass on stacktrace and log level to PBS as environment variables
     if os.environ.get('PAYU_STACKTRACE'):
@@ -232,13 +229,27 @@ def submit_job(script, config, vars=None, expt=None, current_run=None,
             # Use HPCpy to submit the job in PBS
             if dry_run:
                 # If dry_run is True, print out the submission command and exit
-                cmd = sched.submit(script, config, vars, dry_run=dry_run, depends_on=depends_on, postscript=postscript)
+                cmd = sched.submit(script, 
+                                   config, 
+                                   vars, 
+                                   dry_run=dry_run, 
+                                   depends_on=depends_on, 
+                                   postscript=postscript,
+                                   archive_path=Path(expt.archive_path) if expt is not None else None,
+                                   current_run=current_run)
                 print(f"---- Dry run (submission skipped) -----\n"
                     f"Generated command: {cmd}")
                 return None
             else:
                 # Print the job ID and command after submission 
-                job = sched.submit(script, config, vars, dry_run=dry_run, depends_on=depends_on, postscript=postscript)
+                job = sched.submit(script, 
+                                   config, 
+                                   vars, 
+                                   dry_run=dry_run, 
+                                   depends_on=depends_on, 
+                                   postscript=postscript,
+                                   archive_path=Path(expt.archive_path) if expt is not None else None,
+                                   current_run=current_run)
                 print(f"------ Job submitted ------\n"
                     f"Submitted command: {job.history[-1]}")
                 job_id = job.id

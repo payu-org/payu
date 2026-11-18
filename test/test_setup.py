@@ -52,7 +52,11 @@ def init_experiment(config, reproduce=None, runlog_off=False, repeat=False):
 
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=reproduce, runlog_off=runlog_off, repeat=repeat)
+        expt = payu.experiment.Experiment(lab, 
+                                        mpi_check=False, 
+                                        reproduce=reproduce, 
+                                        runlog_off=runlog_off, 
+                                        repeat=repeat)
         return expt
 
 

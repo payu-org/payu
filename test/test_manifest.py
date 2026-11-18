@@ -445,7 +445,7 @@ def test_get_hashes():
 
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
-        expt = payu.experiment.Experiment(lab, reproduce=False)
+        expt = payu.experiment.Experiment(lab, reproduce=False, mpi_check=False)
         expt.setup()
         hashes = expt.manifest.manifests['input'].get_hashes('md5')
 
