@@ -298,6 +298,7 @@ run use ``-F/--force-prune-restarts`` flag::
    payu run --force-prune-restarts
 
 
+.. _job-script-templates:
 Job script templates
 --------------------
 
@@ -332,7 +333,7 @@ To override the default job script template, please use the ``--script-template/
    payu run -t /path/to/my_template.sh 
 
 A custom template should retain the ``{{ modules_head }}``, ``{{ python_exe }}``
-+and ``{{ payu_exe }}`` placeholders. 
+and ``{{ payu_exe }}`` placeholders. 
 
 Monitoring payu jobs
 ====================
