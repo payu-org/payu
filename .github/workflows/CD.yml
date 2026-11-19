@@ -6,7 +6,7 @@ on:
       - '*'
 
 env:
-  PY_VERSION: 3.11
+  PY_VERSION: 3.12
 
 jobs:
   pypi-build:
