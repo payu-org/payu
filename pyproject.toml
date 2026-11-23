@@ -34,7 +34,7 @@ dependencies = [
     "netCDF4",
     "jsonschema", 
     "colorama",
-    "filelock",
+    "filelock>=3.30.0",
     "questionary",
     "pint",
     "hpcpy >=0.9.0",
