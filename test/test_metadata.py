@@ -16,6 +16,7 @@ from payu.metadata import DO_NOT_EDIT_COMMENT, CAN_EDIT_COMMENT, PLEASE_UPDATE_C
 from payu.metadata import PARENT_UUID_FIELD, PARENT_BRANCH_TIME_FIELD, PARENT_HASH_FIELD, UUID_FIELD, HARD_SWEPT_UUID
 from payu.metadata import arrange_metadata, add_template_metadata_values, add_restart_field
 from payu.metadata import NAME_FIELD, EXPERIMENT_TIME_FIELD, RUN_ID_FIELD, RUN_NUMBER_FIELD, missing_text
+from payu.metadata import SKIP_RESTART_PROVENANCE_MSG
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, archive_dir
@@ -757,6 +758,20 @@ def test_write_restart_provenance(init_metadata, parent_info):
     else:
         assert restart_metadata[PARENT_UUID_FIELD] == parent_info["parent_experiment"]
 
+
+def test_write_restart_provenance_no_restart_dir(init_metadata, capsys):
+    """Test that write_restart_provenance is skipped if the restart directory does not exist"""
+    # Initialise Metadata
+    metadata = init_metadata()
+
+    # Ensure the restart directory does not exist
+    restart_path = Path(ctrldir) / f"nonexistent_restart"
+    assert not restart_path.exists()
+
+    # Call write_restart_provenance and expect an printing message
+    metadata.write_restart_provenance(restart_path, "test_run_id", 3, datetime(2026, 8, 31, 12, 0, 0))
+    captured = capsys.readouterr()
+    assert SKIP_RESTART_PROVENANCE_MSG % restart_path in captured.out
 
 @pytest.mark.parametrize(
     "value, expected_value",
