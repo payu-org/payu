@@ -1,5 +1,6 @@
 from io import StringIO
 import os
+import copy
 import payu.branch
 import pytest
 import stat
@@ -15,8 +16,24 @@ import payu.laboratory
 import payu.envmod
 
 from .common import tmpdir, cd
+from .common import ctrldir, labdir, workdir, expt_archive_dir
+from .common import make_all_files, make_random_file
+from .common import config as config_orig, write_config
+from .common import list_expt_archive_dirs
 from payu.fsops import duplicate_key_warning
 import payu.errors as errors
+from payu.metadata import SKIP_RESTART_PROVENANCE_MSG
+
+config = copy.deepcopy(config_orig)
+
+def make_config_files():
+    """
+    Create files required for test model
+    """
+
+    config_files = payu.models.test.config_files
+    for file in config_files:
+        make_random_file(ctrldir/file, 29)
 
 
 sys.path.insert(1, '../')
@@ -414,3 +431,35 @@ def test_get_parent_branch_time_supressed(capsys):
     assert result is None
     msg = "'record_parent_branch_time' is set to False in config. Skip adding parent branch time to metadata."
     assert msg in capsys.readouterr().out
+
+
+def test_repeat_runs_archive(setup_test_dir, capsys):
+    """Test that when repeat is set to True, archive runs successfully"""
+    write_config(config)
+    make_all_files()
+    make_config_files()
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, repeat=True)
+        expt.setup()
+
+        # Create fake output and restart files in the work directory
+        for dirname in ["output000", "restart000"]:
+            directory = workdir / dirname
+            directory.mkdir()
+            (directory / "test_file.txt").write_text("Test file content")
+
+        # Run archive when repeat=True
+        assert expt.repeat is True
+        expt.archive()
+
+    # Output should be archived
+    assert (expt_archive_dir / 'output000').is_dir()
+
+    # Repeat runs do not keep any restarts in the archive
+    assert list_expt_archive_dirs(type='restart') == []
+
+    # Restart provenance should be skipped because the restart dir not exists
+    captured = capsys.readouterr().out
+    assert SKIP_RESTART_PROVENANCE_MSG % (expt_archive_dir / 'restart000') in captured
