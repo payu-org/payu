@@ -947,14 +947,16 @@ class Experiment(object):
                     not os.path.islink(restart_path)):
                 shutil.rmtree(restart_path)
 
-        # Write provenance information to restart directory
-        model_restart_datetimes=self.get_model_restart_datetimes()
-        self.metadata.write_restart_provenance(
-            Path(self.restart_path), 
-            self.run_id, 
-            self.counter,
-            model_restart_datetimes.get("model_finish_time", None),
-        )
+        # Write provenance information to restart directory. A repeat run
+        # has just pruned its own restart directory, so has none to write to.
+        model_restart_datetimes = self.get_model_restart_datetimes()
+        if os.path.isdir(self.restart_path):
+            self.metadata.write_restart_provenance(
+                Path(self.restart_path),
+                self.run_id,
+                self.counter,
+                model_restart_datetimes.get("model_finish_time", None),
+            )
 
         # Ensure dynamic library support for subsequent python calls
         ld_libpaths = os.environ.get('LD_LIBRARY_PATH', None)
