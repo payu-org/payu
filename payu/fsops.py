@@ -136,7 +136,27 @@ def read_config(config_fname=None):
     if type(modules_config) is list:
         modules_config = {'load': modules_config}
     config['modules'] = modules_config
-     
+
+    # Transform submodels dict (keyed by name) into list format
+    submodels_config = config.get('submodels')
+    if isinstance(submodels_config, dict):
+        submodels = []
+        for submodel_name, submodel_config in submodels_config.items():
+            if not isinstance(submodel_config, dict):
+                raise errors.PayuConfigError(
+                    f"Submodel '{submodel_name}' must be configured as a "
+                    "mapping of options. For example:\n"
+                    "submodels:\n"
+                    "    atmosphere:\n"
+                    "        model: um\n"
+                    "        # other submodel configurations")
+            if 'name' in submodel_config:
+                raise errors.PayuConfigError(
+                    f"Submodel '{submodel_name}' must not have a 'name' "
+                    "field, as the name is given by the dictionary key")
+            submodels.append({'name': submodel_name, **submodel_config})
+        config['submodels'] = submodels
+
     # Local "control" path. Must be set here so it can be
     # scanned for storage points
     config["control_path"] = config.get('control',
