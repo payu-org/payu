@@ -52,6 +52,7 @@ Contents:
    config
    manifests
    design
+   models
 
 
 Support and Development
