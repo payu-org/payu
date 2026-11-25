@@ -985,12 +985,12 @@ class Experiment(object):
             )
             sp.check_call(shlex.split(cmd))
     
-    @timeit("payu_collate_duration_seconds")
-    def collate(self):
-        """ Run model collation and record the time taken in seconds to run collation"""
-        # Update collate stage to running
+    @timeit("payu_postarchive_duration_seconds")
+    def postarchive(self):
+        """ Run model postarchive actions and record the time taken in seconds to run postarchive"""
+        # Update postarchive stage to running
         telemetry.update_job_file(
-            file_path=self.get_job_file(type='collate'),
+            file_path=self.get_job_file(type='postarchive'),
             data={"stage": "running"}
         )
 
@@ -998,21 +998,36 @@ class Experiment(object):
         self.setup_modules()
 
         full_mapping_collate_dict = {}
-        for model in self.models:
-            mapping_collate_dict = model.collate()
-            if mapping_collate_dict is not None:
-                full_mapping_collate_dict.update(mapping_collate_dict)
+        postarchive_config = self.config.get('postarchive', {})
 
-        # Counters does not increase for collate runs
+        # Run postarchive for each submodel, default enabled
+        for model in self.models:
+            pa_config_submodel = postarchive_config.get(model.model_type, {})
+            if not pa_config_submodel.get('enable', True):
+                logger.info(f'Payu: postarchive process is disabled for submodel {model.model_type}.')
+            else:
+                postarchive_output = model.postarchive(pa_config_submodel)
+                if model.model_type == "mom" and postarchive_output is not None:
+                    full_mapping_collate_dict.update(postarchive_output)
+
+        # Add metadata to output files as part of postarchive, non-model specific, default enabled
+        if postarchive_config.get('addmeta', {}).get('enable', True):
+            self.add_file_metadata()
+
+        # Counters does not increase for postarchive runs
         # This is used to determine the job file path
         self.set_counters(keep_run_number=True)
 
         # Write the full_mapping_collate_dict to job file in
-        # archive/payu_jobs/{latest_run_number}/collate/{job_id}-gadi-pbs.json
+        # archive/payu_jobs/{latest_run_number}/postarchive/{job_id}-gadi-pbs.json
         telemetry.update_job_file(
-            file_path=self.get_job_file(type='collate'),
+            file_path=self.get_job_file(type='postarchive'),
             data={"collate_mapping": full_mapping_collate_dict}
         )
+    
+    def add_file_metadata(self):
+        logger.warning('Payu: This is not implemented yet.')
+        return
 
     def profile(self):
         for model in self.models:
@@ -1119,7 +1134,7 @@ class Experiment(object):
         default_job_name = os.path.basename(os.getcwd())
         short_job_name = str(self.config.get('jobname', default_job_name))[:15]
 
-        # find all PBS log files including payu runs, collate runs, postscript runs, and sync runs
+        # find all PBS log files including payu runs, collate/postarchive runs, postscript runs, sync runs and catalog generation
         log_filenames = [short_job_name + '.o', short_job_name + '.e']
         for postfix in ['_c.o', '_c.e', '_p.o', '_p.e', '_s.o', '_s.e', '_i.o', '_i.e']:
             log_filenames.append(short_job_name[:13] + postfix)

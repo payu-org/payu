@@ -16,6 +16,8 @@ import os
 import shutil
 import string
 import warnings
+import shlex
+import subprocess
 
 # Extensions
 import f90nml
@@ -27,6 +29,7 @@ yaml.default_flow_style = False
 from payu.fsops import make_symlink
 from payu.models.model import Model
 import payu.calendar as cal
+import payu.errors as errors
 
 # UM in access always uses proleptic gregorian calendar
 UM_CFTIME_CALENDAR = "proleptic_gregorian"
@@ -110,8 +113,43 @@ class UnifiedModel(Model):
         for f_path in glob.glob(os.path.join(self.work_path, 'aiihca.da*')):
             os.remove(f_path)
 
-    def collate(self):
-        pass
+    def postarchive(self, pa_config):
+        """
+        Convert UM atmosphere fields files to netCDF using um2nc
+        (https://github.com/ACCESS-NRI/um2nc-standalone). By default the
+        fields files are deleted after a successful conversion to save space;
+        set delete_ff: false to keep them for testing.
+        """
+        output_dir = str(self.expt.output_path)
+
+        cmd = ['um2nc', 'driver']
+
+        um2nc_model = pa_config.get("model", None)
+        if not um2nc_model:
+            raise errors.PayuConfigError("No model specified for um2nc command.")
+
+        cmd.extend([um2nc_model, output_dir])
+
+        if pa_config.get('delete_ff', True):
+            cmd += ['--delete-ff']
+
+        if pa_config.get('one_nc_per_stash_variable', True):
+            cmd += ['--one-nc-per-stash-variable']
+
+        additional_flags = pa_config.get('additional_flags')
+        if additional_flags:
+            if isinstance(additional_flags, str):
+                additional_flags = shlex.split(additional_flags)
+            cmd.extend(additional_flags)
+
+        try:
+            subprocess.run(cmd, check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            warnings.warn(f"um2nc failed converting UM output in "
+                          f"{output_dir}: {e}")
+        
+        print(f"UM output converted to netCDF in {output_dir}")
+        return
 
     def setup(self):
         # Raise a deprecation error if the um_env.yaml file is not found
