@@ -374,7 +374,7 @@ class CesmCmeps(IntakeMixin, Model):
 
         return sorted(restart_files)
 
-    def postarchive(self):
+    def postarchive(self, pa_config):
         # .setup is not run when collate is called so need to get components
         self.get_runconfig(self.control_path)
         self.get_components()
@@ -382,7 +382,7 @@ class CesmCmeps(IntakeMixin, Model):
         if "mom" in self.components.values():
             return fms_collate(self)
         else:
-            super().postarchive()
+            super().postarchive(pa_config)
 
     def get_restart_datetime(self, restart_path):
         """Given a restart path, parse the restart files and

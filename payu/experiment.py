@@ -1002,10 +1002,11 @@ class Experiment(object):
 
         # Run postarchive for each submodel, default enabled
         for model in self.models:
-            if not postarchive_config.get(model.model_type, {}).get('enable', True):
-                print(f'Payu: postarchive process is disabled for submodel {model.model_type}.')
+            pa_config_submodel = postarchive_config.get(model.model_type, {})
+            if not pa_config_submodel.get('enable', True):
+                logger.info(f'Payu: postarchive process is disabled for submodel {model.model_type}.')
             else:
-                postarchive_output = model.postarchive()
+                postarchive_output = model.postarchive(pa_config_submodel)
                 if model.model_type == "mom" and postarchive_output is not None:
                     full_mapping_collate_dict.update(postarchive_output)
 
@@ -1013,7 +1014,7 @@ class Experiment(object):
         if postarchive_config.get('addmeta', {}).get('enable', True):
             self.add_file_metadata()
 
-        # Counters does not increase for collate runs
+        # Counters does not increase for postarchive runs
         # This is used to determine the job file path
         self.set_counters(keep_run_number=True)
 
@@ -1025,7 +1026,8 @@ class Experiment(object):
         )
     
     def add_file_metadata(self):
-        pass
+        logger.warning('Payu: This is not implemented yet.')
+        return
 
     def profile(self):
         for model in self.models:

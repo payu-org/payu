@@ -378,6 +378,6 @@ class Fms(Model):
 
         shutil.move(self.work_restart_path, self.restart_path)
 
-    def postarchive(self):
+    def postarchive(self, pa_config):
         mapping_collate_dict = fms_collate(self)
         return mapping_collate_dict

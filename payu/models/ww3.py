@@ -35,5 +35,5 @@ class WW3(Model):
             if os.path.islink(f_path):
                 os.remove(f_path)
 
-    def postarchive(self):
+    def postarchive(self, pa_config):
         pass

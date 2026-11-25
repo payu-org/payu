@@ -302,5 +302,5 @@ class Access(IntakeMixin, Model):
     def set_model_output_paths(self):
         pass
 
-    def postarchive(self):
+    def postarchive(self, pa_config):
         pass

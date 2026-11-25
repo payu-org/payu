@@ -86,7 +86,7 @@ class AccessOm2(IntakeMixin, Model):
                 o2i_dst = os.path.join(cice5.restart_path, 'o2i.nc')
                 shutil.copy2(o2i_src, o2i_dst)
 
-    def postarchive(self):
+    def postarchive(self, pa_config):
         pass
 
     def get_restart_datetime(self, restart_path):

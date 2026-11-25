@@ -109,5 +109,5 @@ class Oasis(Model):
             if os.path.exists(f_src):
                 shutil.move(f_src, f_dst)
 
-    def postarchive(self):
+    def postarchive(self, pa_config):
         pass

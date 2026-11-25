@@ -12,9 +12,10 @@ http://www.apache.org/licenses/LICENSE-2.0
 from __future__ import print_function
 
 # Standard Library
-import errno
+import glob
+import subprocess
 import os
-import sys
+import shlex
 import shutil
 import datetime
 import struct
@@ -23,6 +24,7 @@ import tarfile
 
 # Extensions
 import f90nml
+from yaml import warnings
 
 # Local
 import payu.calendar as cal
@@ -357,11 +359,47 @@ class Cice(Model):
         for file in log_files:
             os.remove(file)
 
-    def postarchive(self):
-        # split cice files into per month files
-        print("Splitting CICE files into per month")
-        print("This needs to be implemented.")
-        pass
+    def postarchive(self, pa_config):
+        """
+        Split CICE history output into single-variable files using
+        splitnc (https://github.com/ACCESS-NRI/splitnc). The original
+        iceh-* files are removed only if splitnc succeeds."""
+        icefiles = sorted(glob.glob(os.path.join(self.work_path, 'iceh-*')))
+
+        # Only run splitnc if unprocessed ice files exist (avoid reruns)
+        if not icefiles:
+            return
+
+        # Build a complete splitnc command based on postarchive:cice configuration
+        cmd = ['splitnc']
+        if shared_vars := pa_config.get("shared_vars"):
+            cmd += ["--shared-vars", ",".join(shared_vars)]
+
+        if excluded_vars := pa_config.get("excluded_vars"):
+            cmd += ["--excluded-vars", ",".join(excluded_vars)]
+
+        if pa_config.get('fix_cell_methods', True):
+            cmd += ['--fix-cell-methods']
+
+        if pa_config.get('skip_existing', True):
+            cmd += ['--skip-existing']
+
+        if additional_flags := pa_config.get('additional_flags'):
+            if isinstance(additional_flags, str):
+                additional_flags = shlex.split(additional_flags)
+            cmd.extend(additional_flags)
+
+        cmd += icefiles
+
+        # Run splitnc command in a subprocess
+        try:
+            subprocess.run(cmd, check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            warnings.warn(f"splitnc failed, keeping original CICE history files: {e}")
+            return
+
+        for f in icefiles:
+            os.remove(f)
 
     def link_restart(self, fpath):
 
