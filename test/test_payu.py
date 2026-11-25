@@ -442,13 +442,16 @@ def test_repeat_runs_archive(setup_test_dir, capsys):
     with cd(ctrldir):
         lab = payu.laboratory.Laboratory(lab_path=str(labdir))
         expt = payu.experiment.Experiment(lab, repeat=True)
+
+        # Remove the workdir created in setup_test_dir, 
+        # so expt.setup can create the correct symlink
+        workdir.rmdir()
         expt.setup()
 
-        # Create fake output and restart files in the work directory
-        for dirname in ["output000", "restart000"]:
-            directory = workdir / dirname
-            directory.mkdir()
-            (directory / "test_file.txt").write_text("Test file content")
+        # Create fake files in the work directory
+        filepath = os.path.join(expt.work_path, 'manifests', 'exe.yaml')
+        with open(filepath, "w") as f:
+            f.write("Test exe manifest content")
 
         # Run archive when repeat=True
         assert expt.repeat is True
@@ -456,6 +459,7 @@ def test_repeat_runs_archive(setup_test_dir, capsys):
 
     # Output should be archived
     assert (expt_archive_dir / 'output000').is_dir()
+    assert (expt_archive_dir / 'output000' / 'manifests' / 'exe.yaml').is_file()
 
     # Repeat runs do not keep any restarts in the archive
     assert list_expt_archive_dirs(type='restart') == []
