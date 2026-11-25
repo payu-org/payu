@@ -422,3 +422,25 @@ repeat = {
         'help': 'Remove any archived restart files and repeat the initial run upon resubmission'
     }
 }
+
+script_template = {
+    'flags': ['--script-template', '-t'],
+    'parameters': {
+        'dest': 'script_template',
+        'action': 'store',
+        'default': None,
+        'help': 'Specify a job script template to use for this run and subsequent collate/sync/catalog jobs.'
+    }
+}
+
+# Default is True, meaning payu checks for the MPI command and raise an error if not found.
+# store_false: When --mpicheck-off flag is presented, this check will be skipped.
+mpi_check = {
+    'flags': ['--mpicheck-off'],
+    'parameters': {
+        'dest': 'mpi_check',
+        'action': 'store_false',
+        'default': True,
+        'help': 'Skip checking for mpi command in user-specified module paths.'
+    }
+}

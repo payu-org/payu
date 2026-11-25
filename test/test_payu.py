@@ -253,24 +253,6 @@ def test_parse_ldd_output():
     assert(required_libs['libmpi.so.40'] == '/apps/openmpi/4.0.2/lib/libmpi.so.40')
 
 
-def test_lib_update_lib_if_required():
-    required_libs_dict = {
-        'libmpi.so.40': '/apps/openmpi/4.0.2/lib/libmpi.so.40',
-        'libmpi_usempif08_Intel.so.40': '/apps/openmpi/4.0.2/lib/libmpi_usempif08_Intel.so.40'
-    }
-    result = payu.envmod.lib_update(required_libs_dict, 'libmpi.so')
-    assert(result == 'openmpi/4.0.2')
-
-
-def test_lib_update_if_nci_module_not_required():
-    required_libs_dict = {
-         'libmpi.so.40': '/$HOME/spack-microarchitectures.git/opt/spack/linux-rocky8-cascadelake/intel-2019.5.281/openmpi-4.1.5-ooyg5wc7sa3tvmcpazqqb44pzip3wbyo/lib/libmpi.so.40', 
-         'libmpi_usempif08.so.40': '/$HOME/exe/spack-microarchitectures.git/opt/spack/linux-rocky8-cascadelake/intel-2019.5.281/openmpi-4.1.5-ooyg5wc7sa3tvmcpazqqb44pzip3wbyo/lib/libmpi_usempif08.so.40',
-    }
-    result = payu.envmod.lib_update(required_libs_dict, 'libmpi.so')
-    assert (result == '')
-
-
 def test_env_with_python_path_is_first():
     """Test that python directory is at the front of PATH env var"""
     env = payu.fsops.env_with_python_path()

@@ -23,7 +23,8 @@ parameters = {'description': 'Run the model experiment'}
 arguments = [args.model, args.config, args.initial, args.nruns,
              args.laboratory, args.reproduce, args.force,
              args.force_prune_restarts, args.is_new_experiment, args.dry_run,
-             args.runlog_off, args.repeat]
+             args.runlog_off, args.repeat, args.script_template,
+             args.mpi_check]
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ def validate_platform_node(platform, queue, get_queue_node_shape):
 def runcmd(model_type, config_path, init_run, n_runs, lab_path,
            reproduce=None, force=False, force_prune_restarts=False,
            is_new_experiment=False, dry_run=False, runlog_off=False, 
-           repeat=False):
+           repeat=False, script_template=None, mpi_check=True):
 
     # Get job submission configuration
     pbs_config = fsops.read_config(config_path)
@@ -61,14 +62,15 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
                                 force=force,
                                 force_prune_restarts=force_prune_restarts,
                                 runlog_off=runlog_off,
-                                repeat=repeat)
+                                repeat=repeat,
+                                script_template=script_template)
 
     # Initialise Experiment early so we can detect scheduler
     # Run experiment initialisation to update metadata,
     # and determine the run counter and uuid before job submission
     lab = Laboratory(model_type, config_path, lab_path)
     expt = Experiment(lab, reproduce=reproduce, force=force, is_new_experiment=is_new_experiment, 
-                    runlog_off=runlog_off, repeat=repeat)
+                    runlog_off=runlog_off, repeat=repeat, mpi_check=mpi_check)
 
     # Set the queue
     # NOTE: Maybe force all jobs on the normal queue
@@ -174,7 +176,10 @@ def runcmd(model_type, config_path, init_run, n_runs, lab_path,
             'Work path already exists. Please use `payu sweep` or use `payu run -f`.')
 
     current_run = int(init_run) if init_run is not None else expt.counter
-
+    
+    # Check if mpirun command is available in any PATH added by user modules
+    expt.setup_modules()
+    
     cli.submit_job('payu-run', pbs_config, pbs_vars, expt, 
                    current_run, type='run', 
                    dry_run=dry_run)
@@ -186,7 +191,7 @@ def runscript(**run_args):
                      run_args.lab_path)
 
     expt = Experiment(lab, reproduce=run_args.reproduce, force=run_args.force, is_new_experiment=run_args.is_new_experiment,
-                      runlog_off=run_args.runlog_off, repeat=run_args.repeat)
+                      runlog_off=run_args.runlog_off, repeat=run_args.repeat, mpi_check=run_args.mpi_check)
 
     n_runs_per_submit = expt.config.get('runspersub', 1)
     subrun = 1
