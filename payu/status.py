@@ -149,6 +149,11 @@ def _sort_run_jobs(run_info_one_type):
         x.get("start_time") or "",
     ))
 
+def _update_legacy_job_type(job_type):
+    """Update legacy job types to the new job types"""
+    if job_type == "collate":
+        return "postarchive"
+    return job_type
 
 def build_job_info(
             archive_path: Path,
@@ -173,8 +178,8 @@ def build_job_info(
                     {...} //previous run jobs
                     {"job_id": "12345", ...}
                 ],
-                "collate": [
-                    {...} //previous collate jobs
+                "postarchive": [
+                    {...} //previous postarchive (collate) jobs
                     {"job_id": "12346", ...}
                 ]
             }
@@ -183,7 +188,7 @@ def build_job_info(
     """
     status_data: dict[str, Any] = {}
     runs: dict[int, dict[str, list]] = {}
-    for job_type in ["run", "collate", "postscript", "sync"]:
+    for job_type in ["run", "collate", "postarchive", "postscript", "sync"]:
         job_files = get_job_file_list(archive_path, run_number, all_runs, type=job_type)
         # If no job files found for this type, skip to the next type
         if not job_files:
@@ -226,9 +231,18 @@ def build_job_info(
                 })
 
             run_num = int(data["payu_current_run"])
-            runs.setdefault(run_num, {})
-            runs[run_num].setdefault(job_type, []).append(run_info)
 
+            # Update legacy job_type before building runs dictionary
+            updated_job_type = _update_legacy_job_type(job_type)
+
+            runs.setdefault(run_num, {})
+            runs[run_num].setdefault(updated_job_type, []).append(run_info)
+
+    status_data = _sort_run_jobs(runs, status_data, all_runs, expt)
+
+    return status_data
+
+def _sort_run_jobs(runs, status_data, all_runs, expt):
     # If no job file found for any type, return {}
     if not runs:
         return {}
@@ -243,7 +257,7 @@ def build_job_info(
             _sort_run_jobs(run_jobs[job_type])
 
             if not all_runs:
-                # Use latest run/collate job
+                # Use latest run/postarchive job
                 run_jobs[job_type] = [run_jobs[job_type][-1]]
 
     # Get the current model time for run jobs
@@ -387,7 +401,7 @@ def display_job_info(data: dict[str, Any], archive_path: Path) -> None:
         print("=" * line_width)
         print(f"Run: {run_number}")
 
-        # Loop through the job types (run and collate) for the current run
+        # Loop through the job types (run, collate/postarchive, postscript, sync) for the current run
         for job_type, job_list in jobs.items():
             # Display internal job(s) for each type
             for job_info in job_list:

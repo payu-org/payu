@@ -1132,7 +1132,7 @@ class Experiment(object):
         default_job_name = os.path.basename(os.getcwd())
         short_job_name = str(self.config.get('jobname', default_job_name))[:15]
 
-        # find all PBS log files including payu runs, collate runs, postscript runs, and sync runs
+        # find all PBS log files including payu runs, collate/postarchive runs, postscript runs, sync runs and catalog generation
         log_filenames = [short_job_name + '.o', short_job_name + '.e']
         for postfix in ['_c.o', '_c.e', '_p.o', '_p.e', '_s.o', '_s.e', '_i.o', '_i.e']:
             log_filenames.append(short_job_name[:13] + postfix)

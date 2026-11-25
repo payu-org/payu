@@ -23,19 +23,6 @@ parameters = {'description': 'Collate tiled output into single output files'}
 arguments = [args.model, args.config, args.initial, args.laboratory,
              args.dir_path, args.dry_run]
 
-def submit_collate(counter, depends_on=None, config=None):
-    """ Submit the collate job by calling runcmd.
-    Return the job id of the collate job"""
-    try:
-        job_id = runcmd(
-                init_run=counter,
-                depends_on=depends_on,
-                exist_workflow=True,
-                )
-    except Exception as e:
-        raise errors.PayuRuntimeError(f"Failed to submit collate job: {e}")
-    return job_id
-
 
 def runcmd(model_type=None, config_path=None, init_run=None, 
            lab_path=None, dir_path=None, dry_run=False, depends_on=None, 
@@ -136,7 +123,7 @@ def runscript(**run_args):
     expt = Experiment(lab)
 
     # Initialise the Workflow class to manage the workflow
-    workflow = Workflow.read_config(expt.config, run_number=expt.counter, skip_step='collate')
+    workflow = Workflow.read_config(expt.config, run_number=expt.counter, skip_step='postarchive')
     
     try:
         # Collate the model output
