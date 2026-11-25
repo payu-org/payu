@@ -73,6 +73,11 @@ CAN_EDIT_COMMENT: [NAME_FIELD, CONTACT_FIELD, EMAIL_FIELD, CREATED_FIELD,
 
 HARD_SWEPT_UUID = "uuid-wiped-by-sweep-hard"
 
+SKIP_RESTART_PROVENANCE_MSG = (
+    "Restart path '%s' does not exist or has been pruned. "
+    "Skipping writing restart provenance information."
+)
+
 class MetadataWarning(Warning):
     pass
 
@@ -499,8 +504,13 @@ class Metadata:
                                 restart_path: Path, 
                                 run_id: str,
                                 run_number: int,
-                                model_finish_time: datetime,) -> None:
+                                model_finish_time: datetime) -> None:
         """Write provenance information to the restart directory"""
+        # Check if restart_path exists
+        if not restart_path.is_dir():
+            print(SKIP_RESTART_PROVENANCE_MSG % restart_path)
+            return
+        
         # Read the existing metadata file from control directory
         metadata = self.read_file()
 
