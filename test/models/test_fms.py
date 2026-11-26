@@ -9,7 +9,7 @@ import payu.models.fms as fms_module
 from payu.models.fms import get_uncollated_files, get_avail_collate_flags, restart_mapping_log, get_restart_uncollated_hashes
 from payu.models.fms import fms_collate
 from payu.errors import PayuRuntimeError
-from payu.metadata import RESTART_METADATA_FILENAME
+from payu.metadata import RESTART_METADATA_FILENAME, RESTART_METADATA_YAML
 
 from test.common import tmpdir
 
@@ -458,8 +458,9 @@ def _read_restart_yaml(path):
 
 
 def _write_restart_yaml(path, data):
+    """Write restart metadata the same way payu archive does."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    YAML().dump(data, path)
+    RESTART_METADATA_YAML.dump(data, path)
 
 
 @pytest.fixture
@@ -555,6 +556,11 @@ def test_collate_updates_only_restart_representation(mom6_collate_case):
             "representation": "collated",
         },
     }
+
+    # Updating the representation keeps the layouts written inline
+    content = metadata_path.read_text()
+    assert "layout: [72, 48]" in content
+    assert "io_layout: [72, 48]" in content
 
 
 @pytest.mark.parametrize("missing_restart_path", [False, True])

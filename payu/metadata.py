@@ -47,6 +47,13 @@ EXPERIMENT_TIME_FIELD = "model_finish_time"
 RUN_ID_FIELD = "payu_run_id"
 RUN_NUMBER_FIELD = "payu_current_run"
 
+# Shared YAML handler for restart_metadata.yaml. default_flow_style = None
+# writes short lists inline, e.g. "layout: [24, 18]", instead of one item
+# per line. Round-trip loading keeps the existing style when the file is
+# updated, e.g. after collation in payu.models.fms.fms_collate.
+RESTART_METADATA_YAML = YAML()
+RESTART_METADATA_YAML.default_flow_style = None
+
 # Metadata Schema
 SCHEMA_FIELD = "schema_version"
 SCHEMA_VERSION = "1-0-4" # SCHEMA_VERSION and SCHEMA_COMMIT_HASH should be updated together
@@ -537,9 +544,7 @@ class Metadata:
 
         # Write restart metadata file to restart directory
         restart_metadata_path = restart_path / RESTART_METADATA_FILENAME
-        yaml = YAML()
-        yaml.default_flow_style = None
-        yaml.dump(restart_metadata, restart_metadata_path)
+        RESTART_METADATA_YAML.dump(restart_metadata, restart_metadata_path)
         print(f"Provenance information is written to restarts: {restart_metadata_path}")
 
 
