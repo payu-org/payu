@@ -17,6 +17,7 @@ import glob
 import yaml
 
 # Local
+import payu.calendar as cal
 from payu.models.model import Model
 from payu.models.um import um_time_to_time, time_to_um_time, date_to_um_date
 from payu.fsops import make_symlink
@@ -98,12 +99,13 @@ class Am3(Model):
 
         # Set the runtime for this run.
         if self.expt.runtime:
-            run_runtime = runtime_360(
+            run_runtime = cal.runtime_from_date(
+                run_start_date,
                 self.expt.runtime['years'],
                 self.expt.runtime['months'],
                 self.expt.runtime['days'],
                 self.expt.runtime.get('seconds', 0),
-            )
+                cal.GREGORIAN)
             run_runtime = time_to_um_time(run_runtime)
             shared_nml['NLSTCALL']['RUN_TARGET_END'] = run_runtime
 
