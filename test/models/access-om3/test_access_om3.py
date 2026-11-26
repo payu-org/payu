@@ -627,3 +627,48 @@ def test_collate_returns_mapping(cmeps_model):
 
     assert result == expected_mapping
     mock_collate.assert_called_once_with(model)
+
+
+@pytest.mark.parametrize("cmeps_model", [1], indirect=True)
+@pytest.mark.parametrize(
+    "restart_files,expected_representation",
+    [
+        pytest.param(
+            ["access-om3.mom6.r.1900-01-02-00000.nc.0000",
+             "access-om3.mom6.r.1900-01-02-00000.nc.0001"],
+            "tiled",
+            id="tiled-restart",
+        ),
+        pytest.param(
+            ["access-om3.mom6.r.1900-01-02-00000.nc"],
+            "collated",
+            id="collated-restart",
+        ),
+    ],
+)
+def test_get_restart_metadata_with_mom6(
+    cmeps_model, restart_files, expected_representation
+):
+    """
+    ACCESS-OM3 with a MOM6 ocean records the MOM6 restart decomposition
+    from the archived MOM_parameter_doc.layout.
+    """
+    model, _ = cmeps_model
+
+    # Read the components from a runconfig with OCN_model = mom
+    model.get_runconfig(os.path.join('test', 'resources'))
+    model.get_components()
+    assert model.components["ocn"] == "mom"
+
+    os.makedirs(model.output_path)
+    with open(os.path.join(model.output_path, "MOM_parameter_doc.layout"), "w") as f:
+        f.write("LAYOUT = 24,18\nIO_LAYOUT = 4,3\n")
+    _create_files(model.restart_path, restart_files)
+
+    assert model.get_restart_metadata() == {
+        "mom6_restart": {
+            "layout": [24, 18],
+            "io_layout": [4, 3],
+            "representation": expected_representation,
+        }
+    }

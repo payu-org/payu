@@ -10,6 +10,7 @@ import payu
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, expt_workdir, ctrldir_basename
+from test.common import expt_archive_dir
 from test.common import write_config, write_metadata
 from test.common import make_random_file, make_inputs, make_exe
 from test.test_git_utils import create_new_repo
@@ -17,6 +18,7 @@ from test.test_git_utils import create_new_repo
 from types import SimpleNamespace
 from payu.models.mom6 import Mom6, get_mom6_restart_metadata
 from payu.models.cesm_cmeps import CesmCmeps
+from payu.metadata import RESTART_METADATA_FILENAME, RESTART_METADATA_YAML
 
 @pytest.fixture(autouse=True)
 def setup_module(setup_test_dir, empty_workdir):
@@ -510,3 +512,72 @@ def test_get_restart_metadata_returns_empty(
     )
 
     assert driver.get_restart_metadata(model) == {}
+
+
+@pytest.mark.parametrize(
+    "restart_files,expected_representation",
+    [
+        pytest.param(
+            ["MOM.res.nc.0000", "MOM.res.nc.0001"], "tiled", id="tiled-restart"
+        ),
+        pytest.param(["MOM.res.nc"], "collated", id="collated-restart"),
+    ],
+)
+def test_archive_writes_mom6_restart_metadata(
+    restart_files, expected_representation
+):
+    """
+    Archive a MOM6 run with a real Experiment and check the decomposition
+    written to restart000/restart_metadata.yaml.
+    """
+    config = {
+        'laboratory': 'lab',
+        'jobname': 'testrun',
+        'model': 'mom6',
+        'exe': 'test.exe',
+        'experiment': ctrldir_basename,
+        'runlog': False,
+        'metadata': {
+            'enable': False
+        }
+    }
+    write_config(config)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+
+    # Files a MOM6 run leaves in the work directory. Model.archive removes
+    # empty files, so give them some content.
+    (expt_workdir / "MOM_parameter_doc.layout").write_text(
+        "LAYOUT = 40,70\nIO_LAYOUT = 0,0\n"
+    )
+    work_restart = Path(expt.models[0].work_restart_path)
+    work_restart.mkdir(parents=True)
+    for restart_file in restart_files:
+        make_random_file(work_restart / restart_file, 8)
+
+    with cd(ctrldir):
+        expt.archive()
+
+    output_path = expt_archive_dir / "output000"
+    restart_path = expt_archive_dir / "restart000"
+    assert (output_path / "MOM_parameter_doc.layout").exists()
+    assert sorted(os.listdir(restart_path)) == sorted(
+        restart_files + [RESTART_METADATA_FILENAME]
+    )
+
+    metadata_path = restart_path / RESTART_METADATA_FILENAME
+    restart_metadata = RESTART_METADATA_YAML.load(metadata_path)
+
+    assert restart_metadata["payu_current_run"] == 0
+    assert restart_metadata["mom6_restart"] == {
+        "layout": [40, 70],
+        "io_layout": [40, 70],
+        "representation": expected_representation,
+    }
+
+    # Layouts are written inline
+    content = metadata_path.read_text()
+    assert "layout: [40, 70]" in content
+    assert "io_layout: [40, 70]" in content
