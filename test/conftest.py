@@ -46,4 +46,5 @@ def empty_workdir(setup_test_dir):
     workdir.symlink_to(expt_workdir)
 
     yield expt_workdir
-    workdir.unlink()
+    # payu archive removes the work symlink, so it may already be gone
+    workdir.unlink(missing_ok=True)

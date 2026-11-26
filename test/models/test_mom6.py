@@ -10,10 +10,15 @@ import payu
 
 from test.common import cd
 from test.common import tmpdir, ctrldir, labdir, expt_workdir, ctrldir_basename
+from test.common import expt_archive_dir
 from test.common import write_config, write_metadata
 from test.common import make_random_file, make_inputs, make_exe
 from test.test_git_utils import create_new_repo
 
+from types import SimpleNamespace
+from payu.models.mom6 import Mom6, get_mom6_restart_metadata
+from payu.models.cesm_cmeps import CesmCmeps
+from payu.metadata import RESTART_METADATA_FILENAME, RESTART_METADATA_YAML
 
 @pytest.fixture(autouse=True)
 def setup_module(setup_test_dir, empty_workdir):
@@ -397,3 +402,182 @@ def test_get_calendar():
 
     with pytest.raises(IndexError):
         calendar = expt.model.get_calendar(ocean_solo_path)
+
+@pytest.mark.parametrize(
+    "document,tiles,expected",
+    [
+        pytest.param(
+            "LAYOUT = 72,48\nIO_LAYOUT = 0,0\n",
+            True,
+            {"layout": [72, 48], "io_layout": [72, 48], "representation": "tiled"},
+            id="default-io-layout-with-tiled-restart",
+        ),
+        pytest.param(
+            "LAYOUT = 72,48\nIO_LAYOUT = 6,4\n",
+            False,
+            {"layout": [72, 48], "io_layout": [6, 4], "representation": "collated"},
+            id="explicit-io-layout-with-collated-restart",
+        ),
+        pytest.param(
+            "LAYOUT = 40,70\nIO_LAYOUT = 0,0\n",
+            False,
+            {"layout": [40, 70], "io_layout": [40, 70], "representation": "collated"},
+            id="default-io-layout-with-collated-restart",
+        ),
+    ],
+)
+def test_get_mom6_restart_metadata(tmp_path, document, tiles, expected):
+    """
+    Read effective runtime layouts and detect the restart file reprensentation.
+    """
+    output_path = tmp_path / "output000"
+    restart_path = tmp_path / "restart000"
+    output_path.mkdir()
+    restart_path.mkdir()
+
+    (output_path / "MOM_parameter_doc.layout").write_text(document)
+
+    if tiles:
+        (restart_path / "access-om3.mom6.r.nc.0000").touch()
+        (restart_path / "access-om3.mom6.r.nc.0001").touch()
+
+    model = SimpleNamespace(
+        output_path=str(output_path),
+        restart_path=str(restart_path)
+    )
+
+    assert get_mom6_restart_metadata(model) == {"mom6_restart": expected}
+
+@pytest.mark.parametrize(
+    "document",
+    [
+        "LAYOUT = 72, 48\n",
+        "IO_LAYOUT = 0, 0\n",
+        "LAYOUT = invalid\nIO_LAYOUT = 0, 0\n",
+        "LAYOUT = 72, 48\nIO_LAYOUT = invalid\n",
+    ],
+)
+def test_get_mom6_restart_metadata_missing_layout(tmp_path, document):
+    """
+    Omit decomposition metadata if either runtime layout cannot be parsed
+    """
+    output_path = tmp_path / "output000"
+    output_path.mkdir()
+    (output_path / "MOM_parameter_doc.layout").write_text(document)
+
+    model = SimpleNamespace(
+        output_path=str(output_path),
+        restart_path=tmp_path / "restart000",
+    )
+
+    assert get_mom6_restart_metadata(model) == {}
+
+def test_get_mom6_restart_metadata_missing_document(tmp_path):
+    """
+    Omit decomposition metadata when MOM6 did not produce a layout document
+    """
+    model = SimpleNamespace(
+        output_path=tmp_path / "output000",
+        restart_path=tmp_path / "restart000",
+    )
+
+    assert get_mom6_restart_metadata(model) == {}
+
+
+@pytest.mark.parametrize(
+    "driver,components,document",
+    [
+        pytest.param(Mom6, {}, False, id="mom6-missing-document"),
+        pytest.param(CesmCmeps, {"ocn": "mom"}, False, id="cmeps-missing-document"),
+        pytest.param(CesmCmeps, {"ocn": "docn"}, True, id="cmeps-without-mom6"),
+    ],
+)
+def test_get_restart_metadata_returns_empty(
+    tmp_path, driver, components, document
+):
+    output_path = tmp_path / "output000"
+    restart_path = tmp_path / "restart000"
+    output_path.mkdir()
+    restart_path.mkdir()
+
+    if document:
+        (output_path / "MOM_parameter_doc.layout").write_text(
+            "LAYOUT = 24,18\nIO_LAYOUT = 4,3\n"
+        )
+
+    model = SimpleNamespace(
+        output_path=output_path,
+        restart_path=restart_path,
+        components=components,
+    )
+
+    assert driver.get_restart_metadata(model) == {}
+
+
+@pytest.mark.parametrize(
+    "restart_files,expected_representation",
+    [
+        pytest.param(
+            ["MOM.res.nc.0000", "MOM.res.nc.0001"], "tiled", id="tiled-restart"
+        ),
+        pytest.param(["MOM.res.nc"], "collated", id="collated-restart"),
+    ],
+)
+def test_archive_writes_mom6_restart_metadata(
+    restart_files, expected_representation
+):
+    """
+    Archive a MOM6 run with a real Experiment and check the decomposition
+    written to restart000/restart_metadata.yaml.
+    """
+    config = {
+        'laboratory': 'lab',
+        'jobname': 'testrun',
+        'model': 'mom6',
+        'exe': 'test.exe',
+        'experiment': ctrldir_basename,
+        'runlog': False,
+        'metadata': {
+            'enable': False
+        }
+    }
+    write_config(config)
+
+    with cd(ctrldir):
+        lab = payu.laboratory.Laboratory(lab_path=str(labdir))
+        expt = payu.experiment.Experiment(lab, reproduce=False)
+
+    # Files a MOM6 run leaves in the work directory. Model.archive removes
+    # empty files, so give them some content.
+    (expt_workdir / "MOM_parameter_doc.layout").write_text(
+        "LAYOUT = 40,70\nIO_LAYOUT = 0,0\n"
+    )
+    work_restart = Path(expt.models[0].work_restart_path)
+    work_restart.mkdir(parents=True)
+    for restart_file in restart_files:
+        make_random_file(work_restart / restart_file, 8)
+
+    with cd(ctrldir):
+        expt.archive()
+
+    output_path = expt_archive_dir / "output000"
+    restart_path = expt_archive_dir / "restart000"
+    assert (output_path / "MOM_parameter_doc.layout").exists()
+    assert sorted(os.listdir(restart_path)) == sorted(
+        restart_files + [RESTART_METADATA_FILENAME]
+    )
+
+    metadata_path = restart_path / RESTART_METADATA_FILENAME
+    restart_metadata = RESTART_METADATA_YAML.load(metadata_path)
+
+    assert restart_metadata["payu_current_run"] == 0
+    assert restart_metadata["mom6_restart"] == {
+        "layout": [40, 70],
+        "io_layout": [40, 70],
+        "representation": expected_representation,
+    }
+
+    # Layouts are written inline
+    content = metadata_path.read_text()
+    assert "layout: [40, 70]" in content
+    assert "io_layout: [40, 70]" in content

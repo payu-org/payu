@@ -457,6 +457,12 @@ class Model(object):
             'these sub-models to determine restart dates.'
         )
 
+    def get_restart_metadata(self):
+        """
+        Return model-specific metadata for the archived restart.
+        """
+        return {}
+
     def get_cur_expt_time(self):
         """For model not implemented experiment time calculate/read-out,
         raise error."""
